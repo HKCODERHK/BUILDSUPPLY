@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Modal } from '@/components/ui/modal'
-import { listSuppliersOverview, setSupplierStatus, resetSupplierPassword, updateSupplierRecord } from '@/services/adminSuppliers'
+import { listSuppliersOverview, setSupplierStatus, resetSupplierPassword, updateSupplierSubscription } from '@/services/adminSuppliers'
 import { listActivity } from '@/services/activityLog'
 import type { ActivityLogEntry, SupplierOverview } from '@/lib/database.types'
 
@@ -26,6 +26,11 @@ export default function SupplierProfile() {
   const [newPassword, setNewPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+
+  function describeError(err: unknown) {
+    return err instanceof Error ? err.message : 'Something went wrong. Please try again.'
+  }
 
   async function refresh() {
     if (!id) return
@@ -42,10 +47,13 @@ export default function SupplierProfile() {
   async function handleActivate() {
     if (!id) return
     setBusy(true)
+    setActionError(null)
     try {
       await setSupplierStatus(id, 'active')
       setFeedback('Supplier activated.')
       await refresh()
+    } catch (err) {
+      setActionError(describeError(err))
     } finally {
       setBusy(false)
     }
@@ -54,12 +62,15 @@ export default function SupplierProfile() {
   async function handleSuspend() {
     if (!id) return
     setBusy(true)
+    setActionError(null)
     try {
       await setSupplierStatus(id, 'suspended', { suspensionReason: suspendReason || undefined })
       setFeedback('Supplier suspended.')
       setSuspendModal(false)
       setSuspendReason('')
       await refresh()
+    } catch (err) {
+      setActionError(describeError(err))
     } finally {
       setBusy(false)
     }
@@ -68,10 +79,13 @@ export default function SupplierProfile() {
   async function handleDeactivate() {
     if (!id) return
     setBusy(true)
+    setActionError(null)
     try {
       await setSupplierStatus(id, 'inactive')
       setFeedback('Supplier deactivated. Their business data is preserved.')
       await refresh()
+    } catch (err) {
+      setActionError(describeError(err))
     } finally {
       setBusy(false)
     }
@@ -80,20 +94,31 @@ export default function SupplierProfile() {
   async function handleResetPassword() {
     if (!id || newPassword.length < 6) return
     setBusy(true)
+    setActionError(null)
     try {
       await resetSupplierPassword(id, newPassword)
       setFeedback('Password reset successfully.')
       setPasswordModal(false)
       setNewPassword('')
+    } catch (err) {
+      setActionError(describeError(err))
     } finally {
       setBusy(false)
     }
   }
 
-  async function handleSubscriptionChange(field: 'subscription_start' | 'subscription_expiry' | 'plan', value: string) {
+  async function handleSubscriptionChange(
+    field: 'subscription_start' | 'subscription_expiry' | 'plan' | 'subscription_status',
+    value: string,
+  ) {
     if (!id) return
-    await updateSupplierRecord(id, { [field]: value } as never)
-    await refresh()
+    setActionError(null)
+    try {
+      await updateSupplierSubscription(id, { [field]: value } as never)
+      await refresh()
+    } catch (err) {
+      setActionError(describeError(err))
+    }
   }
 
   if (loading) return <p className="text-sm text-muted">Loading…</p>
@@ -112,6 +137,7 @@ export default function SupplierProfile() {
       />
 
       {feedback && <Card className="mb-4 bg-accent-bg text-sm text-accent-text">{feedback}</Card>}
+      {actionError && <Card className="mb-4 bg-red-50 text-sm text-red-700">{actionError}</Card>}
 
       <div className="mb-4 flex gap-2">
         <button
@@ -149,17 +175,12 @@ export default function SupplierProfile() {
             <div className="mt-5 flex flex-wrap gap-2 border-t border-border pt-4">
               {supplier.status !== 'active' && (
                 <Button size="sm" onClick={handleActivate} disabled={busy}>
-                  Activate
+                  {supplier.status === 'suspended' ? 'Reactivate' : 'Activate'}
                 </Button>
               )}
               {supplier.status === 'active' && (
                 <Button size="sm" variant="outline" onClick={() => setSuspendModal(true)} disabled={busy}>
                   Suspend
-                </Button>
-              )}
-              {supplier.status === 'suspended' && (
-                <Button size="sm" onClick={handleActivate} disabled={busy}>
-                  Reactivate
                 </Button>
               )}
               {supplier.status !== 'inactive' && (
@@ -205,7 +226,18 @@ export default function SupplierProfile() {
                   onChange={(e) => handleSubscriptionChange('subscription_expiry', e.target.value)}
                 />
               </div>
-              <Row label="Subscription status" value={supplier.subscription_status} />
+              <div>
+                <Label>Subscription status</Label>
+                <select
+                  value={supplier.subscription_status}
+                  onChange={(e) => handleSubscriptionChange('subscription_status', e.target.value)}
+                  className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm outline-none focus:border-accent"
+                >
+                  <option value="active">Active</option>
+                  <option value="expired">Expired</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
             </div>
           </Card>
         </div>
@@ -236,6 +268,7 @@ export default function SupplierProfile() {
               <Label htmlFor="reason">Reason (optional)</Label>
               <Input id="reason" value={suspendReason} onChange={(e) => setSuspendReason(e.target.value)} />
             </div>
+            {actionError && <p className="text-xs text-red-600">{actionError}</p>}
             <Button variant="danger" onClick={handleSuspend} disabled={busy}>
               {busy ? 'Suspending…' : 'Confirm suspend'}
             </Button>
@@ -250,6 +283,7 @@ export default function SupplierProfile() {
               <Label htmlFor="new_password">New password</Label>
               <Input id="new_password" minLength={6} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
             </div>
+            {actionError && <p className="text-xs text-red-600">{actionError}</p>}
             <Button onClick={handleResetPassword} disabled={busy || newPassword.length < 6}>
               {busy ? 'Resetting…' : 'Reset password'}
             </Button>

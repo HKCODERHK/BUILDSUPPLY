@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { listInvoices, type InvoiceWithCustomer } from '@/services/invoices'
 import { getCustomer } from '@/services/customers'
 import { openWhatsAppShare } from '@/lib/whatsapp'
+import { logActivity } from '@/services/activityLog'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
@@ -31,6 +32,7 @@ export default function Invoices() {
       `Hi ${customer.name}, here is your bill ${inv.invoice_no} for ${formatINR(inv.total)}. ` +
         `${inv.paid < inv.total ? `Pending: ${formatINR(inv.total - inv.paid)}.` : 'Fully paid — thank you!'}`,
     )
+    void logActivity('supplier', 'invoice_generated', { details: { invoice_no: inv.invoice_no } })
   }
 
   return (

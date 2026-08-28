@@ -58,6 +58,7 @@ export interface ActivityLogEntry {
 export interface MaterialCategory {
   id: string
   name: string
+  slug: string
   active: boolean
   created_at: string
 }
@@ -65,17 +66,34 @@ export interface MaterialCategory {
 export interface Brand {
   id: string
   name: string
+  slug: string
   active: boolean
   created_at: string
 }
 
-export interface MasterMaterial {
+export interface MaterialType {
   id: string
-  category_id: string | null
+  category_id: string
+  name: string
+  slug: string
+  active: boolean
+  created_at: string
+}
+
+// Attribute shapes vary by category — sand/gitti use vehicle+capacity_cft,
+// steel uses diameter_mm+grade+length_m, cement uses cement_type+pack_size_kg.
+// See src/lib/catalogAttributes.ts for the field definitions per category.
+export type VariantAttributes = Record<string, string | number>
+
+export interface MasterMaterialVariant {
+  id: string
+  material_type_id: string
   brand_id: string | null
   name: string
-  default_unit_label: string | null
-  default_per_label: string | null
+  attributes: VariantAttributes
+  unit: string | null
+  search_keywords: string | null
+  search_text: string | null
   image_url: string | null
   active: boolean
   created_at: string
@@ -119,6 +137,7 @@ export interface Material {
   per_label: string | null
   stock_qty: number
   stock_unit: string | null
+  low_stock_threshold: number | null
   created_at: string
 }
 

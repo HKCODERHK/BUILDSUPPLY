@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus } from 'lucide-react'
+import { Plus, ArrowUp, ArrowDown } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -25,6 +25,19 @@ function statusTone(status: SupplierAccountStatus) {
   return 'neutral' as const
 }
 
+type SortKey = 'business_name' | 'owner_name' | 'email' | 'phone' | 'status' | 'plan' | 'last_sign_in_at' | 'created_at'
+
+const SORT_COLUMNS: { key: SortKey; label: string }[] = [
+  { key: 'business_name', label: 'Business' },
+  { key: 'owner_name', label: 'Owner' },
+  { key: 'email', label: 'Email' },
+  { key: 'phone', label: 'Phone' },
+  { key: 'status', label: 'Status' },
+  { key: 'plan', label: 'Plan' },
+  { key: 'last_sign_in_at', label: 'Last login' },
+  { key: 'created_at', label: 'Joined' },
+]
+
 export default function AdminSuppliers() {
   const navigate = useNavigate()
   const [suppliers, setSuppliers] = useState<SupplierOverview[]>([])
@@ -32,6 +45,8 @@ export default function AdminSuppliers() {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['id']>('all')
   const [modalOpen, setModalOpen] = useState(false)
+  const [sortKey, setSortKey] = useState<SortKey>('created_at')
+  const [sortAsc, setSortAsc] = useState(false)
 
   async function refresh() {
     const data = await listSuppliersOverview()
@@ -61,6 +76,27 @@ export default function AdminSuppliers() {
       return !!s.subscription_expiry && new Date(s.subscription_expiry) >= now && new Date(s.subscription_expiry) < in7days
     return s.status === filter
   })
+
+  const sorted = useMemo(() => {
+    const rows = [...filtered]
+    rows.sort((a, b) => {
+      const av = a[sortKey] ?? ''
+      const bv = b[sortKey] ?? ''
+      const cmp = String(av).localeCompare(String(bv))
+      return sortAsc ? cmp : -cmp
+    })
+    return rows
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, sortKey, sortAsc])
+
+  function handleSort(key: SortKey) {
+    if (key === sortKey) {
+      setSortAsc((prev) => !prev)
+    } else {
+      setSortKey(key)
+      setSortAsc(true)
+    }
+  }
 
   return (
     <div>
@@ -104,25 +140,29 @@ export default function AdminSuppliers() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border text-xs text-muted">
-                  <th className="py-2 pr-3 font-medium">Business</th>
-                  <th className="py-2 pr-3 font-medium">Owner</th>
-                  <th className="py-2 pr-3 font-medium">Email</th>
-                  <th className="py-2 pr-3 font-medium">Phone</th>
-                  <th className="py-2 pr-3 font-medium">Status</th>
-                  <th className="py-2 pr-3 font-medium">Plan</th>
-                  <th className="py-2 pr-3 font-medium">Last login</th>
-                  <th className="py-2 pr-3 font-medium">Joined</th>
+                  {SORT_COLUMNS.map((col) => (
+                    <th key={col.key} className="py-2 pr-3 font-medium">
+                      <button
+                        onClick={() => handleSort(col.key)}
+                        className="flex items-center gap-1 font-medium hover:text-ink"
+                      >
+                        {col.label}
+                        {sortKey === col.key &&
+                          (sortAsc ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}
+                      </button>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filtered.length === 0 && (
+                {sorted.length === 0 && (
                   <tr>
                     <td colSpan={8} className="py-4 text-muted">
                       No suppliers match.
                     </td>
                   </tr>
                 )}
-                {filtered.map((s) => (
+                {sorted.map((s) => (
                   <tr
                     key={s.id}
                     className="cursor-pointer hover:bg-surface"

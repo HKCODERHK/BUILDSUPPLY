@@ -10,8 +10,9 @@ export async function listMaterials(): Promise<Material[]> {
 
 export async function createMaterial(
   supplierId: string,
-  input: Omit<Material, 'id' | 'supplier_id' | 'created_at' | 'master_material_id'> & {
+  input: Omit<Material, 'id' | 'supplier_id' | 'created_at' | 'master_material_id' | 'low_stock_threshold'> & {
     master_material_id?: string | null
+    low_stock_threshold?: number | null
   },
 ): Promise<Material> {
   const { data, error } = await supabase

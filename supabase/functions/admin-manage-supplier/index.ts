@@ -29,15 +29,22 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? serviceRoleKey
 
-  // Client scoped to the caller's own JWT — used only to identify who's calling.
-  const callerClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
-    global: { headers: { Authorization: authHeader } },
+  // Resolve the caller's identity with a direct call to the Auth REST API —
+  // bypasses any ambiguity in how the SDK's client-side session state
+  // interacts with a manually-supplied JWT.
+  const jwt = authHeader.replace(/^Bearer\s+/i, '')
+  const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+    headers: { apikey: anonKey, Authorization: `Bearer ${jwt}` },
   })
-  const {
-    data: { user: caller },
-  } = await callerClient.auth.getUser()
-  if (!caller) return json({ error: 'Invalid session' }, 401)
+  if (!userRes.ok) {
+    const body = await userRes.text()
+    console.log('diag: /auth/v1/user failed', userRes.status, body)
+    return json({ error: 'Invalid session' }, 401)
+  }
+  const caller = await userRes.json()
+  if (!caller?.id) return json({ error: 'Invalid session' }, 401)
 
   // Privileged client — never exposed to the browser, only used server-side here.
   const adminClient = createClient(supabaseUrl, serviceRoleKey)

@@ -1,10 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { Card } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { getPlatformSettings, updatePlatformSettings } from '@/services/platformSettings'
+import { supabase } from '@/lib/supabase'
 import type { PlatformSettings } from '@/lib/database.types'
 
 export default function AdminPlatformSettings() {
@@ -43,6 +44,8 @@ export default function AdminPlatformSettings() {
   return (
     <div>
       <PageHeader title="Platform Settings" subtitle="Defaults applied across BuildSupply" />
+
+      <ChangePasswordCard />
 
       <Card className="max-w-lg">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -93,5 +96,57 @@ export default function AdminPlatformSettings() {
         </form>
       </Card>
     </div>
+  )
+}
+
+function ChangePasswordCard() {
+  const [newPassword, setNewPassword] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    if (newPassword.length < 6) return
+    setSaving(true)
+    setSaved(false)
+    setError(null)
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) throw error
+      setNewPassword('')
+      setSaved(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Card className="mb-4 max-w-lg">
+      <CardHeader>
+        <CardTitle>Change my password</CardTitle>
+      </CardHeader>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div>
+          <Label htmlFor="admin_new_password">New password</Label>
+          <Input
+            id="admin_new_password"
+            type="password"
+            minLength={6}
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+          />
+        </div>
+        {error && <p className="text-xs text-red-600">{error}</p>}
+        <div className="flex items-center gap-3">
+          <Button type="submit" disabled={saving || newPassword.length < 6}>
+            {saving ? 'Saving…' : 'Update password'}
+          </Button>
+          {saved && <span className="text-xs text-accent">Saved!</span>}
+        </div>
+      </form>
+    </Card>
   )
 }

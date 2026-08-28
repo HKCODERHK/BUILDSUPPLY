@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import type {
   AdminDashboardStats,
@@ -36,7 +37,15 @@ async function invokeAdminFunction<T>(action: string, payload: object): Promise<
   const { data, error } = await supabase.functions.invoke('admin-manage-supplier', {
     body: { action, ...payload },
   })
-  if (error) throw error
+  if (error) {
+    // supabase-js only exposes a generic "non-2xx status" message by default —
+    // the function's actual {error: "..."} body is on error.context (a Response).
+    if (error instanceof FunctionsHttpError) {
+      const body = await error.context.json().catch(() => null)
+      throw new Error(body?.error ?? error.message)
+    }
+    throw error
+  }
   if (data?.error) throw new Error(data.error)
   return data as T
 }
@@ -60,6 +69,18 @@ export async function setSupplierBan(supplierId: string, banned: boolean): Promi
 export async function updateSupplierRecord(id: string, input: Partial<Supplier>): Promise<Supplier> {
   const { data, error } = await supabase.from('suppliers').update(input).eq('id', id).select().single()
   if (error) throw error
+  return data
+}
+
+// Same underlying update as updateSupplierRecord, but tagged with its own
+// activity-log entry — kept separate so status-change actions (which log
+// their own supplier_status_* event) don't also produce a generic one.
+export async function updateSupplierSubscription(
+  id: string,
+  input: Partial<Pick<Supplier, 'plan' | 'subscription_start' | 'subscription_expiry' | 'subscription_status'>>,
+): Promise<Supplier> {
+  const data = await updateSupplierRecord(id, input)
+  await logActivity('admin', 'subscription_changed', { supplierId: id, details: input })
   return data
 }
 

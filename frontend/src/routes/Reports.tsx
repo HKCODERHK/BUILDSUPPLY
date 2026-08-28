@@ -7,6 +7,7 @@ import { listInvoices, type InvoiceWithCustomer } from '@/services/invoices'
 import { listCustomers, listCustomerBalances } from '@/services/customers'
 import type { Customer, CustomerBalance } from '@/lib/database.types'
 import { exportExcel, exportPdf } from '@/lib/export'
+import { logActivity } from '@/services/activityLog'
 
 export default function Reports() {
   const [invoices, setInvoices] = useState<InvoiceWithCustomer[]>([])
@@ -41,13 +42,19 @@ export default function Reports() {
           <div className="flex gap-2">
             <Button
               variant="outline"
-              onClick={() => exportPdf('Invoices', ['Invoice', 'Customer', 'Total', 'Paid', 'Status'], invoiceRows(), 'invoices.pdf')}
+              onClick={() => {
+                exportPdf('Invoices', ['Invoice', 'Customer', 'Total', 'Paid', 'Status'], invoiceRows(), 'invoices.pdf')
+                void logActivity('supplier', 'invoice_generated', { details: { format: 'pdf', count: invoices.length } })
+              }}
             >
               <FileText size={15} /> PDF
             </Button>
             <Button
               variant="outline"
-              onClick={() => exportExcel('Invoices', ['Invoice', 'Customer', 'Total', 'Paid', 'Status'], invoiceRows(), 'invoices.xlsx')}
+              onClick={() => {
+                exportExcel('Invoices', ['Invoice', 'Customer', 'Total', 'Paid', 'Status'], invoiceRows(), 'invoices.xlsx')
+                void logActivity('supplier', 'invoice_generated', { details: { format: 'excel', count: invoices.length } })
+              }}
             >
               <FileSpreadsheet size={15} /> Excel
             </Button>

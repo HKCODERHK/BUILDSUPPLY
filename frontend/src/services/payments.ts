@@ -49,4 +49,5 @@ export async function recordPayment(
   if (updateError) throw updateError
 
   void logActivity('supplier', 'payment_recorded', { details: { invoice_id: invoiceId, amount: totalPaidNow } })
+  void logActivity('supplier', 'invoice_updated', { details: { invoice_id: invoiceId, status } })
 }

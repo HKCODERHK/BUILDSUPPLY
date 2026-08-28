@@ -25,6 +25,7 @@ export default function Customers() {
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState({ name: '', phone: '', site: '' })
   const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
 
   async function refresh() {
     const [customerList, balanceList] = await Promise.all([listCustomers(), listCustomerBalances()])
@@ -40,11 +41,14 @@ export default function Customers() {
     e.preventDefault()
     if (!supplier) return
     setSaving(true)
+    setFormError(null)
     try {
       await createCustomer(supplier.id, form)
       setForm({ name: '', phone: '', site: '' })
       setModalOpen(false)
       await refresh()
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -58,7 +62,12 @@ export default function Customers() {
         title="Customers"
         subtitle="Manage customers, sites, invoices and pending payments"
         action={
-          <Button onClick={() => setModalOpen(true)}>
+          <Button
+            onClick={() => {
+              setFormError(null)
+              setModalOpen(true)
+            }}
+          >
             <Plus size={16} /> Add customer
           </Button>
         }
@@ -101,6 +110,7 @@ export default function Customers() {
       {modalOpen && (
         <Modal title="Add customer" onClose={() => setModalOpen(false)}>
           <form onSubmit={handleCreate} className="flex flex-col gap-4">
+            {formError && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{formError}</p>}
             <div>
               <Label htmlFor="name">Name</Label>
               <Input id="name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />

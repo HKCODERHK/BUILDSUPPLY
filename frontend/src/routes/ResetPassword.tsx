@@ -1,18 +1,32 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 
-// Reached via the link in the password-reset email. Supabase's client
-// automatically turns that link into a signed-in "recovery" session, so
-// this screen just needs to call updateUser with the new password.
+// Reached via the link in the password-reset email. Supabase now sends a
+// PKCE `?code=...` param rather than an auto-detected token in the URL
+// hash, so we have to explicitly exchange it for a session before
+// updateUser() has anything to act on.
 export default function ResetPassword() {
   const navigate = useNavigate()
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get('code')
+    if (!code) {
+      setError('This reset link is invalid or has already been used.')
+      return
+    }
+    supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+      if (error) setError(error.message)
+      else setReady(true)
+    })
+  }, [])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -41,13 +55,14 @@ export default function ResetPassword() {
               type="password"
               required
               minLength={6}
+              disabled={!ready}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
           {error && <p className="text-xs text-red-600">{error}</p>}
-          <Button type="submit" disabled={submitting} className="w-full">
-            {submitting ? 'Saving…' : 'Update password'}
+          <Button type="submit" disabled={submitting || !ready} className="w-full">
+            {submitting ? 'Saving…' : ready ? 'Update password' : 'Verifying link…'}
           </Button>
         </form>
       </div>
