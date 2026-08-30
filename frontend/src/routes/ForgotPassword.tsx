@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
@@ -24,8 +25,9 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-ink p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-7">
+    <div className="relative flex min-h-screen items-center justify-center bg-shell p-4">
+      <ThemeToggle className="absolute right-4 top-4" />
+      <div className="w-full max-w-sm rounded-2xl bg-card p-7">
         <h1 className="mb-1 text-center text-lg font-bold text-ink">Reset your password</h1>
         <p className="mb-5 text-center text-sm text-muted">We'll email you a link to set a new one.</p>
 

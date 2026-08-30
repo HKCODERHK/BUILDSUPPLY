@@ -12,6 +12,7 @@ export default function Settings() {
   const [form, setForm] = useState({
     business_name: supplier?.business_name ?? '',
     phone: supplier?.phone ?? '',
+    address: supplier?.address ?? '',
     gst_number: supplier?.gst_number ?? '',
   })
   const [saving, setSaving] = useState(false)
@@ -79,8 +80,27 @@ export default function Settings() {
             <Input id="phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           </div>
           <div>
+            {/* Printed in the FROM block of every invoice, estimate and
+                statement — without it those PDFs go out with no address. */}
+            <Label htmlFor="address">Business address</Label>
+            <Input
+              id="address"
+              placeholder="Shown on every bill and statement"
+              value={form.address}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+            />
+          </div>
+          <div>
             <Label htmlFor="gst">GST number</Label>
-            <Input id="gst" value={form.gst_number} onChange={(e) => setForm({ ...form, gst_number: e.target.value })} />
+            <Input
+              id="gst"
+              placeholder="Leave blank if you are not GST registered"
+              value={form.gst_number}
+              onChange={(e) => setForm({ ...form, gst_number: e.target.value })}
+            />
+            <p className="mt-1.5 text-xs text-muted">
+              Leave this blank and new bills will start with GST switched off.
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <Button type="submit" disabled={saving}>

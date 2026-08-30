@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { getPlatformSettings, updatePlatformSettings } from '@/services/platformSettings'
 import { supabase } from '@/lib/supabase'
 import type { PlatformSettings } from '@/lib/database.types'
+import { sanitizeDigits, sanitizeDecimal } from '@/lib/numberInput'
 
 export default function AdminPlatformSettings() {
   const [settings, setSettings] = useState<PlatformSettings | null>(null)
@@ -69,22 +70,20 @@ export default function AdminPlatformSettings() {
             <Label htmlFor="gst">Default GST rate (%)</Label>
             <Input
               id="gst"
-              type="number"
-              min="0"
-              max="100"
-              step="0.5"
+              type="text"
+              inputMode="decimal"
               value={settings.default_gst_rate}
-              onChange={(e) => setSettings({ ...settings, default_gst_rate: Number(e.target.value) })}
+              onChange={(e) => setSettings({ ...settings, default_gst_rate: Number(sanitizeDecimal(e.target.value)) || 0 })}
             />
           </div>
           <div>
             <Label htmlFor="days">Default subscription length (days)</Label>
             <Input
               id="days"
-              type="number"
-              min="1"
+              type="text"
+              inputMode="numeric"
               value={settings.default_subscription_days}
-              onChange={(e) => setSettings({ ...settings, default_subscription_days: Number(e.target.value) })}
+              onChange={(e) => setSettings({ ...settings, default_subscription_days: Number(sanitizeDigits(e.target.value)) || 0 })}
             />
           </div>
           <div className="flex items-center gap-3">

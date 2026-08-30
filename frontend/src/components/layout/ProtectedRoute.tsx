@@ -24,7 +24,7 @@ export function ProtectedRoute({
   // its token naturally expires.
   if (supplier.status !== 'active') {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-ink p-4 text-center">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-shell p-4 text-center">
         <p className="text-lg font-semibold text-white">
           Your account is {supplier.status === 'suspended' ? 'suspended' : 'deactivated'}.
         </p>

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import type { Supplier } from '@/lib/database.types'
@@ -24,6 +24,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // this, ProtectedRoute and Login disagree about auth state during that window
   // (one requires session+supplier, the other only session) and redirect-loop.
   const [profileLoading, setProfileLoading] = useState(false)
+  // Tracks whether a session already existed, so token refreshes and page
+  // reloads aren't mistaken for new sign-ins (see onAuthStateChange below).
+  const hadSessionRef = useRef(false)
 
   async function loadSupplierProfile(userId: string): Promise<Supplier | null> {
     setProfileLoading(true)
@@ -43,16 +46,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     supabase.auth.getSession().then(async ({ data }) => {
       if (!active) return
+      // Seed the "did we already have a session" flag before the auth
+      // listener can fire, so restoring a saved session isn't counted as a
+      // fresh login.
+      hadSessionRef.current = !!data.session
       setSession(data.session)
       if (data.session) await loadSupplierProfile(data.session.user.id)
       setInitializing(false)
     })
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      // Supabase fires SIGNED_IN on every token refresh and on restoring a
+      // session at page load, not just on a real sign-in — logging all of
+      // those buried the activity log (3,212 of 3,451 rows were phantom
+      // logins). Only record the null -> session transition.
+      const isNewSignIn = event === 'SIGNED_IN' && !hadSessionRef.current
+      hadSessionRef.current = !!newSession
+
       setSession(newSession)
       if (newSession) {
         const profile = await loadSupplierProfile(newSession.user.id)
-        if (event === 'SIGNED_IN' && profile) {
+        if (isNewSignIn && profile) {
           void logActivity(profile.role, 'login')
         }
       } else {

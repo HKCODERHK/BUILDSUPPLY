@@ -2,10 +2,9 @@ export type SupplierRole = 'admin' | 'supplier'
 export type Plan = 'starter' | 'pro'
 export type BillingCycle = 'monthly' | 'yearly'
 export type CustomerStatus = 'Active' | 'Inactive'
-export type QuotationStatus = 'Open' | 'Converted' | 'Expired'
-export type InvoiceStatus = 'Unpaid' | 'Partial' | 'Paid'
-export type PaymentMode = 'Cash' | 'UPI' | 'Wallet' | 'Split'
-export type DeliveryStatus = 'Pending' | 'Delivered'
+export type QuotationStatus = 'Draft' | 'Sent' | 'Converted' | 'Expired'
+export type InvoiceStatus = 'Unpaid' | 'Partial' | 'Paid' | 'Cancelled'
+export type PaymentMode = 'Cash' | 'UPI' | 'Bank/Cheque'
 export type SupplierAccountStatus = 'active' | 'suspended' | 'inactive'
 export type SubscriptionStatus = 'active' | 'expired' | 'cancelled'
 
@@ -113,17 +112,12 @@ export interface Customer {
   supplier_id: string
   name: string
   phone: string | null
+  // The customer's usual site — pre-filled as the default when billing them,
+  // but each invoice/quotation carries its own site (see Invoice.site).
   site: string | null
+  address: string | null
   status: CustomerStatus
   created_at: string
-}
-
-export interface CustomerSite {
-  id: string
-  supplier_id: string
-  customer_id: string
-  site_name: string
-  pending_amount: number
 }
 
 export interface Material {
@@ -146,10 +140,27 @@ export interface Quotation {
   supplier_id: string
   quote_no: string
   customer_id: string | null
+  // The site this estimate is for. Lives on the estimate, not the customer,
+  // so a contractor can have several sites running at once.
+  site: string | null
+  subtotal: number
+  gst_amount: number
+  transport_labour_charge: number
   total: number
   status: QuotationStatus
   converted_invoice_id: string | null
   created_at: string
+}
+
+export interface QuotationItem {
+  id: string
+  supplier_id: string
+  quotation_id: string
+  material_id: string | null
+  description: string
+  qty: number
+  rate: number
+  amount: number
 }
 
 export interface Invoice {
@@ -158,11 +169,15 @@ export interface Invoice {
   invoice_no: string
   customer_id: string | null
   quotation_id: string | null
+  // The site this bill was raised for — see Quotation.site.
+  site: string | null
   subtotal: number
   gst_amount: number
+  transport_labour_charge: number
   total: number
   paid: number
   status: InvoiceStatus
+  delivered: boolean
   created_at: string
 }
 
@@ -183,17 +198,6 @@ export interface Payment {
   invoice_id: string
   amount: number
   mode: PaymentMode
-  created_at: string
-}
-
-export interface Delivery {
-  id: string
-  supplier_id: string
-  invoice_id: string | null
-  challan_no: string
-  driver_name: string | null
-  vehicle_no: string | null
-  status: DeliveryStatus
   created_at: string
 }
 

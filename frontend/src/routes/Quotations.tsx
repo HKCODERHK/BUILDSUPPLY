@@ -1,16 +1,23 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
-import { listQuotations, createQuotation, markQuotationConverted, type QuotationWithCustomer } from '@/services/quotations'
-import { createInvoice } from '@/services/invoices'
-import { listCustomers } from '@/services/customers'
-import type { Customer } from '@/lib/database.types'
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import {
+  listQuotations,
+  listQuotationItems,
+  markQuotationConverted,
+  markQuotationSent,
+  type QuotationWithCustomer,
+} from '@/services/quotations'
+import { createInvoice, markInvoiceDelivered } from '@/services/invoices'
+import { openWhatsAppShare } from '@/lib/whatsapp'
+import { logActivity } from '@/services/activityLog'
+import { QUOTATION_STATUS_TONE } from '@/lib/quotationStatus'
 import { useAuth } from '@/context/AuthContext'
 
 function formatINR(n: number) {
@@ -19,62 +26,83 @@ function formatINR(n: number) {
 
 export default function Quotations() {
   const { supplier } = useAuth()
+  const navigate = useNavigate()
   const [quotations, setQuotations] = useState<QuotationWithCustomer[]>([])
-  const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState({ customer_id: '', total: '' })
-  const [saving, setSaving] = useState(false)
   const [convertingId, setConvertingId] = useState<string | null>(null)
+  const [sharingId, setSharingId] = useState<string | null>(null)
+  const [deliveryPrompt, setDeliveryPrompt] = useState<{ id: string; invoice_no: string } | null>(null)
+  const [confirmingDelivery, setConfirmingDelivery] = useState(false)
 
   async function refresh() {
-    const [quoteList, customerList] = await Promise.all([listQuotations(), listCustomers()])
-    setQuotations(quoteList)
-    setCustomers(customerList)
+    setQuotations(await listQuotations())
   }
 
   useEffect(() => {
     refresh().finally(() => setLoading(false))
   }, [])
 
-  async function handleCreate(e: FormEvent) {
-    e.preventDefault()
-    if (!supplier) return
-    setSaving(true)
-    try {
-      await createQuotation(supplier.id, { customer_id: form.customer_id, total: Number(form.total) || 0 })
-      setForm({ customer_id: '', total: '' })
-      setModalOpen(false)
-      await refresh()
-    } finally {
-      setSaving(false)
-    }
-  }
-
+  // Hands the exact same items/GST/transport-labour across to a real
+  // invoice — nothing gets re-entered, and stock/the customer ledger are
+  // only ever touched from here on, never by the estimate itself.
   async function handleConvert(q: QuotationWithCustomer) {
     if (!supplier || !q.customer_id) return
     setConvertingId(q.id)
     try {
+      const items = await listQuotationItems(q.id)
       const invoice = await createInvoice(supplier.id, {
         customer_id: q.customer_id,
-        items: [{ material_id: null, description: `Converted from ${q.quote_no}`, qty: 1, rate: q.total }],
+        items: items.map((item) => ({ material_id: item.material_id, description: item.description, qty: item.qty, rate: item.rate })),
+        gstApplicable: q.gst_amount > 0,
+        transportLabourCharge: q.transport_labour_charge,
       })
       await markQuotationConverted(q.id, invoice.id)
       await refresh()
+      setDeliveryPrompt({ id: invoice.id, invoice_no: invoice.invoice_no })
     } finally {
       setConvertingId(null)
+    }
+  }
+
+  async function handleShare(q: QuotationWithCustomer) {
+    setSharingId(q.id)
+    try {
+      openWhatsAppShare(
+        q.customers?.phone,
+        `Hi ${q.customers?.name ?? ''}, here is your estimate ${q.quote_no} for ${formatINR(q.total)}. Let us know if you'd like to proceed.`,
+      )
+      void logActivity('supplier', 'quotation_shared', { details: { quote_no: q.quote_no } })
+      if (q.status === 'Draft') {
+        await markQuotationSent(q.id)
+        await refresh()
+      }
+    } finally {
+      setSharingId(null)
+    }
+  }
+
+  async function respondToDeliveryPrompt(delivered: boolean) {
+    if (!deliveryPrompt) return
+    setConfirmingDelivery(true)
+    try {
+      if (delivered) await markInvoiceDelivered(deliveryPrompt.id)
+      navigate(`/invoices/${deliveryPrompt.id}`)
+    } finally {
+      setConfirmingDelivery(false)
     }
   }
 
   return (
     <div>
       <PageHeader
-        title="Quotations"
-        subtitle="Estimates you can convert to invoices in one click"
+        title="Estimates & Quotations"
+        subtitle="Send estimates over WhatsApp and convert them to invoices in one click"
         action={
-          <Button onClick={() => setModalOpen(true)}>
-            <Plus size={16} /> New quotation
-          </Button>
+          <Link to="/quotations/new">
+            <Button>
+              <Plus size={16} /> New Estimate
+            </Button>
+          </Link>
         }
       />
 
@@ -82,59 +110,78 @@ export default function Quotations() {
         <p className="text-sm text-muted">Loading…</p>
       ) : (
         <Card>
-          <div className="flex flex-col divide-y divide-border">
-            {quotations.length === 0 && <p className="py-3 text-sm text-muted">No quotations yet.</p>}
-            {quotations.map((q) => (
-              <div key={q.id} className="flex items-center justify-between py-2.5 text-sm">
-                <div>
-                  <div className="font-medium text-ink">{q.quote_no}</div>
-                  <div className="text-xs text-muted">{q.customers?.name ?? '—'}</div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="font-semibold">{formatINR(q.total)}</span>
-                  <Badge tone={q.status === 'Converted' ? 'success' : q.status === 'Expired' ? 'danger' : 'neutral'}>
-                    {q.status}
-                  </Badge>
-                  {q.status === 'Open' && (
-                    <Button size="sm" variant="outline" onClick={() => handleConvert(q)} disabled={convertingId === q.id}>
-                      {convertingId === q.id ? 'Converting…' : 'Convert'}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-border text-xs text-muted">
+                  <th className="py-2 pr-3 font-medium">No.</th>
+                  <th className="py-2 pr-3 font-medium">Customer</th>
+                  <th className="py-2 pr-3 font-medium">Site</th>
+                  <th className="py-2 pr-3 font-medium">Total</th>
+                  <th className="py-2 pr-3 font-medium">Status</th>
+                  <th className="py-2 pr-3 font-medium"></th>
+                  <th className="py-2 pr-3 font-medium"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {quotations.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="py-4 text-muted">
+                      No estimates yet.
+                    </td>
+                  </tr>
+                )}
+                {quotations.map((q) => (
+                  <tr key={q.id}>
+                    <td className="py-2.5 pr-3 font-medium text-ink">
+                      <Link to={`/quotations/${q.id}`} className="hover:text-accent">
+                        {q.quote_no}
+                      </Link>
+                    </td>
+                    <td className="py-2.5 pr-3">{q.customers?.name ?? '—'}</td>
+                    <td className="py-2.5 pr-3 text-muted">{q.site ?? '—'}</td>
+                    <td className="py-2.5 pr-3 font-semibold">{formatINR(q.total)}</td>
+                    <td className="py-2.5 pr-3">
+                      <Badge tone={QUOTATION_STATUS_TONE[q.status]}>{q.status}</Badge>
+                    </td>
+                    <td className="py-2.5 pr-3">
+                      <button
+                        onClick={() => handleShare(q)}
+                        disabled={sharingId === q.id}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-accent hover:text-accent-soft disabled:opacity-50"
+                      >
+                        <WhatsAppIcon size={14} /> WhatsApp
+                      </button>
+                    </td>
+                    <td className="py-2.5 pr-3">
+                      {(q.status === 'Draft' || q.status === 'Sent') && (
+                        <Button size="sm" onClick={() => handleConvert(q)} disabled={convertingId === q.id}>
+                          {convertingId === q.id ? 'Converting…' : 'Convert to Invoice'}
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </Card>
       )}
 
-      {modalOpen && (
-        <Modal title="New quotation" onClose={() => setModalOpen(false)}>
-          <form onSubmit={handleCreate} className="flex flex-col gap-4">
-            <div>
-              <Label htmlFor="customer">Customer</Label>
-              <select
-                id="customer"
-                required
-                value={form.customer_id}
-                onChange={(e) => setForm({ ...form, customer_id: e.target.value })}
-                className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm outline-none focus:border-accent"
-              >
-                <option value="">Select a customer…</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label htmlFor="total">Estimated total (₹)</Label>
-              <Input id="total" type="number" min="0" step="0.01" required value={form.total} onChange={(e) => setForm({ ...form, total: e.target.value })} />
-            </div>
-            <Button type="submit" disabled={saving}>
-              {saving ? 'Saving…' : 'Save quotation'}
+      {deliveryPrompt && (
+        <Modal title="Delivery" onClose={() => respondToDeliveryPrompt(false)}>
+          <p className="mb-4 text-sm text-ink">{deliveryPrompt.invoice_no} is saved. Have you delivered the material to the customer?</p>
+          <p className="mb-4 text-xs text-muted">
+            If yes, stock will be reduced now to match this bill. If not yet, you can mark it delivered later from the Invoices list.
+          </p>
+          <div className="flex gap-2">
+            <Button className="flex-1" disabled={confirmingDelivery} onClick={() => respondToDeliveryPrompt(true)}>
+              Yes, delivered
             </Button>
-          </form>
+            <Button variant="outline" className="flex-1" disabled={confirmingDelivery} onClick={() => respondToDeliveryPrompt(false)}>
+              Not yet
+            </Button>
+          </div>
         </Modal>
       )}
     </div>

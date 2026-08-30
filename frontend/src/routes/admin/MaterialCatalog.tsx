@@ -283,7 +283,7 @@ export default function MaterialCatalog() {
             <select
               value={newTypeCategoryId}
               onChange={(e) => setNewTypeCategoryId(e.target.value)}
-              className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm outline-none focus:border-accent"
+              className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-accent"
             >
               <option value="">Select category…</option>
               {categories.map((c) => (
@@ -334,7 +334,7 @@ export default function MaterialCatalog() {
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="h-10 rounded-lg border border-border bg-white px-3 text-sm outline-none focus:border-accent"
+            className="h-10 rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-accent"
           >
             <option value="">All categories</option>
             {categories.map((c) => (
@@ -346,7 +346,7 @@ export default function MaterialCatalog() {
           <select
             value={brandFilter}
             onChange={(e) => setBrandFilter(e.target.value)}
-            className="h-10 rounded-lg border border-border bg-white px-3 text-sm outline-none focus:border-accent"
+            className="h-10 rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-accent"
           >
             <option value="">All brands</option>
             {brands.map((b) => (
@@ -358,7 +358,7 @@ export default function MaterialCatalog() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-            className="h-10 rounded-lg border border-border bg-white px-3 text-sm outline-none focus:border-accent"
+            className="h-10 rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-accent"
           >
             <option value="all">All statuses</option>
             <option value="active">Active</option>
@@ -608,7 +608,7 @@ function VariantModal({
               setTypeId('')
               setAttrValues({})
             }}
-            className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm outline-none focus:border-accent"
+            className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-accent"
           >
             <option value="">Select category…</option>
             {categories.map((c) => (
@@ -627,7 +627,7 @@ function VariantModal({
               required
               value={typeId}
               onChange={(e) => setTypeId(e.target.value)}
-              className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm outline-none focus:border-accent"
+              className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-accent"
             >
               <option value="">Select type…</option>
               {typeOptions.map((t) => (
@@ -646,7 +646,7 @@ function VariantModal({
               id="brand"
               value={brandId}
               onChange={(e) => setBrandId(e.target.value)}
-              className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm outline-none focus:border-accent"
+              className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-accent"
             >
               <option value="">None</option>
               {brands.filter((b) => b.active).map((b) => (
@@ -687,7 +687,7 @@ function VariantModal({
                     setAttr(field.key, e.target.value)
                   }
                 }}
-                className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm outline-none focus:border-accent"
+                className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-accent"
               >
                 <option value="">Select…</option>
                 {field.options.map((opt) => (

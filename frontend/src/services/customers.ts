@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import type { Customer, CustomerBalance, CustomerSite } from '@/lib/database.types'
+import type { Customer, CustomerBalance } from '@/lib/database.types'
 import { logActivity } from './activityLog'
 
 export async function listCustomers(): Promise<Customer[]> {
@@ -16,12 +16,6 @@ export async function getCustomer(id: string): Promise<Customer> {
 
 export async function listCustomerBalances(): Promise<CustomerBalance[]> {
   const { data, error } = await supabase.from('customer_balances').select('*')
-  if (error) throw error
-  return data
-}
-
-export async function listCustomerSites(customerId: string): Promise<CustomerSite[]> {
-  const { data, error } = await supabase.from('customer_sites').select('*').eq('customer_id', customerId)
   if (error) throw error
   return data
 }
@@ -44,7 +38,7 @@ async function duplicatePhoneError(supplierId: string, phone: string | undefined
 
 export async function createCustomer(
   supplierId: string,
-  input: { name: string; phone?: string; site?: string },
+  input: { name: string; phone?: string; site?: string; address?: string },
 ): Promise<Customer> {
   const { data, error } = await supabase
     .from('customers')
@@ -53,6 +47,7 @@ export async function createCustomer(
     .single()
   if (error) {
     if (error.code === '23505') throw await duplicatePhoneError(supplierId, input.phone)
+    if (error.code === '23514') throw new Error('Phone number must be exactly 10 digits.')
     throw error
   }
   void logActivity('supplier', 'customer_created', { details: { name: data.name } })
@@ -66,6 +61,7 @@ export async function updateCustomer(id: string, input: Partial<Customer>): Prom
       const { data: existing } = await supabase.from('customers').select('supplier_id').eq('id', id).single()
       throw await duplicatePhoneError(existing?.supplier_id ?? '', input.phone ?? undefined)
     }
+    if (error.code === '23514') throw new Error('Phone number must be exactly 10 digits.')
     throw error
   }
   void logActivity('supplier', 'customer_updated', { details: { name: data.name } })

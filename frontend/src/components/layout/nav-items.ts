@@ -25,7 +25,6 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'materials', label: 'Materials', path: '/materials', icon: Box },
   { id: 'invoices', label: 'Invoices', path: '/invoices', icon: FileText },
   { id: 'quotations', label: 'Quotations', path: '/quotations', icon: Layers },
-  { id: 'stock', label: 'Stock', path: '/stock', icon: Layers },
   { id: 'payments', label: 'Payments', path: '/payments', icon: CreditCard },
   { id: 'deliveries', label: 'Deliveries', path: '/deliveries', icon: Truck },
   { id: 'reminders', label: 'Reminders', path: '/reminders', icon: Bell },
@@ -34,4 +33,6 @@ export const NAV_ITEMS: NavItem[] = [
 ]
 
 // Primary tabs shown in the mobile bottom bar; the rest collapse into "More".
-export const MOBILE_PRIMARY_IDS = ['dashboard', 'customers', 'invoices', 'materials']
+// Materials and Stock used to be separate items for one idea ("my items and
+// how much I have"); they're now a single page that leads with stock levels.
+export const MOBILE_PRIMARY_IDS = ['dashboard', 'customers', 'materials', 'invoices']

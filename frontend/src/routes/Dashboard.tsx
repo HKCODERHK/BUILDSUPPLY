@@ -1,16 +1,64 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PageHeader } from '@/components/layout/PageHeader'
+import { Plus, AlertTriangle } from 'lucide-react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { dashboardTotals, listInvoices, type InvoiceWithCustomer } from '@/services/invoices'
 import { listCustomers } from '@/services/customers'
-import type { Customer, DashboardTotals } from '@/lib/database.types'
+import { listPayments, type PaymentWithInvoice } from '@/services/payments'
+import { listMaterials } from '@/services/materials'
+import type { Customer, DashboardTotals, Material } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
 import { AdminDashboardView } from '@/routes/admin/AdminDashboardView'
 
+// Jump straight into the create flow for each — no extra click on the
+// destination page. Customers/Payments/Stock read `?new=1` to auto-open
+// their add modal on load; Bill already has a dedicated create page.
+const QUICK_ACTIONS = [
+  { label: 'Bill', to: '/invoices/new' },
+  { label: 'Customer', to: '/customers?new=1' },
+  { label: 'Payment', to: '/payments?new=1' },
+  { label: 'Stock', to: '/materials?stock=1' },
+]
+
+function QuickActions() {
+  return (
+    // Four equal columns rather than free-flowing buttons, so they always sit
+    // on one row — even on the narrowest phone.
+    <div className="mb-6 grid max-w-lg grid-cols-4 gap-2">
+      {QUICK_ACTIONS.map(({ label, to }, i) => (
+        <Link key={label} to={to} className="block">
+          <Button
+            variant={i === 0 ? 'primary' : 'outline'}
+            size="sm"
+            className="w-full gap-1 px-1.5 text-[11px] sm:gap-2 sm:px-3 sm:text-xs"
+          >
+            <Plus size={13} className="shrink-0" /> {label}
+          </Button>
+        </Link>
+      ))}
+    </div>
+  )
+}
+
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
+}
+
+// "How did today go" — the question a supplier has when they shut the shop.
+// Collected counts money taken in today whichever bill it was against, so a
+// payment on last week's invoice still shows in today's takings.
+function summariseToday(invoices: InvoiceWithCustomer[], payments: PaymentWithInvoice[]) {
+  const todayKey = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD, local
+  const isToday = (iso: string) => new Date(iso).toLocaleDateString('en-CA') === todayKey
+
+  const bills = invoices.filter((i) => i.status !== 'Cancelled' && isToday(i.created_at))
+  return {
+    bills: bills.length,
+    sold: bills.reduce((sum, i) => sum + Number(i.total), 0),
+    collected: payments.filter((p) => isToday(p.created_at)).reduce((sum, p) => sum + Number(p.amount), 0),
+  }
 }
 
 export default function Dashboard() {
@@ -24,16 +72,20 @@ function SupplierDashboardView() {
   const [totals, setTotals] = useState<DashboardTotals | null>(null)
   const [recentInvoices, setRecentInvoices] = useState<InvoiceWithCustomer[]>([])
   const [recentCustomers, setRecentCustomers] = useState<Customer[]>([])
+  const [today, setToday] = useState({ bills: 0, sold: 0, collected: 0 })
+  const [lowStock, setLowStock] = useState<Material[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let active = true
-    Promise.all([dashboardTotals(), listInvoices(), listCustomers()])
-      .then(([totalsData, invoices, customers]) => {
+    Promise.all([dashboardTotals(), listInvoices(), listCustomers(), listPayments(), listMaterials()])
+      .then(([totalsData, invoices, customers, payments, materials]) => {
         if (!active) return
         setTotals(totalsData)
-        setRecentInvoices(invoices.slice(0, 5))
+        setRecentInvoices(invoices.filter((i) => i.status !== 'Cancelled').slice(0, 5))
         setRecentCustomers(customers.slice(0, 5))
+        setToday(summariseToday(invoices, payments))
+        setLowStock(materials.filter((m) => m.stock_qty <= (m.low_stock_threshold ?? 5)))
       })
       .finally(() => active && setLoading(false))
     return () => {
@@ -43,12 +95,61 @@ function SupplierDashboardView() {
 
   return (
     <div>
-      <PageHeader title={`Welcome back, ${supplier?.business_name ?? ''}`} subtitle="Here's how your business is doing." />
+      <div className="mb-6 flex items-center gap-4">
+        {supplier?.logo_url && (
+          <img
+            src={supplier.logo_url}
+            alt={`${supplier.business_name} logo`}
+            className="h-14 w-14 shrink-0 rounded-lg border border-border object-cover"
+          />
+        )}
+        <div>
+          <h1 className="text-xl font-bold text-ink sm:text-2xl">Welcome back, {supplier?.business_name ?? ''}</h1>
+          <p className="mt-0.5 text-sm text-muted">Here's how your business is doing.</p>
+        </div>
+      </div>
+
+      <QuickActions />
 
       {loading ? (
         <p className="text-sm text-muted">Loading…</p>
       ) : (
         <>
+          {lowStock.length > 0 && (
+            <Link
+              to="/materials"
+              className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 dark:border-red-900 dark:bg-red-950"
+            >
+              <div className="flex items-center gap-2.5">
+                <AlertTriangle size={18} className="shrink-0 text-red-600 dark:text-red-400" />
+                <span className="text-sm font-medium text-red-700 dark:text-red-300">
+                  {lowStock.length === 1
+                    ? `${lowStock[0].name} is running low`
+                    : `${lowStock.length} materials are running low`}
+                </span>
+              </div>
+              <span className="shrink-0 text-xs font-semibold text-red-700 dark:text-red-300">Top up →</span>
+            </Link>
+          )}
+
+          <Card className="mb-4">
+            <div className="mb-2 text-xs font-semibold tracking-wide text-muted">TODAY</div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <div className="text-xl font-bold text-ink">{today.bills}</div>
+                <div className="text-xs text-muted">{today.bills === 1 ? 'bill' : 'bills'}</div>
+              </div>
+              <div>
+                <div className="text-xl font-bold text-ink">{formatINR(today.sold)}</div>
+                <div className="text-xs text-muted">sold</div>
+              </div>
+              <div>
+                <div className="text-xl font-bold text-accent">{formatINR(today.collected)}</div>
+                <div className="text-xs text-muted">collected</div>
+              </div>
+            </div>
+          </Card>
+
           <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Card>
               <div className="text-xs font-medium text-muted">Total Sales</div>

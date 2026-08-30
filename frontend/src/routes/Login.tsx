@@ -4,6 +4,13 @@ import { useAuth } from '@/context/AuthContext'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { ThemeToggle } from '@/components/ThemeToggle'
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import { openWhatsAppShare } from '@/lib/whatsapp'
+
+// Reaches the BuildSupply admin directly — this is the one WhatsApp number
+// prospective suppliers should message to ask about a subscription.
+const ADMIN_WHATSAPP_NUMBER = '9575011204'
 
 export default function Login() {
   const { session, signIn, loading } = useAuth()
@@ -24,8 +31,9 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-ink p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-7">
+    <div className="relative flex min-h-screen items-center justify-center bg-shell p-4">
+      <ThemeToggle className="absolute right-4 top-4" />
+      <div className="w-full max-w-sm rounded-2xl bg-card p-7">
         <div className="mb-1 flex items-center justify-center gap-2">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#198A45" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 21h18" />
@@ -74,8 +82,19 @@ export default function Login() {
         </form>
 
         <p className="mt-5 text-center text-xs text-muted-2">
-          Don't have an account? Contact the BuildSupply admin to get one created.
+          Don't have an account?
+          <br />
+          Contact the BuildSupply admin to get one created.
         </p>
+
+        <button
+          onClick={() =>
+            openWhatsAppShare(ADMIN_WHATSAPP_NUMBER, "Hi, I'd like to take a subscription for BuildSupply. Please share the details.")
+          }
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-border py-2.5 text-sm font-semibold text-accent hover:bg-accent-bg"
+        >
+          <WhatsAppIcon size={16} /> Ask about a subscription
+        </button>
       </div>
     </div>
   )

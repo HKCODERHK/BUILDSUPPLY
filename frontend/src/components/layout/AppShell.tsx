@@ -3,7 +3,23 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { LogOut, MoreHorizontal, X, ShieldCheck, Boxes, SlidersHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { NAV_ITEMS, MOBILE_PRIMARY_IDS } from './nav-items'
+
+// Shown in the desktop sidebar header and, on mobile, in the top bar.
+function Brand() {
+  return (
+    <div className="flex items-center gap-2">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#35A85D" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 21h18" />
+        <path d="M5 21V8l5-4v17" />
+        <path d="M10 21V11l6 3v7" />
+        <path d="M16 21v-4l3 1.5V21" />
+      </svg>
+      <span className="text-[17px] font-bold">BuildSupply</span>
+    </div>
+  )
+}
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { supplier, signOut } = useAuth()
@@ -15,21 +31,20 @@ export function AppShell({ children }: { children: ReactNode }) {
     navigate('/login', { replace: true })
   }
 
-  const primaryItems = NAV_ITEMS.filter((n) => MOBILE_PRIMARY_IDS.includes(n.id))
+  // Mobile bar order follows MOBILE_PRIMARY_IDS itself, not the sidebar's
+  // order, so the two can differ intentionally (e.g. Stock before Invoices
+  // on mobile even though Invoices comes first in the full nav).
+  const primaryItems = MOBILE_PRIMARY_IDS.map((id) => NAV_ITEMS.find((n) => n.id === id)).filter((n) => n !== undefined)
   const overflowItems = NAV_ITEMS.filter((n) => !MOBILE_PRIMARY_IDS.includes(n.id))
 
   return (
     <div className="flex min-h-screen bg-surface text-ink">
-      {/* Desktop sidebar */}
-      <nav className="sticky top-0 hidden h-screen w-[230px] shrink-0 flex-col bg-ink text-white sm:flex">
-        <div className="flex items-center gap-2 border-b border-white/10 px-5 py-5">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#35A85D" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 21h18" />
-            <path d="M5 21V8l5-4v17" />
-            <path d="M10 21V11l6 3v7" />
-            <path d="M16 21v-4l3 1.5V21" />
-          </svg>
-          <span className="text-[17px] font-bold">BuildSupply</span>
+      {/* Desktop sidebar. Kept for lg and up only — on a tablet a fixed
+          230px rail eats ~30% of the screen and squeezes the content, so
+          tablets get the same top-bar + bottom-nav chrome as phones. */}
+      <nav className="sticky top-0 hidden h-screen w-[230px] shrink-0 flex-col bg-shell text-white lg:flex">
+        <div className="border-b border-white/10 px-5 py-5">
+          <Brand />
         </div>
         <div className="flex flex-1 flex-col gap-1 overflow-y-auto px-2.5 py-3.5">
           {NAV_ITEMS.map((item) => (
@@ -101,12 +116,22 @@ export function AppShell({ children }: { children: ReactNode }) {
       </nav>
 
       {/* Main content */}
-      <div className="flex min-w-0 flex-1 flex-col pb-16 sm:pb-0">
-        <main className="flex-1 p-4 sm:p-8">{children}</main>
+      <div className="flex min-w-0 flex-1 flex-col pb-16 lg:pb-0">
+        {/* Phone/tablet top bar — the sidebar's brand header has no room
+            here, so it moves up alongside the theme toggle. */}
+        <header className="sticky top-0 z-30 flex w-full items-center justify-between bg-shell px-4 py-3 text-white sm:px-6 lg:hidden">
+          <Brand />
+          <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
+        </header>
+
+        <div className="hidden justify-end px-8 pt-4 lg:flex">
+          <ThemeToggle />
+        </div>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 lg:pt-0">{children}</main>
       </div>
 
-      {/* Mobile bottom tab bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-white sm:hidden">
+      {/* Phone/tablet bottom tab bar */}
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-card lg:hidden">
         {primaryItems.map((item) => (
           <NavLink
             key={item.id}
@@ -133,9 +158,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Mobile "more" sheet */}
       {moreOpen && (
-        <div className="fixed inset-0 z-40 flex items-end bg-black/40 sm:hidden" onClick={() => setMoreOpen(false)}>
+        <div className="fixed inset-0 z-40 flex items-end bg-black/40 lg:hidden" onClick={() => setMoreOpen(false)}>
           <div
-            className="w-full rounded-t-2xl bg-white p-4 pb-8"
+            className="w-full rounded-t-2xl bg-card p-4 pb-8"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
@@ -144,7 +169,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <X size={18} />
               </button>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
               {overflowItems.map((item) => (
                 <NavLink
                   key={item.id}

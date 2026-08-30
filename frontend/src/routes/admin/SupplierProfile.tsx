@@ -204,7 +204,7 @@ export default function SupplierProfile() {
                 <select
                   value={supplier.plan}
                   onChange={(e) => handleSubscriptionChange('plan', e.target.value)}
-                  className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm outline-none focus:border-accent"
+                  className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-accent"
                 >
                   <option value="starter">Starter</option>
                   <option value="pro">Pro</option>
@@ -231,7 +231,7 @@ export default function SupplierProfile() {
                 <select
                   value={supplier.subscription_status}
                   onChange={(e) => handleSubscriptionChange('subscription_status', e.target.value)}
-                  className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm outline-none focus:border-accent"
+                  className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-accent"
                 >
                   <option value="active">Active</option>
                   <option value="expired">Expired</option>

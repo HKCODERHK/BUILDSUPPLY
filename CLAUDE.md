@@ -3,7 +3,7 @@
 Read this fully before doing anything in this repo. It captures everything from prior sessions so work can continue without re-deriving context.
 
 ## What this is
-A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers in India — customers, invoices, quotations, stock, payments, delivery challans, WhatsApp bill sharing, PDF/Excel reports. Originally built from a Claude Design mockup (`BuildKhata.html`), then given a real Supabase backend, then a full Admin platform, and is now getting a proper structured Master Material Catalog.
+A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers in India — customers, invoices, quotations, stock, payments, deliveries, WhatsApp bill sharing, PDF reports. Originally built from a Claude Design mockup (`BuildKhata.html`), then given a real Supabase backend, then a full Admin platform, and is now getting a proper structured Master Material Catalog.
 
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
@@ -26,7 +26,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 - "Kalyani Traders" account was created by the user themselves (real, not test data — don't touch).
 
 ## What's built and verified working
-**Phase 1** — full supplier-facing app: auth, Dashboard, Customers (+ khata), Materials, New Invoice (GST), Invoices (WhatsApp share), Quotations, Stock, Payments (split), Deliveries, Reminders, Reports (PDF/Excel), Settings, logo upload.
+**Phase 1** — full supplier-facing app: auth, Dashboard, Customers (+ khata), Materials, New Invoice (GST), Invoices (WhatsApp share), Quotations, Stock, Payments (split), Deliveries, Reminders, Reports (PDF), Settings, logo upload.
 
 **Phase 2** — Admin platform: Admin Dashboard (live stats), Supplier Management (search/filter/sort/add-supplier-via-Edge-Function), Supplier Profile (Suspend/Reactivate/Deactivate = real Supabase Auth ban, Reset Password, editable Subscription incl. status, Activity Log), Material Catalog admin screens, Platform Settings (+ admin self-service password change), full Admin + Supplier activity logging, multi-tenant RLS security.
 
@@ -47,7 +47,8 @@ Run the 13 acceptance tests from the original spec (search "cement"/"ultratech"/
 - **Browser automation click flakiness**: clicks sometimes don't register on the first try in the dev browser tooling (not an app bug — confirmed by retrying via direct JS `.click()`, which always works).
 - **Session staleness**: after any password reset via the Edge Function or Supabase Admin API, do a full `localStorage.clear()` + fresh sign-in before testing — stale sessions produce `Invalid session` / `session_not_found` errors that look like bugs but aren't.
 - Console/network log inspection tools in this dev environment sometimes show a stale cached buffer — trust actual rendered page content and direct DB queries over these when they disagree.
-- The `xlsx` npm package has known vulnerabilities — this project uses the patched build installed directly from `https://cdn.sheetjs.com/xlsx-latest/xlsx-latest.tgz`, not the npm registry version. Don't `npm install xlsx` from the registry.
+- **Excel export was removed** (and the `xlsx` dependency uninstalled) — every document in the app is a PDF now. Don't reintroduce `xlsx`; it carried known vulnerabilities and ~330 kB of bundle for a format suppliers weren't asking for.
+- **All PDFs share one design.** `frontend/src/lib/pdfTheme.ts` owns the colours, money/date formatting, table styling, the logo+business header, the FROM/TO block and the page footer. `invoicePdf.ts`, `quotationPdf.ts`, `customerLedgerPdf.ts` and `reportPdf.ts` all draw from it — change the look there, not in each file.
 - Deploying the Edge Function: `npx supabase functions deploy admin-manage-supplier --project-ref pefarymejlfdsmwusbbq --use-api` from the project root (requires `npx supabase login` once per terminal — device-code flow).
 
 ## Working conventions established in this project

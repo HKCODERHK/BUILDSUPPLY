@@ -1,14 +1,13 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Modal } from '@/components/ui/modal'
-import { listCustomers, listCustomerBalances, createCustomer } from '@/services/customers'
+import { AddCustomerModal } from '@/components/AddCustomerModal'
+import { listCustomers, listCustomerBalances } from '@/services/customers'
 import type { Customer, CustomerBalance } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
 
@@ -23,9 +22,15 @@ export default function Customers() {
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState({ name: '', phone: '', site: '' })
-  const [saving, setSaving] = useState(false)
-  const [formError, setFormError] = useState<string | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      setModalOpen(true)
+      setSearchParams({}, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function refresh() {
     const [customerList, balanceList] = await Promise.all([listCustomers(), listCustomerBalances()])
@@ -37,24 +42,15 @@ export default function Customers() {
     refresh().finally(() => setLoading(false))
   }, [])
 
-  async function handleCreate(e: FormEvent) {
-    e.preventDefault()
-    if (!supplier) return
-    setSaving(true)
-    setFormError(null)
-    try {
-      await createCustomer(supplier.id, form)
-      setForm({ name: '', phone: '', site: '' })
-      setModalOpen(false)
-      await refresh()
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const filtered = customers.filter((c) => c.name.toLowerCase().includes(query.toLowerCase()))
+  const filtered = customers.filter((c) => {
+    const q = query.trim().toLowerCase()
+    if (!q) return true
+    return (
+      c.name.toLowerCase().includes(q) ||
+      (c.phone ?? '').toLowerCase().includes(q) ||
+      (c.site ?? '').toLowerCase().includes(q)
+    )
+  })
 
   return (
     <div>
@@ -62,19 +58,14 @@ export default function Customers() {
         title="Customers"
         subtitle="Manage customers, sites, invoices and pending payments"
         action={
-          <Button
-            onClick={() => {
-              setFormError(null)
-              setModalOpen(true)
-            }}
-          >
+          <Button onClick={() => setModalOpen(true)}>
             <Plus size={16} /> Add customer
           </Button>
         }
       />
 
       <Input
-        placeholder="Search customers…"
+        placeholder="Search by name, phone or site…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         className="mb-4 max-w-xs"
@@ -95,6 +86,9 @@ export default function Customers() {
                     <Badge tone={c.status === 'Active' ? 'success' : 'neutral'}>{c.status}</Badge>
                   </div>
                   <div className="text-xs text-muted">{c.site ?? '—'}</div>
+                  {/* Plain text here on purpose: the whole card is already a
+                      link to the profile, and an <a> inside an <a> is invalid
+                      HTML. The number is tappable on the profile itself. */}
                   <div className="text-xs text-muted">{c.phone ?? '—'}</div>
                   <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-sm">
                     <span className="text-muted">Pending</span>
@@ -107,27 +101,15 @@ export default function Customers() {
         </div>
       )}
 
-      {modalOpen && (
-        <Modal title="Add customer" onClose={() => setModalOpen(false)}>
-          <form onSubmit={handleCreate} className="flex flex-col gap-4">
-            {formError && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{formError}</p>}
-            <div>
-              <Label htmlFor="name">Name</Label>
-              <Input id="name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            </div>
-            <div>
-              <Label htmlFor="phone">Phone</Label>
-              <Input id="phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-            </div>
-            <div>
-              <Label htmlFor="site">Site</Label>
-              <Input id="site" value={form.site} onChange={(e) => setForm({ ...form, site: e.target.value })} />
-            </div>
-            <Button type="submit" disabled={saving}>
-              {saving ? 'Saving…' : 'Save customer'}
-            </Button>
-          </form>
-        </Modal>
+      {modalOpen && supplier && (
+        <AddCustomerModal
+          supplierId={supplier.id}
+          onClose={() => setModalOpen(false)}
+          onCreated={() => {
+            setModalOpen(false)
+            void refresh()
+          }}
+        />
       )}
     </div>
   )

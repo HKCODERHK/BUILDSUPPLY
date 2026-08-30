@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
@@ -11,12 +12,16 @@ import { listPayments, recordPayment, type PaymentWithInvoice } from '@/services
 import { listInvoices, type InvoiceWithCustomer } from '@/services/invoices'
 import type { PaymentMode } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
+import { sanitizeDecimal } from '@/lib/numberInput'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
 }
 
-const MODES: PaymentMode[] = ['Cash', 'UPI', 'Wallet']
+// Same three modes the billing screen offers — "Wallet" was dropped: it was
+// never used once, and there is no wallet/advance feature for it to mean
+// anything.
+const MODES: PaymentMode[] = ['Cash', 'UPI', 'Bank/Cheque']
 
 interface Split {
   key: string
@@ -33,11 +38,20 @@ export default function Payments() {
   const [invoiceId, setInvoiceId] = useState('')
   const [splits, setSplits] = useState<Split[]>([{ key: crypto.randomUUID(), amount: '', mode: 'Cash' }])
   const [saving, setSaving] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      setModalOpen(true)
+      setSearchParams({}, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function refresh() {
     const [paymentList, invoiceList] = await Promise.all([listPayments(), listInvoices()])
     setPayments(paymentList)
-    setInvoices(invoiceList.filter((i) => i.status !== 'Paid'))
+    setInvoices(invoiceList.filter((i) => i.status !== 'Paid' && i.status !== 'Cancelled'))
   }
 
   useEffect(() => {
@@ -55,6 +69,8 @@ export default function Payments() {
   function removeSplit(key: string) {
     setSplits((prev) => prev.filter((s) => s.key !== key))
   }
+
+  const totalEntered = splits.reduce((sum, s) => sum + (Number(s.amount) || 0), 0)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -79,7 +95,7 @@ export default function Payments() {
     <div>
       <PageHeader
         title="Payments"
-        subtitle="Cash, UPI, advance wallet and split payments"
+        subtitle="Money received against your bills"
         action={
           <Button onClick={() => setModalOpen(true)}>
             <Plus size={16} /> Record payment
@@ -119,7 +135,7 @@ export default function Payments() {
                 required
                 value={invoiceId}
                 onChange={(e) => setInvoiceId(e.target.value)}
-                className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm outline-none focus:border-accent"
+                className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-accent"
               >
                 <option value="">Select an unpaid invoice…</option>
                 {invoices.map((inv) => (
@@ -130,46 +146,59 @@ export default function Payments() {
               </select>
             </div>
 
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <Label className="mb-0">Split payment</Label>
-                <button type="button" onClick={addSplit} className="text-xs font-semibold text-accent">
-                  + Add split
-                </button>
-              </div>
-              <div className="flex flex-col gap-2">
-                {splits.map((s) => (
-                  <div key={s.key} className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="Amount"
-                      value={s.amount}
-                      onChange={(e) => updateSplit(s.key, { amount: e.target.value })}
-                    />
-                    <select
-                      value={s.mode}
-                      onChange={(e) => updateSplit(s.key, { mode: e.target.value as PaymentMode })}
-                      className="h-10 rounded-lg border border-border bg-white px-2 text-sm outline-none focus:border-accent"
+            {/* The common case is one amount in one mode, so that's all the
+                form shows. Splitting across modes is real but rare, so it
+                stays behind a link rather than greeting every payment. */}
+            {splits.map((s, i) => (
+              <div key={s.key}>
+                <div className="flex items-center justify-between">
+                  <Label className="mb-1.5">{i === 0 ? 'Amount received' : `Also paid by`}</Label>
+                  {i > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => removeSplit(s.key)}
+                      className="mb-1.5 text-muted hover:text-red-600"
+                      aria-label="Remove this part"
                     >
-                      {MODES.map((m) => (
-                        <option key={m} value={m}>
-                          {m}
-                        </option>
-                      ))}
-                    </select>
-                    {splits.length > 1 && (
-                      <button type="button" onClick={() => removeSplit(s.key)} className="text-muted hover:text-red-600">
-                        <Trash2 size={16} />
-                      </button>
-                    )}
-                  </div>
-                ))}
+                      <Trash2 size={15} />
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0"
+                    value={s.amount}
+                    onChange={(e) => updateSplit(s.key, { amount: sanitizeDecimal(e.target.value) })}
+                  />
+                  <select
+                    value={s.mode}
+                    onChange={(e) => updateSplit(s.key, { mode: e.target.value as PaymentMode })}
+                    className="h-10 shrink-0 rounded-lg border border-border bg-card px-2 text-sm outline-none focus:border-accent"
+                  >
+                    {MODES.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            </div>
+            ))}
 
-            <Button type="submit" disabled={saving || !invoiceId}>
+            <button type="button" onClick={addSplit} className="self-start text-xs font-semibold text-accent hover:text-accent-soft">
+              + Paid partly by another mode?
+            </button>
+
+            {totalEntered > 0 && (
+              <div className="flex justify-between border-t border-border pt-3 text-sm">
+                <span className="text-muted">Total being recorded</span>
+                <span className="font-semibold text-ink">{formatINR(totalEntered)}</span>
+              </div>
+            )}
+
+            <Button type="submit" disabled={saving || !invoiceId || totalEntered <= 0}>
               {saving ? 'Saving…' : 'Record payment'}
             </Button>
           </form>

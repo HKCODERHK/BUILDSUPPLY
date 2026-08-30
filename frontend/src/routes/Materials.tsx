@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Plus, Pencil } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
@@ -12,6 +13,7 @@ import { searchCatalog, type VariantWithLookups } from '@/services/materialCatal
 import { summarizeAttributes } from '@/lib/catalogAttributes'
 import type { Material } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
+import { sanitizeDecimal } from '@/lib/numberInput'
 
 const emptyForm = {
   name: '',
@@ -19,12 +21,18 @@ const emptyForm = {
   rate: '',
   unit_label: '',
   per_label: '',
-  stock_qty: '',
-  stock_unit: '',
   low_stock_threshold: '',
 }
 
 type View = 'mine' | 'catalog'
+
+function formatINR(n: number) {
+  return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
+}
+
+function isLowStock(m: Material) {
+  return m.stock_qty <= (m.low_stock_threshold ?? 5)
+}
 
 export default function Materials() {
   const { supplier } = useAuth()
@@ -40,6 +48,10 @@ export default function Materials() {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [addingCatalogId, setAddingCatalogId] = useState<string | null>(null)
+  const [addStockOpen, setAddStockOpen] = useState(false)
+  const [addStockForm, setAddStockForm] = useState({ materialId: '', qty: '' })
+  const [addingStock, setAddingStock] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
 
   async function refresh() {
     setMaterials(await listMaterials())
@@ -48,6 +60,31 @@ export default function Materials() {
   useEffect(() => {
     refresh().finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    if (searchParams.get('new') === '1') openCreate()
+    if (searchParams.get('stock') === '1') setAddStockOpen(true)
+    if (searchParams.get('new') === '1' || searchParams.get('stock') === '1') {
+      setSearchParams({}, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function handleAddStock(e: FormEvent) {
+    e.preventDefault()
+    const material = materials.find((m) => m.id === addStockForm.materialId)
+    const qty = Number(addStockForm.qty)
+    if (!material || !qty || qty <= 0) return
+    setAddingStock(true)
+    try {
+      await updateMaterial(material.id, { stock_qty: Number(material.stock_qty) + qty })
+      setAddStockForm({ materialId: '', qty: '' })
+      setAddStockOpen(false)
+      await refresh()
+    } finally {
+      setAddingStock(false)
+    }
+  }
 
   async function runCatalogSearch(q: string) {
     setCatalogLoading(true)
@@ -79,8 +116,6 @@ export default function Materials() {
       rate: String(m.rate),
       unit_label: m.unit_label ?? '',
       per_label: m.per_label ?? '',
-      stock_qty: String(m.stock_qty),
-      stock_unit: m.stock_unit ?? '',
       low_stock_threshold: m.low_stock_threshold != null ? String(m.low_stock_threshold) : '',
     })
     setModalOpen(true)
@@ -96,8 +131,6 @@ export default function Materials() {
       rate: Number(form.rate) || 0,
       unit_label: form.unit_label || null,
       per_label: form.per_label || null,
-      stock_qty: Number(form.stock_qty) || 0,
-      stock_unit: form.stock_unit || null,
       low_stock_threshold: form.low_stock_threshold ? Number(form.low_stock_threshold) : null,
     }
     try {
@@ -143,20 +176,43 @@ export default function Materials() {
   )
 
   const addedMasterIds = new Set(materials.map((m) => m.master_material_id).filter(Boolean))
+  const selectedStockMaterial = materials.find((m) => m.id === addStockForm.materialId) ?? null
+  const totalStockValue = materials.reduce((sum, m) => sum + m.rate * m.stock_qty, 0)
+  const lowStockCount = materials.filter(isLowStock).length
 
   return (
     <div>
       <PageHeader
-        title="Materials"
-        subtitle="Search a rate, or manage your material catalog"
+        title="Materials & Stock"
+        subtitle="Your items, their rates and how much you have"
         action={
           view === 'mine' && (
-            <Button onClick={openCreate}>
-              <Plus size={16} /> Add material
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={openCreate}>
+                <Plus size={16} /> Add material
+              </Button>
+              <Button onClick={() => setAddStockOpen(true)} disabled={materials.length === 0}>
+                <Plus size={16} /> Add stock
+              </Button>
+            </div>
           )
         }
       />
+
+      {view === 'mine' && !loading && (
+        <div className="mb-5 grid grid-cols-2 gap-3">
+          <Card>
+            <div className="text-xs font-medium text-muted">Stock value</div>
+            <div className="mt-1 text-2xl font-bold text-ink">{formatINR(totalStockValue)}</div>
+          </Card>
+          <Card>
+            <div className="text-xs font-medium text-muted">Low stock items</div>
+            <div className={`mt-1 text-2xl font-bold ${lowStockCount > 0 ? 'text-red-600' : 'text-accent'}`}>
+              {lowStockCount}
+            </div>
+          </Card>
+        </div>
+      )}
 
       <div className="mb-4 flex gap-2">
         <button
@@ -282,7 +338,13 @@ export default function Materials() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="rate">Rate (₹)</Label>
-                <Input id="rate" type="number" min="0" step="0.01" value={form.rate} onChange={(e) => setForm({ ...form, rate: e.target.value })} />
+                <Input
+                  id="rate"
+                  type="text"
+                  inputMode="decimal"
+                  value={form.rate}
+                  onChange={(e) => setForm({ ...form, rate: sanitizeDecimal(e.target.value) })}
+                />
               </div>
               <div>
                 <Label htmlFor="per_label">Per (e.g. / truck)</Label>
@@ -293,30 +355,71 @@ export default function Materials() {
               <Label htmlFor="unit_label">Unit label (e.g. Truck 400 CFT)</Label>
               <Input id="unit_label" value={form.unit_label} onChange={(e) => setForm({ ...form, unit_label: e.target.value })} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="stock_qty">Stock quantity</Label>
-                <Input id="stock_qty" type="number" min="0" step="0.01" value={form.stock_qty} onChange={(e) => setForm({ ...form, stock_qty: e.target.value })} />
-              </div>
-              <div>
-                <Label htmlFor="stock_unit">Stock unit (e.g. trucks)</Label>
-                <Input id="stock_unit" value={form.stock_unit} onChange={(e) => setForm({ ...form, stock_unit: e.target.value })} />
-              </div>
-            </div>
             <div>
               <Label htmlFor="low_stock_threshold">Low stock alert below</Label>
               <Input
                 id="low_stock_threshold"
-                type="number"
-                min="0"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 placeholder="e.g. 5"
                 value={form.low_stock_threshold}
-                onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })}
+                onChange={(e) => setForm({ ...form, low_stock_threshold: sanitizeDecimal(e.target.value) })}
               />
             </div>
             <Button type="submit" disabled={saving}>
               {saving ? 'Saving…' : 'Save material'}
+            </Button>
+          </form>
+        </Modal>
+      )}
+
+      {addStockOpen && (
+        <Modal title="Add stock" onClose={() => setAddStockOpen(false)}>
+          <form onSubmit={handleAddStock} className="flex flex-col gap-4">
+            <div>
+              <Label htmlFor="add-stock-material">Material</Label>
+              {/* Option text stays just the material name — appending the
+                  current stock made the native dropdown wider than a phone
+                  screen. The quantity is shown as a hint below instead. */}
+              <select
+                id="add-stock-material"
+                required
+                value={addStockForm.materialId}
+                onChange={(e) => setAddStockForm({ ...addStockForm, materialId: e.target.value })}
+                className="h-10 w-full max-w-full truncate rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-accent"
+              >
+                <option value="">Select from your materials…</option>
+                {materials.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+              {selectedStockMaterial && (
+                <p className="mt-1.5 text-xs text-muted">
+                  Currently {selectedStockMaterial.stock_qty} {selectedStockMaterial.stock_unit ?? ''} in stock
+                </p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="add-stock-qty">Quantity to add</Label>
+              <Input
+                id="add-stock-qty"
+                type="text"
+                inputMode="decimal"
+                required
+                value={addStockForm.qty}
+                onChange={(e) => setAddStockForm({ ...addStockForm, qty: sanitizeDecimal(e.target.value) })}
+              />
+            </div>
+            {selectedStockMaterial && Number(addStockForm.qty) > 0 && (
+              <p className="rounded-lg bg-accent-bg px-3 py-2 text-xs text-accent-text">
+                New total will be {Number(selectedStockMaterial.stock_qty) + Number(addStockForm.qty)}{' '}
+                {selectedStockMaterial.stock_unit ?? ''}
+              </p>
+            )}
+            <Button type="submit" disabled={addingStock}>
+              {addingStock ? 'Adding…' : 'Add stock'}
             </Button>
           </form>
         </Modal>

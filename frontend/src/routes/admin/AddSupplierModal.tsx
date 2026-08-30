@@ -95,7 +95,7 @@ export function AddSupplierModal({ onClose, onCreated }: { onClose: () => void; 
             id="plan"
             value={form.plan}
             onChange={(e) => setForm({ ...form, plan: e.target.value as Plan })}
-            className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm outline-none focus:border-accent"
+            className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-accent"
           >
             <option value="starter">Starter</option>
             <option value="pro">Pro</option>
