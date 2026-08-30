@@ -5,9 +5,16 @@ import { useAuth } from '@/context/AuthContext'
 export function ProtectedRoute({
   children,
   requireAdmin = false,
+  supplierOnly = false,
 }: {
   children: ReactNode
   requireAdmin?: boolean
+  // Screens that show a supplier's own trade data — customers, bills,
+  // stock, payments. The admin runs the platform, not a building-material
+  // business, so these are not theirs to open. RLS already returns nothing
+  // for them (migration 019); this just keeps the admin from landing on a
+  // stack of empty pages that look broken.
+  supplierOnly?: boolean
 }) {
   const { session, supplier, loading, signOut } = useAuth()
 
@@ -42,6 +49,10 @@ export function ProtectedRoute({
   }
 
   if (requireAdmin && supplier.role !== 'admin') {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  if (supplierOnly && supplier.role === 'admin') {
     return <Navigate to="/dashboard" replace />
   }
 

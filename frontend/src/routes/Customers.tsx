@@ -8,8 +8,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { AddCustomerModal } from '@/components/AddCustomerModal'
 import { listCustomers, listCustomerBalances } from '@/services/customers'
+import { listInvoices } from '@/services/invoices'
+import { oldestPendingDays, overdueTextClass, type AgeableInvoice } from '@/lib/overdue'
 import type { Customer, CustomerBalance } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
+import { useLanguage } from '@/context/LanguageContext'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
@@ -17,8 +20,11 @@ function formatINR(n: number) {
 
 export default function Customers() {
   const { supplier } = useAuth()
+  const { t } = useLanguage()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [balances, setBalances] = useState<Record<string, CustomerBalance>>({})
+  // Bills per customer, kept only to work out how long money has been owed.
+  const [invoicesByCustomer, setInvoicesByCustomer] = useState<Record<string, AgeableInvoice[]>>({})
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
@@ -33,9 +39,19 @@ export default function Customers() {
   }, [])
 
   async function refresh() {
-    const [customerList, balanceList] = await Promise.all([listCustomers(), listCustomerBalances()])
+    const [customerList, balanceList, invoiceList] = await Promise.all([
+      listCustomers(),
+      listCustomerBalances(),
+      listInvoices(),
+    ])
     setCustomers(customerList)
     setBalances(Object.fromEntries(balanceList.map((b) => [b.customer_id, b])))
+    const grouped: Record<string, AgeableInvoice[]> = {}
+    for (const inv of invoiceList) {
+      if (!inv.customer_id) continue
+      ;(grouped[inv.customer_id] ??= []).push(inv)
+    }
+    setInvoicesByCustomer(grouped)
   }
 
   useEffect(() => {
@@ -55,35 +71,38 @@ export default function Customers() {
   return (
     <div>
       <PageHeader
-        title="Customers"
-        subtitle="Manage customers, sites, invoices and pending payments"
+        title={t('cust.title')}
+        subtitle={t('cust.subtitle')}
         action={
           <Button onClick={() => setModalOpen(true)}>
-            <Plus size={16} /> Add customer
+            <Plus size={16} /> {t('cust.add')}
           </Button>
         }
       />
 
       <Input
-        placeholder="Search by name, phone or site…"
+        placeholder={t('cust.searchPlaceholder')}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         className="mb-4 max-w-xs"
       />
 
       {loading ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <p className="text-sm text-muted">{t('common.loading')}</p>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.length === 0 && <p className="text-sm text-muted">No customers found.</p>}
+          {filtered.length === 0 && <p className="text-sm text-muted">{t('cust.notFound')}</p>}
           {filtered.map((c) => {
             const bal = balances[c.id]
+            const pendingDays = oldestPendingDays(invoicesByCustomer[c.id] ?? [])
             return (
               <Link key={c.id} to={`/customers/${c.id}`}>
                 <Card className="h-full transition-shadow hover:shadow-sm">
                   <div className="mb-2 flex items-start justify-between">
                     <div className="font-semibold text-ink">{c.name}</div>
-                    <Badge tone={c.status === 'Active' ? 'success' : 'neutral'}>{c.status}</Badge>
+                    <Badge tone={c.status === 'Active' ? 'success' : 'neutral'}>
+                      {t(c.status === 'Active' ? 'status.Active' : 'status.Inactive')}
+                    </Badge>
                   </div>
                   <div className="text-xs text-muted">{c.site ?? '—'}</div>
                   {/* Plain text here on purpose: the whole card is already a
@@ -91,7 +110,20 @@ export default function Customers() {
                       HTML. The number is tappable on the profile itself. */}
                   <div className="text-xs text-muted">{c.phone ?? '—'}</div>
                   <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-sm">
-                    <span className="text-muted">Pending</span>
+                    <div>
+                      <span className="text-muted">{t('common.pending')}</span>
+                      {/* How long it's been owed, which is what actually
+                          decides whether this customer gets a phone call. */}
+                      {pendingDays !== null && (
+                        <div className={`text-[11px] font-medium ${overdueTextClass(pendingDays)}`}>
+                          {pendingDays === 0
+                            ? t('overdue.today')
+                            : pendingDays === 1
+                              ? t('overdue.oneDay')
+                              : t('overdue.days', { days: pendingDays })}
+                        </div>
+                      )}
+                    </div>
                     <span className="font-semibold text-red-600">{formatINR(bal?.pending ?? 0)}</span>
                   </div>
                 </Card>

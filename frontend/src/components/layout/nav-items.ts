@@ -12,25 +12,37 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
+import type { TranslationKey } from '@/lib/i18n'
+
 export interface NavItem {
   id: string
-  label: string
+  // Translated at render time — the sidebar and bottom bar follow the
+  // supplier's chosen language along with the rest of the app.
+  labelKey: TranslationKey
   path: string
   icon: LucideIcon
 }
 
+// The supplier's own workspace. The admin account never sees these — it runs
+// the platform and has no building-material business of its own, and as of
+// migration 019 RLS returns nothing for it on these tables anyway.
 export const NAV_ITEMS: NavItem[] = [
-  { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutGrid },
-  { id: 'customers', label: 'Customers', path: '/customers', icon: Users },
-  { id: 'materials', label: 'Materials', path: '/materials', icon: Box },
-  { id: 'invoices', label: 'Invoices', path: '/invoices', icon: FileText },
-  { id: 'quotations', label: 'Quotations', path: '/quotations', icon: Layers },
-  { id: 'payments', label: 'Payments', path: '/payments', icon: CreditCard },
-  { id: 'deliveries', label: 'Deliveries', path: '/deliveries', icon: Truck },
-  { id: 'reminders', label: 'Reminders', path: '/reminders', icon: Bell },
-  { id: 'reports', label: 'Reports', path: '/reports', icon: BarChart3 },
-  { id: 'settings', label: 'Settings', path: '/settings', icon: Settings },
+  { id: 'dashboard', labelKey: 'nav.dashboard', path: '/dashboard', icon: LayoutGrid },
+  { id: 'customers', labelKey: 'nav.customers', path: '/customers', icon: Users },
+  { id: 'materials', labelKey: 'nav.materials', path: '/materials', icon: Box },
+  { id: 'invoices', labelKey: 'nav.invoices', path: '/invoices', icon: FileText },
+  { id: 'quotations', labelKey: 'nav.quotations', path: '/quotations', icon: Layers },
+  { id: 'payments', labelKey: 'nav.payments', path: '/payments', icon: CreditCard },
+  { id: 'deliveries', labelKey: 'nav.deliveries', path: '/deliveries', icon: Truck },
+  { id: 'reminders', labelKey: 'nav.reminders', path: '/reminders', icon: Bell },
+  { id: 'reports', labelKey: 'nav.reports', path: '/reports', icon: BarChart3 },
+  { id: 'settings', labelKey: 'nav.settings', path: '/settings', icon: Settings },
 ]
+
+// What the admin gets instead of the supplier workspace: their own dashboard
+// plus the platform tools. Settings is the account's own profile, not a
+// supplier's, so it stays.
+export const ADMIN_NAV_IDS = ['dashboard', 'settings']
 
 // Primary tabs shown in the mobile bottom bar; the rest collapse into "More".
 // Materials and Stock used to be separate items for one idea ("my items and

@@ -8,8 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Modal } from '@/components/ui/modal'
 import { listSuppliersOverview, setSupplierStatus, resetSupplierPassword, updateSupplierSubscription } from '@/services/adminSuppliers'
-import { listActivity } from '@/services/activityLog'
-import type { ActivityLogEntry, SupplierOverview } from '@/lib/database.types'
+import { listSupplierActivityForAdmin } from '@/services/activityLog'
+import type { AdminActivityEntry, SupplierOverview } from '@/lib/database.types'
 
 type Tab = 'overview' | 'activity'
 
@@ -17,7 +17,7 @@ export default function SupplierProfile() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [supplier, setSupplier] = useState<SupplierOverview | null>(null)
-  const [activity, setActivity] = useState<ActivityLogEntry[]>([])
+  const [activity, setActivity] = useState<AdminActivityEntry[]>([])
   const [tab, setTab] = useState<Tab>('overview')
   const [loading, setLoading] = useState(true)
   const [suspendModal, setSuspendModal] = useState(false)
@@ -34,7 +34,7 @@ export default function SupplierProfile() {
 
   async function refresh() {
     if (!id) return
-    const [all, activityRows] = await Promise.all([listSuppliersOverview(), listActivity(id)])
+    const [all, activityRows] = await Promise.all([listSuppliersOverview(), listSupplierActivityForAdmin(id)])
     setSupplier(all.find((s) => s.id === id) ?? null)
     setActivity(activityRows)
   }

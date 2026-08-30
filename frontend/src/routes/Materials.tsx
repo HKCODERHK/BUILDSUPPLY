@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Plus, Pencil } from 'lucide-react'
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -11,8 +12,12 @@ import { Modal } from '@/components/ui/modal'
 import { listMaterials, createMaterial, updateMaterial } from '@/services/materials'
 import { searchCatalog, type VariantWithLookups } from '@/services/materialCatalog'
 import { summarizeAttributes } from '@/lib/catalogAttributes'
+import { rateListMaterials, rateListPdfFile } from '@/lib/rateListPdf'
+import { shareDocumentOnWhatsApp } from '@/lib/shareDocument'
+import { logActivity } from '@/services/activityLog'
 import type { Material } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
+import { useLanguage } from '@/context/LanguageContext'
 import { sanitizeDecimal } from '@/lib/numberInput'
 
 const emptyForm = {
@@ -36,6 +41,7 @@ function isLowStock(m: Material) {
 
 export default function Materials() {
   const { supplier } = useAuth()
+  const { t } = useLanguage()
   const [view, setView] = useState<View>('mine')
   const [materials, setMaterials] = useState<Material[]>([])
   const [catalog, setCatalog] = useState<VariantWithLookups[]>([])
@@ -51,6 +57,8 @@ export default function Materials() {
   const [addStockOpen, setAddStockOpen] = useState(false)
   const [addStockForm, setAddStockForm] = useState({ materialId: '', qty: '' })
   const [addingStock, setAddingStock] = useState(false)
+  const [sharingRates, setSharingRates] = useState(false)
+  const [rateListNote, setRateListNote] = useState<string | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
 
   async function refresh() {
@@ -83,6 +91,34 @@ export default function Materials() {
       await refresh()
     } finally {
       setAddingStock(false)
+    }
+  }
+
+  // "Aaj cement ka rate kya hai?" — the most-typed message in this trade,
+  // answered once as a proper document on the supplier's own letterhead.
+  async function shareRateList() {
+    if (!supplier) return
+    const list = rateListMaterials(materials)
+    if (list.length === 0) {
+      setRateListNote(t('mat.rateListEmpty'))
+      return
+    }
+    setRateListNote(null)
+    setSharingRates(true)
+    try {
+      const file = await rateListPdfFile(supplier, list)
+      const outcome = await shareDocumentOnWhatsApp({
+        file,
+        message: `${supplier.business_name} — today's rate list is attached. Rates may change; GST and transport extra where applicable.`,
+        title: 'Rate list',
+      })
+      if (outcome !== 'cancelled') {
+        void logActivity('supplier', 'rate_list_shared', {
+          details: { items: list.length, format: outcome === 'shared' ? 'pdf_share' : 'text_fallback' },
+        })
+      }
+    } finally {
+      setSharingRates(false)
     }
   }
 
@@ -183,30 +219,43 @@ export default function Materials() {
   return (
     <div>
       <PageHeader
-        title="Materials & Stock"
-        subtitle="Your items, their rates and how much you have"
+        title={t('mat.title')}
+        subtitle={t('mat.subtitle')}
         action={
           view === 'mine' && (
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" onClick={openCreate}>
-                <Plus size={16} /> Add material
+                <Plus size={16} /> {t('mat.addMaterial')}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={shareRateList}
+                disabled={sharingRates || materials.length === 0}
+              >
+                <WhatsAppIcon size={16} /> {sharingRates ? t('common.preparing') : t('mat.shareRates')}
               </Button>
               <Button onClick={() => setAddStockOpen(true)} disabled={materials.length === 0}>
-                <Plus size={16} /> Add stock
+                <Plus size={16} /> {t('mat.addStock')}
               </Button>
             </div>
           )
         }
       />
 
+      {rateListNote && (
+        <p className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+          {rateListNote}
+        </p>
+      )}
+
       {view === 'mine' && !loading && (
         <div className="mb-5 grid grid-cols-2 gap-3">
           <Card>
-            <div className="text-xs font-medium text-muted">Stock value</div>
+            <div className="text-xs font-medium text-muted">{t('mat.stockValue')}</div>
             <div className="mt-1 text-2xl font-bold text-ink">{formatINR(totalStockValue)}</div>
           </Card>
           <Card>
-            <div className="text-xs font-medium text-muted">Low stock items</div>
+            <div className="text-xs font-medium text-muted">{t('mat.lowStockItems')}</div>
             <div className={`mt-1 text-2xl font-bold ${lowStockCount > 0 ? 'text-red-600' : 'text-accent'}`}>
               {lowStockCount}
             </div>
@@ -219,25 +268,25 @@ export default function Materials() {
           onClick={() => setView('mine')}
           className={`rounded-full border px-3 py-1 text-xs font-medium ${view === 'mine' ? 'border-accent bg-accent-bg text-accent-text' : 'border-border text-muted'}`}
         >
-          My Materials
+          {t('mat.mine')}
         </button>
         <button
           onClick={() => setView('catalog')}
           className={`rounded-full border px-3 py-1 text-xs font-medium ${view === 'catalog' ? 'border-accent bg-accent-bg text-accent-text' : 'border-border text-muted'}`}
         >
-          Browse Catalog
+          {t('mat.catalog')}
         </button>
       </div>
 
       {view === 'mine' ? (
         <>
-          <Input placeholder="Search materials…" value={query} onChange={(e) => setQuery(e.target.value)} className="mb-4 max-w-xs" />
+          <Input placeholder={t('mat.searchPlaceholder')} value={query} onChange={(e) => setQuery(e.target.value)} className="mb-4 max-w-xs" />
 
           {loading ? (
-            <p className="text-sm text-muted">Loading…</p>
+            <p className="text-sm text-muted">{t('common.loading')}</p>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.length === 0 && <p className="text-sm text-muted">No materials found.</p>}
+              {filtered.length === 0 && <p className="text-sm text-muted">{t('mat.notFound')}</p>}
               {filtered.map((m) => (
                 <Card key={m.id}>
                   <div className="mb-2 flex items-start justify-between">
@@ -255,7 +304,7 @@ export default function Materials() {
                   </div>
                   <div className="text-xs text-muted">{m.unit_label}</div>
                   <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-sm">
-                    <span className="text-muted">Stock</span>
+                    <span className="text-muted">{t('common.stock')}</span>
                     <Badge tone={m.stock_qty <= (m.low_stock_threshold ?? 5) ? 'danger' : 'success'}>
                       {m.stock_qty} {m.stock_unit ?? ''}
                     </Badge>
@@ -325,10 +374,10 @@ export default function Materials() {
       )}
 
       {modalOpen && (
-        <Modal title={editing ? 'Edit material' : 'Add material'} onClose={() => setModalOpen(false)}>
+        <Modal title={editing ? t('common.edit') : t('mat.addMaterial')} onClose={() => setModalOpen(false)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">{t('common.name')}</Label>
               <Input id="name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </div>
             <div>
@@ -337,7 +386,7 @@ export default function Materials() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="rate">Rate (₹)</Label>
+                <Label htmlFor="rate">{t('common.rate')} (₹)</Label>
                 <Input
                   id="rate"
                   type="text"
@@ -367,17 +416,17 @@ export default function Materials() {
               />
             </div>
             <Button type="submit" disabled={saving}>
-              {saving ? 'Saving…' : 'Save material'}
+              {saving ? t('common.saving') : t('common.save')}
             </Button>
           </form>
         </Modal>
       )}
 
       {addStockOpen && (
-        <Modal title="Add stock" onClose={() => setAddStockOpen(false)}>
+        <Modal title={t('mat.addStock')} onClose={() => setAddStockOpen(false)}>
           <form onSubmit={handleAddStock} className="flex flex-col gap-4">
             <div>
-              <Label htmlFor="add-stock-material">Material</Label>
+              <Label htmlFor="add-stock-material">{t('inv.material')}</Label>
               {/* Option text stays just the material name — appending the
                   current stock made the native dropdown wider than a phone
                   screen. The quantity is shown as a hint below instead. */}
@@ -419,7 +468,7 @@ export default function Materials() {
               </p>
             )}
             <Button type="submit" disabled={addingStock}>
-              {addingStock ? 'Adding…' : 'Add stock'}
+              {addingStock ? t('common.saving') : t('mat.addStock')}
             </Button>
           </form>
         </Modal>

@@ -54,6 +54,17 @@ export interface ActivityLogEntry {
   created_at: string
 }
 
+// What the admin is allowed to see of a supplier's activity: the action and
+// when it happened, never the `details` payload (customer names, invoice
+// numbers, amounts). Returned by the admin_supplier_activity RPC — see
+// migration 019.
+export interface AdminActivityEntry {
+  id: string
+  action: string
+  actor_role: ActivityActorRole
+  created_at: string
+}
+
 export interface MaterialCategory {
   id: string
   name: string
@@ -116,6 +127,10 @@ export interface Customer {
   // but each invoice/quotation carries its own site (see Invoice.site).
   site: string | null
   address: string | null
+  // Optional udhaar limit. Null for almost everyone — it only exists so a
+  // supplier can be warned before extending more credit to the one or two
+  // contractors they're wary of. Never blocks a bill (migration 018).
+  credit_limit: number | null
   status: CustomerStatus
   created_at: string
 }

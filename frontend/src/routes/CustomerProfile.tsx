@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { Pencil, IndianRupee } from 'lucide-react'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { Pencil, IndianRupee, RotateCcw } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -14,7 +14,9 @@ import { recordCustomerPayment, type KhataPaymentResult } from '@/services/payme
 import { supabase } from '@/lib/supabase'
 import { openWhatsAppShare } from '@/lib/whatsapp'
 import { sanitizeDecimal } from '@/lib/numberInput'
+import { oldestPendingDays, overdueTextClass } from '@/lib/overdue'
 import { useAuth } from '@/context/AuthContext'
+import { useLanguage } from '@/context/LanguageContext'
 import type { Customer, Invoice, PaymentMode } from '@/lib/database.types'
 
 const PAYMENT_MODES: PaymentMode[] = ['Cash', 'UPI', 'Bank/Cheque']
@@ -26,17 +28,25 @@ function formatINR(n: number) {
 export default function CustomerProfile() {
   const { id } = useParams<{ id: string }>()
   const { supplier } = useAuth()
+  const { t } = useLanguage()
+  const navigate = useNavigate()
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [editOpen, setEditOpen] = useState(false)
-  const [editForm, setEditForm] = useState({ name: '', phone: '', site: '', address: '' })
+  const [editForm, setEditForm] = useState({ name: '', phone: '', site: '', address: '', credit_limit: '' })
   const [editError, setEditError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [payOpen, setPayOpen] = useState(false)
   const [payForm, setPayForm] = useState<{ amount: string; mode: PaymentMode }>({ amount: '', mode: 'Cash' })
   const [paying, setPaying] = useState(false)
   const [payResult, setPayResult] = useState<KhataPaymentResult | null>(null)
+  // Everything the receipt needs, captured at the moment the money is
+  // recorded. The balance in particular is worked out here rather than read
+  // off the page: refreshing the invoice list is a round trip, and a
+  // supplier who taps "send receipt" straight away would otherwise send the
+  // customer the balance from *before* the payment they just made.
+  const [paidSummary, setPaidSummary] = useState<{ amount: number; mode: PaymentMode; balance: number } | null>(null)
 
   async function refresh() {
     if (!id) return
@@ -57,8 +67,13 @@ export default function CustomerProfile() {
     if (!amount || amount <= 0) return
     setPaying(true)
     try {
+      const owedBefore = invoices
+        .filter((i) => i.status !== 'Cancelled')
+        .reduce((sum, i) => sum + (Number(i.total) - Number(i.paid)), 0)
       const result = await recordCustomerPayment(supplier.id, id, amount, payForm.mode)
+      const applied = result.applied.reduce((sum, a) => sum + a.amount, 0)
       setPayResult(result)
+      setPaidSummary({ amount: applied, mode: payForm.mode, balance: Math.max(0, owedBefore - applied) })
       setPayForm({ amount: '', mode: 'Cash' })
       await refresh()
     } finally {
@@ -85,7 +100,13 @@ export default function CustomerProfile() {
 
   function openEdit() {
     if (!customer) return
-    setEditForm({ name: customer.name, phone: customer.phone ?? '', site: customer.site ?? '', address: customer.address ?? '' })
+    setEditForm({
+      name: customer.name,
+      phone: customer.phone ?? '',
+      site: customer.site ?? '',
+      address: customer.address ?? '',
+      credit_limit: customer.credit_limit != null ? String(customer.credit_limit) : '',
+    })
     setEditError(null)
     setEditOpen(true)
   }
@@ -105,6 +126,7 @@ export default function CustomerProfile() {
         phone: editForm.phone || null,
         site: editForm.site || null,
         address: editForm.address || null,
+        credit_limit: editForm.credit_limit ? Number(editForm.credit_limit) : null,
       })
       setEditOpen(false)
       await refresh()
@@ -115,13 +137,31 @@ export default function CustomerProfile() {
     }
   }
 
-  if (loading) return <p className="text-sm text-muted">Loading…</p>
-  if (!customer) return <p className="text-sm text-muted">Customer not found.</p>
+  if (loading) return <p className="text-sm text-muted">{t('common.loading')}</p>
+  if (!customer) return <p className="text-sm text-muted">{t('cust.notFound')}</p>
 
   // Cancelled bills stay visible in the khata list below, but never count
   // towards what the customer owes.
   const liveInvoices = invoices.filter((i) => i.status !== 'Cancelled')
   const totalPending = liveInvoices.reduce((sum, i) => sum + (Number(i.total) - Number(i.paid)), 0)
+  const pendingDays = oldestPendingDays(invoices)
+
+  const creditLimit = customer.credit_limit != null ? Number(customer.credit_limit) : null
+
+  // Receipt sent right after money is taken. Kills the "maine to paise de
+  // diye the" argument later, because the customer has it in writing.
+  function sendReceipt() {
+    if (!customer || !paidSummary) return
+    const balanceLine =
+      paidSummary.balance > 0 ? t('pay.receiptBalance', { amount: formatINR(paidSummary.balance) }) : t('pay.receiptSettled')
+    const message = t('pay.receiptMessage', {
+      amount: formatINR(paidSummary.amount),
+      mode: paidSummary.mode,
+      date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+      balance: balanceLine,
+    })
+    openWhatsAppShare(customer.phone, message)
+  }
 
   // Sites come off this customer's own bills now, so a contractor can see
   // what each of their sites has run up and still owes.
@@ -141,12 +181,19 @@ export default function CustomerProfile() {
     <div>
       <PageHeader
         title={customer.name}
-        subtitle="Customer profile, khata and activity"
+        subtitle={t('cust.profileSubtitle')}
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={openEdit}>
-              <Pencil size={16} /> Edit
+              <Pencil size={16} /> {t('common.edit')}
             </Button>
+            {/* Contractors reorder the same few things week after week, so the
+                quickest bill to raise is last week's with the numbers nudged. */}
+            {liveInvoices.length > 0 && (
+              <Button variant="outline" onClick={() => navigate(`/invoices/new?customer=${customer.id}&repeat=1`)}>
+                <RotateCcw size={16} /> {t('cust.repeatBill')}
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={() =>
@@ -156,11 +203,11 @@ export default function CustomerProfile() {
                 )
               }
             >
-              <WhatsAppIcon size={16} /> Remind via WhatsApp
+              <WhatsAppIcon size={16} /> {t('cust.remind')}
             </Button>
             {totalPending > 0 && (
               <Button onClick={() => setPayOpen(true)}>
-                <IndianRupee size={16} /> Receive payment
+                <IndianRupee size={16} /> {t('cust.receivePayment')}
               </Button>
             )}
           </div>
@@ -169,7 +216,7 @@ export default function CustomerProfile() {
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <div className="text-xs font-medium text-muted">Phone</div>
+          <div className="text-xs font-medium text-muted">{t('common.phone')}</div>
           {customer.phone ? (
             <a href={`tel:${customer.phone}`} className="mt-1 block text-sm font-semibold text-accent hover:underline">
               {customer.phone}
@@ -179,18 +226,39 @@ export default function CustomerProfile() {
           )}
         </Card>
         <Card>
-          <div className="text-xs font-medium text-muted">Address</div>
+          <div className="text-xs font-medium text-muted">{t('common.address')}</div>
           <div className="mt-1 text-sm font-semibold">{customer.address ?? '—'}</div>
         </Card>
+        {creditLimit != null ? (
+          <Card>
+            <div className="text-xs font-medium text-muted">{t('cust.creditLimitShort')}</div>
+            <div
+              className={`mt-1 text-sm font-semibold ${totalPending > creditLimit ? 'text-red-600' : 'text-ink'}`}
+            >
+              {formatINR(totalPending)} / {formatINR(creditLimit)}
+            </div>
+          </Card>
+        ) : (
+          <Card>
+            <div className="text-xs font-medium text-muted">{t('common.status')}</div>
+            <Badge tone={customer.status === 'Active' ? 'success' : 'neutral'} className="mt-1">
+              {t(customer.status === 'Active' ? 'status.Active' : 'status.Inactive')}
+            </Badge>
+          </Card>
+        )}
         <Card>
-          <div className="text-xs font-medium text-muted">Status</div>
-          <Badge tone={customer.status === 'Active' ? 'success' : 'neutral'} className="mt-1">
-            {customer.status}
-          </Badge>
-        </Card>
-        <Card>
-          <div className="text-xs font-medium text-muted">Pending</div>
+          <div className="text-xs font-medium text-muted">{t('common.pending')}</div>
           <div className="mt-1 text-sm font-semibold text-red-600">{formatINR(totalPending)}</div>
+          {/* The age is what makes someone actually chase the money. */}
+          {pendingDays !== null && (
+            <div className={`mt-0.5 text-xs font-medium ${overdueTextClass(pendingDays)}`}>
+              {pendingDays === 0
+                ? t('overdue.today')
+                : pendingDays === 1
+                  ? t('overdue.oneDay')
+                  : t('overdue.days', { days: pendingDays })}
+            </div>
+          )}
         </Card>
       </div>
 
@@ -199,17 +267,17 @@ export default function CustomerProfile() {
       {siteBreakdown.length > 1 && (
         <Card className="mb-4">
           <CardHeader>
-            <CardTitle>By site</CardTitle>
+            <CardTitle>{t('cust.bySite')}</CardTitle>
           </CardHeader>
           <div className="flex flex-col divide-y divide-border">
             {siteBreakdown.map(([siteName, v]) => (
               <div key={siteName} className="flex items-center justify-between py-2 text-sm">
                 <div>
                   <div className="font-medium text-ink">{siteName}</div>
-                  <div className="text-xs text-muted">Billed {formatINR(v.billed)}</div>
+                  <div className="text-xs text-muted">{t('cust.billed', { amount: formatINR(v.billed) })}</div>
                 </div>
                 <span className={`font-semibold ${v.pending > 0 ? 'text-red-600' : 'text-accent'}`}>
-                  {v.pending > 0 ? formatINR(v.pending) : 'Settled'}
+                  {v.pending > 0 ? formatINR(v.pending) : t('cust.settled')}
                 </span>
               </div>
             ))}
@@ -219,16 +287,20 @@ export default function CustomerProfile() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Khata — Invoices</CardTitle>
+          <CardTitle>{t('cust.khata')}</CardTitle>
         </CardHeader>
         <div className="flex flex-col divide-y divide-border">
-          {invoices.length === 0 && <p className="py-3 text-sm text-muted">No invoices for this customer yet.</p>}
+          {invoices.length === 0 && <p className="py-3 text-sm text-muted">{t('cust.noInvoices')}</p>}
           {invoices.map((inv) => (
-            <Link key={inv.id} to={`/invoices`} className="flex items-center justify-between py-2.5 text-sm hover:text-accent">
+            <Link
+              key={inv.id}
+              to={`/invoices/${inv.id}`}
+              className="flex items-center justify-between py-2.5 text-sm hover:text-accent"
+            >
               <span>{inv.invoice_no}</span>
               <span className="font-semibold">{formatINR(inv.total)}</span>
               <Badge tone={inv.status === 'Paid' ? 'success' : inv.status === 'Partial' ? 'warning' : 'danger'}>
-                {inv.status}
+                {t(`status.${inv.status}`)}
               </Badge>
             </Link>
           ))}
@@ -236,11 +308,11 @@ export default function CustomerProfile() {
       </Card>
 
       {editOpen && (
-        <Modal title="Edit customer" onClose={() => setEditOpen(false)}>
+        <Modal title={t('cust.editTitle')} onClose={() => setEditOpen(false)}>
           <form onSubmit={handleEditSubmit} className="flex flex-col gap-4">
-            {editError && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{editError}</p>}
+            {editError && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{editError}</p>}
             <div>
-              <Label htmlFor="edit-name">Name</Label>
+              <Label htmlFor="edit-name">{t('common.name')}</Label>
               <Input
                 id="edit-name"
                 required
@@ -249,29 +321,41 @@ export default function CustomerProfile() {
               />
             </div>
             <div>
-              <Label htmlFor="edit-phone">Phone</Label>
+              <Label htmlFor="edit-phone">{t('common.phone')}</Label>
               <Input
                 id="edit-phone"
                 inputMode="numeric"
-                placeholder="10-digit mobile number"
+                placeholder={t('cust.phoneHint')}
                 value={editForm.phone}
                 onChange={(e) => setEditForm({ ...editForm, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
               />
             </div>
             <div>
-              <Label htmlFor="edit-site">Usual site (optional)</Label>
+              <Label htmlFor="edit-site">{t('cust.usualSite')}</Label>
               <Input id="edit-site" value={editForm.site} onChange={(e) => setEditForm({ ...editForm, site: e.target.value })} />
             </div>
             <div>
-              <Label htmlFor="edit-address">Address</Label>
+              <Label htmlFor="edit-address">{t('common.address')}</Label>
               <Input
                 id="edit-address"
                 value={editForm.address}
                 onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
               />
             </div>
+            <div>
+              <Label htmlFor="edit-credit-limit">{t('cust.creditLimit')}</Label>
+              <Input
+                id="edit-credit-limit"
+                type="text"
+                inputMode="decimal"
+                placeholder="0"
+                value={editForm.credit_limit}
+                onChange={(e) => setEditForm({ ...editForm, credit_limit: sanitizeDecimal(e.target.value) })}
+              />
+              <p className="mt-1.5 text-xs text-muted">{t('cust.creditLimitHint')}</p>
+            </div>
             <Button type="submit" disabled={saving}>
-              {saving ? 'Saving…' : 'Save changes'}
+              {saving ? t('common.saving') : t('cust.saveChanges')}
             </Button>
           </form>
         </Modal>
@@ -279,16 +363,17 @@ export default function CustomerProfile() {
 
       {payOpen && (
         <Modal
-          title={`Receive payment from ${customer.name}`}
+          title={`${t('cust.receivePayment')} — ${customer.name}`}
           onClose={() => {
             setPayOpen(false)
             setPayResult(null)
+            setPaidSummary(null)
           }}
         >
           {payResult ? (
             <div className="flex flex-col gap-3">
               <p className="rounded-lg bg-accent-bg p-3 text-sm text-accent-text">
-                Payment recorded against {payResult.applied.length} bill{payResult.applied.length === 1 ? '' : 's'}.
+                {t('pay.appliedTo', { count: payResult.applied.length })}
               </p>
               <div className="flex flex-col divide-y divide-border text-sm">
                 {payResult.applied.map((a) => (
@@ -300,27 +385,29 @@ export default function CustomerProfile() {
               </div>
               {payResult.leftOver > 0 && (
                 <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-                  {formatINR(payResult.leftOver)} was more than this customer owed, so it wasn't recorded. Their khata is
-                  now fully settled.
+                  {t('pay.leftOver', { amount: formatINR(payResult.leftOver) })}
                 </p>
+              )}
+              {customer.phone && paidSummary && paidSummary.amount > 0 && (
+                <Button variant="outline" onClick={sendReceipt}>
+                  <WhatsAppIcon size={16} /> {t('pay.sendReceipt')}
+                </Button>
               )}
               <Button
                 onClick={() => {
                   setPayOpen(false)
                   setPayResult(null)
+                  setPaidSummary(null)
                 }}
               >
-                Done
+                {t('common.done')}
               </Button>
             </div>
           ) : (
             <form onSubmit={handleReceivePayment} className="flex flex-col gap-4">
-              <p className="text-sm text-muted">
-                Pending right now: <span className="font-semibold text-red-600">{formatINR(totalPending)}</span>. Whatever
-                you enter is applied to their oldest unpaid bills first.
-              </p>
+              <p className="text-sm text-muted">{t('pay.pendingNow', { amount: formatINR(totalPending) })}</p>
               <div>
-                <Label htmlFor="pay-amount">Amount received</Label>
+                <Label htmlFor="pay-amount">{t('pay.amountReceived')}</Label>
                 <div className="flex items-center gap-2">
                   <Input
                     id="pay-amount"
@@ -345,7 +432,7 @@ export default function CustomerProfile() {
                 </div>
               </div>
               <Button type="submit" disabled={paying || !Number(payForm.amount)}>
-                {paying ? 'Recording…' : 'Record payment'}
+                {paying ? t('pay.recording') : t('pay.record')}
               </Button>
             </form>
           )}

@@ -38,7 +38,7 @@ async function duplicatePhoneError(supplierId: string, phone: string | undefined
 
 export async function createCustomer(
   supplierId: string,
-  input: { name: string; phone?: string; site?: string; address?: string },
+  input: { name: string; phone?: string; site?: string; address?: string; credit_limit?: number | null },
 ): Promise<Customer> {
   const { data, error } = await supabase
     .from('customers')

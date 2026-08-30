@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { LanguageToggle } from '@/components/LanguageToggle'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { openWhatsAppShare } from '@/lib/whatsapp'
 
@@ -32,7 +33,12 @@ export default function Login() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-shell p-4">
-      <ThemeToggle className="absolute right-4 top-4" />
+      {/* Language sits beside theme so someone can switch to Hindi or
+          Marathi before they even sign in. */}
+      <div className="absolute right-4 top-4 flex items-center gap-2">
+        <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
+        <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
+      </div>
       <div className="w-full max-w-sm rounded-2xl bg-card p-7">
         <div className="mb-1 flex items-center justify-center gap-2">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#198A45" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">

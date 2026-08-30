@@ -6,9 +6,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { updateSupplierProfile, uploadLogo } from '@/services/suppliers'
 import { useAuth } from '@/context/AuthContext'
+import { useLanguage } from '@/context/LanguageContext'
+import { LANGUAGES } from '@/lib/i18n'
+import { cn } from '@/lib/utils'
 
 export default function Settings() {
   const { supplier } = useAuth()
+  const { lang, setLang, t } = useLanguage()
   const [form, setForm] = useState({
     business_name: supplier?.business_name ?? '',
     phone: supplier?.phone ?? '',
@@ -46,6 +50,30 @@ export default function Settings() {
   return (
     <div>
       <PageHeader title="Business profile" subtitle="Your business details, shown on invoices" />
+
+      {/* Documents stay in English on purpose: a bill goes to customers,
+          engineers and banks who may not read Devanagari, and a supplier
+          switching their own app language shouldn't change what a customer
+          receives. */}
+      <Card className="mb-4 max-w-lg">
+        <Label>{t('set.language')}</Label>
+        <div className="flex flex-wrap gap-2">
+          {LANGUAGES.map((l) => (
+            <button
+              key={l.code}
+              type="button"
+              onClick={() => setLang(l.code)}
+              className={cn(
+                'rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors',
+                lang === l.code ? 'border-accent bg-accent-bg text-accent-text' : 'border-border text-muted hover:text-ink',
+              )}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-muted">{t('set.languageHint')}</p>
+      </Card>
 
       <Card className="mb-4 max-w-lg">
         <Label>Business logo</Label>

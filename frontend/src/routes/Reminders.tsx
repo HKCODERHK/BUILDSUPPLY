@@ -6,12 +6,13 @@ import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { listCustomers } from '@/services/customers'
 import { listInvoices, type InvoiceWithCustomer } from '@/services/invoices'
 import { listPayments, type PaymentWithInvoice } from '@/services/payments'
-import { openWhatsAppShare } from '@/lib/whatsapp'
 import { buildCustomerLedger } from '@/lib/customerLedger'
 import { customerLedgerPdfFile } from '@/lib/customerLedgerPdf'
-import { downloadFile } from '@/lib/downloadFile'
+import { shareDocumentOnWhatsApp } from '@/lib/shareDocument'
+import { oldestPendingDays, overdueTextClass } from '@/lib/overdue'
 import { logActivity } from '@/services/activityLog'
 import { useAuth } from '@/context/AuthContext'
+import { useLanguage } from '@/context/LanguageContext'
 import type { Customer } from '@/lib/database.types'
 
 function formatINR(n: number) {
@@ -20,10 +21,12 @@ function formatINR(n: number) {
 
 interface PendingCustomer extends Customer {
   pending: number
+  days: number | null
 }
 
 export default function Reminders() {
   const { supplier } = useAuth()
+  const { t } = useLanguage()
   const [pending, setPending] = useState<PendingCustomer[]>([])
   const [invoices, setInvoices] = useState<InvoiceWithCustomer[]>([])
   const [payments, setPayments] = useState<PaymentWithInvoice[]>([])
@@ -33,15 +36,21 @@ export default function Reminders() {
   useEffect(() => {
     Promise.all([listCustomers(), listInvoices(), listPayments()]).then(([customers, invs, pays]) => {
       const owed = new Map<string, number>()
+      const byCustomer = new Map<string, InvoiceWithCustomer[]>()
       invs.forEach((inv) => {
         if (!inv.customer_id || inv.status === 'Cancelled') return
         owed.set(inv.customer_id, (owed.get(inv.customer_id) ?? 0) + (Number(inv.total) - Number(inv.paid)))
+        const list = byCustomer.get(inv.customer_id) ?? []
+        list.push(inv)
+        byCustomer.set(inv.customer_id, list)
       })
       setPending(
         customers
-          .map((c) => ({ ...c, pending: owed.get(c.id) ?? 0 }))
+          .map((c) => ({ ...c, pending: owed.get(c.id) ?? 0, days: oldestPendingDays(byCustomer.get(c.id) ?? []) }))
           .filter((c) => c.pending > 0)
-          .sort((a, b) => b.pending - a.pending),
+          // Oldest debt first. Chasing by age beats chasing by size — a small
+          // amount owed for four months is the one that turns into a bad debt.
+          .sort((a, b) => (b.days ?? 0) - (a.days ?? 0) || b.pending - a.pending),
       )
       setInvoices(invs)
       setPayments(pays)
@@ -62,20 +71,17 @@ export default function Reminders() {
         `The attached statement shows every bill and payment. Please clear it at your earliest convenience.`
 
       const file = await customerLedgerPdfFile(supplier, c, { entries, openingBalance })
-      if (navigator.canShare?.({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file], text: message, title: `Statement — ${c.name}` })
-          void logActivity('supplier', 'reminder_sent', { details: { customer: c.name, format: 'pdf_share' } })
-          return
-        } catch (err) {
-          if ((err as Error).name === 'AbortError') return
-        }
+      const outcome = await shareDocumentOnWhatsApp({
+        file,
+        message,
+        title: `Statement — ${c.name}`,
+        phone: c.phone,
+      })
+      if (outcome !== 'cancelled') {
+        void logActivity('supplier', 'reminder_sent', {
+          details: { customer: c.name, format: outcome === 'shared' ? 'pdf_share' : 'text_fallback' },
+        })
       }
-      // No native file sharing here — download the statement so it can be
-      // attached by hand, and open WhatsApp with the message ready.
-      downloadFile(file)
-      openWhatsAppShare(c.phone, message)
-      void logActivity('supplier', 'reminder_sent', { details: { customer: c.name, format: 'text_fallback' } })
     } finally {
       setSendingId(null)
     }
@@ -83,17 +89,14 @@ export default function Reminders() {
 
   return (
     <div>
-      <PageHeader
-        title="Pending Reminders"
-        subtitle="Sends the customer their full statement PDF — nothing goes out automatically"
-      />
+      <PageHeader title={t('rem.title')} subtitle={t('rem.subtitle')} />
 
       {loading ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <p className="text-sm text-muted">{t('common.loading')}</p>
       ) : (
         <Card>
           <div className="flex flex-col divide-y divide-border">
-            {pending.length === 0 && <p className="py-3 text-sm text-muted">No pending balances — everyone's paid up.</p>}
+            {pending.length === 0 && <p className="py-3 text-sm text-muted">{t('rem.none')}</p>}
             {pending.map((c) => (
               <div key={c.id} className="flex items-center justify-between gap-3 py-3 text-sm">
                 <div className="min-w-0">
@@ -103,13 +106,24 @@ export default function Reminders() {
                       {c.phone}
                     </a>
                   ) : (
-                    <div className="text-xs text-muted">No phone on file</div>
+                    <div className="text-xs text-muted">{t('rem.noPhone')}</div>
                   )}
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
-                  <span className="font-semibold text-red-600">{formatINR(c.pending)}</span>
+                  <div className="text-right">
+                    <div className="font-semibold text-red-600">{formatINR(c.pending)}</div>
+                    {c.days !== null && (
+                      <div className={`text-[11px] font-medium ${overdueTextClass(c.days)}`}>
+                        {c.days === 0
+                          ? t('overdue.today')
+                          : c.days === 1
+                            ? t('overdue.oneDay')
+                            : t('overdue.days', { days: c.days })}
+                      </div>
+                    )}
+                  </div>
                   <Button size="sm" variant="outline" disabled={!c.phone || sendingId === c.id} onClick={() => sendReminder(c)}>
-                    <WhatsAppIcon size={14} /> {sendingId === c.id ? 'Preparing…' : 'Remind'}
+                    <WhatsAppIcon size={14} /> {sendingId === c.id ? t('common.preparing') : t('rem.remind')}
                   </Button>
                 </div>
               </div>

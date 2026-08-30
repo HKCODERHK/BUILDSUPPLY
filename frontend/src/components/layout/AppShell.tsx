@@ -3,8 +3,10 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { LogOut, MoreHorizontal, X, ShieldCheck, Boxes, SlidersHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
+import { useLanguage } from '@/context/LanguageContext'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { NAV_ITEMS, MOBILE_PRIMARY_IDS } from './nav-items'
+import { LanguageToggle } from '@/components/LanguageToggle'
+import { NAV_ITEMS, MOBILE_PRIMARY_IDS, ADMIN_NAV_IDS } from './nav-items'
 
 // Shown in the desktop sidebar header and, on mobile, in the top bar.
 function Brand() {
@@ -23,6 +25,7 @@ function Brand() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { supplier, signOut } = useAuth()
+  const { t } = useLanguage()
   const navigate = useNavigate()
   const [moreOpen, setMoreOpen] = useState(false)
 
@@ -31,11 +34,18 @@ export function AppShell({ children }: { children: ReactNode }) {
     navigate('/login', { replace: true })
   }
 
+  // An admin gets their own dashboard and the platform tools; the supplier
+  // workspace (customers, bills, stock, khata) isn't theirs to browse.
+  const isAdmin = supplier?.role === 'admin'
+  const navItems = isAdmin ? NAV_ITEMS.filter((n) => ADMIN_NAV_IDS.includes(n.id)) : NAV_ITEMS
+
   // Mobile bar order follows MOBILE_PRIMARY_IDS itself, not the sidebar's
   // order, so the two can differ intentionally (e.g. Stock before Invoices
   // on mobile even though Invoices comes first in the full nav).
-  const primaryItems = MOBILE_PRIMARY_IDS.map((id) => NAV_ITEMS.find((n) => n.id === id)).filter((n) => n !== undefined)
-  const overflowItems = NAV_ITEMS.filter((n) => !MOBILE_PRIMARY_IDS.includes(n.id))
+  const primaryItems = (isAdmin ? ADMIN_NAV_IDS : MOBILE_PRIMARY_IDS)
+    .map((id) => navItems.find((n) => n.id === id))
+    .filter((n) => n !== undefined)
+  const overflowItems = navItems.filter((n) => !primaryItems.includes(n))
 
   return (
     <div className="flex min-h-screen bg-surface text-ink">
@@ -47,7 +57,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Brand />
         </div>
         <div className="flex flex-1 flex-col gap-1 overflow-y-auto px-2.5 py-3.5">
-          {NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <NavLink
               key={item.id}
               to={item.path}
@@ -59,7 +69,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               }
             >
               <item.icon size={17} />
-              {item.label}
+              {t(item.labelKey)}
             </NavLink>
           ))}
           {supplier?.role === 'admin' && (
@@ -110,7 +120,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-text hover:bg-white/5"
           >
             <LogOut size={16} />
-            Sign out
+            {t('nav.signOut')}
           </button>
         </div>
       </nav>
@@ -121,10 +131,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             here, so it moves up alongside the theme toggle. */}
         <header className="sticky top-0 z-30 flex w-full items-center justify-between bg-shell px-4 py-3 text-white sm:px-6 lg:hidden">
           <Brand />
-          <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
+          <div className="flex items-center gap-2">
+            <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
+            <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
+          </div>
         </header>
 
-        <div className="hidden justify-end px-8 pt-4 lg:flex">
+        <div className="hidden justify-end gap-2 px-8 pt-4 lg:flex">
+          <LanguageToggle />
           <ThemeToggle />
         </div>
         <main className="flex-1 p-4 sm:p-6 lg:p-8 lg:pt-0">{children}</main>
@@ -144,7 +158,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             }
           >
             <item.icon size={19} />
-            {item.label}
+            {t(item.labelKey)}
           </NavLink>
         ))}
         <button
@@ -152,7 +166,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           className="flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-muted"
         >
           <MoreHorizontal size={19} />
-          More
+          {t('nav.more')}
         </button>
       </nav>
 
@@ -164,7 +178,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
-              <span className="text-sm font-semibold">More</span>
+              <span className="text-sm font-semibold">{t('nav.more')}</span>
               <button onClick={() => setMoreOpen(false)} aria-label="Close">
                 <X size={18} />
               </button>
@@ -178,7 +192,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   className="flex flex-col items-center gap-1.5 rounded-xl border border-border p-3 text-xs font-medium text-ink"
                 >
                   <item.icon size={18} />
-                  {item.label}
+                  {t(item.labelKey)}
                 </NavLink>
               ))}
               {supplier?.role === 'admin' && (
@@ -214,7 +228,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 className="flex flex-col items-center gap-1.5 rounded-xl border border-border p-3 text-xs font-medium text-red-600"
               >
                 <LogOut size={18} />
-                Sign out
+                {t('nav.signOut')}
               </button>
             </div>
           </div>
