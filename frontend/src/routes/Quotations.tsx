@@ -138,7 +138,7 @@ export default function Quotations() {
                   <button
                     onClick={() => handleShare(q)}
                     disabled={sharingId === q.id}
-                    className="flex items-center gap-1.5 p-2.5 text-xs font-semibold text-accent hover:text-accent-soft disabled:opacity-50"
+                    className="flex items-center gap-1.5 p-2.5 text-xs font-semibold text-accent-text hover:text-accent disabled:opacity-50"
                   >
                     <WhatsAppIcon size={15} /> WhatsApp
                   </button>
@@ -191,7 +191,7 @@ export default function Quotations() {
                       <button
                         onClick={() => handleShare(q)}
                         disabled={sharingId === q.id}
-                        className="flex items-center gap-1.5 p-2 text-xs font-semibold text-accent hover:text-accent-soft disabled:opacity-50"
+                        className="flex items-center gap-1.5 p-2 text-xs font-semibold text-accent-text hover:text-accent disabled:opacity-50"
                       >
                         <WhatsAppIcon size={14} /> WhatsApp
                       </button>

@@ -175,7 +175,7 @@ function SupplierDashboardView() {
             <Card>
               <CardHeader>
                 <CardTitle>{t('dash.recentInvoices')}</CardTitle>
-                <Link to="/invoices" className="-m-2.5 p-2.5 text-xs font-semibold text-accent">
+                <Link to="/invoices" className="-m-2.5 p-2.5 text-xs font-semibold text-accent-text">
                   {t('common.viewAll')}
                 </Link>
               </CardHeader>
@@ -201,7 +201,7 @@ function SupplierDashboardView() {
             <Card>
               <CardHeader>
                 <CardTitle>{t('dash.recentCustomers')}</CardTitle>
-                <Link to="/customers" className="-m-2.5 p-2.5 text-xs font-semibold text-accent">
+                <Link to="/customers" className="-m-2.5 p-2.5 text-xs font-semibold text-accent-text">
                   {t('common.viewAll')}
                 </Link>
               </CardHeader>

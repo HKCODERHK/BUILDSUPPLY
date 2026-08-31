@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Pencil, IndianRupee, RotateCcw } from 'lucide-react'
+import { Pencil, IndianRupee, RotateCcw, Plus } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -122,7 +122,7 @@ export default function CustomerProfile() {
     e.preventDefault()
     if (!customer) return
     if (editForm.phone && editForm.phone.length !== 10) {
-      setEditError('Phone number must be exactly 10 digits.')
+      setEditError(t('error.phone10'))
       return
     }
     setSaving(true)
@@ -138,7 +138,7 @@ export default function CustomerProfile() {
       setEditOpen(false)
       await refresh()
     } catch (err) {
-      setEditError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+      setEditError(err instanceof Error ? err.message : t('error.generic'))
     } finally {
       setSaving(false)
     }
@@ -198,18 +198,24 @@ export default function CustomerProfile() {
                 <IndianRupee size={16} /> {t('cust.receivePayment')}
               </Button>
             )}
-            {/* Contractors reorder the same few things week after week, so the
-                quickest bill to raise is last week's with the numbers nudged. */}
-            {liveInvoices.length > 0 && (
-              <Button
-                variant="outline"
-                onClick={() => navigate(`/invoices/new?customer=${customer.id}&repeat=1`)}
-              >
-                <RotateCcw size={16} /> {t('cust.repeatBill')}
-              </Button>
-            )}
+            {/* Billing this customer used to mean leaving for Invoices, then
+                New, then picking them again from the dropdown. */}
+            <Button variant="outline" onClick={() => navigate(`/invoices/new?customer=${customer.id}`)}>
+              <Plus size={16} /> {t('inv.new')}
+            </Button>
             <ActionMenu
               items={[
+                // Repeating last week's bill is a shortcut for the button
+                // above, so it sits directly under it rather than beside it.
+                ...(liveInvoices.length > 0
+                  ? [
+                      {
+                        label: t('cust.repeatBill'),
+                        icon: <RotateCcw size={15} />,
+                        onSelect: () => navigate(`/invoices/new?customer=${customer.id}&repeat=1`),
+                      },
+                    ]
+                  : []),
                 { label: t('common.edit'), icon: <Pencil size={15} />, onSelect: openEdit },
                 {
                   label: t('cust.remind'),
@@ -325,7 +331,7 @@ export default function CustomerProfile() {
           <form onSubmit={handleEditSubmit} className="flex flex-col gap-4">
             {editError && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{editError}</p>}
             <div>
-              <Label htmlFor="edit-name">{t('common.name')}</Label>
+              <Label htmlFor="edit-name" required>{t('common.name')}</Label>
               <Input
                 id="edit-name"
                 required

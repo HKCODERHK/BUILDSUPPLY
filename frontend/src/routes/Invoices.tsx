@@ -12,6 +12,9 @@ import { getCustomer } from '@/services/customers'
 import { openWhatsAppShare } from '@/lib/whatsapp'
 import { logActivity } from '@/services/activityLog'
 import { useLanguage } from '@/context/LanguageContext'
+import { ShowMore } from '@/components/ShowMore'
+
+const PAGE_SIZE = 25
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
@@ -23,6 +26,9 @@ export default function Invoices() {
   const [loading, setLoading] = useState(true)
   const [markingId, setMarkingId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  // These pages grow with the business. At 17 bills the phone list is already
+  // 3,700px tall; search is how you find an older one, not scrolling.
+  const [shown, setShown] = useState(PAGE_SIZE)
 
   async function refresh() {
     setInvoices(await listInvoices())
@@ -53,7 +59,7 @@ export default function Invoices() {
     void logActivity('supplier', 'invoice_generated', { details: { invoice_no: inv.invoice_no } })
   }
 
-  const filtered = invoices.filter((inv) => {
+  const allMatching = invoices.filter((inv) => {
     const q = query.trim().toLowerCase()
     if (!q) return true
     const c = inv.customers
@@ -65,6 +71,7 @@ export default function Invoices() {
       (c?.phone ?? '').toLowerCase().includes(q)
     )
   })
+  const filtered = allMatching.slice(0, shown)
 
   return (
     <div>
@@ -87,7 +94,10 @@ export default function Invoices() {
           <Input
             placeholder={t('inv.searchPlaceholder')}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setShown(PAGE_SIZE)
+            }}
             className="mb-4 max-w-sm"
           />
           {/* Cards on a phone, table on a desktop. Eight columns is right at
@@ -146,14 +156,14 @@ export default function Invoices() {
                       <button
                         onClick={() => handleMarkDelivered(inv.id)}
                         disabled={markingId === inv.id}
-                        className="p-2 text-xs font-semibold text-accent hover:text-accent-soft disabled:opacity-50"
+                        className="p-2 text-xs font-semibold text-accent-text hover:text-accent disabled:opacity-50"
                       >
                         {markingId === inv.id ? t('inv.marking') : t('inv.markDelivered')}
                       </button>
                     )}
                     <button
                       onClick={() => shareInvoice(inv)}
-                      className="flex items-center gap-1.5 p-2.5 text-xs font-semibold text-accent hover:text-accent-soft"
+                      className="flex items-center gap-1.5 p-2.5 text-xs font-semibold text-accent-text hover:text-accent"
                     >
                       <WhatsAppIcon size={15} /> {t('common.sendWhatsApp')}
                     </button>
@@ -162,6 +172,8 @@ export default function Invoices() {
               )
             })}
           </div>
+
+          <ShowMore shown={filtered.length} total={allMatching.length} onMore={() => setShown((n) => n + PAGE_SIZE)} />
 
           <Card className="hidden lg:block">
           <div className="overflow-x-auto">
@@ -221,7 +233,7 @@ export default function Invoices() {
                         <button
                           onClick={() => handleMarkDelivered(inv.id)}
                           disabled={markingId === inv.id}
-                          className="text-xs font-semibold text-accent hover:text-accent-soft disabled:opacity-50"
+                          className="text-xs font-semibold text-accent-text hover:text-accent disabled:opacity-50"
                         >
                           {markingId === inv.id ? t('inv.marking') : t('inv.markDelivered')}
                         </button>
@@ -238,6 +250,10 @@ export default function Invoices() {
             </table>
           </div>
           </Card>
+
+          <div className="hidden lg:block">
+            <ShowMore shown={filtered.length} total={allMatching.length} onMore={() => setShown((n) => n + PAGE_SIZE)} />
+          </div>
         </>
       )}
     </div>

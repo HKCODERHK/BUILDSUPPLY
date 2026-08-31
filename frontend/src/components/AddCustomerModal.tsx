@@ -28,7 +28,7 @@ export function AddCustomerModal({
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (form.phone && form.phone.length !== 10) {
-      setError('Phone number must be exactly 10 digits.')
+      setError(t('error.phone10'))
       return
     }
     setSaving(true)
@@ -43,7 +43,7 @@ export function AddCustomerModal({
       })
       onCreated(customer)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+      setError(err instanceof Error ? err.message : t('error.generic'))
     } finally {
       setSaving(false)
     }
@@ -54,7 +54,7 @@ export function AddCustomerModal({
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>}
         <div>
-          <Label htmlFor="new-cust-name">{t('common.name')}</Label>
+          <Label htmlFor="new-cust-name" required>{t('common.name')}</Label>
           <Input id="new-cust-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         </div>
         <div>

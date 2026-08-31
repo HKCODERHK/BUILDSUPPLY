@@ -53,7 +53,7 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <Label htmlFor="email">{t('auth.email')}</Label>
+            <Label htmlFor="email" required>{t('auth.email')}</Label>
             <Input
               id="email"
               type="email"

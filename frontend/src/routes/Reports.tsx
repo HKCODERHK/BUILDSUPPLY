@@ -285,7 +285,7 @@ export default function Reports() {
         </div>
         {(dateFrom || dateTo || customerId || site) && (
           <button
-            className="mt-3 text-xs font-semibold text-accent hover:text-accent-soft"
+            className="mt-3 text-xs font-semibold text-accent-text hover:text-accent"
             onClick={() => {
               setDateFrom('')
               setDateTo('')

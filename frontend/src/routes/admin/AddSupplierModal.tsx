@@ -166,7 +166,7 @@ export function AddSupplierModal({ onClose, onCreated }: { onClose: () => void; 
     <Modal title="Add supplier" onClose={onClose}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div>
-          <Label htmlFor="business_name">Business name</Label>
+          <Label htmlFor="business_name" required>Business name</Label>
           <Input
             id="business_name"
             required
@@ -180,7 +180,7 @@ export function AddSupplierModal({ onClose, onCreated }: { onClose: () => void; 
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label htmlFor="email">Login email</Label>
+            <Label htmlFor="email" required>Login email</Label>
             <Input id="email" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           </div>
           <div>

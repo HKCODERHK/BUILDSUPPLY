@@ -15,8 +15,11 @@ import { openWhatsAppShare } from '@/lib/whatsapp'
 import type { PaymentMode } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
+import { ShowMore } from '@/components/ShowMore'
 import { usePin } from '@/context/PinContext'
 import { sanitizeDecimal } from '@/lib/numberInput'
+
+const PAGE_SIZE = 25
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
@@ -55,6 +58,7 @@ export default function Payments() {
   const [splits, setSplits] = useState<Split[]>([{ key: crypto.randomUUID(), amount: '', mode: 'Cash' }])
   const [saving, setSaving] = useState(false)
   const [receipt, setReceipt] = useState<Receipt | null>(null)
+  const [shown, setShown] = useState(PAGE_SIZE)
   const [searchParams, setSearchParams] = useSearchParams()
 
   useEffect(() => {
@@ -171,7 +175,7 @@ export default function Payments() {
         <Card>
           <div className="flex flex-col divide-y divide-border">
             {payments.length === 0 && <p className="py-3 text-sm text-muted">{t('pay.none')}</p>}
-            {payments.map((p) => (
+            {payments.slice(0, shown).map((p) => (
               <div key={p.id} className="flex items-center justify-between py-2.5 text-sm">
                 <div>
                   <div className="font-medium text-ink">{p.invoices?.invoice_no ?? '—'}</div>
@@ -184,6 +188,11 @@ export default function Payments() {
               </div>
             ))}
           </div>
+          <ShowMore
+            shown={Math.min(shown, payments.length)}
+            total={payments.length}
+            onMore={() => setShown((n) => n + PAGE_SIZE)}
+          />
         </Card>
       )}
 
@@ -268,7 +277,7 @@ export default function Payments() {
                 </div>
               ))}
 
-              <button type="button" onClick={addSplit} className="self-start text-xs font-semibold text-accent hover:text-accent-soft">
+              <button type="button" onClick={addSplit} className="self-start text-xs font-semibold text-accent-text hover:text-accent">
                 {t('pay.addSplit')}
               </button>
 

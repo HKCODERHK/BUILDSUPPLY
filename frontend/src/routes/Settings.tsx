@@ -98,7 +98,7 @@ export default function Settings() {
       <Card className="max-w-lg">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <Label htmlFor="business_name">{t('set.businessName')}</Label>
+            <Label htmlFor="business_name" required>{t('set.businessName')}</Label>
             <Input
               id="business_name"
               required

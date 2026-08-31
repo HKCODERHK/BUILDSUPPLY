@@ -715,6 +715,26 @@ const STRINGS = {
   },
   'unsaved.stay': { en: 'Keep editing', hi: 'यहीं रहें', mr: 'इथेच राहा' },
   'unsaved.leave': { en: 'Leave anyway', hi: 'फिर भी जाएँ', mr: 'तरीही जा' },
+  'common.showMore': { en: 'Show more', hi: 'और दिखाएँ', mr: 'आणखी दाखवा' },
+  'common.showingOf': {
+    en: 'Showing {shown} of {total}',
+    hi: '{total} में से {shown} दिख रहे हैं',
+    mr: '{total} पैकी {shown} दिसत आहेत',
+  },
+  'common.required': { en: 'required', hi: 'ज़रूरी', mr: 'आवश्यक' },
+  // ── Errors ────────────────────────────────────────────────────────────
+  // These were hardcoded English on supplier screens, so a supplier working
+  // in Hindi hit an English wall the moment anything went wrong.
+  'error.generic': {
+    en: 'Something went wrong. Please try again.',
+    hi: 'कुछ गड़बड़ हो गई। दोबारा कोशिश करें।',
+    mr: 'काहीतरी चूक झाली. पुन्हा प्रयत्न करा.',
+  },
+  'error.phone10': {
+    en: 'Phone number must be exactly 10 digits.',
+    hi: 'फ़ोन नंबर पूरे 10 अंकों का होना चाहिए।',
+    mr: 'फोन नंबर पूर्ण 10 अंकी असावा.',
+  },
 } satisfies Record<string, Entry>
 
 export type TranslationKey = keyof typeof STRINGS

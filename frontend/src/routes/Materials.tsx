@@ -379,7 +379,7 @@ export default function Materials() {
         <Modal title={editing ? t('common.edit') : t('mat.addMaterial')} onClose={() => setModalOpen(false)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
-              <Label htmlFor="name">{t('common.name')}</Label>
+              <Label htmlFor="name" required>{t('common.name')}</Label>
               <Input id="name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </div>
             <div>

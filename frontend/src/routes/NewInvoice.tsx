@@ -367,7 +367,7 @@ export default function NewInvoice() {
       // delivery often happen at different times.
       setDeliveryPrompt({ id: invoice.id, invoice_no: invoice.invoice_no })
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+      setSaveError(err instanceof Error ? err.message : t('error.generic'))
     } finally {
       savingRef.current = false
       setSaving(false)
@@ -439,7 +439,7 @@ export default function NewInvoice() {
                 <button
                   type="button"
                   onClick={() => setAddCustomerOpen(true)}
-                  className="-m-2 mb-0 p-2 text-xs font-semibold text-accent hover:text-accent-soft"
+                  className="-m-2 mb-0 p-2 text-xs font-semibold text-accent-text hover:text-accent"
                 >
                   {t('inv.newCustomer')}
                 </button>
