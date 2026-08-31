@@ -15,6 +15,7 @@ import { openWhatsAppShare } from '@/lib/whatsapp'
 import type { PaymentMode } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
+import { usePin } from '@/context/PinContext'
 import { sanitizeDecimal } from '@/lib/numberInput'
 
 function formatINR(n: number) {
@@ -44,6 +45,7 @@ interface Receipt {
 export default function Payments() {
   const { supplier } = useAuth()
   const { t } = useLanguage()
+  const { confirmWithPin } = usePin()
   const [payments, setPayments] = useState<PaymentWithInvoice[]>([])
   const [allInvoices, setAllInvoices] = useState<InvoiceWithCustomer[]>([])
   const [openInvoices, setOpenInvoices] = useState<InvoiceWithCustomer[]>([])
@@ -99,6 +101,10 @@ export default function Payments() {
     e.preventDefault()
     if (!supplier || !invoiceId) return
     const invoice = openInvoices.find((i) => i.id === invoiceId)
+    const threshold = Number(supplier.pin_payment_threshold) || 0
+    if (threshold > 0 && totalEntered >= threshold) {
+      if (!(await confirmWithPin(t('pin.reasonLargePayment', { amount: formatINR(totalEntered) })))) return
+    }
     setSaving(true)
     try {
       await recordPayment(

@@ -17,6 +17,7 @@ import { sanitizeDecimal } from '@/lib/numberInput'
 import { oldestPendingDays, overdueTextClass } from '@/lib/overdue'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
+import { usePin } from '@/context/PinContext'
 import type { Customer, Invoice, PaymentMode } from '@/lib/database.types'
 
 const PAYMENT_MODES: PaymentMode[] = ['Cash', 'UPI', 'Bank/Cheque']
@@ -29,6 +30,7 @@ export default function CustomerProfile() {
   const { id } = useParams<{ id: string }>()
   const { supplier } = useAuth()
   const { t } = useLanguage()
+  const { confirmWithPin } = usePin()
   const navigate = useNavigate()
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [invoices, setInvoices] = useState<Invoice[]>([])
@@ -65,6 +67,10 @@ export default function CustomerProfile() {
     if (!supplier || !id) return
     const amount = Number(payForm.amount)
     if (!amount || amount <= 0) return
+    const threshold = Number(supplier.pin_payment_threshold) || 0
+    if (threshold > 0 && amount >= threshold) {
+      if (!(await confirmWithPin(t('pin.reasonLargePayment', { amount: formatINR(amount) })))) return
+    }
     setPaying(true)
     try {
       const owedBefore = invoices

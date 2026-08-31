@@ -643,6 +643,58 @@ const STRINGS = {
     mr: 'तुमचे BuildSupply सबस्क्रिप्शन {days} दिवसांत संपत आहे.',
   },
   'sub.renew': { en: 'Renew', hi: 'रिन्यू करें', mr: 'रिन्यू करा' },
+  // ── Confirmation PIN ──────────────────────────────────────────────────
+  'pin.confirmTitle': { en: 'Confirm it is you', hi: 'पुष्टि करें कि यह आप हैं', mr: 'तुम्हीच आहात याची खात्री करा' },
+  'pin.confirmBody': {
+    en: 'Enter your 4-digit PIN to {action}.',
+    hi: '{action} के लिए अपना 4 अंकों का पिन डालें।',
+    mr: '{action} साठी तुमचा 4 अंकी पिन टाका.',
+  },
+  'pin.confirm': { en: 'Confirm', hi: 'पुष्टि करें', mr: 'खात्री करा' },
+  'pin.checking': { en: 'Checking…', hi: 'जाँच रहे हैं…', mr: 'तपासत आहे…' },
+  'pin.wrong': {
+    en: 'Wrong PIN. {left} tries left before it locks.',
+    hi: 'गलत पिन। लॉक होने से पहले {left} कोशिश बाकी।',
+    mr: 'चुकीचा पिन. लॉक होण्याआधी {left} प्रयत्न बाकी.',
+  },
+  'pin.lockedOut': {
+    en: 'Too many wrong tries. Try again after {time}.',
+    hi: 'बहुत बार गलत पिन। {time} के बाद कोशिश करें।',
+    mr: 'खूप वेळा चुकीचा पिन. {time} नंतर प्रयत्न करा.',
+  },
+  'pin.failed': { en: 'Could not check the PIN. Try again.', hi: 'पिन जाँच नहीं सका। दोबारा कोशिश करें।', mr: 'पिन तपासता आला नाही. पुन्हा प्रयत्न करा.' },
+
+  // Settings card
+  'pin.title': { en: 'Confirmation PIN', hi: 'पुष्टि पिन', mr: 'खात्री पिन' },
+  'pin.hint': {
+    en: 'A 4-digit PIN asked before anything that cannot be undone — cancelling a bill, editing one, or taking a large payment. It confirms it is you, it is not a password.',
+    hi: '4 अंकों का पिन, जो न पलटने वाले काम से पहले पूछा जाएगा — बिल रद्द करना, बदलना, या बड़ी रकम लेना। यह पहचान के लिए है, पासवर्ड नहीं।',
+    mr: '4 अंकी पिन, जो न बदलता येणाऱ्या कामाआधी विचारला जाईल — बिल रद्द करणे, बदलणे, किंवा मोठी रक्कम घेणे. ही ओळख आहे, पासवर्ड नाही.',
+  },
+  'pin.notSet': { en: 'No PIN set', hi: 'कोई पिन नहीं', mr: 'पिन नाही' },
+  'pin.isSet': { en: 'PIN is on', hi: 'पिन चालू है', mr: 'पिन चालू आहे' },
+  'pin.newPin': { en: 'New 4-digit PIN', hi: 'नया 4 अंकों का पिन', mr: 'नवीन 4 अंकी पिन' },
+  'pin.currentPin': { en: 'Current PIN', hi: 'अभी का पिन', mr: 'सध्याचा पिन' },
+  'pin.setIt': { en: 'Turn on PIN', hi: 'पिन चालू करें', mr: 'पिन चालू करा' },
+  'pin.changeIt': { en: 'Change PIN', hi: 'पिन बदलें', mr: 'पिन बदला' },
+  'pin.removeIt': { en: 'Turn off PIN', hi: 'पिन बंद करें', mr: 'पिन बंद करा' },
+  'pin.saved': { en: 'PIN saved.', hi: 'पिन सेव हो गया।', mr: 'पिन सेव झाला.' },
+  'pin.removed': { en: 'PIN turned off.', hi: 'पिन बंद हो गया।', mr: 'पिन बंद झाला.' },
+  'pin.threshold': { en: 'Ask for PIN on payments of (₹)', hi: 'इतनी या ज़्यादा रकम पर पिन पूछें (₹)', mr: 'एवढ्या किंवा जास्त रकमेवर पिन विचारा (₹)' },
+
+  // Reasons shown in the prompt
+  'pin.reasonCancelBill': { en: 'cancel this bill', hi: 'यह बिल रद्द करने', mr: 'हे बिल रद्द करण्या' },
+  'pin.reasonEditBill': { en: 'change this bill', hi: 'यह बिल बदलने', mr: 'हे बिल बदलण्या' },
+  'pin.reasonLargePayment': {
+    en: 'record a payment of {amount}',
+    hi: '{amount} का पेमेंट दर्ज करने',
+    mr: '{amount} चे पेमेंट नोंदवण्या',
+  },
+  // Admin-side reasons (admin screens are English, but the prompt is shared)
+  'pin.reasonSuspend': { en: 'suspend {name}', hi: '{name} को रोकने', mr: '{name} थांबवण्या' },
+  'pin.reasonDeactivate': { en: 'deactivate {name}', hi: '{name} को बंद करने', mr: '{name} बंद करण्या' },
+  'pin.reasonResetPassword': { en: "reset {name}'s password", hi: '{name} का पासवर्ड बदलने', mr: '{name} चा पासवर्ड बदलण्या' },
+  'pin.reasonSubscription': { en: "change {name}'s subscription", hi: '{name} का सब्सक्रिप्शन बदलने', mr: '{name} चे सबस्क्रिप्शन बदलण्या' },
 } satisfies Record<string, Entry>
 
 export type TranslationKey = keyof typeof STRINGS

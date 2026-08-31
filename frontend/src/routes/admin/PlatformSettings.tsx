@@ -8,6 +8,7 @@ import { getPlatformSettings, updatePlatformSettings } from '@/services/platform
 import { supabase } from '@/lib/supabase'
 import type { PlatformSettings } from '@/lib/database.types'
 import { sanitizeDigits, sanitizeDecimal } from '@/lib/numberInput'
+import { PinSettingsCard } from '@/components/PinSettingsCard'
 
 export default function AdminPlatformSettings() {
   const [settings, setSettings] = useState<PlatformSettings | null>(null)
@@ -47,6 +48,8 @@ export default function AdminPlatformSettings() {
       <PageHeader title="Platform Settings" subtitle="Defaults applied across BuildSupply" />
 
       <ChangePasswordCard />
+
+      <PinSettingsCard />
 
       <Card className="max-w-lg">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">

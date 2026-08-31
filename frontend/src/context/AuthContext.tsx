@@ -10,6 +10,8 @@ interface AuthContextValue {
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
+  /** Re-reads the signed-in account's own row after editing it elsewhere. */
+  refreshSupplier: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -39,6 +41,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setSupplier(data as Supplier)
     return data as Supplier
+  }
+
+  async function refreshSupplier() {
+    if (!session) return
+    await loadSupplierProfile(session.user.id)
   }
 
   useEffect(() => {
@@ -92,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, supplier, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ session, supplier, loading, signIn, signOut, refreshSupplier }}>
       {children}
     </AuthContext.Provider>
   )

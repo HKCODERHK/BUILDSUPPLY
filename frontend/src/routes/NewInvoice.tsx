@@ -26,6 +26,7 @@ import { recordPayment } from '@/services/payments'
 import type { Customer, CustomerBalance, Invoice, Material, PaymentMode } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
+import { usePin } from '@/context/PinContext'
 import { sanitizeDigits, sanitizeDecimal } from '@/lib/numberInput'
 import { cn } from '@/lib/utils'
 
@@ -101,6 +102,7 @@ function buildLineItems(materials: Material[], source: SourceItem[]): LineItem[]
 export default function NewInvoice() {
   const { supplier } = useAuth()
   const { t, mt } = useLanguage()
+  const { confirmWithPin } = usePin()
   const navigate = useNavigate()
   // Present only on /invoices/:id/edit — the same screen, correcting a bill
   // that already exists rather than raising a new one.
@@ -299,6 +301,20 @@ export default function NewInvoice() {
     setSaveError(null)
     try {
       const payload = billedItems.map(({ key: _key, preset: _preset, ...rest }) => rest)
+
+      // Editing a saved bill rewrites its totals and moves stock; a large
+      // payment taken at the counter is worth a second of confirmation.
+      const threshold = Number(supplier.pin_payment_threshold) || 0
+      const guard = isEdit
+        ? t('pin.reasonEditBill')
+        : threshold > 0 && paidNowAmount >= threshold
+          ? t('pin.reasonLargePayment', { amount: formatINR(paidNowAmount) })
+          : null
+      if (guard && !(await confirmWithPin(guard))) {
+        savingRef.current = false
+        setSaving(false)
+        return
+      }
 
       if (isEdit && editingId) {
         await updateInvoice(editingId, {

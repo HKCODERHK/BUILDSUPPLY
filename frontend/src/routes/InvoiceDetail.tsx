@@ -14,6 +14,7 @@ import { shareDocumentOnWhatsApp } from '@/lib/shareDocument'
 import { logActivity } from '@/services/activityLog'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
+import { usePin } from '@/context/PinContext'
 import type { Invoice, InvoiceItem, Customer } from '@/lib/database.types'
 
 function formatINR(n: number) {
@@ -24,6 +25,7 @@ export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>()
   const { supplier } = useAuth()
   const { t, mt } = useLanguage()
+  const { confirmWithPin } = usePin()
   const navigate = useNavigate()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [items, setItems] = useState<InvoiceItem[]>([])
@@ -100,6 +102,9 @@ export default function InvoiceDetail() {
 
   async function handleCancel() {
     if (!invoice) return
+    // Cancelling wipes the payments recorded against the bill and puts stock
+    // back — worth confirming it is the owner doing it.
+    if (!(await confirmWithPin(t('pin.reasonCancelBill')))) return
     setCancelling(true)
     try {
       await cancelInvoice(invoice.id)

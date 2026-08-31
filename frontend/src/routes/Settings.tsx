@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { LANGUAGES } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
+import { PinSettingsCard } from '@/components/PinSettingsCard'
 
 export default function Settings() {
   const { supplier } = useAuth()
@@ -74,6 +75,8 @@ export default function Settings() {
         </div>
         <p className="mt-2 text-xs text-muted">{t('set.languageHint')}</p>
       </Card>
+
+      <PinSettingsCard showPaymentThreshold />
 
       <Card className="mb-4 max-w-lg">
         <Label>{t('set.logo')}</Label>

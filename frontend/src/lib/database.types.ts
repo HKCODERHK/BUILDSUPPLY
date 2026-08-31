@@ -28,6 +28,10 @@ export interface Supplier {
   // When the admin last called or messaged this supplier from the admin
   // panel (migration 020). Null until the first contact.
   last_contacted_at: string | null
+  // Payments at or above this amount ask for the confirmation PIN, and only
+  // when a PIN is actually set (migration 022). Not secret — the PIN hash
+  // itself lives in supplier_pins, which no client can read.
+  pin_payment_threshold: number
   created_at: string
 }
 

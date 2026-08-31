@@ -16,6 +16,8 @@ import {
   markSupplierContacted,
 } from '@/services/adminSuppliers'
 import { listSupplierActivityForAdmin } from '@/services/activityLog'
+import { usePin } from '@/context/PinContext'
+import { useLanguage } from '@/context/LanguageContext'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { openWhatsAppShare } from '@/lib/whatsapp'
 import { generatePassword } from '@/lib/generatePassword'
@@ -33,6 +35,8 @@ type Tab = 'overview' | 'activity'
 export default function SupplierProfile() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { confirmWithPin } = usePin()
+  const { t } = useLanguage()
   const [supplier, setSupplier] = useState<SupplierOverview | null>(null)
   const [activity, setActivity] = useState<AdminActivityEntry[]>([])
   const [tab, setTab] = useState<Tab>('overview')
@@ -80,7 +84,10 @@ export default function SupplierProfile() {
   }
 
   async function handleSuspend() {
-    if (!id) return
+    if (!id || !supplier) return
+    // Suspending signs the supplier out of their own business, so it gets
+    // the same confirmation as anything else that cannot be shrugged off.
+    if (!(await confirmWithPin(t('pin.reasonSuspend', { name: supplier.business_name })))) return
     setBusy(true)
     setActionError(null)
     try {
@@ -97,7 +104,8 @@ export default function SupplierProfile() {
   }
 
   async function handleDeactivate() {
-    if (!id) return
+    if (!id || !supplier) return
+    if (!(await confirmWithPin(t('pin.reasonDeactivate', { name: supplier.business_name })))) return
     setBusy(true)
     setActionError(null)
     try {
@@ -112,7 +120,8 @@ export default function SupplierProfile() {
   }
 
   async function handleResetPassword() {
-    if (!id || newPassword.length < 6) return
+    if (!id || !supplier || newPassword.length < 6) return
+    if (!(await confirmWithPin(t('pin.reasonResetPassword', { name: supplier.business_name })))) return
     setBusy(true)
     setActionError(null)
     try {
@@ -132,6 +141,7 @@ export default function SupplierProfile() {
   // and from today if the subscription already lapsed.
   async function handleRenew(months: number) {
     if (!id || !supplier) return
+    if (!(await confirmWithPin(t('pin.reasonSubscription', { name: supplier.business_name })))) return
     setBusy(true)
     setActionError(null)
     try {
@@ -177,7 +187,8 @@ export default function SupplierProfile() {
     field: 'subscription_start' | 'subscription_expiry' | 'plan' | 'subscription_status',
     value: string,
   ) {
-    if (!id) return
+    if (!id || !supplier) return
+    if (!(await confirmWithPin(t('pin.reasonSubscription', { name: supplier.business_name })))) return
     setActionError(null)
     try {
       await updateSupplierSubscription(id, { [field]: value } as never)
