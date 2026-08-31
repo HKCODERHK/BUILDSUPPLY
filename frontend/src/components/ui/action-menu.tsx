@@ -48,7 +48,7 @@ export function ActionMenu({ items, label = 'More actions' }: { items: ActionMen
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
-        className="inline-flex h-8 w-9 cursor-pointer items-center justify-center rounded-lg border border-border bg-card text-ink transition-colors hover:bg-surface"
+        className="inline-flex h-9 w-10 cursor-pointer items-center justify-center rounded-lg border border-border bg-card text-ink transition-colors hover:bg-surface"
       >
         <MoreHorizontal size={16} />
       </button>

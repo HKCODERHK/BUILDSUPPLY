@@ -35,7 +35,7 @@ function QuickActions() {
           <Button
             variant={i === 0 ? 'primary' : 'outline'}
             size="sm"
-            className="w-full gap-1 px-1.5 text-[11px] sm:gap-2 sm:px-3 sm:text-xs"
+            className="h-10 w-full gap-1 px-1.5 text-[11px] sm:gap-2 sm:px-3 sm:text-xs"
           >
             <Plus size={13} className="shrink-0" /> {t(labelKey)}
           </Button>
@@ -175,7 +175,7 @@ function SupplierDashboardView() {
             <Card>
               <CardHeader>
                 <CardTitle>{t('dash.recentInvoices')}</CardTitle>
-                <Link to="/invoices" className="text-xs font-semibold text-accent">
+                <Link to="/invoices" className="-m-2.5 p-2.5 text-xs font-semibold text-accent">
                   {t('common.viewAll')}
                 </Link>
               </CardHeader>
@@ -201,7 +201,7 @@ function SupplierDashboardView() {
             <Card>
               <CardHeader>
                 <CardTitle>{t('dash.recentCustomers')}</CardTitle>
-                <Link to="/customers" className="text-xs font-semibold text-accent">
+                <Link to="/customers" className="-m-2.5 p-2.5 text-xs font-semibold text-accent">
                   {t('common.viewAll')}
                 </Link>
               </CardHeader>

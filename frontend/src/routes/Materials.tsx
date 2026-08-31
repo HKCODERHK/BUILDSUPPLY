@@ -270,13 +270,13 @@ export default function Materials() {
       <div className="mb-4 flex gap-2">
         <button
           onClick={() => setView('mine')}
-          className={`rounded-full border px-3 py-1 text-xs font-medium ${view === 'mine' ? 'border-accent bg-accent-bg text-accent-text' : 'border-border text-muted'}`}
+          className={`rounded-full border px-3.5 py-2.5 text-xs font-medium ${view === 'mine' ? 'border-accent bg-accent-bg text-accent-text' : 'border-border text-muted'}`}
         >
           {t('mat.mine')}
         </button>
         <button
           onClick={() => setView('catalog')}
-          className={`rounded-full border px-3 py-1 text-xs font-medium ${view === 'catalog' ? 'border-accent bg-accent-bg text-accent-text' : 'border-border text-muted'}`}
+          className={`rounded-full border px-3.5 py-2.5 text-xs font-medium ${view === 'catalog' ? 'border-accent bg-accent-bg text-accent-text' : 'border-border text-muted'}`}
         >
           {t('mat.catalog')}
         </button>
@@ -298,7 +298,7 @@ export default function Materials() {
                       <div className="font-semibold text-ink">{mt(m.name)}</div>
                       <div className="text-xs text-muted">{mt(m.category) || '—'}</div>
                     </div>
-                    <button onClick={() => openEdit(m)} className="text-muted hover:text-ink" aria-label="Edit">
+                    <button onClick={() => openEdit(m)} className="-m-3 p-3 text-muted hover:text-ink" aria-label="Edit">
                       <Pencil size={15} />
                     </button>
                   </div>
@@ -322,7 +322,7 @@ export default function Materials() {
         <>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-muted">{t('mat.catalogBlurb')}</p>
-            <button onClick={openCreate} className="text-xs font-semibold text-accent whitespace-nowrap">
+            <button onClick={openCreate} className="-m-2 p-2 text-xs font-semibold text-accent whitespace-nowrap">
               {t('mat.cantFind')}
             </button>
           </div>

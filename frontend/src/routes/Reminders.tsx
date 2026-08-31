@@ -102,7 +102,7 @@ export default function Reminders() {
                 <div className="min-w-0">
                   <div className="truncate font-medium text-ink">{c.name}</div>
                   {c.phone ? (
-                    <a href={`tel:${c.phone}`} className="text-xs text-muted hover:text-accent hover:underline">
+                    <a href={`tel:${c.phone}`} className="-m-2 inline-block p-2 text-xs text-muted hover:text-accent hover:underline">
                       {c.phone}
                     </a>
                   ) : (

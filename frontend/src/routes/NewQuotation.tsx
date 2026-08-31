@@ -133,7 +133,7 @@ export default function NewQuotation() {
               <button
                 type="button"
                 onClick={() => setAddCustomerOpen(true)}
-                className="mb-1.5 text-xs font-semibold text-accent hover:text-accent-soft"
+                className="-m-2 mb-0 p-2 text-xs font-semibold text-accent hover:text-accent-soft"
               >
                 {t('inv.newCustomer')}
               </button>

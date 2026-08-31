@@ -413,7 +413,7 @@ export default function NewInvoice() {
                 <button
                   type="button"
                   onClick={() => setAddCustomerOpen(true)}
-                  className="mb-1.5 text-xs font-semibold text-accent hover:text-accent-soft"
+                  className="-m-2 mb-0 p-2 text-xs font-semibold text-accent hover:text-accent-soft"
                 >
                   {t('inv.newCustomer')}
                 </button>
@@ -505,34 +505,43 @@ export default function NewInvoice() {
               <div
                 key={item.key}
                 className={cn(
-                  'grid grid-cols-[minmax(0,1fr)_4.5rem_5.5rem] items-center gap-2 rounded-lg border border-border p-2.5 transition-colors',
+                  // On a phone the name gets its own full line and the two
+                  // number fields sit under it. Squeezed into one row the name
+                  // column was 104px and "Cement — UltraTech — PPC • 50 KG"
+                  // truncated, so you were typing a quantity against a name
+                  // you could not read. From sm up there is room for one row,
+                  // and `sm:contents` lets the fields rejoin the outer grid.
+                  'rounded-lg border border-border p-2.5 transition-colors',
+                  'sm:grid sm:grid-cols-[minmax(0,1fr)_4.5rem_5.5rem] sm:items-center sm:gap-2',
                   item.qty > 0 && 'border-accent bg-accent-bg',
                 )}
               >
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-medium text-ink">{mt(item.description)}</div>
+                  <div className="text-sm font-medium text-ink sm:truncate">{mt(item.description)}</div>
                   <div className="text-xs text-muted">
                     {item.qty > 0 ? formatINR(item.qty * item.rate) : t('inv.notOnBill')}
                   </div>
                   <LastRateHint item={item} />
                 </div>
-                <div>
-                  <Label className="mb-0.5 text-[10px]">{t('common.qty')}</Label>
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    value={item.qty}
-                    onChange={(e) => updateItem(item.key, { qty: Number(sanitizeDigits(e.target.value)) || 0 })}
-                  />
-                </div>
-                <div>
-                  <Label className="mb-0.5 text-[10px]">{t('common.rate')} (₹)</Label>
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    value={item.rate}
-                    onChange={(e) => updateItem(item.key, { rate: Number(sanitizeDecimal(e.target.value)) || 0 })}
-                  />
+                <div className="mt-2 grid grid-cols-2 gap-2 sm:mt-0 sm:contents">
+                  <div>
+                    <Label className="mb-0.5 text-[11px]">{t('common.qty')}</Label>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={item.qty}
+                      onChange={(e) => updateItem(item.key, { qty: Number(sanitizeDigits(e.target.value)) || 0 })}
+                    />
+                  </div>
+                  <div>
+                    <Label className="mb-0.5 text-[11px]">{t('common.rate')} (₹)</Label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={item.rate}
+                      onChange={(e) => updateItem(item.key, { rate: Number(sanitizeDecimal(e.target.value)) || 0 })}
+                    />
+                  </div>
                 </div>
               </div>
             ) : (

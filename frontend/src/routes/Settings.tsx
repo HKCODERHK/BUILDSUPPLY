@@ -65,7 +65,7 @@ export default function Settings() {
               type="button"
               onClick={() => setLang(l.code)}
               className={cn(
-                'rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors',
+                'rounded-full border px-3.5 py-2.5 text-sm font-medium transition-colors',
                 lang === l.code ? 'border-accent bg-accent-bg text-accent-text' : 'border-border text-muted hover:text-ink',
               )}
             >

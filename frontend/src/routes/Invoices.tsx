@@ -105,13 +105,13 @@ export default function Invoices() {
               return (
                 <Card key={inv.id}>
                   <div className="mb-2 flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <Link to={`/invoices/${inv.id}`} className="font-semibold text-ink hover:text-accent">
-                        {inv.invoice_no}
-                      </Link>
+                    {/* The whole block is the link, not just the number — a
+                        22px line of text is a poor target for a thumb. */}
+                    <Link to={`/invoices/${inv.id}`} className="-m-1 min-w-0 p-1 hover:text-accent">
+                      <div className="font-semibold text-ink">{inv.invoice_no}</div>
                       <div className="truncate text-sm text-muted">{inv.customers?.name ?? '—'}</div>
                       {inv.site && <div className="truncate text-xs text-muted">{inv.site}</div>}
-                    </div>
+                    </Link>
                     <Badge
                       tone={
                         inv.status === 'Cancelled'
@@ -146,14 +146,14 @@ export default function Invoices() {
                       <button
                         onClick={() => handleMarkDelivered(inv.id)}
                         disabled={markingId === inv.id}
-                        className="text-xs font-semibold text-accent hover:text-accent-soft disabled:opacity-50"
+                        className="p-2 text-xs font-semibold text-accent hover:text-accent-soft disabled:opacity-50"
                       >
                         {markingId === inv.id ? t('inv.marking') : t('inv.markDelivered')}
                       </button>
                     )}
                     <button
                       onClick={() => shareInvoice(inv)}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-accent hover:text-accent-soft"
+                      className="flex items-center gap-1.5 p-2.5 text-xs font-semibold text-accent hover:text-accent-soft"
                     >
                       <WhatsAppIcon size={15} /> {t('common.sendWhatsApp')}
                     </button>

@@ -111,7 +111,48 @@ export default function Quotations() {
       {loading ? (
         <p className="text-sm text-muted">{t('common.loading')}</p>
       ) : (
-        <Card>
+        <>
+          {/* Cards on a phone, table on a desktop. In a 360px window the table
+              was 562px wide with 276px of it off-screen — and Convert to
+              Invoice, the whole point of this screen, sat in the hidden half. */}
+          <div className="flex flex-col gap-3 lg:hidden">
+            {quotations.length === 0 && (
+              <Card>
+                <p className="text-sm text-muted">{t('quo.none')}</p>
+              </Card>
+            )}
+            {quotations.map((q) => (
+              <Card key={q.id}>
+                <div className="mb-2 flex items-start justify-between gap-3">
+                  <Link to={`/quotations/${q.id}`} className="-m-1 min-w-0 p-1 hover:text-accent">
+                    <div className="font-semibold text-ink">{q.quote_no}</div>
+                    <div className="truncate text-sm text-muted">{q.customers?.name ?? '—'}</div>
+                    {q.site && <div className="truncate text-xs text-muted">{q.site}</div>}
+                  </Link>
+                  <Badge tone={QUOTATION_STATUS_TONE[q.status]}>{t(`status.${q.status}`)}</Badge>
+                </div>
+
+                <div className="border-t border-border pt-2.5 text-lg font-bold text-ink">{formatINR(q.total)}</div>
+
+                <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-border pt-2.5">
+                  <button
+                    onClick={() => handleShare(q)}
+                    disabled={sharingId === q.id}
+                    className="flex items-center gap-1.5 p-2.5 text-xs font-semibold text-accent hover:text-accent-soft disabled:opacity-50"
+                  >
+                    <WhatsAppIcon size={15} /> WhatsApp
+                  </button>
+                  {(q.status === 'Draft' || q.status === 'Sent') && (
+                    <Button size="sm" onClick={() => handleConvert(q)} disabled={convertingId === q.id}>
+                      {convertingId === q.id ? t('quo.converting') : t('quo.convert')}
+                    </Button>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          <Card className="hidden lg:block">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
@@ -150,7 +191,7 @@ export default function Quotations() {
                       <button
                         onClick={() => handleShare(q)}
                         disabled={sharingId === q.id}
-                        className="flex items-center gap-1.5 text-xs font-semibold text-accent hover:text-accent-soft disabled:opacity-50"
+                        className="flex items-center gap-1.5 p-2 text-xs font-semibold text-accent hover:text-accent-soft disabled:opacity-50"
                       >
                         <WhatsAppIcon size={14} /> WhatsApp
                       </button>
@@ -167,7 +208,8 @@ export default function Quotations() {
               </tbody>
             </table>
           </div>
-        </Card>
+          </Card>
+        </>
       )}
 
       {deliveryPrompt && (
