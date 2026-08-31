@@ -8,7 +8,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Modal } from '@/components/ui/modal'
-import { listSuppliersOverview, setSupplierStatus, resetSupplierPassword, updateSupplierSubscription } from '@/services/adminSuppliers'
+import {
+  listSuppliersOverview,
+  setSupplierStatus,
+  resetSupplierPassword,
+  updateSupplierSubscription,
+  markSupplierContacted,
+} from '@/services/adminSuppliers'
 import { listSupplierActivityForAdmin } from '@/services/activityLog'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { openWhatsAppShare } from '@/lib/whatsapp'
@@ -143,8 +149,19 @@ export default function SupplierProfile() {
     }
   }
 
+  async function noteContact() {
+    if (!id) return
+    try {
+      await markSupplierContacted(id)
+      await refresh()
+    } catch {
+      // Reaching out matters more than recording that we did.
+    }
+  }
+
   function messageSupplier() {
     if (!supplier) return
+    void noteContact()
     const owner = supplier.owner_name?.trim() || supplier.business_name
     const state = subscriptionState(supplier.subscription_expiry)
     const line =
@@ -182,7 +199,7 @@ export default function SupplierProfile() {
           <div className="flex flex-wrap gap-2">
             {supplier.phone && (
               <>
-                <a href={`tel:${supplier.phone}`}>
+                <a href={`tel:${supplier.phone}`} onClick={() => void noteContact()}>
                   <Button variant="outline" size="sm">
                     <Phone size={14} /> Call
                   </Button>
@@ -232,6 +249,10 @@ export default function SupplierProfile() {
               <Row label="Address" value={supplier.address ?? '—'} />
               <Row label="Registered" value={new Date(supplier.created_at).toLocaleString('en-IN')} />
               <Row label="Last login" value={supplier.last_sign_in_at ? new Date(supplier.last_sign_in_at).toLocaleString('en-IN') : 'Never logged in'} />
+              <Row
+                label="Last contacted"
+                value={supplier.last_contacted_at ? new Date(supplier.last_contacted_at).toLocaleString('en-IN') : 'Not yet'}
+              />
               {supplier.suspension_reason && <Row label="Suspension reason" value={supplier.suspension_reason} />}
             </dl>
 
@@ -264,6 +285,13 @@ export default function SupplierProfile() {
                 {SUBSCRIPTION_LABEL[subscriptionState(supplier.subscription_expiry)]}
               </Badge>
             </CardHeader>
+
+            {subscriptionState(supplier.subscription_expiry) === 'none' && (
+              <p className="mb-4 rounded-lg bg-amber-50 p-3 text-xs text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                No expiry date is set, so this account never appears as expiring or expired. Renew below to put it on
+                the calendar.
+              </p>
+            )}
 
             <div className="mb-4 rounded-xl border border-border p-3">
               <div className="mb-2 flex items-center justify-between">
@@ -333,6 +361,18 @@ export default function SupplierProfile() {
                   <span className="text-xs text-muted">{new Date(a.created_at).toLocaleString('en-IN')}</span>
                 </div>
                 <div className="text-xs text-muted">by {a.actor_role}</div>
+                {/* Only ever populated for the admin's own actions — see
+                    migration 020. This is what makes the renewal history
+                    readable: plan changes and new expiry dates. */}
+                {a.details && Object.keys(a.details).length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted">
+                    {Object.entries(a.details).map(([key, value]) => (
+                      <span key={key}>
+                        {key.replace(/_/g, ' ')}: <span className="text-ink">{String(value)}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>

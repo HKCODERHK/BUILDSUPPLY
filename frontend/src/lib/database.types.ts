@@ -25,6 +25,9 @@ export interface Supplier {
   subscription_start: string | null
   subscription_expiry: string | null
   subscription_status: SubscriptionStatus
+  // When the admin last called or messaged this supplier from the admin
+  // panel (migration 020). Null until the first contact.
+  last_contacted_at: string | null
   created_at: string
 }
 
@@ -62,6 +65,10 @@ export interface AdminActivityEntry {
   id: string
   action: string
   actor_role: ActivityActorRole
+  // Populated only for admin-authored rows (subscription and catalog
+  // changes). Always null for supplier-authored rows, which hold that
+  // supplier's customer names and invoice amounts — see migration 020.
+  details: Record<string, unknown> | null
   created_at: string
 }
 

@@ -1,11 +1,15 @@
 import { useState, type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LogOut, MoreHorizontal, X, ShieldCheck, Boxes, SlidersHorizontal } from 'lucide-react'
+import { LogOut, MoreHorizontal, X, ShieldCheck, Boxes, SlidersHorizontal, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { LanguageToggle } from '@/components/LanguageToggle'
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import { openWhatsAppShare } from '@/lib/whatsapp'
+import { ADMIN_WHATSAPP_NUMBER } from '@/lib/adminContact'
+import { daysUntilExpiry, subscriptionState } from '@/lib/subscription'
 import { NAV_ITEMS, MOBILE_PRIMARY_IDS, ADMIN_NAV_IDS } from './nav-items'
 
 // Shown in the desktop sidebar header and, on mobile, in the top bar.
@@ -19,6 +23,52 @@ function Brand() {
         <path d="M16 21v-4l3 1.5V21" />
       </svg>
       <span className="text-[17px] font-bold">BuildSupply</span>
+    </div>
+  )
+}
+
+/**
+ * Tells the supplier their subscription is ending, with the one tap that
+ * fixes it. Deliberately silent when no expiry date is set — that's the
+ * admin's gap to close, not something to worry a supplier about.
+ */
+function SubscriptionNotice() {
+  const { supplier } = useAuth()
+  const { t } = useLanguage()
+  if (!supplier || supplier.role !== 'supplier') return null
+
+  const state = subscriptionState(supplier.subscription_expiry)
+  if (state !== 'expired' && state !== 'expiring') return null
+
+  const days = daysUntilExpiry(supplier.subscription_expiry) ?? 0
+  const message =
+    state === 'expired' ? t('sub.expired') : days === 0 ? t('sub.expiringToday') : t('sub.expiringDays', { days })
+  const expired = state === 'expired'
+
+  return (
+    <div
+      className={cn(
+        'flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 text-sm sm:px-6 lg:px-8',
+        expired
+          ? 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300'
+          : 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+      )}
+    >
+      <span className="flex items-center gap-2 font-medium">
+        <AlertTriangle size={16} className="shrink-0" />
+        {message}
+      </span>
+      <button
+        onClick={() =>
+          openWhatsAppShare(
+            ADMIN_WHATSAPP_NUMBER,
+            `Hi, I would like to renew my BuildSupply subscription for ${supplier.business_name}.`,
+          )
+        }
+        className="flex items-center gap-1.5 rounded-lg border border-current px-2.5 py-1 text-xs font-semibold"
+      >
+        <WhatsAppIcon size={14} /> {t('sub.renew')}
+      </button>
     </div>
   )
 }
@@ -136,6 +186,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
           </div>
         </header>
+
+        <SubscriptionNotice />
 
         <div className="hidden justify-end gap-2 px-8 pt-4 lg:flex">
           <LanguageToggle />

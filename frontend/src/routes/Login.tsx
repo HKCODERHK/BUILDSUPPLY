@@ -8,11 +8,9 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { openWhatsAppShare } from '@/lib/whatsapp'
+import { ADMIN_WHATSAPP_NUMBER } from '@/lib/adminContact'
 import { useLanguage } from '@/context/LanguageContext'
 
-// Reaches the BuildSupply admin directly — this is the one WhatsApp number
-// prospective suppliers should message to ask about a subscription.
-const ADMIN_WHATSAPP_NUMBER = '9575011204'
 
 export default function Login() {
   const { session, signIn, loading } = useAuth()

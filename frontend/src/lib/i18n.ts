@@ -626,6 +626,23 @@ const STRINGS = {
   // ── Theme toggle ──────────────────────────────────────────────────────
   'theme.toLight': { en: 'Switch to light mode', hi: 'उजला मोड करें', mr: 'उजळ मोड करा' },
   'theme.toDark': { en: 'Switch to dark mode', hi: 'गहरा मोड करें', mr: 'गडद मोड करा' },
+  // ── Subscription notice shown to the supplier ─────────────────────────
+  'sub.expired': {
+    en: 'Your BuildSupply subscription has ended.',
+    hi: 'आपका BuildSupply सब्सक्रिप्शन खत्म हो गया है।',
+    mr: 'तुमचे BuildSupply सबस्क्रिप्शन संपले आहे.',
+  },
+  'sub.expiringToday': {
+    en: 'Your BuildSupply subscription ends today.',
+    hi: 'आपका BuildSupply सब्सक्रिप्शन आज खत्म हो रहा है।',
+    mr: 'तुमचे BuildSupply सबस्क्रिप्शन आज संपत आहे.',
+  },
+  'sub.expiringDays': {
+    en: 'Your BuildSupply subscription ends in {days} days.',
+    hi: 'आपका BuildSupply सब्सक्रिप्शन {days} दिन में खत्म हो रहा है।',
+    mr: 'तुमचे BuildSupply सबस्क्रिप्शन {days} दिवसांत संपत आहे.',
+  },
+  'sub.renew': { en: 'Renew', hi: 'रिन्यू करें', mr: 'रिन्यू करा' },
 } satisfies Record<string, Entry>
 
 export type TranslationKey = keyof typeof STRINGS

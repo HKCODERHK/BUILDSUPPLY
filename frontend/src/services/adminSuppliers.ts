@@ -66,6 +66,21 @@ export async function setSupplierBan(supplierId: string, banned: boolean): Promi
 // update rights on any suppliers row via the suppliers_update policy,
 // so none of this needs the privileged Edge Function.
 
+/**
+ * Records that the admin has just reached out to this supplier.
+ *
+ * Called when they tap Call or WhatsApp from the admin panel — it cannot
+ * know whether the call was answered, only that the admin has already tried,
+ * which is the thing worth not doing twice.
+ */
+export async function markSupplierContacted(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('suppliers')
+    .update({ last_contacted_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw error
+}
+
 export async function updateSupplierRecord(id: string, input: Partial<Supplier>): Promise<Supplier> {
   const { data, error } = await supabase.from('suppliers').update(input).eq('id', id).select().single()
   if (error) throw error

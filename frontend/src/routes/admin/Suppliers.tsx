@@ -46,6 +46,7 @@ type SortKey =
   | 'plan'
   | 'subscription_expiry'
   | 'last_sign_in_at'
+  | 'last_contacted_at'
   | 'created_at'
 
 const SORT_COLUMNS: { key: SortKey; label: string }[] = [
@@ -56,6 +57,7 @@ const SORT_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'plan', label: 'Plan' },
   { key: 'subscription_expiry', label: 'Subscription' },
   { key: 'last_sign_in_at', label: 'Last login' },
+  { key: 'last_contacted_at', label: 'Last contacted' },
   { key: 'created_at', label: 'Joined' },
 ]
 
@@ -212,6 +214,9 @@ export default function AdminSuppliers() {
                     </td>
                     <td className="py-2.5 pr-3 text-muted">
                       {s.last_sign_in_at ? new Date(s.last_sign_in_at).toLocaleDateString('en-IN') : 'Never'}
+                    </td>
+                    <td className="py-2.5 pr-3 text-muted">
+                      {s.last_contacted_at ? new Date(s.last_contacted_at).toLocaleDateString('en-IN') : '—'}
                     </td>
                     <td className="py-2.5 pr-3 text-muted">{new Date(s.created_at).toLocaleDateString('en-IN')}</td>
                   </tr>
