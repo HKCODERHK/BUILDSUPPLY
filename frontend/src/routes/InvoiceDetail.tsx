@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { ActionMenu } from '@/components/ui/action-menu'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { getInvoice, listInvoiceItems, cancelInvoice } from '@/services/invoices'
 import { Modal } from '@/components/ui/modal'
@@ -121,28 +122,36 @@ export default function InvoiceDetail() {
         title={invoice.invoice_no}
         subtitle={new Date(invoice.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
         action={
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={handleDownload}>
-              <Download size={14} /> {t('inv.download')}
-            </Button>
-            <Button variant="outline" size="sm" onClick={handlePrint}>
-              <Printer size={14} /> {t('inv.print')}
-            </Button>
+          // Sharing on WhatsApp is what a supplier came here to do — it runs
+          // roughly thirty times for every bill that gets edited or cancelled.
+          // The rest stay one tap away without competing with it.
+          <div className="flex items-center gap-2">
             <Button size="sm" onClick={shareOnWhatsApp} disabled={sharing}>
               <WhatsAppIcon size={14} /> {sharing ? t('common.preparing') : t('common.sendWhatsApp')}
             </Button>
-            {invoice.status !== 'Cancelled' && (
-              <>
-                {/* Fixing a bill beats cancelling and retyping it: the number,
-                    the date and any payment already taken all survive. */}
-                <Button variant="outline" size="sm" onClick={() => navigate(`/invoices/${invoice.id}/edit`)}>
-                  <Pencil size={14} /> {t('inv.editBill')}
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setConfirmCancel(true)} className="text-red-600">
-                  <Ban size={14} /> {t('inv.cancelBill')}
-                </Button>
-              </>
-            )}
+            <ActionMenu
+              items={[
+                { label: t('inv.download'), icon: <Download size={15} />, onSelect: handleDownload },
+                { label: t('inv.print'), icon: <Printer size={15} />, onSelect: handlePrint },
+                ...(invoice.status !== 'Cancelled'
+                  ? [
+                      // Fixing a bill beats cancelling and retyping it: the
+                      // number, the date and any payment already taken survive.
+                      {
+                        label: t('inv.editBill'),
+                        icon: <Pencil size={15} />,
+                        onSelect: () => navigate(`/invoices/${invoice.id}/edit`),
+                      },
+                      {
+                        label: t('inv.cancelBill'),
+                        icon: <Ban size={15} />,
+                        onSelect: () => setConfirmCancel(true),
+                        destructive: true,
+                      },
+                    ]
+                  : []),
+              ]}
+            />
           </div>
         }
       />
