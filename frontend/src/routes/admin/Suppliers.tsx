@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, ArrowUp, ArrowDown } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
@@ -63,6 +63,8 @@ const SORT_COLUMNS: { key: SortKey; label: string }[] = [
 
 export default function AdminSuppliers() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const deletedNotice = (location.state as { deleted?: string } | null)?.deleted
   const [suppliers, setSuppliers] = useState<SupplierOverview[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
@@ -140,6 +142,10 @@ export default function AdminSuppliers() {
           </Button>
         }
       />
+
+      {deletedNotice && (
+        <Card className="mb-4 bg-accent-bg text-sm text-accent-text">{deletedNotice}</Card>
+      )}
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Input

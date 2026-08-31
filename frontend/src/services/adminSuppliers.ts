@@ -58,6 +58,25 @@ export async function resetSupplierPassword(supplierId: string, newPassword: str
   await invokeAdminFunction('reset_password', { supplier_id: supplierId, new_password: newPassword })
 }
 
+export interface DeleteSupplierResult {
+  ok: true
+  business_name: string
+  deleted: Record<string, number>
+}
+
+/**
+ * Permanently deletes a supplier: their login, their business data and their
+ * logo. There is no undo and no soft-delete flag — Deactivate is what keeps
+ * the data.
+ *
+ * `confirmName` must match the business name exactly; the Edge Function
+ * re-checks it against the row it is about to destroy, so a mistyped id
+ * cannot take out the wrong business.
+ */
+export async function deleteSupplierAccount(supplierId: string, confirmName: string): Promise<DeleteSupplierResult> {
+  return invokeAdminFunction('delete_supplier', { supplier_id: supplierId, confirm_name: confirmName })
+}
+
 export async function setSupplierBan(supplierId: string, banned: boolean): Promise<void> {
   await invokeAdminFunction('set_ban', { supplier_id: supplierId, banned })
 }

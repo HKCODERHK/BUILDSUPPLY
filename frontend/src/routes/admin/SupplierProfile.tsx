@@ -14,6 +14,7 @@ import {
   resetSupplierPassword,
   updateSupplierSubscription,
   markSupplierContacted,
+  deleteSupplierAccount,
 } from '@/services/adminSuppliers'
 import { listSupplierActivityForAdmin } from '@/services/activityLog'
 import { usePin } from '@/context/PinContext'
@@ -48,6 +49,8 @@ export default function SupplierProfile() {
   // The password that was successfully applied — kept so it can be handed
   // over on WhatsApp. Cleared when the modal closes.
   const [passwordSent, setPasswordSent] = useState('')
+  const [deleteModal, setDeleteModal] = useState(false)
+  const [deleteConfirmName, setDeleteConfirmName] = useState('')
   const [busy, setBusy] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -183,6 +186,31 @@ export default function SupplierProfile() {
     openWhatsAppShare(supplier.phone, `Hi ${owner}, ${line}`)
   }
 
+  // The only action in the app that destroys a whole business. Three things
+  // stand in front of it: the typed business name, the confirmation PIN, and
+  // a plain list of what is about to go.
+  async function handleDelete() {
+    if (!id || !supplier) return
+    if (deleteConfirmName.trim() !== supplier.business_name.trim()) {
+      setActionError('The typed business name does not match.')
+      return
+    }
+    if (!(await confirmWithPin(`permanently delete ${supplier.business_name}`))) return
+    setBusy(true)
+    setActionError(null)
+    try {
+      const result = await deleteSupplierAccount(id, deleteConfirmName.trim())
+      const rows = Object.values(result.deleted).reduce((sum, n) => sum + n, 0)
+      navigate('/admin/suppliers', {
+        replace: true,
+        state: { deleted: `${result.business_name} was deleted, along with ${rows} record${rows === 1 ? '' : 's'}.` },
+      })
+    } catch (err) {
+      setActionError(describeError(err))
+      setBusy(false)
+    }
+  }
+
   async function handleSubscriptionChange(
     field: 'subscription_start' | 'subscription_expiry' | 'plan' | 'subscription_status',
     value: string,
@@ -285,6 +313,27 @@ export default function SupplierProfile() {
               )}
               <Button size="sm" variant="outline" onClick={() => setPasswordModal(true)} disabled={busy}>
                 Reset password
+              </Button>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-red-200 p-3 dark:border-red-900">
+              <div className="text-sm font-semibold text-red-700 dark:text-red-300">Delete permanently</div>
+              <p className="mt-1 text-xs text-muted">
+                Erases this account and everything in it. Deactivate instead if you only want to switch off access —
+                that keeps their data.
+              </p>
+              <Button
+                size="sm"
+                variant="danger"
+                className="mt-3"
+                disabled={busy}
+                onClick={() => {
+                  setDeleteConfirmName('')
+                  setActionError(null)
+                  setDeleteModal(true)
+                }}
+              >
+                Delete supplier
               </Button>
             </div>
           </Card>
@@ -404,6 +453,59 @@ export default function SupplierProfile() {
             <Button variant="danger" onClick={handleSuspend} disabled={busy}>
               {busy ? 'Suspending…' : 'Confirm suspend'}
             </Button>
+          </div>
+        </Modal>
+      )}
+
+      {deleteModal && (
+        <Modal
+          title={`Delete ${supplier.business_name}?`}
+          onClose={() => {
+            setDeleteModal(false)
+            setActionError(null)
+          }}
+        >
+          <div className="flex flex-col gap-4">
+            <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+              This cannot be undone. Their login stops working immediately and every record below is erased.
+            </p>
+            <ul className="list-disc space-y-1 pl-5 text-xs text-muted">
+              <li>Their customers and the whole khata</li>
+              <li>Every bill, line item and payment</li>
+              <li>Their materials, stock and estimates</li>
+              <li>Their logo and activity history</li>
+            </ul>
+            <div>
+              <Label htmlFor="delete-confirm">Type {supplier.business_name} to confirm</Label>
+              <Input
+                id="delete-confirm"
+                autoComplete="off"
+                value={deleteConfirmName}
+                onChange={(e) => setDeleteConfirmName(e.target.value)}
+              />
+            </div>
+            {actionError && <p className="text-xs text-red-600">{actionError}</p>}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                disabled={busy}
+                onClick={() => {
+                  setDeleteModal(false)
+                  setActionError(null)
+                }}
+              >
+                Keep supplier
+              </Button>
+              <Button
+                variant="danger"
+                className="flex-1"
+                disabled={busy || deleteConfirmName.trim() !== supplier.business_name.trim()}
+                onClick={handleDelete}
+              >
+                {busy ? 'Deleting…' : 'Delete permanently'}
+              </Button>
+            </div>
           </div>
         </Modal>
       )}

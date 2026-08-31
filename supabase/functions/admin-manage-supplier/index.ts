@@ -1,7 +1,7 @@
 // Supabase Edge Function — the only place the service_role key is used.
-// Handles the three supplier-account operations that require privileged
-// Auth Admin API access: creating a login, resetting a password, and
-// banning/unbanning login. Everything else (status labels, subscription
+// Handles the supplier-account operations that require privileged Auth Admin
+// API access: creating a login, resetting a password, banning/unbanning
+// login, and deleting an account outright. Everything else (status labels, subscription
 // dates, business info) is a normal RLS-protected table update done
 // directly from the frontend as the signed-in admin.
 //
@@ -157,6 +157,83 @@ Deno.serve(async (req) => {
       })
 
       return json({ ok: true })
+    }
+
+    if (action === 'delete_supplier') {
+      const { supplier_id, confirm_name } = body as Record<string, string>
+      if (!supplier_id || !confirm_name) {
+        return json({ error: 'supplier_id and confirm_name are required' }, 400)
+      }
+
+      const { data: target } = await adminClient
+        .from('suppliers')
+        .select('id, business_name, role')
+        .eq('id', supplier_id)
+        .single()
+
+      if (!target) return json({ error: 'Supplier not found' }, 404)
+
+      // An admin account is the platform itself. Deleting one — your own most
+      // of all — would lock everybody out with no way back.
+      if (target.role === 'admin') {
+        return json({ error: 'Admin accounts cannot be deleted here.' }, 403)
+      }
+
+      // The typed name is re-checked here, not just in the browser. This is
+      // the one call in the app that destroys a whole business, and the UI is
+      // not the place to enforce that it was aimed at the right row.
+      if (confirm_name.trim() !== target.business_name.trim()) {
+        return json({ error: 'The typed business name does not match.' }, 400)
+      }
+
+      // Counted before the delete so the admin gets told what actually went,
+      // and so the log records the size of what was destroyed.
+      const tables = ['customers', 'invoices', 'invoice_items', 'payments', 'materials', 'quotations'] as const
+      const deleted: Record<string, number> = {}
+      for (const table of tables) {
+        const { count } = await adminClient
+          .from(table)
+          .select('id', { count: 'exact', head: true })
+          .eq('supplier_id', supplier_id)
+        deleted[table] = count ?? 0
+      }
+
+      // Logged before the rows go, because activity_log cascades away with
+      // the supplier — this entry is written against the admin instead, so
+      // it survives as the record that the deletion happened.
+      await adminClient.from('activity_log').insert({
+        actor_id: caller.id,
+        actor_role: 'admin',
+        supplier_id: caller.id,
+        action: 'supplier_deleted',
+        details: { business_name: target.business_name, deleted_rows: deleted },
+      })
+
+      // Their uploaded logo, which no cascade would reach.
+      const { data: logoFiles } = await adminClient.storage.from('logos').list(supplier_id)
+      if (logoFiles?.length) {
+        await adminClient.storage
+          .from('logos')
+          .remove(logoFiles.map((f: { name: string }) => `${supplier_id}/${f.name}`))
+      }
+
+      // Deleting the login is what actually does it. suppliers.id references
+      // auth.users(id) ON DELETE CASCADE, and every business table cascades
+      // from suppliers in turn — customers, invoices, invoice_items,
+      // payments, materials, quotations, quotation_items, activity_log and
+      // the confirmation PIN all go with it, in one transaction.
+      const { error: authError } = await adminClient.auth.admin.deleteUser(supplier_id)
+      if (authError && !/not found/i.test(authError.message)) {
+        return json({ error: `Could not delete the login: ${authError.message}` }, 400)
+      }
+
+      // Normally a no-op, because the cascade above already took the row.
+      // Kept as a backstop for the one case it wouldn't: a profile row whose
+      // auth user had already been removed by some other route.
+      const { error: rowError } = await adminClient.from('suppliers').delete().eq('id', supplier_id)
+      if (rowError) return json({ error: rowError.message }, 400)
+
+      return json({ ok: true, business_name: target.business_name, deleted })
     }
 
     return json({ error: `Unknown action: ${action}` }, 400)
