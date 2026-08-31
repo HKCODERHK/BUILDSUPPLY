@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Download } from 'lucide-react'
+import { Download, ChevronDown } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -63,6 +63,9 @@ export default function Reports() {
   const [items, setItems] = useState<InvoiceItemWithInvoice[]>([])
   const [materials, setMaterials] = useState<Material[]>([])
   const [loading, setLoading] = useState(true)
+  // The ledger is the one a supplier actually sends to a customer; the rest
+  // are occasional. Folding them away keeps this screen to one decision.
+  const [showOtherReports, setShowOtherReports] = useState(false)
 
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
@@ -298,7 +301,55 @@ export default function Reports() {
       {loading ? (
         <p className="text-sm text-muted">{t('common.loading')}</p>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <>
+        <ReportCard
+          title={t('rep.customerLedger')}
+          label={t('inv.download')}
+          hint={
+            selectedCustomer
+              ? t('rep.ledgerHint', {
+                  name: selectedCustomer.name,
+                  scope: site
+                    ? t('rep.scopeOneSite', { site })
+                    : sites.length > 1
+                      ? t('rep.scopeManySites', { count: sites.length })
+                      : t('rep.scopeAllSites'),
+                })
+              : t('rep.ledgerPick')
+          }
+          disabled={!customerId}
+          onDownload={() => {
+            if (!supplier || !selectedCustomer) return
+            const { openingBalance, entries } = customerLedgerData()
+            void downloadCustomerLedgerPdf(supplier, selectedCustomer, {
+              entries,
+              openingBalance,
+              dateFrom: dateFrom || undefined,
+              dateTo: dateTo || undefined,
+              site: site || undefined,
+            })
+            void logActivity('supplier', 'report_exported', {
+              details: { report: 'Customer Ledger', format: 'pdf', rows: entries.length },
+            })
+          }}
+        />
+
+        <button
+            onClick={() => setShowOtherReports((prev) => !prev)}
+            className="mt-4 flex w-full items-center justify-between rounded-xl border border-border px-4 py-3 text-left hover:bg-surface"
+          >
+            <span>
+              <span className="block text-sm font-semibold text-ink">{t('rep.otherReports')}</span>
+              <span className="block text-xs text-muted">{t('rep.otherReportsHint', { count: 5 })}</span>
+            </span>
+            <ChevronDown
+              size={18}
+              className={`shrink-0 text-muted transition-transform ${showOtherReports ? 'rotate-180' : ''}`}
+            />
+          </button>
+
+          {showOtherReports && (
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <ReportCard
             title={t('rep.dailySales')}
             hint={t('rep.dailyHint', { count: filteredInvoices.length })}
@@ -339,38 +390,6 @@ export default function Reports() {
           />
 
           <ReportCard
-            title={t('rep.customerLedger')}
-            label={t('inv.download')}
-            hint={
-              selectedCustomer
-                ? t('rep.ledgerHint', {
-                    name: selectedCustomer.name,
-                    scope: site
-                      ? t('rep.scopeOneSite', { site })
-                      : sites.length > 1
-                        ? t('rep.scopeManySites', { count: sites.length })
-                        : t('rep.scopeAllSites'),
-                  })
-                : t('rep.ledgerPick')
-            }
-            disabled={!customerId}
-            onDownload={() => {
-              if (!supplier || !selectedCustomer) return
-              const { openingBalance, entries } = customerLedgerData()
-              void downloadCustomerLedgerPdf(supplier, selectedCustomer, {
-                entries,
-                openingBalance,
-                dateFrom: dateFrom || undefined,
-                dateTo: dateTo || undefined,
-                site: site || undefined,
-              })
-              void logActivity('supplier', 'report_exported', {
-                details: { report: 'Customer Ledger', format: 'pdf', rows: entries.length },
-              })
-            }}
-          />
-
-          <ReportCard
             title={t('rep.materialWise')}
             hint={t('rep.materialHint', { count: materialWiseSalesRows().length })}
             label={t('inv.download')}
@@ -393,7 +412,9 @@ export default function Reports() {
               runReport('Stock Report', ['Material', 'Current', 'Min', 'Status'], stockReportRows(), 'stock-report.pdf')
             }
           />
-        </div>
+          </div>
+          )}
+        </>
       )}
     </div>
   )

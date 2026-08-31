@@ -695,6 +695,12 @@ const STRINGS = {
   'pin.reasonDeactivate': { en: 'deactivate {name}', hi: '{name} को बंद करने', mr: '{name} बंद करण्या' },
   'pin.reasonResetPassword': { en: "reset {name}'s password", hi: '{name} का पासवर्ड बदलने', mr: '{name} चा पासवर्ड बदलण्या' },
   'pin.reasonSubscription': { en: "change {name}'s subscription", hi: '{name} का सब्सक्रिप्शन बदलने', mr: '{name} चे सबस्क्रिप्शन बदलण्या' },
+  'rep.otherReports': { en: 'All other reports', hi: 'बाकी सारी रिपोर्ट', mr: 'बाकी सर्व रिपोर्ट' },
+  'rep.otherReportsHint': {
+    en: 'Sales, pending, material-wise and stock — {count} reports',
+    hi: 'बिक्री, बाकी, माल और स्टॉक — {count} रिपोर्ट',
+    mr: 'विक्री, बाकी, माल आणि स्टॉक — {count} रिपोर्ट',
+  },
 } satisfies Record<string, Entry>
 
 export type TranslationKey = keyof typeof STRINGS
