@@ -701,6 +701,20 @@ const STRINGS = {
     hi: 'बिक्री, बाकी, माल और स्टॉक — {count} रिपोर्ट',
     mr: 'विक्री, बाकी, माल आणि स्टॉक — {count} रिपोर्ट',
   },
+  // ── Unsaved work ──────────────────────────────────────────────────────
+  'unsaved.title': { en: 'Leave without saving?', hi: 'बिना सेव किए जाएँ?', mr: 'सेव न करता जायचे?' },
+  'unsaved.bill': {
+    en: 'This bill has not been saved. Everything you have typed will be lost.',
+    hi: 'यह बिल सेव नहीं हुआ है। जो कुछ लिखा है सब चला जाएगा।',
+    mr: 'हे बिल सेव झालेले नाही. जे काही लिहिले आहे ते सर्व जाईल.',
+  },
+  'unsaved.estimate': {
+    en: 'This estimate has not been saved. Everything you have typed will be lost.',
+    hi: 'यह अनुमान सेव नहीं हुआ है। जो कुछ लिखा है सब चला जाएगा।',
+    mr: 'हा अंदाज सेव झालेला नाही. जे काही लिहिले आहे ते सर्व जाईल.',
+  },
+  'unsaved.stay': { en: 'Keep editing', hi: 'यहीं रहें', mr: 'इथेच राहा' },
+  'unsaved.leave': { en: 'Leave anyway', hi: 'फिर भी जाएँ', mr: 'तरीही जा' },
 } satisfies Record<string, Entry>
 
 export type TranslationKey = keyof typeof STRINGS

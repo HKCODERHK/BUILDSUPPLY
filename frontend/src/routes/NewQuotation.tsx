@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AddCustomerModal } from '@/components/AddCustomerModal'
+import { UnsavedChangesGuard } from '@/components/UnsavedChangesGuard'
 import { listCustomers } from '@/services/customers'
 import { listMaterials } from '@/services/materials'
 import { createQuotation } from '@/services/quotations'
@@ -41,6 +42,7 @@ export default function NewQuotation() {
   const gstDefaulted = useRef(false)
   const [transportLabour, setTransportLabour] = useState('')
   const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
   const savingRef = useRef(false)
   const [addCustomerOpen, setAddCustomerOpen] = useState(false)
 
@@ -112,6 +114,7 @@ export default function NewQuotation() {
         gstApplicable,
         transportLabourCharge: transportLabourAmount,
       })
+      setSaved(true)
       navigate(`/quotations/${quotation.id}`)
     } finally {
       savingRef.current = false
@@ -268,9 +271,23 @@ export default function NewQuotation() {
         </div>
       </Card>
 
-      <Button onClick={handleSave} disabled={saving || !customerId || items.length === 0} className="w-full sm:w-auto">
-        {saving ? t('common.saving') : t('quo.save')}
-      </Button>
+      <div className="sticky bottom-16 z-20 -mx-4 flex items-center gap-3 border-t border-border bg-card px-4 py-3 sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0">
+        <div className="lg:hidden">
+          <div className="text-[11px] text-muted">{t('common.total')}</div>
+          <div className="text-base font-bold text-ink">
+            ₹{total.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+          </div>
+        </div>
+        <Button
+          onClick={handleSave}
+          disabled={saving || !customerId || items.length === 0}
+          className="ml-auto w-full max-w-56 lg:ml-0 lg:w-auto"
+        >
+          {saving ? t('common.saving') : t('quo.save')}
+        </Button>
+      </div>
+
+      <UnsavedChangesGuard when={!saved && items.length > 0} message={t('unsaved.estimate')} />
 
       {addCustomerOpen && supplier && (
         <AddCustomerModal

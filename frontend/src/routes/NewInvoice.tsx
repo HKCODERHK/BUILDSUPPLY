@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Modal } from '@/components/ui/modal'
 import { AddCustomerModal } from '@/components/AddCustomerModal'
+import { UnsavedChangesGuard } from '@/components/UnsavedChangesGuard'
 import { listCustomers, listCustomerBalances } from '@/services/customers'
 import { listMaterials } from '@/services/materials'
 import {
@@ -130,6 +131,12 @@ export default function NewInvoice() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  // Flipped once the bill is actually written, so the unsaved-work guard
+  // stops blocking the navigation that follows a successful save.
+  const [saved, setSaved] = useState(false)
+  // What the bill looked like when it loaded. Null in create mode, where the
+  // baseline is simply "nothing typed yet".
+  const baselineRef = useRef<string | null>(null)
   // React state updates aren't synchronous, so a second click landing before
   // the re-render that disables the button would slip through `saving`
   // alone; this ref blocks re-entry immediately, in the same tick.
@@ -172,6 +179,14 @@ export default function NewInvoice() {
           Number(invoice.transport_labour_charge) > 0 ? String(invoice.transport_labour_charge) : '',
         )
         setItems(buildLineItems(materialList, existingItems))
+        baselineRef.current = JSON.stringify({
+          site: (invoice.site ?? '').trim(),
+          gst: Number(invoice.gst_amount) > 0,
+          transport: Number(invoice.transport_labour_charge) || 0,
+          items: existingItems
+            .filter((it) => Number(it.qty) > 0)
+            .map((it) => [it.material_id ?? it.description, Number(it.qty), Number(it.rate)]),
+        })
         setLoading(false)
         return
       }
@@ -282,6 +297,15 @@ export default function NewInvoice() {
 
   const selectedCustomer = customers.find((c) => c.id === customerId) ?? null
 
+  const signature = JSON.stringify({
+    site: site.trim(),
+    gst: gstApplicable,
+    transport: transportLabourAmount,
+    items: billedItems.map((it) => [it.material_id ?? it.description, it.qty, it.rate]),
+  })
+  const hasUnsavedWork =
+    !saved && (isEdit ? baselineRef.current !== null && signature !== baselineRef.current : billedItems.length > 0)
+
   // Udhaar limit check. In edit mode the bill's current balance is already
   // inside `pending`, so it comes out before the new one goes in — otherwise
   // editing a bill would look like doubling the customer's outstanding.
@@ -323,6 +347,7 @@ export default function NewInvoice() {
           gstApplicable,
           transportLabourCharge: transportLabourAmount,
         })
+        setSaved(true)
         navigate(`/invoices/${editingId}`)
         return
       }
@@ -337,6 +362,7 @@ export default function NewInvoice() {
       if (paidNowAmount > 0) {
         await recordPayment(supplier.id, invoice.id, [{ amount: paidNowAmount, mode: paidMode }])
       }
+      setSaved(true)
       // Stock isn't touched yet — ask before deducting it, since billing and
       // delivery often happen at different times.
       setDeliveryPrompt({ id: invoice.id, invoice_no: invoice.invoice_no })
@@ -680,9 +706,26 @@ export default function NewInvoice() {
         <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{saveError}</p>
       )}
 
-      <Button onClick={handleSave} disabled={saving || !customerId || billedItems.length === 0} className="w-full sm:w-auto">
-        {saving ? t('common.saving') : isEdit ? t('inv.saveEdit') : t('inv.save')}
-      </Button>
+      {/* Sticky above the bottom tab bar on a phone: the form runs past
+          1,200px and the Save button, with the total, was stranded at the
+          end of it. */}
+      <div className="sticky bottom-16 z-20 -mx-4 flex items-center gap-3 border-t border-border bg-card px-4 py-3 sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0">
+        <div className="lg:hidden">
+          <div className="text-[11px] text-muted">{t('common.total')}</div>
+          <div className="text-base font-bold text-ink">
+            ₹{total.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+          </div>
+        </div>
+        <Button
+          onClick={handleSave}
+          disabled={saving || !customerId || billedItems.length === 0}
+          className="ml-auto w-full max-w-56 lg:ml-0 lg:w-auto"
+        >
+          {saving ? t('common.saving') : isEdit ? t('inv.saveEdit') : t('inv.save')}
+        </Button>
+      </div>
+
+      <UnsavedChangesGuard when={hasUnsavedWork} message={t('unsaved.bill')} />
 
       {addCustomerOpen && supplier && (
         <AddCustomerModal
