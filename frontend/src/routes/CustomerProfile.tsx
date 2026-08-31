@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Modal } from '@/components/ui/modal'
+import { ActionMenu } from '@/components/ui/action-menu'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { getCustomer, updateCustomer } from '@/services/customers'
 import { recordCustomerPayment, type KhataPaymentResult } from '@/services/payments'
@@ -189,33 +190,39 @@ export default function CustomerProfile() {
         title={customer.name}
         subtitle={t('cust.profileSubtitle')}
         action={
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={openEdit}>
-              <Pencil size={16} /> {t('common.edit')}
-            </Button>
-            {/* Contractors reorder the same few things week after week, so the
-                quickest bill to raise is last week's with the numbers nudged. */}
-            {liveInvoices.length > 0 && (
-              <Button variant="outline" onClick={() => navigate(`/invoices/new?customer=${customer.id}&repeat=1`)}>
-                <RotateCcw size={16} /> {t('cust.repeatBill')}
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              onClick={() =>
-                openWhatsAppShare(
-                  customer.phone,
-                  `Hi ${customer.name}, your pending balance with us is ${formatINR(totalPending)}. Please clear it at your earliest convenience.`,
-                )
-              }
-            >
-              <WhatsAppIcon size={16} /> {t('cust.remind')}
-            </Button>
+          // Taking money is why this page gets opened, and repeating last
+          // week's bill is the other reason. Editing and chasing are rarer.
+          <div className="flex items-center gap-2">
             {totalPending > 0 && (
               <Button onClick={() => setPayOpen(true)}>
                 <IndianRupee size={16} /> {t('cust.receivePayment')}
               </Button>
             )}
+            {/* Contractors reorder the same few things week after week, so the
+                quickest bill to raise is last week's with the numbers nudged. */}
+            {liveInvoices.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/invoices/new?customer=${customer.id}&repeat=1`)}
+              >
+                <RotateCcw size={16} /> {t('cust.repeatBill')}
+              </Button>
+            )}
+            <ActionMenu
+              items={[
+                { label: t('common.edit'), icon: <Pencil size={15} />, onSelect: openEdit },
+                {
+                  label: t('cust.remind'),
+                  icon: <WhatsAppIcon size={15} />,
+                  disabled: !customer.phone,
+                  onSelect: () =>
+                    openWhatsAppShare(
+                      customer.phone,
+                      `Hi ${customer.name}, your pending balance with us is ${formatINR(totalPending)}. Please clear it at your earliest convenience.`,
+                    ),
+                },
+              ]}
+            />
           </div>
         }
       />

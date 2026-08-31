@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
+import { ActionMenu } from '@/components/ui/action-menu'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { getQuotation, listQuotationItems, markQuotationConverted, markQuotationSent } from '@/services/quotations'
 import { getCustomer } from '@/services/customers'
@@ -146,21 +147,23 @@ export default function QuotationDetail() {
         title={quotation.quote_no}
         subtitle={new Date(quotation.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
         action={
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={handleDownload}>
-              <Download size={14} /> {t('inv.download')}
-            </Button>
-            <Button variant="outline" size="sm" onClick={handlePrint}>
-              <Printer size={14} /> {t('inv.print')}
-            </Button>
-            <Button variant="outline" size="sm" onClick={shareOnWhatsApp} disabled={sharing}>
-              <WhatsAppIcon size={14} /> {sharing ? t('common.preparing') : t('common.sendWhatsApp')}
-            </Button>
+          // Turning the estimate into a bill is the point of this screen, and
+          // sending it is how it gets there. Saving or printing a copy is not.
+          <div className="flex items-center gap-2">
             {canConvert && (
               <Button size="sm" onClick={handleConvert} disabled={converting}>
                 <ArrowRightLeft size={14} /> {converting ? t('quo.converting') : t('quo.convert')}
               </Button>
             )}
+            <Button variant="outline" size="sm" onClick={shareOnWhatsApp} disabled={sharing}>
+              <WhatsAppIcon size={14} /> {sharing ? t('common.preparing') : t('common.sendWhatsApp')}
+            </Button>
+            <ActionMenu
+              items={[
+                { label: t('inv.download'), icon: <Download size={15} />, onSelect: handleDownload },
+                { label: t('inv.print'), icon: <Printer size={15} />, onSelect: handlePrint },
+              ]}
+            />
           </div>
         }
       />

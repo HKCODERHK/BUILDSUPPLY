@@ -90,7 +90,80 @@ export default function Invoices() {
             onChange={(e) => setQuery(e.target.value)}
             className="mb-4 max-w-sm"
           />
-          <Card>
+          {/* Cards on a phone, table on a desktop. Eight columns is right at
+              a counter with a laptop and unreadable on the phone the supplier
+              actually carries, so each breakpoint gets the shape that fits
+              rather than one shape scrolling sideways. */}
+          <div className="flex flex-col gap-3 lg:hidden">
+            {filtered.length === 0 && (
+              <Card>
+                <p className="text-sm text-muted">{invoices.length === 0 ? t('inv.noneYet') : t('inv.noMatch')}</p>
+              </Card>
+            )}
+            {filtered.map((inv) => {
+              const remaining = Number(inv.total) - Number(inv.paid)
+              return (
+                <Card key={inv.id}>
+                  <div className="mb-2 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <Link to={`/invoices/${inv.id}`} className="font-semibold text-ink hover:text-accent">
+                        {inv.invoice_no}
+                      </Link>
+                      <div className="truncate text-sm text-muted">{inv.customers?.name ?? '—'}</div>
+                      {inv.site && <div className="truncate text-xs text-muted">{inv.site}</div>}
+                    </div>
+                    <Badge
+                      tone={
+                        inv.status === 'Cancelled'
+                          ? 'neutral'
+                          : inv.status === 'Paid'
+                            ? 'success'
+                            : inv.status === 'Partial'
+                              ? 'warning'
+                              : 'danger'
+                      }
+                    >
+                      {t(`status.${inv.status}`)}
+                    </Badge>
+                  </div>
+
+                  <div className="flex items-baseline justify-between border-t border-border pt-2.5 text-sm">
+                    <span className="text-lg font-bold text-ink">{formatINR(inv.total)}</span>
+                    {inv.status !== 'Cancelled' && remaining > 0 && (
+                      <span className="text-xs text-muted">
+                        {t('common.paid')} {formatINR(inv.paid)} · {t('inv.remaining')}{' '}
+                        <span className="font-semibold text-red-600">{formatINR(remaining)}</span>
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-2.5 flex items-center justify-between gap-3 border-t border-border pt-2.5">
+                    {inv.status === 'Cancelled' ? (
+                      <span className="text-xs text-muted">—</span>
+                    ) : inv.delivered ? (
+                      <Badge tone="success">{t('inv.deliveredBadge')}</Badge>
+                    ) : (
+                      <button
+                        onClick={() => handleMarkDelivered(inv.id)}
+                        disabled={markingId === inv.id}
+                        className="text-xs font-semibold text-accent hover:text-accent-soft disabled:opacity-50"
+                      >
+                        {markingId === inv.id ? t('inv.marking') : t('inv.markDelivered')}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => shareInvoice(inv)}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-accent hover:text-accent-soft"
+                    >
+                      <WhatsAppIcon size={15} /> {t('common.sendWhatsApp')}
+                    </button>
+                  </div>
+                </Card>
+              )
+            })}
+          </div>
+
+          <Card className="hidden lg:block">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>

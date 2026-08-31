@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Modal } from '@/components/ui/modal'
+import { ActionMenu } from '@/components/ui/action-menu'
 import { listMaterials, createMaterial, updateMaterial } from '@/services/materials'
 import { searchCatalog, type VariantWithLookups } from '@/services/materialCatalog'
 import { summarizeAttributes } from '@/lib/catalogAttributes'
@@ -223,20 +224,23 @@ export default function Materials() {
         subtitle={t('mat.subtitle')}
         action={
           view === 'mine' && (
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={openCreate}>
-                <Plus size={16} /> {t('mat.addMaterial')}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={shareRateList}
-                disabled={sharingRates || materials.length === 0}
-              >
-                <WhatsAppIcon size={16} /> {sharingRates ? t('common.preparing') : t('mat.shareRates')}
-              </Button>
+            // Topping up stock is the most-used action in the whole app;
+            // adding a material or sharing rates is occasional by comparison.
+            <div className="flex items-center gap-2">
               <Button onClick={() => setAddStockOpen(true)} disabled={materials.length === 0}>
                 <Plus size={16} /> {t('mat.addStock')}
               </Button>
+              <ActionMenu
+                items={[
+                  { label: t('mat.addMaterial'), icon: <Plus size={15} />, onSelect: openCreate },
+                  {
+                    label: sharingRates ? t('common.preparing') : t('mat.shareRates'),
+                    icon: <WhatsAppIcon size={15} />,
+                    onSelect: shareRateList,
+                    disabled: sharingRates || materials.length === 0,
+                  },
+                ]}
+              />
             </div>
           )
         }
