@@ -636,7 +636,7 @@ export default function NewInvoice() {
               >
                 {PAYMENT_MODES.map((m) => (
                   <option key={m} value={m}>
-                    {m}
+                    {t(`mode.${m}`)}
                   </option>
                 ))}
               </select>

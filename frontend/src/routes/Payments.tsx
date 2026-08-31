@@ -140,7 +140,7 @@ export default function Payments() {
       receipt.phone,
       t('pay.receiptMessage', {
         amount: formatINR(receipt.amount),
-        mode: receipt.mode,
+        mode: t(`mode.${receipt.mode}`),
         date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
         balance: balanceLine,
       }),
@@ -172,7 +172,7 @@ export default function Payments() {
                   <div className="text-xs text-muted">{p.invoices?.customers?.name ?? '—'}</div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge tone="neutral">{p.mode}</Badge>
+                  <Badge tone="neutral">{t(`mode.${p.mode}`)}</Badge>
                   <span className="font-semibold">{formatINR(p.amount)}</span>
                 </div>
               </div>
@@ -186,7 +186,7 @@ export default function Payments() {
           {receipt ? (
             <div className="flex flex-col gap-3">
               <p className="rounded-lg bg-accent-bg p-3 text-sm text-accent-text">
-                {formatINR(receipt.amount)} · {receipt.mode} · {receipt.customerName}
+                {formatINR(receipt.amount)} · {t(`mode.${receipt.mode}`)} · {receipt.customerName}
               </p>
               <div className="flex justify-between text-sm">
                 <span className="text-muted">{t('common.pending')}</span>
@@ -254,7 +254,7 @@ export default function Payments() {
                     >
                       {MODES.map((m) => (
                         <option key={m} value={m}>
-                          {m}
+                          {t(`mode.${m}`)}
                         </option>
                       ))}
                     </select>

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
+import { useLanguage } from '@/context/LanguageContext'
 
 export function ProtectedRoute({
   children,
@@ -17,9 +18,10 @@ export function ProtectedRoute({
   supplierOnly?: boolean
 }) {
   const { session, supplier, loading, signOut } = useAuth()
+  const { t } = useLanguage()
 
   if (loading) {
-    return <div className="flex min-h-screen items-center justify-center text-muted">Loading…</div>
+    return <div className="flex min-h-screen items-center justify-center text-muted">{t('common.loading')}</div>
   }
 
   if (!session || !supplier) {
@@ -33,16 +35,16 @@ export function ProtectedRoute({
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-shell p-4 text-center">
         <p className="text-lg font-semibold text-white">
-          Your account is {supplier.status === 'suspended' ? 'suspended' : 'deactivated'}.
+          {t(supplier.status === 'suspended' ? 'account.suspended' : 'account.deactivated')}
         </p>
         <p className="max-w-sm text-sm text-sidebar-text">
-          {supplier.suspension_reason || 'Contact the BuildSupply admin to restore access.'}
+          {supplier.suspension_reason || t('account.contactAdmin')}
         </p>
         <button
           onClick={() => signOut()}
           className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white"
         >
-          Sign out
+          {t('nav.signOut')}
         </button>
       </div>
     )

@@ -13,6 +13,7 @@ import { createQuotation } from '@/services/quotations'
 import { listInvoices, type NewInvoiceItem } from '@/services/invoices'
 import type { Customer, Material } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
+import { useLanguage } from '@/context/LanguageContext'
 import { sanitizeDigits, sanitizeDecimal } from '@/lib/numberInput'
 
 const GST_RATE = 0.18
@@ -27,6 +28,7 @@ interface LineItem extends NewInvoiceItem {
 // deliberately absent here.
 export default function NewQuotation() {
   const { supplier } = useAuth()
+  const { t } = useLanguage()
   const navigate = useNavigate()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [materials, setMaterials] = useState<Material[]>([])
@@ -119,21 +121,21 @@ export default function NewQuotation() {
 
   return (
     <div>
-      <PageHeader title="New Estimate" subtitle="Site, materials and GST — shareable as a PDF, doesn't touch stock or ledgers" />
+      <PageHeader title={t('quo.new')} subtitle={t('quo.newSubtitle')} />
 
       <Card className="mb-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <div className="flex items-center justify-between">
               <Label htmlFor="customer" className="mb-1.5">
-                Customer
+                {t('common.customer')}
               </Label>
               <button
                 type="button"
                 onClick={() => setAddCustomerOpen(true)}
                 className="mb-1.5 text-xs font-semibold text-accent hover:text-accent-soft"
               >
-                + New customer
+                {t('inv.newCustomer')}
               </button>
             </div>
             <select
@@ -142,7 +144,7 @@ export default function NewQuotation() {
               onChange={(e) => pickCustomer(e.target.value)}
               className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-accent"
             >
-              <option value="">Select a customer…</option>
+              <option value="">{t('inv.selectCustomer')}</option>
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -151,7 +153,7 @@ export default function NewQuotation() {
             </select>
           </div>
           <div>
-            <Label htmlFor="site">Site / delivery place</Label>
+            <Label htmlFor="site">{t('inv.sitePlace')}</Label>
             <Input
               id="site"
               list="known-sites"
@@ -170,25 +172,25 @@ export default function NewQuotation() {
 
       <Card className="mb-4">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold">Items</h3>
+          <h3 className="text-sm font-semibold">{t('inv.items')}</h3>
           <Button size="sm" variant="outline" onClick={addItem}>
-            <Plus size={14} /> Add item
+            <Plus size={14} /> {t('inv.addItem')}
           </Button>
         </div>
 
-        {items.length === 0 && <p className="text-sm text-muted">No items added yet.</p>}
+        {items.length === 0 && <p className="text-sm text-muted">{t('quo.noItems')}</p>}
 
         <div className="flex flex-col gap-3">
           {items.map((item) => (
             <div key={item.key} className="grid grid-cols-1 gap-2 rounded-lg border border-border p-3 sm:grid-cols-[2fr_1fr_1fr_1fr_auto] sm:items-end">
               <div>
-                <Label>Material</Label>
+                <Label>{t('inv.material')}</Label>
                 <select
                   value={item.material_id ?? ''}
                   onChange={(e) => (e.target.value ? pickMaterial(item.key, e.target.value) : updateItem(item.key, { material_id: null }))}
                   className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-accent"
                 >
-                  <option value="">Custom / choose material…</option>
+                  <option value="">{t('inv.customMaterial')}</option>
                   {materials.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.name}
@@ -197,11 +199,11 @@ export default function NewQuotation() {
                 </select>
               </div>
               <div>
-                <Label>Description</Label>
+                <Label>{t('inv.description')}</Label>
                 <Input value={item.description} onChange={(e) => updateItem(item.key, { description: e.target.value })} />
               </div>
               <div>
-                <Label>Qty</Label>
+                <Label>{t('common.qty')}</Label>
                 <Input
                   type="text"
                   inputMode="numeric"
@@ -210,7 +212,7 @@ export default function NewQuotation() {
                 />
               </div>
               <div>
-                <Label>Rate (₹)</Label>
+                <Label>{t('common.rate')} (₹)</Label>
                 <Input
                   type="text"
                   inputMode="decimal"
@@ -229,10 +231,10 @@ export default function NewQuotation() {
       <Card className="mb-4">
         <label className="mb-3 flex items-center gap-2 text-sm">
           <input type="checkbox" checked={gstApplicable} onChange={(e) => setGstApplicable(e.target.checked)} />
-          Apply GST (18%)
+          {t('inv.applyGst')}
         </label>
         <div className="mb-3">
-          <Label htmlFor="transport-labour">Transport + Labour (₹, optional)</Label>
+          <Label htmlFor="transport-labour">{t('inv.transportLabour')}</Label>
           <Input
             id="transport-labour"
             type="text"
@@ -244,30 +246,30 @@ export default function NewQuotation() {
         </div>
         <div className="flex flex-col gap-1.5 text-sm">
           <div className="flex justify-between">
-            <span className="text-muted">Subtotal</span>
+            <span className="text-muted">{t('inv.subtotal')}</span>
             <span>₹{subtotal.toLocaleString('en-IN')}</span>
           </div>
           {gstApplicable && (
             <div className="flex justify-between">
-              <span className="text-muted">GST (18%)</span>
+              <span className="text-muted">{t('inv.gst')}</span>
               <span>₹{gst.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
             </div>
           )}
           {transportLabourAmount > 0 && (
             <div className="flex justify-between">
-              <span className="text-muted">Transport + Labour</span>
+              <span className="text-muted">{t('inv.transportLabourShort')}</span>
               <span>₹{transportLabourAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
             </div>
           )}
           <div className="mt-1 flex justify-between border-t border-border pt-2 text-base font-bold">
-            <span>Total</span>
+            <span>{t('common.total')}</span>
             <span>₹{total.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
           </div>
         </div>
       </Card>
 
       <Button onClick={handleSave} disabled={saving || !customerId || items.length === 0} className="w-full sm:w-auto">
-        {saving ? 'Saving…' : 'Save estimate'}
+        {saving ? t('common.saving') : t('quo.save')}
       </Button>
 
       {addCustomerOpen && supplier && (

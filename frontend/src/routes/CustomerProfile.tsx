@@ -156,7 +156,7 @@ export default function CustomerProfile() {
       paidSummary.balance > 0 ? t('pay.receiptBalance', { amount: formatINR(paidSummary.balance) }) : t('pay.receiptSettled')
     const message = t('pay.receiptMessage', {
       amount: formatINR(paidSummary.amount),
-      mode: paidSummary.mode,
+      mode: t(`mode.${paidSummary.mode}`),
       date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
       balance: balanceLine,
     })
@@ -168,7 +168,7 @@ export default function CustomerProfile() {
   const siteBreakdown = Array.from(
     liveInvoices
       .reduce((map, inv) => {
-        const key = inv.site?.trim() || 'No site recorded'
+        const key = inv.site?.trim() || t('cust.noSite')
         const cur = map.get(key) ?? { billed: 0, pending: 0 }
         cur.billed += Number(inv.total)
         cur.pending += Number(inv.total) - Number(inv.paid)
@@ -425,7 +425,7 @@ export default function CustomerProfile() {
                   >
                     {PAYMENT_MODES.map((m) => (
                       <option key={m} value={m}>
-                        {m}
+                        {t(`mode.${m}`)}
                       </option>
                     ))}
                   </select>

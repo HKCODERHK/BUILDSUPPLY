@@ -49,7 +49,7 @@ export default function Settings() {
 
   return (
     <div>
-      <PageHeader title="Business profile" subtitle="Your business details, shown on invoices" />
+      <PageHeader title={t('set.title')} subtitle={t('set.subtitle')} />
 
       {/* Documents stay in English on purpose: a bill goes to customers,
           engineers and banks who may not read Devanagari, and a supplier
@@ -76,17 +76,17 @@ export default function Settings() {
       </Card>
 
       <Card className="mb-4 max-w-lg">
-        <Label>Business logo</Label>
+        <Label>{t('set.logo')}</Label>
         <div className="flex items-center gap-4">
           {supplier?.logo_url ? (
-            <img src={supplier.logo_url} alt="Business logo" className="h-16 w-16 rounded-lg border border-border object-cover" />
+            <img src={supplier.logo_url} alt={t('set.logo')} className="h-16 w-16 rounded-lg border border-border object-cover" />
           ) : (
             <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-border text-xs text-muted-2">
-              No logo
+              {t('set.noLogo')}
             </div>
           )}
           <label className="cursor-pointer text-sm font-semibold text-accent">
-            {uploading ? 'Uploading…' : 'Upload new logo'}
+            {uploading ? t('set.uploading') : t('set.uploadLogo')}
             <input type="file" accept="image/*" className="hidden" onChange={handleLogoChange} disabled={uploading} />
           </label>
         </div>
@@ -95,7 +95,7 @@ export default function Settings() {
       <Card className="max-w-lg">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <Label htmlFor="business_name">Business name</Label>
+            <Label htmlFor="business_name">{t('set.businessName')}</Label>
             <Input
               id="business_name"
               required
@@ -104,37 +104,37 @@ export default function Settings() {
             />
           </div>
           <div>
-            <Label htmlFor="phone">Phone</Label>
+            <Label htmlFor="phone">{t('common.phone')}</Label>
             <Input id="phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           </div>
           <div>
             {/* Printed in the FROM block of every invoice, estimate and
                 statement — without it those PDFs go out with no address. */}
-            <Label htmlFor="address">Business address</Label>
+            <Label htmlFor="address">{t('set.businessAddress')}</Label>
             <Input
               id="address"
-              placeholder="Shown on every bill and statement"
+              placeholder={t('set.addressHint')}
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
             />
           </div>
           <div>
-            <Label htmlFor="gst">GST number</Label>
+            <Label htmlFor="gst">{t('set.gstNumber')}</Label>
             <Input
               id="gst"
-              placeholder="Leave blank if you are not GST registered"
+              placeholder={t('set.gstPlaceholder')}
               value={form.gst_number}
               onChange={(e) => setForm({ ...form, gst_number: e.target.value })}
             />
             <p className="mt-1.5 text-xs text-muted">
-              Leave this blank and new bills will start with GST switched off.
+              {t('set.gstHint')}
             </p>
           </div>
           <div className="flex items-center gap-3">
             <Button type="submit" disabled={saving}>
-              {saving ? 'Saving…' : 'Save changes'}
+              {saving ? t('common.saving') : t('cust.saveChanges')}
             </Button>
-            {saved && <span className="text-xs text-accent">Saved!</span>}
+            {saved && <span className="text-xs text-accent">{t('set.saved')}</span>}
           </div>
         </form>
       </Card>

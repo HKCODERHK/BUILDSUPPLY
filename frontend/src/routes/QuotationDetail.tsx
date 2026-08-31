@@ -15,6 +15,7 @@ import { openWhatsAppShare } from '@/lib/whatsapp'
 import { downloadFile } from '@/lib/downloadFile'
 import { logActivity } from '@/services/activityLog'
 import { useAuth } from '@/context/AuthContext'
+import { useLanguage } from '@/context/LanguageContext'
 import { QUOTATION_STATUS_TONE } from '@/lib/quotationStatus'
 import type { Quotation, QuotationItem, Customer } from '@/lib/database.types'
 
@@ -26,6 +27,7 @@ export default function QuotationDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { supplier } = useAuth()
+  const { t } = useLanguage()
   const [quotation, setQuotation] = useState<Quotation | null>(null)
   const [items, setItems] = useState<QuotationItem[]>([])
   const [customer, setCustomer] = useState<Customer | null>(null)
@@ -56,7 +58,7 @@ export default function QuotationDetail() {
   if (loading || !quotation) {
     return (
       <div>
-        <PageHeader title="Estimate" subtitle="Loading…" />
+        <PageHeader title={t('quo.detailTitle')} subtitle={t('common.loading')} />
       </div>
     )
   }
@@ -146,17 +148,17 @@ export default function QuotationDetail() {
         action={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" onClick={handleDownload}>
-              <Download size={14} /> Download PDF
+              <Download size={14} /> {t('inv.download')}
             </Button>
             <Button variant="outline" size="sm" onClick={handlePrint}>
-              <Printer size={14} /> Print
+              <Printer size={14} /> {t('inv.print')}
             </Button>
             <Button variant="outline" size="sm" onClick={shareOnWhatsApp} disabled={sharing}>
-              <WhatsAppIcon size={14} /> {sharing ? 'Preparing…' : 'Send on WhatsApp'}
+              <WhatsAppIcon size={14} /> {sharing ? t('common.preparing') : t('common.sendWhatsApp')}
             </Button>
             {canConvert && (
               <Button size="sm" onClick={handleConvert} disabled={converting}>
-                <ArrowRightLeft size={14} /> {converting ? 'Converting…' : 'Convert to Invoice'}
+                <ArrowRightLeft size={14} /> {converting ? t('quo.converting') : t('quo.convert')}
               </Button>
             )}
           </div>
@@ -189,11 +191,11 @@ export default function QuotationDetail() {
                   {customer.name}
                 </Link>
               ) : (
-                'Walk-in customer'
+                t('inv.walkIn')
               )}
             </div>
             {customer?.address && <div className="text-sm text-muted">{customer.address}</div>}
-            {quotation.site && <div className="text-sm text-muted">Site: {quotation.site}</div>}
+            {quotation.site && <div className="text-sm text-muted">{t('common.site')}: {quotation.site}</div>}
             {customer?.phone && <div className="text-sm text-muted">{customer.phone}</div>}
           </div>
         </div>
@@ -203,10 +205,10 @@ export default function QuotationDetail() {
             <thead>
               <tr className="border-b border-border text-xs text-muted">
                 <th className="py-2 pr-3 font-medium">#</th>
-                <th className="py-2 pr-3 font-medium">Particulars</th>
-                <th className="py-2 pr-3 text-right font-medium">Qty</th>
-                <th className="py-2 pr-3 text-right font-medium">Rate</th>
-                <th className="py-2 pr-3 text-right font-medium">Amount</th>
+                <th className="py-2 pr-3 font-medium">{t('inv.particulars')}</th>
+                <th className="py-2 pr-3 text-right font-medium">{t('common.qty')}</th>
+                <th className="py-2 pr-3 text-right font-medium">{t('common.rate')}</th>
+                <th className="py-2 pr-3 text-right font-medium">{t('common.amount')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -226,48 +228,46 @@ export default function QuotationDetail() {
         <div className="mt-6 flex justify-end">
           <div className="w-full max-w-xs space-y-2 text-sm">
             <div className="flex justify-between text-muted">
-              <span>Subtotal</span>
+              <span>{t('inv.subtotal')}</span>
               <span>{formatINR(quotation.subtotal)}</span>
             </div>
             {quotation.gst_amount > 0 && (
               <div className="flex justify-between text-muted">
-                <span>GST</span>
+                <span>{t('inv.gst')}</span>
                 <span>{formatINR(quotation.gst_amount)}</span>
               </div>
             )}
             {quotation.transport_labour_charge > 0 && (
               <div className="flex justify-between text-muted">
-                <span>Transport + Labour</span>
+                <span>{t('inv.transportLabourShort')}</span>
                 <span>{formatINR(quotation.transport_labour_charge)}</span>
               </div>
             )}
             <div className="flex justify-between border-t border-border pt-2 text-base font-bold text-ink">
-              <span>Grand Total</span>
+              <span>{t('inv.grandTotal')}</span>
               <span>{formatINR(quotation.total)}</span>
             </div>
           </div>
         </div>
 
         <div className="mt-6 flex items-center justify-between border-t border-border pt-4">
-          <Badge tone={QUOTATION_STATUS_TONE[quotation.status]}>{quotation.status}</Badge>
-          <p className="text-sm italic text-muted">This is an estimate, not a tax invoice.</p>
+          <Badge tone={QUOTATION_STATUS_TONE[quotation.status]}>{t(`status.${quotation.status}`)}</Badge>
+          <p className="text-sm italic text-muted">{t('quo.notTaxInvoice')}</p>
         </div>
       </Card>
 
       {deliveryPrompt && (
-        <Modal title="Delivery" onClose={() => respondToDeliveryPrompt(false)}>
+        <Modal title={t('inv.delivery')} onClose={() => respondToDeliveryPrompt(false)}>
           <p className="mb-4 text-sm text-ink">
-            {quotation.quote_no} is now {deliveryPrompt.invoice_no}. Have you delivered the material to the customer?
+            {t('quo.convertedAsk', { quote: quotation.quote_no, no: deliveryPrompt.invoice_no })}
           </p>
-          <p className="mb-4 text-xs text-muted">
-            If yes, stock will be reduced now to match this bill. If not yet, you can mark it delivered later from the Invoices list.
-          </p>
+          <p className="mb-4 text-xs text-muted">{t('inv.deliveryHint')}</p>
           <div className="flex gap-2">
             <Button className="flex-1" disabled={confirmingDelivery} onClick={() => respondToDeliveryPrompt(true)}>
-              Yes, delivered
+              {t('inv.deliveredYes')}
             </Button>
             <Button variant="outline" className="flex-1" disabled={confirmingDelivery} onClick={() => respondToDeliveryPrompt(false)}>
-              Not yet
+              {t('inv.deliveredNot')}
             </Button>
           </div>
         </Modal>

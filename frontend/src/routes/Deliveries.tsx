@@ -4,12 +4,14 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { listInvoices, markInvoiceDelivered, type InvoiceWithCustomer } from '@/services/invoices'
+import { useLanguage } from '@/context/LanguageContext'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
 }
 
 export default function Deliveries() {
+  const { t } = useLanguage()
   const [invoices, setInvoices] = useState<InvoiceWithCustomer[]>([])
   const [loading, setLoading] = useState(true)
   const [markingId, setMarkingId] = useState<string | null>(null)
@@ -36,19 +38,14 @@ export default function Deliveries() {
 
   return (
     <div>
-      <PageHeader
-        title="Deliveries"
-        subtitle="Bills that still have to go out — marking one delivered reduces your stock"
-      />
+      <PageHeader title={t('del.title')} subtitle={t('del.subtitle')} />
 
       {loading ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <p className="text-sm text-muted">{t('common.loading')}</p>
       ) : (
         <Card>
           <div className="flex flex-col divide-y divide-border">
-            {pending.length === 0 && (
-              <p className="py-3 text-sm text-muted">Nothing pending — everything billed has been delivered.</p>
-            )}
+            {pending.length === 0 && <p className="py-3 text-sm text-muted">{t('del.none')}</p>}
             {pending.map((inv) => (
               <div key={inv.id} className="flex items-center justify-between gap-3 py-3 text-sm">
                 <div className="min-w-0">
@@ -61,7 +58,7 @@ export default function Deliveries() {
                   </div>
                 </div>
                 <Button size="sm" onClick={() => handleMarkDelivered(inv.id)} disabled={markingId === inv.id}>
-                  {markingId === inv.id ? 'Marking…' : 'Mark delivered'}
+                  {markingId === inv.id ? t('inv.marking') : t('inv.markDelivered')}
                 </Button>
               </div>
             ))}

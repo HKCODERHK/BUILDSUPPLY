@@ -317,25 +317,23 @@ export default function Materials() {
       ) : (
         <>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm text-muted">
-              Materials your admin has added — pick one to add it to your own list with your own price and stock.
-            </p>
+            <p className="text-sm text-muted">{t('mat.catalogBlurb')}</p>
             <button onClick={openCreate} className="text-xs font-semibold text-accent whitespace-nowrap">
-              Can't find your material? + Add Custom Material
+              {t('mat.cantFind')}
             </button>
           </div>
           <Input
-            placeholder="Search — try “cement”, “12mm”, “river”, “400 cft”…"
+            placeholder={t('mat.catalogSearch')}
             value={catalogQuery}
             onChange={(e) => setCatalogQuery(e.target.value)}
             className="mb-4 max-w-md"
           />
 
           {catalogLoading ? (
-            <p className="text-sm text-muted">Searching…</p>
+            <p className="text-sm text-muted">{t('mat.searching')}</p>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {catalog.length === 0 && <p className="text-sm text-muted">No catalog materials found.</p>}
+              {catalog.length === 0 && <p className="text-sm text-muted">{t('mat.catalogNone')}</p>}
               {catalog.map((m) => {
                 const alreadyAdded = addedMasterIds.has(m.id)
                 const variantSummary = summarizeAttributes(m.attributes)
@@ -363,7 +361,7 @@ export default function Materials() {
                       onClick={() => addFromCatalog(m)}
                       className="mt-3 w-full"
                     >
-                      {alreadyAdded ? 'Already added' : addingCatalogId === m.id ? 'Adding…' : 'Add to my materials'}
+                      {alreadyAdded ? t('mat.alreadyAdded') : addingCatalogId === m.id ? t('mat.adding') : t('mat.addToMine')}
                     </Button>
                   </Card>
                 )
@@ -381,7 +379,7 @@ export default function Materials() {
               <Input id="name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </div>
             <div>
-              <Label htmlFor="category">Category</Label>
+              <Label htmlFor="category">{t('mat.category')}</Label>
               <Input id="category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -396,16 +394,16 @@ export default function Materials() {
                 />
               </div>
               <div>
-                <Label htmlFor="per_label">Per (e.g. / truck)</Label>
+                <Label htmlFor="per_label">{t('mat.per')}</Label>
                 <Input id="per_label" value={form.per_label} onChange={(e) => setForm({ ...form, per_label: e.target.value })} />
               </div>
             </div>
             <div>
-              <Label htmlFor="unit_label">Unit label (e.g. Truck 400 CFT)</Label>
+              <Label htmlFor="unit_label">{t('mat.unitLabel')}</Label>
               <Input id="unit_label" value={form.unit_label} onChange={(e) => setForm({ ...form, unit_label: e.target.value })} />
             </div>
             <div>
-              <Label htmlFor="low_stock_threshold">Low stock alert below</Label>
+              <Label htmlFor="low_stock_threshold">{t('mat.lowStockBelow')}</Label>
               <Input
                 id="low_stock_threshold"
                 type="text"
@@ -437,7 +435,7 @@ export default function Materials() {
                 onChange={(e) => setAddStockForm({ ...addStockForm, materialId: e.target.value })}
                 className="h-10 w-full max-w-full truncate rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-accent"
               >
-                <option value="">Select from your materials…</option>
+                <option value="">{t('mat.selectMaterial')}</option>
                 {materials.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.name}
@@ -446,12 +444,12 @@ export default function Materials() {
               </select>
               {selectedStockMaterial && (
                 <p className="mt-1.5 text-xs text-muted">
-                  Currently {selectedStockMaterial.stock_qty} {selectedStockMaterial.stock_unit ?? ''} in stock
+                  {t('mat.currentlyInStock', { qty: `${selectedStockMaterial.stock_qty} ${selectedStockMaterial.stock_unit ?? ''}`.trim() })}
                 </p>
               )}
             </div>
             <div>
-              <Label htmlFor="add-stock-qty">Quantity to add</Label>
+              <Label htmlFor="add-stock-qty">{t('mat.qtyToAdd')}</Label>
               <Input
                 id="add-stock-qty"
                 type="text"
@@ -463,8 +461,9 @@ export default function Materials() {
             </div>
             {selectedStockMaterial && Number(addStockForm.qty) > 0 && (
               <p className="rounded-lg bg-accent-bg px-3 py-2 text-xs text-accent-text">
-                New total will be {Number(selectedStockMaterial.stock_qty) + Number(addStockForm.qty)}{' '}
-                {selectedStockMaterial.stock_unit ?? ''}
+                {t('mat.newTotal', {
+                  qty: `${Number(selectedStockMaterial.stock_qty) + Number(addStockForm.qty)} ${selectedStockMaterial.stock_unit ?? ''}`.trim(),
+                })}
               </p>
             )}
             <Button type="submit" disabled={addingStock}>

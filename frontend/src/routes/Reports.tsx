@@ -15,6 +15,7 @@ import { downloadCustomerLedgerPdf } from '@/lib/customerLedgerPdf'
 import { buildCustomerLedger } from '@/lib/customerLedger'
 import { logActivity } from '@/services/activityLog'
 import { useAuth } from '@/context/AuthContext'
+import { useLanguage } from '@/context/LanguageContext'
 
 function isLowStock(m: Material) {
   const threshold = m.low_stock_threshold ?? 5
@@ -32,11 +33,14 @@ function formatDate(iso: string) {
 interface ReportCardProps {
   title: string
   hint: string
+  // Passed in rather than translated here so ReportCard stays a dumb
+  // presentational component with no dependency on the language context.
+  label: string
   disabled?: boolean
   onDownload: () => void
 }
 
-function ReportCard({ title, hint, disabled, onDownload }: ReportCardProps) {
+function ReportCard({ title, hint, label, disabled, onDownload }: ReportCardProps) {
   return (
     <Card>
       <CardHeader>
@@ -44,7 +48,7 @@ function ReportCard({ title, hint, disabled, onDownload }: ReportCardProps) {
       </CardHeader>
       <p className="mb-4 text-sm text-muted">{hint}</p>
       <Button variant="outline" disabled={disabled} onClick={onDownload}>
-        <Download size={15} /> Download PDF
+        <Download size={15} /> {label}
       </Button>
     </Card>
   )
@@ -52,6 +56,7 @@ function ReportCard({ title, hint, disabled, onDownload }: ReportCardProps) {
 
 export default function Reports() {
   const { supplier } = useAuth()
+  const { t } = useLanguage()
   const [invoices, setInvoices] = useState<InvoiceWithCustomer[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [payments, setPayments] = useState<PaymentWithInvoice[]>([])
@@ -228,27 +233,27 @@ export default function Reports() {
 
   return (
     <div>
-      <PageHeader title="Reports" subtitle="Download your records as PDF — generated in your browser" />
+      <PageHeader title={t('rep.title')} subtitle={t('rep.subtitle')} />
 
       <Card className="mb-6">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <Label htmlFor="date-from">From</Label>
+            <Label htmlFor="date-from">{t('rep.from')}</Label>
             <Input id="date-from" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
           </div>
           <div>
-            <Label htmlFor="date-to">To</Label>
+            <Label htmlFor="date-to">{t('rep.to')}</Label>
             <Input id="date-to" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
           </div>
           <div>
-            <Label htmlFor="filter-customer">Customer</Label>
+            <Label htmlFor="filter-customer">{t('common.customer')}</Label>
             <select
               id="filter-customer"
               value={customerId}
               onChange={(e) => setCustomerId(e.target.value)}
               className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-accent"
             >
-              <option value="">All customers</option>
+              <option value="">{t('rep.allCustomers')}</option>
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -257,14 +262,16 @@ export default function Reports() {
             </select>
           </div>
           <div>
-            <Label htmlFor="filter-site">Site</Label>
+            <Label htmlFor="filter-site">{t('common.site')}</Label>
             <select
               id="filter-site"
               value={site}
               onChange={(e) => setSite(e.target.value)}
               className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-accent"
             >
-              <option value="">{selectedCustomer ? `All sites of ${selectedCustomer.name}` : 'All sites'}</option>
+              <option value="">
+                {selectedCustomer ? t('rep.allSitesOf', { name: selectedCustomer.name }) : t('rep.allSites')}
+              </option>
               {sites.map((s) => (
                 <option key={s} value={s}>
                   {s}
@@ -283,18 +290,19 @@ export default function Reports() {
               setSite('')
             }}
           >
-            Clear filters
+            {t('rep.clearFilters')}
           </button>
         )}
       </Card>
 
       {loading ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <p className="text-sm text-muted">{t('common.loading')}</p>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <ReportCard
-            title="Daily Sales Report"
-            hint={`Set From and To to the same day. ${filteredInvoices.length} invoice(s) in range.`}
+            title={t('rep.dailySales')}
+            hint={t('rep.dailyHint', { count: filteredInvoices.length })}
+            label={t('inv.download')}
             onDownload={() =>
               runReport(
                 'Daily Sales Report',
@@ -307,8 +315,9 @@ export default function Reports() {
           />
 
           <ReportCard
-            title="Monthly Sales Report"
-            hint={`Set From and To to cover the month. ${filteredInvoices.length} invoice(s) in range.`}
+            title={t('rep.monthlySales')}
+            hint={t('rep.monthlyHint', { count: filteredInvoices.length })}
+            label={t('inv.download')}
             onDownload={() =>
               runReport(
                 'Monthly Sales Report',
@@ -321,19 +330,28 @@ export default function Reports() {
           />
 
           <ReportCard
-            title="Pending Amount Report"
-            hint={`Customers who still owe money. ${pendingAmountRows().length} customer(s) match your filters.`}
+            title={t('rep.pendingAmount')}
+            hint={t('rep.pendingHint', { count: pendingAmountRows().length })}
+            label={t('inv.download')}
             onDownload={() =>
               runReport('Pending Amount Report', ['Name', 'Phone', 'Site', 'Pending'], pendingAmountRows(), 'pending-amount.pdf', [3])
             }
           />
 
           <ReportCard
-            title="Customer Ledger"
+            title={t('rep.customerLedger')}
+            label={t('inv.download')}
             hint={
               selectedCustomer
-                ? `Statement for ${selectedCustomer.name} — ${site ? `site "${site}" only` : sites.length > 1 ? `all ${sites.length} sites (pick one above to narrow it)` : 'all sites'}. Bills, every payment with its mode, and the balance due.`
-                : 'Pick a customer above to generate their ledger.'
+                ? t('rep.ledgerHint', {
+                    name: selectedCustomer.name,
+                    scope: site
+                      ? t('rep.scopeOneSite', { site })
+                      : sites.length > 1
+                        ? t('rep.scopeManySites', { count: sites.length })
+                        : t('rep.scopeAllSites'),
+                  })
+                : t('rep.ledgerPick')
             }
             disabled={!customerId}
             onDownload={() => {
@@ -353,8 +371,9 @@ export default function Reports() {
           />
 
           <ReportCard
-            title="Material Wise Sales"
-            hint={`Quantity and value sold per material. ${materialWiseSalesRows().length} material(s) in range.`}
+            title={t('rep.materialWise')}
+            hint={t('rep.materialHint', { count: materialWiseSalesRows().length })}
+            label={t('inv.download')}
             onDownload={() =>
               runReport(
                 'Material Wise Sales',
@@ -367,8 +386,9 @@ export default function Reports() {
           />
 
           <ReportCard
-            title="Stock Report"
-            hint={`Current stock on hand — not affected by date filters. ${materials.length} material(s).`}
+            title={t('rep.stockReport')}
+            hint={t('rep.stockHint', { count: materials.length })}
+            label={t('inv.download')}
             onDownload={() =>
               runReport('Stock Report', ['Material', 'Current', 'Min', 'Status'], stockReportRows(), 'stock-report.pdf')
             }

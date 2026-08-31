@@ -179,7 +179,7 @@ export default function InvoiceDetail() {
               )}
             </div>
             {customer?.address && <div className="text-sm text-muted">{customer.address}</div>}
-            {invoice.site && <div className="text-sm text-muted">Site: {invoice.site}</div>}
+            {invoice.site && <div className="text-sm text-muted">{t('common.site')}: {invoice.site}</div>}
             {customer?.phone && <div className="text-sm text-muted">{customer.phone}</div>}
           </div>
         </div>
@@ -263,25 +263,23 @@ export default function InvoiceDetail() {
       </Card>
 
       {confirmCancel && (
-        <Modal title="Cancel this bill?" onClose={() => setConfirmCancel(false)}>
+        <Modal title={t('inv.cancelTitle')} onClose={() => setConfirmCancel(false)}>
           <p className="mb-3 text-sm text-ink">
-            {invoice.invoice_no} will stop counting in your sales and in {customer?.name ?? 'the customer'}'s khata.
+            {t('inv.cancelIntro', { no: invoice.invoice_no, customer: customer?.name ?? t('inv.cancelTheCustomer') })}
           </p>
           <ul className="mb-4 list-disc space-y-1 pl-5 text-xs text-muted">
-            {invoice.delivered && <li>The stock it used will be added back.</li>}
+            {invoice.delivered && <li>{t('inv.cancelStock')}</li>}
             {invoice.paid > 0 && (
-              <li className="text-red-600">
-                The {formatINR(invoice.paid)} recorded against it will be removed.
-              </li>
+              <li className="text-red-600">{t('inv.cancelPayment', { amount: formatINR(invoice.paid) })}</li>
             )}
-            <li>The bill stays in your records, marked cancelled.</li>
+            <li>{t('inv.cancelKept')}</li>
           </ul>
           <div className="flex gap-2">
             <Button variant="outline" className="flex-1" disabled={cancelling} onClick={() => setConfirmCancel(false)}>
-              Keep bill
+              {t('inv.keepBill')}
             </Button>
             <Button variant="danger" className="flex-1" disabled={cancelling} onClick={handleCancel}>
-              {cancelling ? 'Cancelling…' : 'Yes, cancel it'}
+              {cancelling ? t('inv.cancelling') : t('inv.confirmCancel')}
             </Button>
           </div>
         </Modal>

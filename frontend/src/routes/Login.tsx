@@ -8,6 +8,7 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { openWhatsAppShare } from '@/lib/whatsapp'
+import { useLanguage } from '@/context/LanguageContext'
 
 // Reaches the BuildSupply admin directly — this is the one WhatsApp number
 // prospective suppliers should message to ask about a subscription.
@@ -15,6 +16,7 @@ const ADMIN_WHATSAPP_NUMBER = '9575011204'
 
 export default function Login() {
   const { session, signIn, loading } = useAuth()
+  const { t } = useLanguage()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -49,11 +51,11 @@ export default function Login() {
           </svg>
           <span className="text-lg font-bold text-ink">BuildSupply</span>
         </div>
-        <h1 className="mb-5 text-center text-sm text-muted">Sign in to your account</h1>
+        <h1 className="mb-5 text-center text-sm text-muted">{t('auth.signInTitle')}</h1>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t('auth.email')}</Label>
             <Input
               id="email"
               type="email"
@@ -66,10 +68,10 @@ export default function Login() {
           <div>
             <div className="flex items-center justify-between">
               <Label htmlFor="password" className="mb-1.5">
-                Password
+                {t('auth.password')}
               </Label>
               <Link to="/forgot-password" className="mb-1.5 text-xs font-medium text-accent">
-                Forgot password?
+                {t('auth.forgot')}
               </Link>
             </div>
             <Input
@@ -83,14 +85,14 @@ export default function Login() {
           </div>
           {error && <p className="text-xs text-red-600">{error}</p>}
           <Button type="submit" disabled={submitting} className="mt-1 w-full">
-            {submitting ? 'Signing in…' : 'Sign in'}
+            {submitting ? t('auth.signingIn') : t('auth.signIn')}
           </Button>
         </form>
 
         <p className="mt-5 text-center text-xs text-muted-2">
-          Don't have an account?
+          {t('auth.noAccount')}
           <br />
-          Contact the BuildSupply admin to get one created.
+          {t('auth.contactAdmin')}
         </p>
 
         <button
@@ -99,7 +101,7 @@ export default function Login() {
           }
           className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-border py-2.5 text-sm font-semibold text-accent hover:bg-accent-bg"
         >
-          <WhatsAppIcon size={16} /> Ask about a subscription
+          <WhatsAppIcon size={16} /> {t('auth.askSubscription')}
         </button>
       </div>
     </div>

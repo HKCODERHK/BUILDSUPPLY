@@ -19,6 +19,7 @@ import { openWhatsAppShare } from '@/lib/whatsapp'
 import { logActivity } from '@/services/activityLog'
 import { QUOTATION_STATUS_TONE } from '@/lib/quotationStatus'
 import { useAuth } from '@/context/AuthContext'
+import { useLanguage } from '@/context/LanguageContext'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
@@ -26,6 +27,7 @@ function formatINR(n: number) {
 
 export default function Quotations() {
   const { supplier } = useAuth()
+  const { t } = useLanguage()
   const navigate = useNavigate()
   const [quotations, setQuotations] = useState<QuotationWithCustomer[]>([])
   const [loading, setLoading] = useState(true)
@@ -95,30 +97,30 @@ export default function Quotations() {
   return (
     <div>
       <PageHeader
-        title="Estimates & Quotations"
-        subtitle="Send estimates over WhatsApp and convert them to invoices in one click"
+        title={t('quo.title')}
+        subtitle={t('quo.subtitle')}
         action={
           <Link to="/quotations/new">
             <Button>
-              <Plus size={16} /> New Estimate
+              <Plus size={16} /> {t('quo.new')}
             </Button>
           </Link>
         }
       />
 
       {loading ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <p className="text-sm text-muted">{t('common.loading')}</p>
       ) : (
         <Card>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border text-xs text-muted">
-                  <th className="py-2 pr-3 font-medium">No.</th>
-                  <th className="py-2 pr-3 font-medium">Customer</th>
-                  <th className="py-2 pr-3 font-medium">Site</th>
-                  <th className="py-2 pr-3 font-medium">Total</th>
-                  <th className="py-2 pr-3 font-medium">Status</th>
+                  <th className="py-2 pr-3 font-medium">{t('quo.colNo')}</th>
+                  <th className="py-2 pr-3 font-medium">{t('common.customer')}</th>
+                  <th className="py-2 pr-3 font-medium">{t('common.site')}</th>
+                  <th className="py-2 pr-3 font-medium">{t('common.total')}</th>
+                  <th className="py-2 pr-3 font-medium">{t('common.status')}</th>
                   <th className="py-2 pr-3 font-medium"></th>
                   <th className="py-2 pr-3 font-medium"></th>
                 </tr>
@@ -127,7 +129,7 @@ export default function Quotations() {
                 {quotations.length === 0 && (
                   <tr>
                     <td colSpan={7} className="py-4 text-muted">
-                      No estimates yet.
+                      {t('quo.none')}
                     </td>
                   </tr>
                 )}
@@ -142,7 +144,7 @@ export default function Quotations() {
                     <td className="py-2.5 pr-3 text-muted">{q.site ?? '—'}</td>
                     <td className="py-2.5 pr-3 font-semibold">{formatINR(q.total)}</td>
                     <td className="py-2.5 pr-3">
-                      <Badge tone={QUOTATION_STATUS_TONE[q.status]}>{q.status}</Badge>
+                      <Badge tone={QUOTATION_STATUS_TONE[q.status]}>{t(`status.${q.status}`)}</Badge>
                     </td>
                     <td className="py-2.5 pr-3">
                       <button
@@ -156,7 +158,7 @@ export default function Quotations() {
                     <td className="py-2.5 pr-3">
                       {(q.status === 'Draft' || q.status === 'Sent') && (
                         <Button size="sm" onClick={() => handleConvert(q)} disabled={convertingId === q.id}>
-                          {convertingId === q.id ? 'Converting…' : 'Convert to Invoice'}
+                          {convertingId === q.id ? t('quo.converting') : t('quo.convert')}
                         </Button>
                       )}
                     </td>
@@ -169,17 +171,15 @@ export default function Quotations() {
       )}
 
       {deliveryPrompt && (
-        <Modal title="Delivery" onClose={() => respondToDeliveryPrompt(false)}>
-          <p className="mb-4 text-sm text-ink">{deliveryPrompt.invoice_no} is saved. Have you delivered the material to the customer?</p>
-          <p className="mb-4 text-xs text-muted">
-            If yes, stock will be reduced now to match this bill. If not yet, you can mark it delivered later from the Invoices list.
-          </p>
+        <Modal title={t('inv.delivery')} onClose={() => respondToDeliveryPrompt(false)}>
+          <p className="mb-4 text-sm text-ink">{t('inv.deliveryAsk', { no: deliveryPrompt.invoice_no })}</p>
+          <p className="mb-4 text-xs text-muted">{t('inv.deliveryHint')}</p>
           <div className="flex gap-2">
             <Button className="flex-1" disabled={confirmingDelivery} onClick={() => respondToDeliveryPrompt(true)}>
-              Yes, delivered
+              {t('inv.deliveredYes')}
             </Button>
             <Button variant="outline" className="flex-1" disabled={confirmingDelivery} onClick={() => respondToDeliveryPrompt(false)}>
-              Not yet
+              {t('inv.deliveredNot')}
             </Button>
           </div>
         </Modal>

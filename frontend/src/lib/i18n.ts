@@ -340,6 +340,292 @@ const STRINGS = {
     hi: 'सिर्फ़ आपके लिए बदलेगा। बिल और पीडीएफ अंग्रेज़ी में ही रहेंगे ताकि हर ग्राहक पढ़ सके।',
     mr: 'फक्त तुमच्यासाठी बदलेल. बिल आणि पीडीएफ इंग्रजीतच राहतील जेणेकरून प्रत्येक ग्राहक वाचू शकेल.',
   },
+  'set.title': { en: 'Business profile', hi: 'बिज़नेस की जानकारी', mr: 'व्यवसायाची माहिती' },
+  'set.subtitle': {
+    en: 'Your business details, shown on invoices',
+    hi: 'आपके बिज़नेस की जानकारी, जो बिल पर छपती है',
+    mr: 'तुमच्या व्यवसायाची माहिती, जी बिलावर छापली जाते',
+  },
+  'set.logo': { en: 'Business logo', hi: 'बिज़नेस का लोगो', mr: 'व्यवसायाचा लोगो' },
+  'set.noLogo': { en: 'No logo', hi: 'लोगो नहीं', mr: 'लोगो नाही' },
+  'set.uploadLogo': { en: 'Upload new logo', hi: 'नया लोगो डालें', mr: 'नवीन लोगो टाका' },
+  'set.uploading': { en: 'Uploading…', hi: 'अपलोड हो रहा है…', mr: 'अपलोड होत आहे…' },
+  'set.businessName': { en: 'Business name', hi: 'बिज़नेस का नाम', mr: 'व्यवसायाचे नाव' },
+  'set.businessAddress': { en: 'Business address', hi: 'बिज़नेस का पता', mr: 'व्यवसायाचा पत्ता' },
+  'set.addressHint': {
+    en: 'Shown on every bill and statement',
+    hi: 'हर बिल और हिसाब पर दिखेगा',
+    mr: 'प्रत्येक बिल आणि हिशोबावर दिसेल',
+  },
+  'set.gstNumber': { en: 'GST number', hi: 'जीएसटी नंबर', mr: 'जीएसटी नंबर' },
+  'set.gstPlaceholder': {
+    en: 'Leave blank if you are not GST registered',
+    hi: 'जीएसटी नहीं है तो खाली छोड़ें',
+    mr: 'जीएसटी नसेल तर रिकामे ठेवा',
+  },
+  'set.gstHint': {
+    en: 'Leave this blank and new bills will start with GST switched off.',
+    hi: 'खाली छोड़ने पर नए बिल में जीएसटी बंद रहेगा।',
+    mr: 'रिकामे ठेवल्यास नवीन बिलात जीएसटी बंद राहील.',
+  },
+  'set.saved': { en: 'Saved!', hi: 'सेव हो गया!', mr: 'सेव झाले!' },
+
+  // ── Sign in / password ────────────────────────────────────────────────
+  'auth.signInTitle': { en: 'Sign in to your account', hi: 'अपने खाते में लॉग इन करें', mr: 'तुमच्या खात्यात लॉग इन करा' },
+  'auth.email': { en: 'Email', hi: 'ईमेल', mr: 'ईमेल' },
+  'auth.password': { en: 'Password', hi: 'पासवर्ड', mr: 'पासवर्ड' },
+  'auth.forgot': { en: 'Forgot password?', hi: 'पासवर्ड भूल गए?', mr: 'पासवर्ड विसरलात?' },
+  'auth.signIn': { en: 'Sign in', hi: 'लॉग इन करें', mr: 'लॉग इन करा' },
+  'auth.signingIn': { en: 'Signing in…', hi: 'लॉग इन हो रहा है…', mr: 'लॉग इन होत आहे…' },
+  'auth.noAccount': { en: "Don't have an account?", hi: 'खाता नहीं है?', mr: 'खाते नाही?' },
+  'auth.contactAdmin': {
+    en: 'Contact the BuildSupply admin to get one created.',
+    hi: 'खाता बनवाने के लिए BuildSupply एडमिन से संपर्क करें।',
+    mr: 'खाते तयार करण्यासाठी BuildSupply अ‍ॅडमिनशी संपर्क करा.',
+  },
+  'auth.askSubscription': { en: 'Ask about a subscription', hi: 'सब्सक्रिप्शन के बारे में पूछें', mr: 'सबस्क्रिप्शनबद्दल विचारा' },
+  'auth.resetTitle': { en: 'Reset your password', hi: 'पासवर्ड रीसेट करें', mr: 'पासवर्ड रीसेट करा' },
+  'auth.resetSubtitle': {
+    en: "We'll email you a link to set a new one.",
+    hi: 'नया पासवर्ड बनाने का लिंक ईमेल पर भेजेंगे।',
+    mr: 'नवीन पासवर्ड तयार करण्याची लिंक ईमेलवर पाठवू.',
+  },
+  'auth.checkInbox': {
+    en: 'Check your inbox for a password reset link.',
+    hi: 'अपना ईमेल देखें — रीसेट लिंक भेज दिया है।',
+    mr: 'तुमचा ईमेल पहा — रीसेट लिंक पाठवली आहे.',
+  },
+  'auth.sendLink': { en: 'Send reset link', hi: 'रीसेट लिंक भेजें', mr: 'रीसेट लिंक पाठवा' },
+  'auth.sending': { en: 'Sending…', hi: 'भेजा जा रहा है…', mr: 'पाठवत आहे…' },
+  'auth.backToSignIn': { en: 'Back to sign in', hi: 'वापस लॉग इन पर', mr: 'परत लॉग इनवर' },
+  'auth.setNewTitle': { en: 'Set a new password', hi: 'नया पासवर्ड बनाएँ', mr: 'नवीन पासवर्ड तयार करा' },
+  'auth.setNewSubtitle': {
+    en: 'Choose a new password for your account.',
+    hi: 'अपने खाते के लिए नया पासवर्ड चुनें।',
+    mr: 'तुमच्या खात्यासाठी नवीन पासवर्ड निवडा.',
+  },
+  'auth.newPassword': { en: 'New password', hi: 'नया पासवर्ड', mr: 'नवीन पासवर्ड' },
+  'auth.updatePassword': { en: 'Update password', hi: 'पासवर्ड बदलें', mr: 'पासवर्ड बदला' },
+  'auth.verifying': { en: 'Verifying link…', hi: 'लिंक जाँच रहे हैं…', mr: 'लिंक तपासत आहे…' },
+  'auth.invalidLink': {
+    en: 'This reset link is invalid or has already been used.',
+    hi: 'यह रीसेट लिंक गलत है या पहले इस्तेमाल हो चुका है।',
+    mr: 'ही रीसेट लिंक चुकीची आहे किंवा आधीच वापरली गेली आहे.',
+  },
+
+  // ── Blocked account ───────────────────────────────────────────────────
+  'account.suspended': { en: 'Your account is suspended.', hi: 'आपका खाता रोक दिया गया है।', mr: 'तुमचे खाते थांबवले आहे.' },
+  'account.deactivated': { en: 'Your account is deactivated.', hi: 'आपका खाता बंद कर दिया गया है।', mr: 'तुमचे खाते बंद केले आहे.' },
+  'account.contactAdmin': {
+    en: 'Contact the BuildSupply admin to restore access.',
+    hi: 'दोबारा चालू कराने के लिए BuildSupply एडमिन से संपर्क करें।',
+    mr: 'पुन्हा चालू करण्यासाठी BuildSupply अ‍ॅडमिनशी संपर्क करा.',
+  },
+
+  // ── Invoice list ──────────────────────────────────────────────────────
+  'inv.listTitle': { en: 'Invoices', hi: 'बिल', mr: 'बिल' },
+  'inv.listSubtitle': {
+    en: 'Bills, PDF preview and WhatsApp delivery',
+    hi: 'बिल, पीडीएफ और व्हाट्सएप पर भेजना',
+    mr: 'बिल, पीडीएफ आणि व्हॉट्सॲपवर पाठवणे',
+  },
+  'inv.new': { en: 'New invoice', hi: 'नया बिल', mr: 'नवीन बिल' },
+  'inv.searchPlaceholder': {
+    en: 'Search by invoice no., name, address, site or phone…',
+    hi: 'बिल नंबर, नाम, पता, साइट या फ़ोन से खोजें…',
+    mr: 'बिल नंबर, नाव, पत्ता, साईट किंवा फोनने शोधा…',
+  },
+  'inv.colInvoice': { en: 'Invoice', hi: 'बिल', mr: 'बिल' },
+  'inv.colDelivery': { en: 'Delivery', hi: 'डिलीवरी', mr: 'डिलिव्हरी' },
+  'inv.noneYet': { en: 'No invoices yet.', hi: 'अभी कोई बिल नहीं।', mr: 'अजून बिल नाही.' },
+  'inv.noMatch': { en: 'No invoices match your search.', hi: 'खोज से कोई बिल नहीं मिला।', mr: 'शोधाशी जुळणारे बिल नाही.' },
+  'inv.deliveredBadge': { en: 'Delivered', hi: 'दे दिया', mr: 'दिले' },
+  'inv.markDelivered': { en: 'Mark delivered', hi: 'डिलीवर हुआ', mr: 'डिलिव्हर झाले' },
+  'inv.marking': { en: 'Marking…', hi: 'हो रहा है…', mr: 'होत आहे…' },
+
+  // ── Deliveries ────────────────────────────────────────────────────────
+  'del.title': { en: 'Deliveries', hi: 'डिलीवरी', mr: 'डिलिव्हरी' },
+  'del.subtitle': {
+    en: 'Bills that still have to go out — marking one delivered reduces your stock',
+    hi: 'जो माल अभी भेजना बाकी है — डिलीवर करने पर स्टॉक घट जाएगा',
+    mr: 'जो माल अजून पाठवायचा आहे — डिलिव्हर केल्यावर स्टॉक कमी होईल',
+  },
+  'del.none': {
+    en: 'Nothing pending — everything billed has been delivered.',
+    hi: 'कुछ बाकी नहीं — सारा बिल किया माल दे दिया गया।',
+    mr: 'काहीही बाकी नाही — बिल केलेला सर्व माल दिला आहे.',
+  },
+
+  // ── Estimates / quotations ────────────────────────────────────────────
+  'status.Draft': { en: 'Draft', hi: 'ड्राफ्ट', mr: 'ड्राफ्ट' },
+  'status.Sent': { en: 'Sent', hi: 'भेजा गया', mr: 'पाठवले' },
+  'status.Converted': { en: 'Converted', hi: 'बिल बन गया', mr: 'बिल झाले' },
+  'status.Expired': { en: 'Expired', hi: 'समय निकल गया', mr: 'मुदत संपली' },
+  'quo.title': { en: 'Estimates & Quotations', hi: 'अनुमान और कोटेशन', mr: 'अंदाज आणि कोटेशन' },
+  'quo.subtitle': {
+    en: 'Send estimates over WhatsApp and convert them to invoices in one click',
+    hi: 'व्हाट्सएप पर अनुमान भेजें और एक क्लिक में बिल बना दें',
+    mr: 'व्हॉट्सॲपवर अंदाज पाठवा आणि एका क्लिकमध्ये बिल करा',
+  },
+  'quo.new': { en: 'New Estimate', hi: 'नया अनुमान', mr: 'नवीन अंदाज' },
+  'quo.none': { en: 'No estimates yet.', hi: 'अभी कोई अनुमान नहीं।', mr: 'अजून अंदाज नाही.' },
+  'quo.colNo': { en: 'No.', hi: 'नंबर', mr: 'नंबर' },
+  'quo.convert': { en: 'Convert to Invoice', hi: 'बिल बनाएँ', mr: 'बिल करा' },
+  'quo.converting': { en: 'Converting…', hi: 'बन रहा है…', mr: 'होत आहे…' },
+  'quo.newSubtitle': {
+    en: "Site, materials and GST — shareable as a PDF, doesn't touch stock or ledgers",
+    hi: 'साइट, माल और जीएसटी — पीडीएफ में भेजें, स्टॉक या खाते पर कोई असर नहीं',
+    mr: 'साईट, माल आणि जीएसटी — पीडीएफमध्ये पाठवा, स्टॉक किंवा खात्यावर परिणाम नाही',
+  },
+  'quo.noItems': { en: 'No items added yet.', hi: 'अभी कोई माल नहीं जोड़ा।', mr: 'अजून माल जोडला नाही.' },
+  'quo.save': { en: 'Save estimate', hi: 'अनुमान सेव करें', mr: 'अंदाज सेव करा' },
+  'quo.detailTitle': { en: 'Estimate', hi: 'अनुमान', mr: 'अंदाज' },
+  'quo.notTaxInvoice': {
+    en: 'This is an estimate, not a tax invoice.',
+    hi: 'यह सिर्फ़ अनुमान है, टैक्स बिल नहीं।',
+    mr: 'हा फक्त अंदाज आहे, टॅक्स बिल नाही.',
+  },
+  'quo.convertedAsk': {
+    en: '{quote} is now {no}. Have you delivered the material to the customer?',
+    hi: '{quote} अब {no} बन गया। क्या माल ग्राहक को दे दिया?',
+    mr: '{quote} आता {no} झाले. माल ग्राहकाला दिला का?',
+  },
+
+  // ── Reports ───────────────────────────────────────────────────────────
+  // Only the screen is translated. The PDFs themselves stay English — see
+  // the note in Settings about why documents don't follow the app language.
+  'rep.title': { en: 'Reports', hi: 'रिपोर्ट', mr: 'रिपोर्ट' },
+  'rep.subtitle': {
+    en: 'Download your records as PDF — generated in your browser',
+    hi: 'अपना रिकॉर्ड पीडीएफ में डाउनलोड करें — आपके ही फ़ोन में बनता है',
+    mr: 'तुमचा रेकॉर्ड पीडीएफमध्ये डाउनलोड करा — तुमच्याच फोनमध्ये तयार होतो',
+  },
+  'rep.from': { en: 'From', hi: 'से', mr: 'पासून' },
+  'rep.to': { en: 'To', hi: 'तक', mr: 'पर्यंत' },
+  'rep.allCustomers': { en: 'All customers', hi: 'सभी ग्राहक', mr: 'सर्व ग्राहक' },
+  'rep.allSites': { en: 'All sites', hi: 'सभी साइट', mr: 'सर्व साईट' },
+  'rep.allSitesOf': { en: 'All sites of {name}', hi: '{name} की सभी साइट', mr: '{name} च्या सर्व साईट' },
+  'rep.clearFilters': { en: 'Clear filters', hi: 'फ़िल्टर हटाएँ', mr: 'फिल्टर काढा' },
+  'rep.dailySales': { en: 'Daily Sales Report', hi: 'रोज़ की बिक्री', mr: 'रोजची विक्री' },
+  'rep.dailyHint': {
+    en: 'Set From and To to the same day. {count} invoice(s) in range.',
+    hi: '"से" और "तक" एक ही दिन रखें। इस दायरे में {count} बिल।',
+    mr: '"पासून" आणि "पर्यंत" एकाच दिवशी ठेवा. या मर्यादेत {count} बिल.',
+  },
+  'rep.monthlySales': { en: 'Monthly Sales Report', hi: 'महीने की बिक्री', mr: 'महिन्याची विक्री' },
+  'rep.monthlyHint': {
+    en: 'Set From and To to cover the month. {count} invoice(s) in range.',
+    hi: '"से" और "तक" पूरे महीने पर रखें। इस दायरे में {count} बिल।',
+    mr: '"पासून" आणि "पर्यंत" पूर्ण महिन्यावर ठेवा. या मर्यादेत {count} बिल.',
+  },
+  'rep.pendingAmount': { en: 'Pending Amount Report', hi: 'बाकी रकम', mr: 'बाकी रक्कम' },
+  'rep.pendingHint': {
+    en: 'Customers who still owe money. {count} customer(s) match your filters.',
+    hi: 'जिन ग्राहकों की उधारी बाकी है। फ़िल्टर से {count} ग्राहक मिले।',
+    mr: 'ज्या ग्राहकांची उधारी बाकी आहे. फिल्टरने {count} ग्राहक मिळाले.',
+  },
+  'rep.customerLedger': { en: 'Customer Ledger', hi: 'ग्राहक का खाता', mr: 'ग्राहकाचे खाते' },
+  'rep.ledgerPick': {
+    en: 'Pick a customer above to generate their ledger.',
+    hi: 'खाता बनाने के लिए ऊपर से ग्राहक चुनें।',
+    mr: 'खाते तयार करण्यासाठी वरून ग्राहक निवडा.',
+  },
+  'rep.ledgerHint': {
+    en: 'Statement for {name} — {scope}. Bills, every payment with its mode, and the balance due.',
+    hi: '{name} का हिसाब — {scope}। बिल, हर पेमेंट का तरीका, और बाकी रकम।',
+    mr: '{name} चा हिशोब — {scope}. बिल, प्रत्येक पेमेंटची पद्धत, आणि बाकी रक्कम.',
+  },
+  'rep.scopeOneSite': { en: 'site "{site}" only', hi: 'सिर्फ़ "{site}" साइट', mr: 'फक्त "{site}" साईट' },
+  'rep.scopeManySites': {
+    en: 'all {count} sites (pick one above to narrow it)',
+    hi: 'सभी {count} साइट (ऊपर से एक चुन सकते हैं)',
+    mr: 'सर्व {count} साईट (वरून एक निवडू शकता)',
+  },
+  'rep.scopeAllSites': { en: 'all sites', hi: 'सभी साइट', mr: 'सर्व साईट' },
+  'rep.materialWise': { en: 'Material Wise Sales', hi: 'माल के हिसाब से बिक्री', mr: 'मालानुसार विक्री' },
+  'rep.materialHint': {
+    en: 'Quantity and value sold per material. {count} material(s) in range.',
+    hi: 'हर माल की कितनी मात्रा और कितने की बिक्री। इस दायरे में {count} माल।',
+    mr: 'प्रत्येक मालाचे किती प्रमाण आणि किती विक्री. या मर्यादेत {count} माल.',
+  },
+  'rep.stockReport': { en: 'Stock Report', hi: 'स्टॉक रिपोर्ट', mr: 'स्टॉक रिपोर्ट' },
+  'rep.stockHint': {
+    en: 'Current stock on hand — not affected by date filters. {count} material(s).',
+    hi: 'अभी कितना स्टॉक है — तारीख के फ़िल्टर का असर नहीं। {count} माल।',
+    mr: 'आत्ता किती स्टॉक आहे — तारखेच्या फिल्टरचा परिणाम नाही. {count} माल.',
+  },
+  // ── Payment modes ─────────────────────────────────────────────────────
+  // Display only. The value stored in `payments.mode` stays the English
+  // string the database and every report expect.
+  'mode.Cash': { en: 'Cash', hi: 'नकद', mr: 'रोख' },
+  'mode.UPI': { en: 'UPI', hi: 'UPI', mr: 'UPI' },
+  'mode.Bank/Cheque': { en: 'Bank/Cheque', hi: 'बैंक/चेक', mr: 'बँक/चेक' },
+
+  // ── Cancelling a bill ─────────────────────────────────────────────────
+  'inv.cancelTitle': { en: 'Cancel this bill?', hi: 'यह बिल रद्द करें?', mr: 'हे बिल रद्द करायचे?' },
+  'inv.cancelIntro': {
+    en: "{no} will stop counting in your sales and in {customer}'s khata.",
+    hi: '{no} आपकी बिक्री और {customer} के खाते में गिनना बंद हो जाएगा।',
+    mr: '{no} तुमच्या विक्रीत आणि {customer} च्या खात्यात मोजले जाणार नाही.',
+  },
+  'inv.cancelTheCustomer': { en: 'the customer', hi: 'ग्राहक', mr: 'ग्राहक' },
+  'inv.cancelStock': {
+    en: 'The stock it used will be added back.',
+    hi: 'इसका इस्तेमाल हुआ स्टॉक वापस जुड़ जाएगा।',
+    mr: 'याचा वापरलेला स्टॉक परत जमा होईल.',
+  },
+  'inv.cancelPayment': {
+    en: 'The {amount} recorded against it will be removed.',
+    hi: 'इस पर दर्ज {amount} हटा दिए जाएँगे।',
+    mr: 'यावर नोंदवलेले {amount} काढून टाकले जातील.',
+  },
+  'inv.cancelKept': {
+    en: 'The bill stays in your records, marked cancelled.',
+    hi: 'बिल रिकॉर्ड में रहेगा, रद्द लिखा हुआ।',
+    mr: 'बिल रेकॉर्डमध्ये राहील, रद्द असे लिहिलेले.',
+  },
+  'inv.keepBill': { en: 'Keep bill', hi: 'बिल रहने दें', mr: 'बिल राहू द्या' },
+  'inv.cancelling': { en: 'Cancelling…', hi: 'रद्द हो रहा है…', mr: 'रद्द होत आहे…' },
+  'inv.confirmCancel': { en: 'Yes, cancel it', hi: 'हाँ, रद्द करें', mr: 'होय, रद्द करा' },
+
+  // ── Materials: catalog + stock modal + form ───────────────────────────
+  'cust.noSite': { en: 'No site recorded', hi: 'कोई साइट नहीं लिखी', mr: 'साईट नोंदवली नाही' },
+  'mat.catalogBlurb': {
+    en: 'Materials your admin has added — pick one to add it to your own list with your own price and stock.',
+    hi: 'एडमिन का जोड़ा हुआ माल — चुनकर अपनी सूची में अपने रेट और स्टॉक के साथ जोड़ें।',
+    mr: 'अ‍ॅडमिनने जोडलेला माल — निवडून तुमच्या यादीत तुमच्या रेट आणि स्टॉकसह जोडा.',
+  },
+  'mat.cantFind': {
+    en: "Can't find your material? + Add Custom Material",
+    hi: 'माल नहीं मिला? + अपना माल जोड़ें',
+    mr: 'माल सापडला नाही? + स्वतःचा माल जोडा',
+  },
+  'mat.catalogSearch': {
+    en: 'Search — try “cement”, “12mm”, “river”, “400 cft”…',
+    hi: 'खोजें — जैसे “cement”, “12mm”, “river”, “400 cft”…',
+    mr: 'शोधा — उदा. “cement”, “12mm”, “river”, “400 cft”…',
+  },
+  'mat.searching': { en: 'Searching…', hi: 'खोज रहे हैं…', mr: 'शोधत आहे…' },
+  'mat.catalogNone': { en: 'No catalog materials found.', hi: 'कैटलॉग में कोई माल नहीं मिला।', mr: 'कॅटलॉगमध्ये माल सापडला नाही.' },
+  'mat.alreadyAdded': { en: 'Already added', hi: 'पहले से जुड़ा है', mr: 'आधीच जोडले आहे' },
+  'mat.adding': { en: 'Adding…', hi: 'जुड़ रहा है…', mr: 'जोडत आहे…' },
+  'mat.addToMine': { en: 'Add to my materials', hi: 'मेरे माल में जोड़ें', mr: 'माझ्या मालात जोडा' },
+  'mat.category': { en: 'Category', hi: 'श्रेणी', mr: 'प्रकार' },
+  'mat.per': { en: 'Per (e.g. / truck)', hi: 'प्रति (जैसे / ट्रक)', mr: 'प्रति (उदा. / ट्रक)' },
+  'mat.unitLabel': { en: 'Unit label (e.g. Truck 400 CFT)', hi: 'यूनिट (जैसे ट्रक 400 CFT)', mr: 'युनिट (उदा. ट्रक 400 CFT)' },
+  'mat.lowStockBelow': { en: 'Low stock alert below', hi: 'इससे कम होने पर चेतावनी', mr: 'यापेक्षा कमी झाल्यास सूचना' },
+  'mat.selectMaterial': { en: 'Select from your materials…', hi: 'अपने माल में से चुनें…', mr: 'तुमच्या मालातून निवडा…' },
+  'mat.currentlyInStock': {
+    en: 'Currently {qty} in stock',
+    hi: 'अभी {qty} स्टॉक में है',
+    mr: 'सध्या {qty} स्टॉकमध्ये आहे',
+  },
+  'mat.qtyToAdd': { en: 'Quantity to add', hi: 'कितना जोड़ना है', mr: 'किती जोडायचे' },
+  'mat.newTotal': { en: 'New total will be {qty}', hi: 'नया कुल {qty} हो जाएगा', mr: 'नवीन एकूण {qty} होईल' },
+
+  // ── Theme toggle ──────────────────────────────────────────────────────
+  'theme.toLight': { en: 'Switch to light mode', hi: 'उजला मोड करें', mr: 'उजळ मोड करा' },
+  'theme.toDark': { en: 'Switch to dark mode', hi: 'गहरा मोड करें', mr: 'गडद मोड करा' },
 } satisfies Record<string, Entry>
 
 export type TranslationKey = keyof typeof STRINGS
