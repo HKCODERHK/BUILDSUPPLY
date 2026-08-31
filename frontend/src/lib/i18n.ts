@@ -27,7 +27,7 @@ const STRINGS = {
   // ── Navigation ────────────────────────────────────────────────────────
   'nav.dashboard': { en: 'Dashboard', hi: 'डैशबोर्ड', mr: 'डॅशबोर्ड' },
   'nav.customers': { en: 'Customers', hi: 'ग्राहक', mr: 'ग्राहक' },
-  'nav.materials': { en: 'Materials', hi: 'माल', mr: 'माल' },
+  'nav.materials': { en: 'Stock', hi: 'स्टॉक', mr: 'स्टॉक' },
   'nav.invoices': { en: 'Invoices', hi: 'बिल', mr: 'बिल' },
   'nav.quotations': { en: 'Quotations', hi: 'कोटेशन', mr: 'कोटेशन' },
   'nav.payments': { en: 'Payments', hi: 'पेमेंट', mr: 'पेमेंट' },

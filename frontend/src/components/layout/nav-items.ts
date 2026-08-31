@@ -1,7 +1,7 @@
 import {
   LayoutGrid,
   Users,
-  Box,
+  Warehouse,
   FileText,
   Layers,
   CreditCard,
@@ -29,7 +29,9 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', labelKey: 'nav.dashboard', path: '/dashboard', icon: LayoutGrid },
   { id: 'customers', labelKey: 'nav.customers', path: '/customers', icon: Users },
-  { id: 'materials', labelKey: 'nav.materials', path: '/materials', icon: Box },
+  // Named "Stock" rather than "Materials": updating stock is the single
+  // most-used action in the app, and adding a material is rare by comparison.
+  { id: 'materials', labelKey: 'nav.materials', path: '/materials', icon: Warehouse },
   { id: 'invoices', labelKey: 'nav.invoices', path: '/invoices', icon: FileText },
   { id: 'quotations', labelKey: 'nav.quotations', path: '/quotations', icon: Layers },
   { id: 'payments', labelKey: 'nav.payments', path: '/payments', icon: CreditCard },
