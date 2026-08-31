@@ -27,7 +27,7 @@ export default function QuotationDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { supplier } = useAuth()
-  const { t } = useLanguage()
+  const { t, mt } = useLanguage()
   const [quotation, setQuotation] = useState<Quotation | null>(null)
   const [items, setItems] = useState<QuotationItem[]>([])
   const [customer, setCustomer] = useState<Customer | null>(null)
@@ -215,7 +215,7 @@ export default function QuotationDetail() {
               {items.map((item, i) => (
                 <tr key={item.id}>
                   <td className="py-2.5 pr-3 text-muted">{i + 1}</td>
-                  <td className="py-2.5 pr-3 text-ink">{item.description}</td>
+                  <td className="py-2.5 pr-3 text-ink">{mt(item.description)}</td>
                   <td className="py-2.5 pr-3 text-right">{item.qty}</td>
                   <td className="py-2.5 pr-3 text-right">{formatINR(item.rate)}</td>
                   <td className="py-2.5 pr-3 text-right font-medium">{formatINR(item.amount)}</td>

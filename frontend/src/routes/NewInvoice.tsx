@@ -100,7 +100,7 @@ function buildLineItems(materials: Material[], source: SourceItem[]): LineItem[]
 
 export default function NewInvoice() {
   const { supplier } = useAuth()
-  const { t } = useLanguage()
+  const { t, mt } = useLanguage()
   const navigate = useNavigate()
   // Present only on /invoices/:id/edit — the same screen, correcting a bill
   // that already exists rather than raising a new one.
@@ -494,7 +494,7 @@ export default function NewInvoice() {
                 )}
               >
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-medium text-ink">{item.description}</div>
+                  <div className="truncate text-sm font-medium text-ink">{mt(item.description)}</div>
                   <div className="text-xs text-muted">
                     {item.qty > 0 ? formatINR(item.qty * item.rate) : t('inv.notOnBill')}
                   </div>
@@ -531,7 +531,7 @@ export default function NewInvoice() {
                     <option value="">{t('inv.customMaterial')}</option>
                     {materials.map((m) => (
                       <option key={m.id} value={m.id}>
-                        {m.name}
+                        {mt(m.name)}
                       </option>
                     ))}
                   </select>

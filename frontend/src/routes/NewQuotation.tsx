@@ -28,7 +28,7 @@ interface LineItem extends NewInvoiceItem {
 // deliberately absent here.
 export default function NewQuotation() {
   const { supplier } = useAuth()
-  const { t } = useLanguage()
+  const { t, mt } = useLanguage()
   const navigate = useNavigate()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [materials, setMaterials] = useState<Material[]>([])
@@ -193,7 +193,7 @@ export default function NewQuotation() {
                   <option value="">{t('inv.customMaterial')}</option>
                   {materials.map((m) => (
                     <option key={m.id} value={m.id}>
-                      {m.name}
+                      {mt(m.name)}
                     </option>
                   ))}
                 </select>

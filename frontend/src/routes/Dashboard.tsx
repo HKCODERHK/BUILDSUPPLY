@@ -72,7 +72,7 @@ export default function Dashboard() {
 
 function SupplierDashboardView() {
   const { supplier } = useAuth()
-  const { t } = useLanguage()
+  const { t, mt } = useLanguage()
   const [totals, setTotals] = useState<DashboardTotals | null>(null)
   const [recentInvoices, setRecentInvoices] = useState<InvoiceWithCustomer[]>([])
   const [recentCustomers, setRecentCustomers] = useState<Customer[]>([])
@@ -130,7 +130,7 @@ function SupplierDashboardView() {
                 <AlertTriangle size={18} className="shrink-0 text-red-600 dark:text-red-400" />
                 <span className="text-sm font-medium text-red-700 dark:text-red-300">
                   {lowStock.length === 1
-                    ? t('dash.lowStockOne', { name: lowStock[0].name })
+                    ? t('dash.lowStockOne', { name: mt(lowStock[0].name) })
                     : t('dash.lowStockMany', { count: lowStock.length })}
                 </span>
               </div>

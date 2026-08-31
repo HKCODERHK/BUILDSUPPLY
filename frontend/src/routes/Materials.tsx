@@ -41,7 +41,7 @@ function isLowStock(m: Material) {
 
 export default function Materials() {
   const { supplier } = useAuth()
-  const { t } = useLanguage()
+  const { t, mt } = useLanguage()
   const [view, setView] = useState<View>('mine')
   const [materials, setMaterials] = useState<Material[]>([])
   const [catalog, setCatalog] = useState<VariantWithLookups[]>([])
@@ -291,8 +291,8 @@ export default function Materials() {
                 <Card key={m.id}>
                   <div className="mb-2 flex items-start justify-between">
                     <div>
-                      <div className="font-semibold text-ink">{m.name}</div>
-                      <div className="text-xs text-muted">{m.category ?? '—'}</div>
+                      <div className="font-semibold text-ink">{mt(m.name)}</div>
+                      <div className="text-xs text-muted">{mt(m.category) || '—'}</div>
                     </div>
                     <button onClick={() => openEdit(m)} className="text-muted hover:text-ink" aria-label="Edit">
                       <Pencil size={15} />
@@ -300,13 +300,13 @@ export default function Materials() {
                   </div>
                   <div className="text-lg font-bold text-ink">
                     ₹{m.rate.toLocaleString('en-IN')}{' '}
-                    <span className="text-xs font-normal text-muted">{m.per_label ?? ''}</span>
+                    <span className="text-xs font-normal text-muted">{mt(m.per_label)}</span>
                   </div>
-                  <div className="text-xs text-muted">{m.unit_label}</div>
+                  <div className="text-xs text-muted">{mt(m.unit_label)}</div>
                   <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-sm">
                     <span className="text-muted">{t('common.stock')}</span>
                     <Badge tone={m.stock_qty <= (m.low_stock_threshold ?? 5) ? 'danger' : 'success'}>
-                      {m.stock_qty} {m.stock_unit ?? ''}
+                      {m.stock_qty} {mt(m.stock_unit)}
                     </Badge>
                   </div>
                 </Card>
@@ -346,14 +346,14 @@ export default function Materials() {
                         <div className="h-10 w-10 rounded-lg bg-surface" />
                       )}
                       <div>
-                        <div className="font-semibold text-ink">{m.material_types?.name ?? m.name}</div>
+                        <div className="font-semibold text-ink">{mt(m.material_types?.name ?? m.name)}</div>
                         <div className="text-xs text-muted">
-                          {m.material_types?.material_categories?.name ?? '—'} {m.brands?.name ? `· ${m.brands.name}` : ''}
+                          {mt(m.material_types?.material_categories?.name) || '—'} {m.brands?.name ? `· ${m.brands.name}` : ''}
                         </div>
                       </div>
                     </div>
-                    {variantSummary && <div className="text-sm font-medium text-ink">{variantSummary}</div>}
-                    <div className="text-xs text-muted">{m.unit ?? '—'}</div>
+                    {variantSummary && <div className="text-sm font-medium text-ink">{mt(variantSummary)}</div>}
+                    <div className="text-xs text-muted">{mt(m.unit) || '—'}</div>
                     <Button
                       size="sm"
                       variant={alreadyAdded ? 'outline' : 'primary'}
@@ -438,13 +438,13 @@ export default function Materials() {
                 <option value="">{t('mat.selectMaterial')}</option>
                 {materials.map((m) => (
                   <option key={m.id} value={m.id}>
-                    {m.name}
+                    {mt(m.name)}
                   </option>
                 ))}
               </select>
               {selectedStockMaterial && (
                 <p className="mt-1.5 text-xs text-muted">
-                  {t('mat.currentlyInStock', { qty: `${selectedStockMaterial.stock_qty} ${selectedStockMaterial.stock_unit ?? ''}`.trim() })}
+                  {t('mat.currentlyInStock', { qty: `${selectedStockMaterial.stock_qty} ${mt(selectedStockMaterial.stock_unit)}`.trim() })}
                 </p>
               )}
             </div>
@@ -462,7 +462,7 @@ export default function Materials() {
             {selectedStockMaterial && Number(addStockForm.qty) > 0 && (
               <p className="rounded-lg bg-accent-bg px-3 py-2 text-xs text-accent-text">
                 {t('mat.newTotal', {
-                  qty: `${Number(selectedStockMaterial.stock_qty) + Number(addStockForm.qty)} ${selectedStockMaterial.stock_unit ?? ''}`.trim(),
+                  qty: `${Number(selectedStockMaterial.stock_qty) + Number(addStockForm.qty)} ${mt(selectedStockMaterial.stock_unit)}`.trim(),
                 })}
               </p>
             )}

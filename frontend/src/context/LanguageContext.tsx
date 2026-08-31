@@ -1,10 +1,15 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { translate, type Lang, type TranslationKey } from '@/lib/i18n'
+import { localizeMaterialText } from '@/lib/materialName'
 
 interface LanguageContextValue {
   lang: Lang
   setLang: (lang: Lang) => void
   t: (key: TranslationKey, vars?: Record<string, string | number>) => string
+  // Material names, categories and units come from the database, not the
+  // dictionary — `mt` translates the trade words inside them. Display only:
+  // never write the result back to anything that gets saved.
+  mt: (text: string | null | undefined) => string
 }
 
 const LanguageContext = createContext<LanguageContextValue | undefined>(undefined)
@@ -36,7 +41,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     [lang],
   )
 
-  const value = useMemo(() => ({ lang, setLang, t }), [lang, setLang, t])
+  const mt = useCallback((text: string | null | undefined) => localizeMaterialText(text, lang), [lang])
+
+  const value = useMemo(() => ({ lang, setLang, t, mt }), [lang, setLang, t, mt])
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>
 }
 
