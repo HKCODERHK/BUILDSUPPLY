@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `019`, run in order. **019 is the latest and is applied.** (There is no `001` file in the repo; the base schema predates the migration folder.)
+- **Schema migrations**: `supabase/migrations/` — `002` through `021`, run in order. **021 is the latest and is applied.** (There is no `001` file in the repo; the base schema predates the migration folder.)
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
 
@@ -58,6 +58,18 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 | **Edit a bill** | `/invoices/:id/edit` (reuses `NewInvoice` in edit mode) | Keeps the invoice number, date and payments already taken |
 | **Hindi / Marathi** | `lib/i18n.ts` + `context/LanguageContext.tsx` | Supplier-facing screens; admin screens stay English |
 | **Install as app (PWA)** | `public/manifest.webmanifest`, `public/sw.js` | Registers in PROD only; verified activated and controlling |
+
+## The admin panel
+
+**It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.
+
+- **`lib/subscription.ts` owns subscription state.** Four states derived from `subscription_expiry` at render time: `active`, `expiring` (within 7 days), `expired`, and **`none`**. `none` exists because a supplier with no expiry date matched neither "expired" nor "expiring" and ran unnoticed forever — one live supplier was in exactly that position. Never re-derive this logic in a component.
+- **Renewal extends from the current expiry, or from today if already lapsed** (`renewedExpiry`). Renewing early must not waste days already paid for; renewing late must not sell back the weeks the supplier was switched off.
+- **Nothing depends on the stored `subscription_status` column.** The panel derives everything from the date, so a stale column can't mislead. The nightly `pg_cron` job (migration 021, 01:00 IST) is data hygiene only — it flips the status column and **never** suspends an account, blocks a login or sends anything.
+- **Passwords are generated, not invented** (`lib/generatePassword.ts`). The alphabet drops `O/0/I/l/1` because the admin reads them aloud and the supplier types them on a phone. After creating an account the credentials show once with "Send on WhatsApp" — the password can't be read back afterwards.
+- **`admin_supplier_activity` returns `details` only for admin-authored rows** (migration 020). That's what makes renewal history readable while still never exposing a supplier's customer names or invoice amounts. The `CASE` in the RPC enforces it; don't move that decision to the caller.
+- **`suppliers.last_contacted_at`** is stamped when the admin taps Call or WhatsApp. It records that a chase was attempted, not that it succeeded.
+- Admin screens stay **English** — the admin is the platform owner, not a supplier.
 
 ## Architecture notes that matter
 
