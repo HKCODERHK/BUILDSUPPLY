@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `021`, run in order. **021 is the latest and is applied.** (There is no `001` file in the repo; the base schema predates the migration folder.)
+- **Schema migrations**: `supabase/migrations/` — `002` through `022`, run in order. **022 is the latest and is applied.** (There is no `001` file in the repo; the base schema predates the migration folder.)
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
 
@@ -70,6 +70,20 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 - **`admin_supplier_activity` returns `details` only for admin-authored rows** (migration 020). That's what makes renewal history readable while still never exposing a supplier's customer names or invoice amounts. The `CASE` in the RPC enforces it; don't move that decision to the caller.
 - **`suppliers.last_contacted_at`** is stamped when the admin taps Call or WhatsApp. It records that a chase was attempted, not that it succeeded.
 - Admin screens stay **English** — the admin is the platform owner, not a supplier.
+
+### Confirmation PIN (migration 022)
+A 4-digit PIN asked before irreversible actions, for both roles. **It is a confirmation gate, not a security boundary** — 10,000 combinations answers "is the right person holding this phone", nothing more. Supabase Auth and RLS remain the real boundary; never treat the PIN as a second factor.
+- Opt-in. With no PIN set, nothing is gated — `verify_pin` returns `ok: true, no_pin: true` and the caller proceeds.
+- The hash lives in **`supplier_pins`, RLS on with NO policies**, reachable only through the SECURITY DEFINER functions. It is not on `suppliers` because a supplier can already `select *` from their own row.
+- All three routes (`set_pin`, `verify_pin`, `clear_pin`) share one attempt counter via `pin_register_failure()`. This matters: `set_pin`/`clear_pin` originally had no lockout, making them an unthrottled way to guess while `verify_pin` was locked.
+- Gated actions — supplier: cancel a bill, edit a bill, payments at/above `suppliers.pin_payment_threshold` (default ₹25,000). Admin: suspend, deactivate, password reset, any subscription change, and delete.
+- Call it with one line: `if (!(await confirmWithPin(reason))) return`.
+
+### Deleting a supplier
+`deleteSupplierAccount` → Edge Function `delete_supplier`. **Deactivate is the reversible option; this is not.**
+- **`suppliers.id` references `auth.users(id)` ON DELETE CASCADE**, and every business table cascades from `suppliers`. Deleting the login therefore takes the whole tree in one transaction. Note that `information_schema.constraint_column_usage` does *not* surface the `auth.users` constraint — check `pg_constraint` instead, or you will misread the cascade.
+- The typed business name is re-checked **inside the Edge Function** against the target row, not just in the UI. Admin accounts are refused.
+- The deletion is logged against the **admin**, because `activity_log` cascades away with the supplier.
 
 ## Architecture notes that matter
 
