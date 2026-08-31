@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { Phone } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -9,6 +10,16 @@ import { Label } from '@/components/ui/label'
 import { Modal } from '@/components/ui/modal'
 import { listSuppliersOverview, setSupplierStatus, resetSupplierPassword, updateSupplierSubscription } from '@/services/adminSuppliers'
 import { listSupplierActivityForAdmin } from '@/services/activityLog'
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import { openWhatsAppShare } from '@/lib/whatsapp'
+import { generatePassword } from '@/lib/generatePassword'
+import {
+  describeExpiry,
+  renewedExpiry,
+  subscriptionState,
+  SUBSCRIPTION_LABEL,
+  SUBSCRIPTION_TONE,
+} from '@/lib/subscription'
 import type { AdminActivityEntry, SupplierOverview } from '@/lib/database.types'
 
 type Tab = 'overview' | 'activity'
@@ -24,6 +35,9 @@ export default function SupplierProfile() {
   const [suspendReason, setSuspendReason] = useState('')
   const [passwordModal, setPasswordModal] = useState(false)
   const [newPassword, setNewPassword] = useState('')
+  // The password that was successfully applied — kept so it can be handed
+  // over on WhatsApp. Cleared when the modal closes.
+  const [passwordSent, setPasswordSent] = useState('')
   const [busy, setBusy] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -98,13 +112,48 @@ export default function SupplierProfile() {
     try {
       await resetSupplierPassword(id, newPassword)
       setFeedback('Password reset successfully.')
-      setPasswordModal(false)
+      setPasswordSent(newPassword)
       setNewPassword('')
     } catch (err) {
       setActionError(describeError(err))
     } finally {
       setBusy(false)
     }
+  }
+
+  // One tap instead of working out a date and typing it. Extends from the
+  // current expiry so renewing early doesn't waste days already paid for,
+  // and from today if the subscription already lapsed.
+  async function handleRenew(months: number) {
+    if (!id || !supplier) return
+    setBusy(true)
+    setActionError(null)
+    try {
+      const nextExpiry = renewedExpiry(supplier.subscription_expiry, months)
+      await updateSupplierSubscription(id, {
+        subscription_expiry: nextExpiry,
+        subscription_status: 'active',
+      })
+      setFeedback(`Renewed for ${months} month${months === 1 ? '' : 's'} — now expires ${nextExpiry}.`)
+      await refresh()
+    } catch (err) {
+      setActionError(describeError(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function messageSupplier() {
+    if (!supplier) return
+    const owner = supplier.owner_name?.trim() || supplier.business_name
+    const state = subscriptionState(supplier.subscription_expiry)
+    const line =
+      state === 'expired'
+        ? 'Your BuildSupply subscription has expired. Reply here and I will renew it for you.'
+        : state === 'expiring'
+          ? `Your BuildSupply subscription ${describeExpiry(supplier.subscription_expiry).toLowerCase()}. Shall I renew it?`
+          : 'Checking in about your BuildSupply account.'
+    openWhatsAppShare(supplier.phone, `Hi ${owner}, ${line}`)
   }
 
   async function handleSubscriptionChange(
@@ -130,9 +179,23 @@ export default function SupplierProfile() {
         title={supplier.business_name}
         subtitle={supplier.email ?? ''}
         action={
-          <Button variant="outline" onClick={() => navigate('/admin/suppliers')}>
-            Back to suppliers
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {supplier.phone && (
+              <>
+                <a href={`tel:${supplier.phone}`}>
+                  <Button variant="outline" size="sm">
+                    <Phone size={14} /> Call
+                  </Button>
+                </a>
+                <Button variant="outline" size="sm" onClick={messageSupplier}>
+                  <WhatsAppIcon size={14} /> WhatsApp
+                </Button>
+              </>
+            )}
+            <Button variant="outline" size="sm" onClick={() => navigate('/admin/suppliers')}>
+              Back to suppliers
+            </Button>
+          </div>
         }
       />
 
@@ -197,7 +260,25 @@ export default function SupplierProfile() {
           <Card>
             <CardHeader>
               <CardTitle>Subscription</CardTitle>
+              <Badge tone={SUBSCRIPTION_TONE[subscriptionState(supplier.subscription_expiry)]}>
+                {SUBSCRIPTION_LABEL[subscriptionState(supplier.subscription_expiry)]}
+              </Badge>
             </CardHeader>
+
+            <div className="mb-4 rounded-xl border border-border p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-sm font-medium text-ink">Renew</span>
+                <span className="text-xs text-muted">{describeExpiry(supplier.subscription_expiry)}</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {[1, 3, 6, 12].map((months) => (
+                  <Button key={months} size="sm" variant="outline" disabled={busy} onClick={() => handleRenew(months)}>
+                    +{months} {months === 1 ? 'month' : 'months'}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
             <div className="flex flex-col gap-3 text-sm">
               <div>
                 <Label>Plan</Label>
@@ -277,16 +358,62 @@ export default function SupplierProfile() {
       )}
 
       {passwordModal && (
-        <Modal title="Reset supplier password" onClose={() => setPasswordModal(false)}>
+        <Modal
+          title="Reset supplier password"
+          onClose={() => {
+            setPasswordModal(false)
+            setPasswordSent('')
+            setNewPassword('')
+          }}
+        >
           <div className="flex flex-col gap-4">
             <div>
-              <Label htmlFor="new_password">New password</Label>
-              <Input id="new_password" minLength={6} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+              <div className="flex items-center justify-between">
+                <Label htmlFor="new_password" className="mb-1.5">
+                  New password
+                </Label>
+                <button
+                  type="button"
+                  onClick={() => setNewPassword(generatePassword())}
+                  className="mb-1.5 text-xs font-semibold text-accent hover:text-accent-soft"
+                >
+                  Generate
+                </button>
+              </div>
+              <Input
+                id="new_password"
+                minLength={6}
+                className="font-mono"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
             </div>
             {actionError && <p className="text-xs text-red-600">{actionError}</p>}
-            <Button onClick={handleResetPassword} disabled={busy || newPassword.length < 6}>
-              {busy ? 'Resetting…' : 'Reset password'}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={handleResetPassword} disabled={busy || newPassword.length < 6}>
+                {busy ? 'Resetting…' : 'Reset password'}
+              </Button>
+              {/* Sent only after the reset actually succeeds, so the supplier
+                  never gets a password that was not applied. */}
+              {supplier.phone && passwordSent && (
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    openWhatsAppShare(
+                      supplier.phone,
+                      `Hi ${supplier.owner_name?.trim() || supplier.business_name}, your BuildSupply password has been reset.
+
+Login: ${supplier.email}
+Password: ${passwordSent}
+
+Please change it from Settings after you sign in.`,
+                    )
+                  }
+                >
+                  <WhatsAppIcon size={16} /> Send on WhatsApp
+                </Button>
+              )}
+            </div>
           </div>
         </Modal>
       )}
