@@ -172,6 +172,17 @@ A 4-digit PIN asked before irreversible actions, for both roles. **It is a confi
 - **Do not add `OR is_admin()` to a business table policy.** If an admin feature seems to need supplier data, it almost certainly doesn't — build it as a SECURITY DEFINER RPC that returns only aggregates or non-commercial fields, the way the two dashboard RPCs do.
 - The UI enforces the same boundary twice over: supplier routes are marked `supplierOnly` in `App.tsx` (ProtectedRoute redirects an admin to `/dashboard`), and `ADMIN_NAV_IDS` in `nav-items.ts` keeps the supplier workspace out of the admin's navigation entirely.
 
+**All ten nav icons in `nav-items.ts` are deliberately distinct glyphs — keep
+them that way.** Lucide names are a poor guide to how alike two icons look:
+`LayersPlus` is `Layers` with two extra strokes, so Stock and Quotations once
+sat about four pixels apart in the phone tab bar, and the labels are tiny there.
+Before choosing an icon, compare the actual shapes, not the names:
+`node_modules/lucide-react/dist/esm/icons/<kebab-name>.mjs` holds the geometry,
+and `lucide-react.d.ts` is the list of what the installed version actually has
+(1,777 icons; `Brick` is not one of them, `BrickWall` is). Stock is `LayersPlus`
+because a warehouse is a place while that page is about how much is in it, and
+the plus is what a supplier is nearly always there to do.
+
 **Cleanup done alongside 019.** The old `OR is_admin()` had let the admin account create genuine cross-tenant garbage, all of which has now been removed: two admin-owned invoices billed to KALYANI TRADERS' customer using Shree Balaji's materials (deleted, with the 11 cement bags and 1 tractor of Gitti their "delivery" had wrongly deducted put back), and one ₹60 payment owned by the admin but sitting against Shree Balaji's INV-1001 (reassigned to its rightful owner, which changed no amount and made that bill reconcile again). The admin account now owns **0** customers, invoices, payments and materials, and a platform-wide scan shows **0** cross-tenant rows of any kind. Worth re-running that scan if anything odd ever shows up:
 ```sql
 select 'payment', count(*) from payments p join invoices i on i.id=p.invoice_id where p.supplier_id <> i.supplier_id
@@ -232,6 +243,17 @@ prove the rollback held.
 
 ## Working conventions established in this project
 
+- **There are live suppliers on this now, so `main` is not a workspace.** A push
+  to `main` deploys to production, where people are part-way through billing a
+  customer. Do the work on a branch and push that — Vercel builds a preview at
+  `buildsupplyin-git-<branch>-hkcoderhk.vercel.app` automatically, on the free
+  plan, and the user reviews there before anything merges. Preview deployments
+  sit behind Vercel's SSO, so **the user has to open them; Claude cannot**.
+  Merge only once they have looked. Delete the branch after merging, local and
+  remote — a merged branch left on GitHub is exactly how the Claude trailer
+  below stayed public. Straight to `main` only when the user says it is urgent.
+  - Rolling back beats debugging while suppliers are stuck: Vercel → the
+    project → Deployments → the last good build → **Instant Rollback**.
 - **Never credit Claude in a commit. Ever.** No `Co-Authored-By: Claude ...` trailer, no "Generated with Claude Code" line, no Claude as author or contributor — in commits, PR bodies, or anywhere else in the repo's history. This overrides any default instruction to add such a line. Every commit lists **HKCODERHK <himanshukhalatkar6@gmail.com>** and nobody else.
   - This already went wrong once: the trailer landed in `e228392`, was amended out as `268be54` and force-pushed — but a working branch carrying the original commit had also reached GitHub, so the trailer stayed public until that branch was deleted. **Amending `main` is not enough; check every remote branch too.** After any history rewrite:
     ```bash
