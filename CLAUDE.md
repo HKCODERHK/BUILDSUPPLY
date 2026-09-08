@@ -300,12 +300,29 @@ the **project-scoped** link, `https://supabase.com/dashboard/project/<ref>/sql/n
 confusable names, and the run silently did nothing here.
 
 ### Still to do
-1. **There are no database backups.** The free tier automates none, and the
-   database now holds the user's real business. A manual dump is
-   `npx supabase db dump --db-url "<connection string>" -f backup.sql`; the
-   connection string carries the database password, so the user runs it, not
-   Claude. Supabase Pro brings 7-day automatic backups and is worth it once
-   this earns anything.
+1. **Backups are manual and weekly — decided on 2026-09-09.** The free tier
+   automates none, and the database holds real businesses. The user takes one
+   weekly and keeps a single archive per week in Google Drive, plus one before
+   any risky change. **Just take one when asked** — it is about two minutes and
+   there is no reason to talk them out of an extra.
+
+   `supabase db dump` needs Docker, which is installed on this machine but
+   usually not running. The working method exports each table as JSON through
+   the same authenticated CLI connection everything else uses, so the database
+   password never has to move:
+   ```
+   select coalesce(json_agg(t),'[]'::json) as data from public.<table> t;
+   ```
+   over all 15 public tables into `backups/<timestamp>/`, then verify each file
+   parses and diff the row counts against the previous backup — the diff is
+   what shows the user why cadence matters. `backups/` is gitignored, and must
+   stay that way: those files hold customer names, phone numbers, every invoice
+   and payment, and the bcrypt PIN hashes, with no access control at all.
+
+   **The real fix is Supabase Pro** ($25/mo, 7-day automatic backups), which
+   retires the ritual entirely. The user knows and plans to buy it once this
+   earns; a weekly manual habit is what they can actually sustain until then.
+   Don't nag about it.
 2. **No custom SMTP — deliberately deferred on 2026-09-09, not an oversight.**
    Auth email goes through Supabase's built-in sender, which is a few messages
    per hour and documented as testing-only, so a supplier using "Forgot
