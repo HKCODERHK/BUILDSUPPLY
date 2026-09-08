@@ -10,7 +10,8 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `022`, run in order. **022 is the latest and is applied.** (There is no `001` file in the repo; the base schema predates the migration folder.)
+- **Schema migrations**: `supabase/migrations/` — `002` through `023`, run in order. **022 is the latest that is applied. `023` is written but NOT yet applied** — see Outstanding. (There is no `001` file in the repo; the base schema predates the migration folder.)
+- **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
 
@@ -45,9 +46,11 @@ The other test suppliers named in earlier sessions — `ganeshhardware`,
 exist. Don't try to sign in as them.
 
 Both passwords were rotated on 2026-09-08, before this app went anywhere
-public — the admin's and Shree Balaji's. Verified afterwards by testing the
-old strings against the stored hashes: none of `Himanshu@123456`,
-`Supplier@123` or `NewPass456` authenticates on any account any more.
+public — the admin's and Shree Balaji's. Verified afterwards by testing each
+retired string against the stored hashes with `crypt()`: none of the three
+passwords this file used to carry authenticates on any account any more. They
+are not repeated here, because a password that is dead in this project may
+still be alive somewhere the user reused it.
 
 **Shree Balaji was deliberately kept rather than deleted.** It holds 7
 customers, 18 invoices, 25 payments, 5 quotations and ₹236,822 of billing,
@@ -90,6 +93,25 @@ user to sign in first and leave the tab open.
 | **Hindi / Marathi** | `lib/i18n.ts` + `context/LanguageContext.tsx` | Supplier-facing screens; admin screens stay English |
 | **Install as app (PWA)** | `public/manifest.webmanifest`, `public/sw.js` | Registers in PROD only; verified activated and controlling |
 
+**Phase 6 — getting it fit to deploy (2026-09-08).** A full admin-side button
+sweep, then the bugs that sweep and a pre-deploy audit turned up. Every one was
+confirmed against the live database or a real production build before it was
+touched, and again afterwards.
+
+| Fixed | Was |
+|---|---|
+| **Catalog duplicate names** (`services/materialCatalog.ts`) | The admin screens print `error.message` into a red card, and nothing translated Postgres codes — so adding an existing brand showed ``duplicate key value violates unique constraint "brands_name_key"``. Now 23505 is translated on all four create paths and the three renames, the way `services/customers.ts` already did for phones. |
+| **Every WhatsApp button** (`lib/whatsapp.ts`) | Numbers kept India's leading `0` and never got a country code, so wa.me was handed an unreachable number. See the shared-modules entry. |
+| **Customer ledger and Reports dates** (`lib/localDate.ts`) | Bucketed by UTC, filtered against IST date pickers. 3 of 20 invoices and 5 of 25 payments in the live database were already on the wrong side of it. See the shared-modules entry. |
+| **Service worker + host config** | Cached failed navigations as the offline shell, and nothing told a host to serve `index.html` for browser-only routes — the installed app's `start_url` is `/dashboard`, so the very first launch would have hit a 404. |
+| **Safe-area insets** (`index.css`, `AppShell.tsx`) | `viewport-fit=cover` with nothing keeping the system's strips clear. |
+| **`admin_list_suppliers` missing `last_contacted_at`** (migration 023) | The "Last contacted" column had always shown an em dash. **Written, not yet applied.** |
+
+Two things noticed and deliberately **not** changed, since they are cosmetic and
+were outside what was asked: `components/ui/modal.tsx` has no `role="dialog"`,
+`aria-modal` or focus trap, and its close X is `type="submit"` (harmless only
+because it sits outside the `<form>`).
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.
@@ -124,6 +146,8 @@ A 4-digit PIN asked before irreversible actions, for both roles. **It is a confi
 - **`lib/overdue.ts`** — `oldestPendingDays()` / `overdueTextClass()`. Treats anything under ₹1 as settled so rounding on a split payment can't leave a customer looking permanently overdue by 40 paise.
 - **`lib/i18n.ts`** — flat `key → {en, hi, mr}` dictionary with `{placeholder}` interpolation, falling back to English so a missing translation shows readable text rather than a raw key. Add a key here, then use `const { t } = useLanguage()`.
 - **`lib/numberInput.ts`** — `sanitizeDigits` / `sanitizeDecimal`. All numeric fields are `type="text"` with `inputMode`, **not** `type="number"` (native number inputs don't support `.select()` reliably and allowed "05").
+- **`lib/whatsapp.ts`** — `openWhatsAppShare` and `normalizeWhatsAppNumber`, the single builder behind **all 24** WhatsApp call sites (`shareDocument.ts` routes through it too). wa.me needs a full international number with no `+`, no separators and **no leading zero**, and it answers anything it can't resolve with "phone number shared via url is invalid" — which looks to the supplier like the Send button is broken. Leading zeros are India's STD trunk prefix and are stripped; a bare 10-digit number gets `91`; 11–15 digits pass through untouched so an overseas number isn't mangled. **Not one phone number in the live database carries a country code**, so removing this breaks every WhatsApp button in the app at once.
+- **`lib/localDate.ts`** — `localDateKey(iso)`, the calendar day a UTC timestamp falls on **in the phone's own timezone**, as `YYYY-MM-DD`. Every `created_at` is UTC but a supplier picking dates in an `<input type="date">` is thinking in IST, and India is UTC+5:30 — so slicing the first ten characters off the raw ISO string files anything recorded between midnight and 5:30am under the previous day. Used by `customerLedger.ts` and `Reports.tsx`; the Dashboard's "today" card has always used the same rule inline. **Never compare a raw `created_at.slice(0, 10)` against a date input.**
 - **`components/AddCustomerModal.tsx`** — one customer form shared by Customers, New Invoice and New Quotation so validation can't drift.
 
 ### Stock rules
@@ -167,6 +191,23 @@ set local role authenticated;
 set local request.jwt.claims = '{"sub":"<user-uuid>","role":"authenticated"}';
 select count(*) from customers;
 ```
+The admin is `9b2dad72-c7b5-4d41-9e21-6df333fbbd87`; `is_admin()` reads
+`suppliers.role = 'admin'` (there is no `is_admin` *column* — that mistake
+costs a query). The same trick proves a **write** path without touching data:
+wrap it in a transaction that always rolls back, and count what each statement
+would have hit. This is how every admin button was verified without an admin
+session.
+```sql
+begin;
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"9b2dad72-c7b5-4d41-9e21-6df333fbbd87","role":"authenticated"}';
+with a as (update suppliers set subscription_expiry = subscription_expiry where role='supplier' returning 1)
+select 'suppliers UPDATE (renew)' as path, (select count(*) from a) as rows;
+rollback;
+```
+Postgres refuses a data-modifying statement inside a plain subquery, so each
+one has to be its own `with` clause. Afterwards, **re-count the tables** to
+prove the rollback held.
 
 ## Known quirks worth knowing
 
@@ -175,8 +216,10 @@ select count(*) from customers;
 - Customer phone numbers are unique per supplier via a partial index, and must be exactly 10 digits. Postgres `23505` = duplicate phone, `23514` = failed check constraint — both are translated into plain-English errors in `services/customers.ts`.
 - `site` lives on the **invoice/quotation**, not the customer (migration 014). A contractor runs several sites at once; the customer's `site` is only the default that gets pre-filled.
 - The service worker registers **only in a production build** (`import.meta.env.PROD`) — a worker caching Vite's dev modules would fight HMR. To test it: `npm run build`, then the `frontend-preview` launch config.
-- **`public/sw.js` must look things up with `cache.match(req, { ignoreVary: true })`.** Static hosts (Vite preview, Netlify, Vercel, Cloudflare) send `Vary: Origin` on assets, and the Cache API honours Vary — without `ignoreVary` the worker misses entries it stored moments earlier, falls through to the network, and fails offline, which is the one moment the cache existed for. This was a real bug, caught only by inspecting the live cache. Bump `CACHE` (currently `buildsupply-v2`) to force clients to drop old entries; `activate` deletes every cache that isn't the current name, which also clears assets left by previous builds.
-- The app is a **fully installable PWA** — all of Chrome's install criteria verified live (secure context, linked manifest, name/short_name, start_url, `display: standalone`, 192px + 512px + maskable icons, active service worker controlling the page). Installing on a real phone additionally needs the app served over **HTTPS**; it isn't deployed anywhere yet.
+- **`public/sw.js` must look things up with `cache.match(req, { ignoreVary: true })`.** Static hosts (Vite preview, Netlify, Vercel, Cloudflare) send `Vary: Origin` on assets, and the Cache API honours Vary — without `ignoreVary` the worker misses entries it stored moments earlier, falls through to the network, and fails offline, which is the one moment the cache existed for. This was a real bug, caught only by inspecting the live cache. Bump `CACHE` (currently `buildsupply-v3`) to force clients to drop old entries; `activate` deletes every cache that isn't the current name, which also clears assets left by previous builds.
+- **The navigation branch of `sw.js` only caches a response when `response.ok && response.type === 'basic'`.** Navigations are network-first so a deploy is picked up immediately, and the response is stored as the offline shell — so without that check a host 404 (from a missing SPA rewrite), a 500, or a cafe wifi sign-in page becomes the shell the app shows every time it opens offline, and keeps being served long after the network returns. Verified end to end: with the preview server **stopped**, a reload of `/dashboard` still boots from cache and renders.
+- **Safe-area insets.** `index.html` asks for `viewport-fit=cover`, which deliberately opts *into* drawing under the status bar and the home indicator, so anything pinned to a screen edge must keep that strip clear itself. `index.css` defines `--safe-top` / `--safe-bottom` from `env(safe-area-inset-*)` with a `0px` fallback, and four places in `AppShell.tsx` spend them: the mobile header's top padding, the fixed tab bar's bottom padding, **the content wrapper that reserves the tab bar's height** (the bar is taller on a notched phone, so the reservation has to match), and the "more" sheet. Only top and bottom exist — the manifest pins the installed app to `portrait`, so the notch is never on a side. Measured at 375×812: with no insets the padding is unchanged (12px / 64px / 0px); with an iPhone 14 Pro's 59px and 34px it becomes 71px / 98px / 34px and content still clears the bar.
+- The app is a **fully installable PWA** — all of Chrome's install criteria verified live (secure context, linked manifest, name/short_name, start_url, `display: standalone`, 192px + 512px + maskable icons, active service worker controlling the page). Installing on a real phone additionally needs the app served over **HTTPS**; as of 2026-09-08 it is not deployed anywhere yet, but everything in the repo is ready for it — see Outstanding for the remaining steps, all of which are dashboard actions Claude cannot perform.
 - Deploying the Edge Function: `npx supabase functions deploy admin-manage-supplier --project-ref pefarymejlfdsmwusbbq --use-api` from the project root (requires `npx supabase login` once per terminal — device-code flow).
 
 ### The dev browser tooling (not app bugs — don't chase these)
@@ -204,5 +247,22 @@ select count(*) from customers;
 - New user-facing strings on supplier screens go through `t()` with a key in `lib/i18n.ts` (all three languages), not hard-coded English.
 
 ## Outstanding
+
+### Deploying — the remaining steps are all the user's
+Claude cannot do any of these: they need account creation, browser OAuth, or a
+dashboard the CLI can't reach. No deploy CLI is installed and no credentials
+are stored. **Everything in the repo is ready** — clean production build, host
+config committed, `main` pushed.
+
+1. **Apply migration `023`.** Paste `supabase/migrations/023_admin_list_last_contacted.sql` into the Supabase SQL editor. Running it through `supabase db query` is **blocked by the auto-mode classifier** (it contains `DROP FUNCTION`, which is required — adding a column changes the return type and `CREATE OR REPLACE` refuses). Until it runs, "Last contacted" stays an em dash. Check with: `select pg_get_function_result(oid) from pg_proc where proname='admin_list_suppliers';`
+2. **Host:** import the repo, set **Root Directory `frontend`**, add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. These are read at *build* time — unset means a white screen, not a warning.
+3. **Supabase → Authentication → URL Configuration:** set **Site URL** to the deployed origin and add `<origin>/reset-password` to **Redirect URLs**. `ForgotPassword.tsx` sends `window.location.origin` so the code needs no change, but Supabase rejects a redirect that isn't allow-listed and the failure is silent.
+4. Then verify live: deep links through the rewrite, service worker registration, install criteria over real HTTPS, auth round-trip.
+
+### Known and accepted
 - The unused second Supabase project **`rnuiiymyhrvafwkfubqs` ("BuildSupplyProject")** still occupies a free-tier slot. `npx supabase projects delete` is **blocked by the Claude Code auto-mode classifier** — the user has to delete it from the Supabase dashboard themselves. Don't try to work around the block.
-- Bundle is ~1.11 MB (325 kB gzip) in one chunk; Vite warns about it. Code-splitting the PDF libraries would fix it if it ever matters.
+- Bundle: `dist` is 1.7 MB total; the main chunk is 1.20 MB (**345 kB gzip**), plus jsPDF's `html2canvas` (44 kB gzip), `index.es` (47 kB) and `purify.es` (10 kB). Vite warns about the main chunk. Code-splitting the PDF libraries would fix it if it ever matters.
+- **Free-tier Supabase pauses after ~7 days idle.** Deploy, then leave it a week, and the app looks broken when it isn't.
+- **iOS evicts `localStorage`** after extended non-use, which silently signs the supplier out. Expected, not a bug.
+- Contrast: the white-on-green primary button measures **4.41** against WCAG AA's 4.5. Darkening `--color-accent` (#198a45 → #147a3a) would fix it, but it is a brand decision and was left to the user.
+- `components/ui/modal.tsx` has no `role="dialog"`, `aria-modal` or focus trap.
