@@ -1,0 +1,27 @@
+# Deliberately minimal. `supabase config push` only writes the properties this
+# file declares and leaves everything else on the hosted project untouched — so
+# this file declares exactly the two auth URLs that the deployment needs and
+# nothing else.
+#
+# Do NOT run `supabase init` to "fill this in". That writes a full template of
+# local-development defaults (site_url = http://localhost:3000, disabled
+# storage/oauth toggles, and more), and pushing it would silently overwrite
+# real hosted settings with values nobody chose. Always run
+# `supabase config diff --project-ref <ref>` and read it before pushing.
+
+project_id = "pefarymejlfdsmwusbbq"
+
+[auth]
+# Where Supabase sends users after a confirmation or recovery link. Password
+# reset builds its target from window.location.origin, but Supabase refuses any
+# redirect that isn't allow-listed here — and the refusal is silent, so the
+# symptom is simply that the reset email never usefully arrives.
+site_url = "https://buildsupplyin.vercel.app"
+additional_redirect_urls = [
+  "https://buildsupplyin.vercel.app/reset-password",
+  # Was already on the project as a wildcard; kept exactly as it was so the dev
+  # server's auth flows carry on working. Production is listed as one exact
+  # path rather than a wildcard — an allow-list is a phishing surface, and the
+  # app only ever redirects to /reset-password.
+  "http://localhost:5173/**",
+]
