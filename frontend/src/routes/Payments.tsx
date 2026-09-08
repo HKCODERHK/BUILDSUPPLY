@@ -43,6 +43,8 @@ interface Receipt {
   amount: number
   mode: PaymentMode
   balance: number
+  /** Offered but refused, because the bill did not owe that much. */
+  leftOver: number
 }
 
 export default function Payments() {
@@ -111,7 +113,7 @@ export default function Payments() {
     }
     setSaving(true)
     try {
-      await recordPayment(
+      const result = await recordPayment(
         supplier.id,
         invoiceId,
         splits.map((s) => ({ amount: Number(s.amount) || 0, mode: s.mode })),
@@ -128,10 +130,11 @@ export default function Payments() {
         setReceipt({
           customerName: invoice.customers?.name ?? '',
           phone: invoice.customers?.phone ?? null,
-          amount: totalEntered,
+          amount: result.applied,
           // The common case is one mode; a split payment names the first.
           mode: splits.find((s) => Number(s.amount) > 0)?.mode ?? 'Cash',
-          balance: Math.max(0, owedBefore - totalEntered),
+          balance: Math.max(0, owedBefore - result.applied),
+          leftOver: result.leftOver,
         })
       } else {
         closeModal()
@@ -209,6 +212,11 @@ export default function Payments() {
                   {receipt.balance > 0 ? formatINR(receipt.balance) : t('cust.settled')}
                 </span>
               </div>
+              {receipt.leftOver > 0 && (
+                <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                  {t('pay.leftOverBill', { amount: formatINR(receipt.leftOver) })}
+                </p>
+              )}
               {receipt.phone && (
                 <Button variant="outline" onClick={sendReceipt}>
                   <WhatsAppIcon size={16} /> {t('pay.sendReceipt')}

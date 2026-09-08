@@ -735,6 +735,16 @@ const STRINGS = {
     hi: 'फ़ोन नंबर पूरे 10 अंकों का होना चाहिए।',
     mr: 'फोन नंबर पूर्ण 10 अंकी असावा.',
   },
+  'pay.leftOverBill': {
+    en: '{amount} was more than this bill still owed, so it was not recorded.',
+    hi: '{amount} इस बिल की बाकी रकम से ज़्यादा था, इसलिए दर्ज नहीं हुआ।',
+    mr: '{amount} या बिलाच्या बाकी रकमेपेक्षा जास्त होते, म्हणून नोंदवले नाही.',
+  },
+  'inv.paidMoreThanBill': {
+    en: 'That is more than this bill. Only {amount} will be recorded.',
+    hi: 'यह बिल से ज़्यादा है। सिर्फ़ {amount} दर्ज होगा।',
+    mr: 'हे बिलापेक्षा जास्त आहे. फक्त {amount} नोंदवले जाईल.',
+  },
 } satisfies Record<string, Entry>
 
 export type TranslationKey = keyof typeof STRINGS

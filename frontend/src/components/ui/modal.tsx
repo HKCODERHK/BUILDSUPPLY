@@ -29,22 +29,41 @@ export function Modal({
   // Tracked here rather than read back off history.state: the data router
   // owns that object and overwrites anything we put in it.
   const pushedRef = useRef(false)
+  // Set while an unwind is queued but not yet run. React's StrictMode mounts,
+  // tears down and remounts in development, and history.back() is async — so
+  // without this the teardown's back() landed AFTER the remount's pushState,
+  // popped it, and slammed the dialog shut the instant it opened. Deferring
+  // the unwind by a tick lets the remount cancel it.
+  const unwindRef = useRef<number | undefined>(undefined)
 
   useEffect(() => {
     if (!captureBack) return
-    window.history.pushState(null, '')
+
+    if (unwindRef.current !== undefined) {
+      // A remount, not a real open: keep the entry already on the stack.
+      clearTimeout(unwindRef.current)
+      unwindRef.current = undefined
+    } else {
+      window.history.pushState(null, '')
+    }
     pushedRef.current = true
+
     function onPop() {
       // Back consumed our entry — nothing left to unwind.
       pushedRef.current = false
       onCloseRef.current()
     }
     window.addEventListener('popstate', onPop)
+
     return () => {
       window.removeEventListener('popstate', onPop)
       // Closed by a button instead: drop the entry we added, so back doesn't
       // later need two presses to leave the screen.
-      if (pushedRef.current) window.history.back()
+      if (!pushedRef.current) return
+      unwindRef.current = window.setTimeout(() => {
+        unwindRef.current = undefined
+        window.history.back()
+      }, 0)
     }
   }, [captureBack])
 

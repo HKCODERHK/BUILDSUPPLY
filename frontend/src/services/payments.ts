@@ -15,29 +15,57 @@ export async function listPayments(): Promise<PaymentWithInvoice[]> {
   return data as PaymentWithInvoice[]
 }
 
+export interface PaymentResult {
+  /** How much actually went onto the bill. */
+  applied: number
+  /** Anything beyond what the bill still owed, which was NOT recorded. */
+  leftOver: number
+}
+
 // A "split" payment is just multiple payment rows against one invoice
 // (e.g. part Cash, part UPI) — recorded in a single call.
+//
+// Capped at what the bill still owes. Without the cap a supplier could record
+// ₹67,000 against a ₹64,300 bill, which is exactly what happened to INV-1008:
+// the customer's khata then read minus ₹2,700 and the dashboard collected
+// more than it had ever billed. There is no advance/credit feature for the
+// extra to live in, so it is refused and reported rather than absorbed.
 export async function recordPayment(
   supplierId: string,
   invoiceId: string,
   splits: { amount: number; mode: PaymentMode }[],
-): Promise<void> {
-  const rows = splits
-    .filter((s) => s.amount > 0)
-    .map((s) => ({ supplier_id: supplierId, invoice_id: invoiceId, amount: s.amount, mode: s.mode }))
-  if (rows.length === 0) return
+): Promise<PaymentResult> {
+  const offered = splits.filter((s) => s.amount > 0)
+  if (offered.length === 0) return { applied: 0, leftOver: 0 }
 
-  const { error } = await supabase.from('payments').insert(rows)
-  if (error) throw error
-
-  const totalPaidNow = rows.reduce((sum, r) => sum + r.amount, 0)
-
+  // Read the bill first: what it still owes decides how much may be taken.
   const { data: invoice, error: invoiceError } = await supabase
     .from('invoices')
     .select('paid, total')
     .eq('id', invoiceId)
     .single()
   if (invoiceError) throw invoiceError
+
+  const due = Math.max(0, Number(invoice.total) - Number(invoice.paid))
+  const offeredTotal = offered.reduce((sum, s) => sum + s.amount, 0)
+
+  // Trim the splits in order so the modes stay truthful — if ₹5,000 cash and
+  // ₹3,000 UPI are offered against ₹6,000 due, that is ₹5,000 cash and
+  // ₹1,000 UPI, not a flat scaling of both.
+  let budget = due
+  const rows: { supplier_id: string; invoice_id: string; amount: number; mode: PaymentMode }[] = []
+  for (const s of offered) {
+    if (budget <= 0) break
+    const amount = Math.min(s.amount, budget)
+    rows.push({ supplier_id: supplierId, invoice_id: invoiceId, amount, mode: s.mode })
+    budget -= amount
+  }
+
+  const totalPaidNow = rows.reduce((sum, r) => sum + r.amount, 0)
+  if (totalPaidNow <= 0) return { applied: 0, leftOver: offeredTotal }
+
+  const { error } = await supabase.from('payments').insert(rows)
+  if (error) throw error
 
   const newPaid = Number(invoice.paid) + totalPaidNow
   const status = newPaid >= Number(invoice.total) ? 'Paid' : newPaid > 0 ? 'Partial' : 'Unpaid'
@@ -50,6 +78,8 @@ export async function recordPayment(
 
   void logActivity('supplier', 'payment_recorded', { details: { invoice_id: invoiceId, amount: totalPaidNow } })
   void logActivity('supplier', 'invoice_updated', { details: { invoice_id: invoiceId, status } })
+
+  return { applied: totalPaidNow, leftOver: offeredTotal - totalPaidNow }
 }
 
 export interface KhataPaymentResult {
