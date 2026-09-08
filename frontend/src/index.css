@@ -44,6 +44,21 @@
   --color-sidebar-text: #b7c4c6;
 }
 
+/* index.html asks for viewport-fit=cover so the app fills the whole screen of
+   a notched phone. That also means the system draws it *under* the status bar
+   and the home indicator, so anything pinned to the top or bottom edge has to
+   keep that strip clear itself or the OS sits on top of it — the bottom tab
+   bar under the home indicator is the one that actually costs taps.
+
+   env() reports what the device needs kept clear, and the 0px fallback means
+   a phone with neither, and every desktop browser, gets exactly the spacing
+   it had before. Only top and bottom are defined: the manifest pins the
+   installed app to portrait, so the notch is never on a side. */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 html,
 body,
 #root {

@@ -176,10 +176,15 @@ export function AppShell({ children }: { children: ReactNode }) {
       </nav>
 
       {/* Main content */}
-      <div className="flex min-w-0 flex-1 flex-col pb-16 lg:pb-0">
+      {/* Reserves the fixed tab bar's height so the last row of a list isn't
+          stuck behind it — and the bar is now that much taller on a phone
+          with a home indicator, so this has to match. */}
+      <div className="flex min-w-0 flex-1 flex-col pb-[calc(4rem_+_var(--safe-bottom))] lg:pb-0">
         {/* Phone/tablet top bar — the sidebar's brand header has no room
             here, so it moves up alongside the theme toggle. */}
-        <header className="sticky top-0 z-30 flex w-full items-center justify-between bg-shell px-4 py-3 text-white sm:px-6 lg:hidden">
+        {/* pt keeps the brand out from under the status bar, which the
+            translucent status bar style in index.html puts us beneath. */}
+        <header className="sticky top-0 z-30 flex w-full items-center justify-between bg-shell px-4 py-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white sm:px-6 lg:hidden">
           <Brand />
           <div className="flex items-center gap-2">
             <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
@@ -197,7 +202,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       {/* Phone/tablet bottom tab bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-card lg:hidden">
+      {/* pb lifts the tab labels clear of the home indicator; without it the
+          gesture bar sits on top of the last few pixels of every tap target. */}
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-card pb-[var(--safe-bottom)] lg:hidden">
         {primaryItems.map((item) => (
           <NavLink
             key={item.id}
@@ -225,8 +232,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Mobile "more" sheet */}
       {moreOpen && (
         <div className="fixed inset-0 z-40 flex items-end bg-black/40 lg:hidden" onClick={() => setMoreOpen(false)}>
+          {/* Sits on the bottom edge like the tab bar, so its last row of
+              links needs the same clearance from the home indicator. */}
           <div
-            className="w-full rounded-t-2xl bg-card p-4 pb-8"
+            className="w-full rounded-t-2xl bg-card p-4 pb-[calc(2rem_+_var(--safe-bottom))]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
