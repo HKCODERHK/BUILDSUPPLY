@@ -1,6 +1,7 @@
 import type { InvoiceWithCustomer } from '@/services/invoices'
 import type { PaymentWithInvoice } from '@/services/payments'
 import type { LedgerEntry } from './customerLedgerPdf'
+import { localDateKey } from './localDate'
 
 // Bills and payments merged into one date-ordered account statement.
 // Shared by the Reports page (where it can be filtered) and the Reminders
@@ -44,7 +45,8 @@ export function buildCustomerLedger(opts: {
   let openingBalance = 0
   const inRange: Omit<LedgerEntry, 'balance'>[] = []
   for (const e of all) {
-    const day = e.date.slice(0, 10)
+    // The supplier's own day, not UTC's — see localDateKey.
+    const day = localDateKey(e.date)
     if (dateFrom && day < dateFrom) {
       openingBalance += e.debit - e.credit
       continue

@@ -11,7 +11,9 @@
 // Bump this to force every client to throw away its old cache on activate.
 // Also clears out assets left behind by previous builds, since Vite's
 // content-hashed filenames mean old entries are never requested again.
-const CACHE = 'buildsupply-v2'
+// v3: v2 could store a 404 or an error page as the offline shell, so any
+// client already holding one has to drop it rather than keep serving it.
+const CACHE = 'buildsupply-v3'
 
 // The shell only. Everything under /assets/ is content-hashed by Vite, so it
 // gets cached on first use instead of being listed here.
@@ -64,8 +66,15 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone()
-          caches.open(CACHE).then((cache) => cache.put('/index.html', copy))
+          // Only ever store a real page. A 404 from a host that isn't
+          // rewriting unknown paths to index.html, a 500, or the sign-in page
+          // a cafe's wifi hands back would otherwise become the shell this
+          // app shows every time it opens offline — and it would keep being
+          // served long after the network came back.
+          if (response.ok && response.type === 'basic') {
+            const copy = response.clone()
+            caches.open(CACHE).then((cache) => cache.put('/index.html', copy))
+          }
           return response
         })
         .catch(async () => {

@@ -1,0 +1,13 @@
+# Netlify / Cloudflare Pages SPA fallback.
+#
+# This app is a single-page app behind a data router, so /invoices/123,
+# /customers/abc and the installed app's own start_url (/dashboard) are all
+# routes that exist only in the browser. Without this rule the host looks for
+# a file at that path, doesn't find one, and returns its 404 page — so the
+# app appears completely broken the moment it is installed, and a refresh on
+# any screen but "/" loses the supplier's place.
+#
+# Real files are served first; this only catches what the filesystem misses.
+# The 200 matters: it rewrites rather than redirecting, so the URL the
+# supplier is on stays the URL they see.
+/*  /index.html  200

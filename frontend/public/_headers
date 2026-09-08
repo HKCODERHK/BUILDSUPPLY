@@ -1,0 +1,21 @@
+# Netlify / Cloudflare Pages response headers.
+
+# The service worker decides which version of the app every installed phone
+# runs, so it must never be served from a stale CDN copy — a cached sw.js can
+# keep handing out an old build long after a deploy. Browsers already refuse
+# to cache it for more than 24h; this makes it immediate.
+/sw.js
+  Cache-Control: no-cache
+
+# Same reasoning for the shell and the manifest: they carry the references to
+# the hashed asset filenames, so a stale copy points at files that no longer
+# exist.
+/index.html
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Cache-Control: no-cache
+
+# Everything Vite emits under /assets/ is content-hashed, so the filename
+# changes whenever the contents do and it can be cached hard, forever.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

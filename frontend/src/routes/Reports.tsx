@@ -13,6 +13,7 @@ import type { Customer, Material } from '@/lib/database.types'
 import { downloadReportPdf } from '@/lib/reportPdf'
 import { downloadCustomerLedgerPdf } from '@/lib/customerLedgerPdf'
 import { buildCustomerLedger } from '@/lib/customerLedger'
+import { localDateKey } from '@/lib/localDate'
 import { logActivity } from '@/services/activityLog'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -22,9 +23,10 @@ function isLowStock(m: Material) {
   return m.stock_qty <= threshold
 }
 
-function dateOnly(iso: string) {
-  return iso.slice(0, 10)
-}
+// The day the supplier would say this happened on, which is their local day
+// and not UTC's — the date pickers below are local too, so both sides have to
+// agree. See lib/localDate.
+const dateOnly = localDateKey
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
