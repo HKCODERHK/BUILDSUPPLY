@@ -10,6 +10,16 @@ function slugify(name: string): string {
     .replace(/(^-|-$)/g, '')
 }
 
+// Every catalog table has a uniqueness rule: brand and category names are
+// unique platform-wide, a type is unique within its category, and a variant is
+// unique on type + brand + attributes. Postgres raises 23505 on all of them,
+// and the admin screens print `error.message` straight into a red card — so
+// without this the admin sees `duplicate key value violates unique constraint
+// "brands_name_key"` and has no idea the name simply already exists.
+function duplicate(error: { code?: string } | null, message: string): Error | null {
+  return error?.code === '23505' ? new Error(message) : null
+}
+
 // ============================================================
 // Categories
 // ============================================================
@@ -26,14 +36,14 @@ export async function createCategory(name: string): Promise<MaterialCategory> {
     .insert({ name, slug: slugify(name) })
     .select()
     .single()
-  if (error) throw error
+  if (error) throw duplicate(error, `A category named "${name}" already exists.`) ?? error
   void logActivity('admin', 'category_added', { details: { name } })
   return data
 }
 
 export async function updateCategory(id: string, input: Partial<MaterialCategory>): Promise<void> {
   const { error } = await supabase.from('material_categories').update(input).eq('id', id)
-  if (error) throw error
+  if (error) throw duplicate(error, `A category named "${input.name}" already exists.`) ?? error
   void logActivity('admin', 'active' in input ? 'category_status_changed' : 'category_updated', { details: input })
 }
 
@@ -49,14 +59,14 @@ export async function listBrands(): Promise<Brand[]> {
 
 export async function createBrand(name: string): Promise<Brand> {
   const { data, error } = await supabase.from('brands').insert({ name, slug: slugify(name) }).select().single()
-  if (error) throw error
+  if (error) throw duplicate(error, `A brand named "${name}" already exists.`) ?? error
   void logActivity('admin', 'brand_added', { details: { name } })
   return data
 }
 
 export async function updateBrand(id: string, input: Partial<Brand>): Promise<void> {
   const { error } = await supabase.from('brands').update(input).eq('id', id)
-  if (error) throw error
+  if (error) throw duplicate(error, `A brand named "${input.name}" already exists.`) ?? error
   void logActivity('admin', 'active' in input ? 'brand_status_changed' : 'brand_updated', { details: input })
 }
 
@@ -76,14 +86,16 @@ export async function createMaterialType(categoryId: string, name: string): Prom
     .insert({ category_id: categoryId, name, slug: slugify(name) })
     .select()
     .single()
-  if (error) throw error
+  // Unique on (category_id, name) — the same type name under a different
+  // category is legitimate, so the message says where the clash is.
+  if (error) throw duplicate(error, `This category already has a material type named "${name}".`) ?? error
   void logActivity('admin', 'material_type_added', { details: { name } })
   return data
 }
 
 export async function updateMaterialType(id: string, input: Partial<MaterialType>): Promise<void> {
   const { error } = await supabase.from('material_types').update(input).eq('id', id)
-  if (error) throw error
+  if (error) throw duplicate(error, `This category already has a material type named "${input.name}".`) ?? error
   void logActivity('admin', 'active' in input ? 'material_type_status_changed' : 'material_type_updated', {
     details: input,
   })
@@ -125,6 +137,9 @@ export async function searchCatalog(query: string, opts?: { activeOnly?: boolean
   return data as VariantWithLookups[]
 }
 
+const DUPLICATE_VARIANT =
+  'This material is already in the catalog — same type, brand and specifications.'
+
 export interface VariantInput {
   material_type_id: string
   brand_id: string | null
@@ -137,14 +152,16 @@ export interface VariantInput {
 
 export async function createVariant(input: VariantInput): Promise<MasterMaterialVariant> {
   const { data, error } = await supabase.from('master_material_variants').insert(input).select().single()
-  if (error) throw error
+  // Unique on (material_type_id, brand_id, attributes), not on name — so the
+  // clash is about the specifications, which is what the message points at.
+  if (error) throw duplicate(error, DUPLICATE_VARIANT) ?? error
   void logActivity('admin', 'material_catalog_added', { details: { name: input.name } })
   return data
 }
 
 export async function updateVariant(id: string, input: Partial<VariantInput> & { active?: boolean }): Promise<void> {
   const { error } = await supabase.from('master_material_variants').update(input).eq('id', id)
-  if (error) throw error
+  if (error) throw duplicate(error, DUPLICATE_VARIANT) ?? error
   const isStatusChange = 'active' in input && Object.keys(input).length === 1
   void logActivity('admin', isStatusChange ? 'material_catalog_status_changed' : 'material_catalog_updated', {
     details: input,
