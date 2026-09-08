@@ -289,13 +289,17 @@ confusable names, and the run silently did nothing here.
    supplier using "Forgot password" themselves should be expected to fail. Not
    urgent: the admin panel resets passwords directly, and the Edge Function
    passes `email_confirm: true`, so account creation never waits on an email.
-3. **Partly tested on a real phone (2026-09-08).** Installed from
-   `buildsupplyin.vercel.app` to the home screen, and **WhatsApp share opens
-   with the correct number** — which is the confirmation that matters for
-   `lib/whatsapp.ts`, since a wa.me link can only really be judged by WhatsApp
-   itself. Still unconfirmed on-device: the safe-area insets against an actual
-   notch and home indicator, and whether the keyboard covers Save while
-   billing.
+3. ~~Test on a real phone~~ — **done, all clear (2026-09-09).** Installed from
+   `buildsupplyin.vercel.app` to the home screen and checked on-device:
+   **WhatsApp share opens the correct contact** (the only test that really
+   judges `lib/whatsapp.ts` — a wa.me link either resolves or says "phone
+   number is invalid", and nothing but a real phone tells you which); the
+   **bottom tab bar clears the home indicator** and the **header clears the
+   status bar**, so the safe-area insets are right on real hardware; and the
+   **keyboard does not cover Save** while billing.
+   That last one closes a Phase 2 question that stayed open for several
+   sessions purely because it can't be reproduced in a desktop browser. It was
+   never a bug. Don't go looking for it again.
 
 ### Note on this machine
 Avast intercepts TLS and re-signs it, so Node tools (`npm`, `vercel`, `supabase`)
