@@ -284,11 +284,25 @@ confusable names, and the run silently did nothing here.
    connection string carries the database password, so the user runs it, not
    Claude. Supabase Pro brings 7-day automatic backups and is worth it once
    this earns anything.
-2. **No custom SMTP.** Auth email goes through Supabase's built-in sender,
-   which is a few messages per hour and documented as testing-only, so a
-   supplier using "Forgot password" themselves should be expected to fail. Not
-   urgent: the admin panel resets passwords directly, and the Edge Function
-   passes `email_confirm: true`, so account creation never waits on an email.
+2. **No custom SMTP — deliberately deferred on 2026-09-09, not an oversight.**
+   Auth email goes through Supabase's built-in sender, which is a few messages
+   per hour and documented as testing-only, so a supplier using "Forgot
+   password" themselves should be expected to fail. That is survivable because
+   the admin panel resets any supplier's password directly — the designed path
+   — and the Edge Function passes `email_confirm: true`, so creating an account
+   never waits on an email. **Nothing in the app is broken by this.**
+
+   **The trigger for revisiting it:** onboarding a supplier who can't simply be
+   phoned when they forget their password.
+
+   When that happens, the real decision is whether to buy a domain first. SPF
+   and DKIM need DNS records, and none can be added to a `vercel.app`
+   subdomain — so without a domain the only option is a provider that allows a
+   verified single sender (Brevo does; Resend wants a domain for anything but
+   testing) and resets then arrive from the user's personal Gmail. Buying a
+   domain solves the email and the `buildsupplyin.vercel.app` URL together,
+   which is the better purchase. Also raise the auth email rate limit, and
+   rewrite the recovery template — it is the only one this app actually sends.
 3. ~~Test on a real phone~~ — **done, all clear (2026-09-09).** Installed from
    `buildsupplyin.vercel.app` to the home screen and checked on-device:
    **WhatsApp share opens the correct contact** (the only test that really
