@@ -1,0 +1,17 @@
+# Database backups. These hold everything RLS normally keeps apart — customer
+# names and phone numbers, every invoice and payment, and the bcrypt PIN
+# hashes out of supplier_pins — in flat files with no access control at all.
+# Keep them off the machine, not in the history.
+backups/
+
+# Written by `supabase link`. Holds the project ref and the pooler connection
+# URL for whichever project this checkout is pointed at.
+supabase/.temp/
+
+# Real keys live here; .env.example is the tracked template.
+.env
+.env.local
+.env.*.local
+
+node_modules/
+dist/
