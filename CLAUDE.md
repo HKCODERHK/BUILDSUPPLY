@@ -25,11 +25,33 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 
 **Everything in this app is free.** No Stripe/Razorpay/Twilio, no WhatsApp Business API, no paid libraries — every dependency is MIT-licensed. WhatsApp works through free `wa.me` links and the device share sheet, which means *the supplier always taps send themselves*. Automated/background WhatsApp sending would cost money and is deliberately not built. Don't introduce a paid service without asking.
 
-## Credentials
-- **Admin**: `himanshukhalatkar6@gmail.com` / `Himanshu@123456`
-- **Test suppliers** (password `Supplier@123` unless noted): `shreebalaji@buildsupply.test`, `ganeshhardware@buildsupply.test`, `omsaitraders@buildsupply.test`, `krishnasupplies@buildsupply.test`, `laxmimaterials@buildsupply.test`
-- **Ashirwad Cement Depot** test account: `ashirwad@buildsupply.test` / `NewPass456`
-- "Kalyani Traders" account was created by the user themselves (real, not test data — **don't touch**).
+## Accounts
+
+**No live password belongs in this file.** The admin password was rotated on
+2026-09-08 precisely because it was sitting here, and this app is going onto
+the public internet where that login is the front door to every supplier's
+subscription. Ask the user if you need it; it lives in their password manager.
+
+Only three accounts exist — verified against `auth.users`, not assumed:
+
+| Account | Email | Notes |
+|---|---|---|
+| **Admin** | `himanshukhalatkar6@gmail.com` | Password in the user's password manager |
+| **KALYANI TRADERS** | `gajendrakhalatkar6@gmail.com` | The user's own real account and real data — **don't touch** |
+| **Shree Balaji Building Materials** | `shreebalaji@buildsupply.test` | The only surviving test supplier; safe to click through |
+
+The other test suppliers named in earlier sessions — `ganeshhardware`,
+`omsaitraders`, `krishnasupplies`, `laxmimaterials` and `ashirwad` — no longer
+exist. Don't try to sign in as them.
+
+**Before the app is publicly reachable**, the Shree Balaji test account needs
+its password rotated or the account deleted. Its *data* is fake, but it is a
+real tenant in the production database, and a known weak password on a
+public login page is a way in.
+
+Claude cannot type passwords, so it cannot sign in as anyone. That is why the
+RLS simulation recipe further down exists, and why UI verification needs the
+user to sign in first and leave the tab open.
 
 ## What's built and verified working
 
