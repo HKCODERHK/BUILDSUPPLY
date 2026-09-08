@@ -1,6 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "comment": "SPA fallback plus caching. See public/_redirects and public/_headers for the Netlify and Cloudflare Pages equivalents; whichever host is used ignores the other's file. Set the Vercel project's Root Directory to 'frontend' so this file is the one that applies.",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
   "headers": [
     {
