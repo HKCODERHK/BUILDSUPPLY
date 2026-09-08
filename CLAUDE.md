@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `023`, run in order. **022 is the latest that is applied. `023` is written but NOT yet applied** — see Outstanding. (There is no `001` file in the repo; the base schema predates the migration folder.)
+- **Schema migrations**: `supabase/migrations/` — `002` through `023`, run in order. **023 is the latest and is applied** (2026-09-08). (There is no `001` file in the repo; the base schema predates the migration folder.)
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -105,7 +105,7 @@ touched, and again afterwards.
 | **Customer ledger and Reports dates** (`lib/localDate.ts`) | Bucketed by UTC, filtered against IST date pickers. 3 of 20 invoices and 5 of 25 payments in the live database were already on the wrong side of it. See the shared-modules entry. |
 | **Service worker + host config** | Cached failed navigations as the offline shell, and nothing told a host to serve `index.html` for browser-only routes — the installed app's `start_url` is `/dashboard`, so the very first launch would have hit a 404. |
 | **Safe-area insets** (`index.css`, `AppShell.tsx`) | `viewport-fit=cover` with nothing keeping the system's strips clear. |
-| **`admin_list_suppliers` missing `last_contacted_at`** (migration 023) | The "Last contacted" column had always shown an em dash. **Written, not yet applied.** |
+| **`admin_list_suppliers` missing `last_contacted_at`** (migration 023) | The "Last contacted" column had always shown an em dash. Applied 2026-09-08. `DROP FUNCTION` takes the grants with it, so `anon`/`authenticated`/`service_role` execute, `security definer` and the pinned `search_path` were all re-verified afterwards — as was the boundary: admin gets 3 rows, a supplier gets 0. No redeploy was needed, since the frontend already read the field. |
 
 Two things noticed and deliberately **not** changed, since they are cosmetic and
 were outside what was asked: `components/ui/modal.tsx` has no `role="dialog"`,
@@ -269,9 +269,28 @@ than in it.
 **Hobby is a non-commercial plan.** Once this serves paying suppliers, Vercel's
 terms expect Pro.
 
+Migration `023` and the auth URL configuration are both **done** — see Live
+deployment above. Applying a migration by hand is worth knowing about: anything
+with `DROP FUNCTION` or a `$$` body is blocked from `supabase db query` by the
+auto-mode classifier, so it has to be pasted into the SQL editor. Send the user
+the **project-scoped** link, `https://supabase.com/dashboard/project/<ref>/sql/new`
+— `023` was first pasted into the wrong project because two exist with
+confusable names, and the run silently did nothing here.
+
 ### Still to do
-1. **Apply migration `023`.** Paste `supabase/migrations/023_admin_list_last_contacted.sql` into the Supabase SQL editor. Running it through `supabase db query` is **blocked by the auto-mode classifier** (it contains `DROP FUNCTION`, which is required — adding a column changes the return type and `CREATE OR REPLACE` refuses). Until it runs, "Last contacted" stays an em dash. Check with: `select pg_get_function_result(oid) from pg_proc where proname='admin_list_suppliers';`
-2. **Supabase → Authentication → URL Configuration:** set **Site URL** to `https://buildsupplyin.vercel.app` and add `https://buildsupplyin.vercel.app/reset-password` to **Redirect URLs**. `ForgotPassword.tsx` sends `window.location.origin` so the code needs no change, but Supabase rejects a redirect that isn't allow-listed and **the failure is silent** — password reset simply never arrives.
+1. **There are no database backups.** The free tier automates none, and the
+   database now holds the user's real business. A manual dump is
+   `npx supabase db dump --db-url "<connection string>" -f backup.sql`; the
+   connection string carries the database password, so the user runs it, not
+   Claude. Supabase Pro brings 7-day automatic backups and is worth it once
+   this earns anything.
+2. **No custom SMTP.** Auth email goes through Supabase's built-in sender,
+   which is a few messages per hour and documented as testing-only, so a
+   supplier using "Forgot password" themselves should be expected to fail. Not
+   urgent: the admin panel resets passwords directly, and the Edge Function
+   passes `email_confirm: true`, so account creation never waits on an email.
+3. **Not yet tested on a real phone** — the safe-area insets on an actual
+   notch, and whether the keyboard covers Save while billing.
 
 ### Note on this machine
 Avast intercepts TLS and re-signs it, so Node tools (`npm`, `vercel`, `supabase`)
