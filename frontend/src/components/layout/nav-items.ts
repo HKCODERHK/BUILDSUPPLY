@@ -1,7 +1,7 @@
 import {
   LayoutGrid,
   Users,
-  Warehouse,
+  LayersPlus,
   FileText,
   Layers,
   CreditCard,
@@ -31,7 +31,10 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'customers', labelKey: 'nav.customers', path: '/customers', icon: Users },
   // Named "Stock" rather than "Materials": updating stock is the single
   // most-used action in the app, and adding a material is rare by comparison.
-  { id: 'materials', labelKey: 'nav.materials', path: '/materials', icon: Warehouse },
+  // LayersPlus, not a warehouse: a warehouse is a place, and this page is
+  // about how much is in it. The plus matches what the supplier is nearly
+  // always here to do — top the stock up after a delivery arrives.
+  { id: 'materials', labelKey: 'nav.materials', path: '/materials', icon: LayersPlus },
   { id: 'invoices', labelKey: 'nav.invoices', path: '/invoices', icon: FileText },
   { id: 'quotations', labelKey: 'nav.quotations', path: '/quotations', icon: Layers },
   { id: 'payments', labelKey: 'nav.payments', path: '/payments', icon: CreditCard },
