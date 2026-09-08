@@ -44,10 +44,19 @@ The other test suppliers named in earlier sessions — `ganeshhardware`,
 `omsaitraders`, `krishnasupplies`, `laxmimaterials` and `ashirwad` — no longer
 exist. Don't try to sign in as them.
 
-**Before the app is publicly reachable**, the Shree Balaji test account needs
-its password rotated or the account deleted. Its *data* is fake, but it is a
-real tenant in the production database, and a known weak password on a
-public login page is a way in.
+Both passwords were rotated on 2026-09-08, before this app went anywhere
+public — the admin's and Shree Balaji's. Verified afterwards by testing the
+old strings against the stored hashes: none of `Himanshu@123456`,
+`Supplier@123` or `NewPass456` authenticates on any account any more.
+
+**Shree Balaji was deliberately kept rather than deleted.** It holds 7
+customers, 18 invoices, 25 payments, 5 quotations and ₹236,822 of billing,
+and it is the only dataset in this project that is safe to experiment on —
+the alternative is KALYANI TRADERS, which is the user's real business. That
+data is what caught the INV-1008 overpayment, proved the payment cap trims
+splits in order, and exposed the UTC/IST ledger drift. Rotating its password
+closed the same hole deleting it would have, and cost nothing. Don't delete
+it to tidy up.
 
 Claude cannot type passwords, so it cannot sign in as anyone. That is why the
 RLS simulation recipe further down exists, and why UI verification needs the
