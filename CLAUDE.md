@@ -219,7 +219,7 @@ prove the rollback held.
 - **`public/sw.js` must look things up with `cache.match(req, { ignoreVary: true })`.** Static hosts (Vite preview, Netlify, Vercel, Cloudflare) send `Vary: Origin` on assets, and the Cache API honours Vary — without `ignoreVary` the worker misses entries it stored moments earlier, falls through to the network, and fails offline, which is the one moment the cache existed for. This was a real bug, caught only by inspecting the live cache. Bump `CACHE` (currently `buildsupply-v3`) to force clients to drop old entries; `activate` deletes every cache that isn't the current name, which also clears assets left by previous builds.
 - **The navigation branch of `sw.js` only caches a response when `response.ok && response.type === 'basic'`.** Navigations are network-first so a deploy is picked up immediately, and the response is stored as the offline shell — so without that check a host 404 (from a missing SPA rewrite), a 500, or a cafe wifi sign-in page becomes the shell the app shows every time it opens offline, and keeps being served long after the network returns. Verified end to end: with the preview server **stopped**, a reload of `/dashboard` still boots from cache and renders.
 - **Safe-area insets.** `index.html` asks for `viewport-fit=cover`, which deliberately opts *into* drawing under the status bar and the home indicator, so anything pinned to a screen edge must keep that strip clear itself. `index.css` defines `--safe-top` / `--safe-bottom` from `env(safe-area-inset-*)` with a `0px` fallback, and four places in `AppShell.tsx` spend them: the mobile header's top padding, the fixed tab bar's bottom padding, **the content wrapper that reserves the tab bar's height** (the bar is taller on a notched phone, so the reservation has to match), and the "more" sheet. Only top and bottom exist — the manifest pins the installed app to `portrait`, so the notch is never on a side. Measured at 375×812: with no insets the padding is unchanged (12px / 64px / 0px); with an iPhone 14 Pro's 59px and 34px it becomes 71px / 98px / 34px and content still clears the bar.
-- The app is a **fully installable PWA** — all of Chrome's install criteria verified live (secure context, linked manifest, name/short_name, start_url, `display: standalone`, 192px + 512px + maskable icons, active service worker controlling the page). Installing on a real phone additionally needs the app served over **HTTPS**; as of 2026-09-08 it is not deployed anywhere yet, but everything in the repo is ready for it — see Outstanding for the remaining steps, all of which are dashboard actions Claude cannot perform.
+- The app is a **fully installable PWA** — all of Chrome's install criteria verified live (secure context, linked manifest, name/short_name, start_url, `display: standalone`, 192px + 512px + maskable icons, active service worker controlling the page). **Deployed and verified in production on 2026-09-08 at `https://buildsupplyin.vercel.app`** (Vercel, team `hkcoderhk`, Hobby, project `buildsupplyin` — the plain `buildsupply.vercel.app` was already taken by someone else). All 11 install criteria re-checked against the live HTTPS origin, not just localhost.
 - Deploying the Edge Function: `npx supabase functions deploy admin-manage-supplier --project-ref pefarymejlfdsmwusbbq --use-api` from the project root (requires `npx supabase login` once per terminal — device-code flow).
 
 ### The dev browser tooling (not app bugs — don't chase these)
@@ -248,16 +248,36 @@ prove the rollback held.
 
 ## Outstanding
 
-### Deploying — the remaining steps are all the user's
-Claude cannot do any of these: they need account creation, browser OAuth, or a
-dashboard the CLI can't reach. No deploy CLI is installed and no credentials
-are stored. **Everything in the repo is ready** — clean production build, host
-config committed, `main` pushed.
+### Live deployment
+**`https://buildsupplyin.vercel.app`** — Vercel, team `hkcoderhk` (Hobby), project
+`buildsupplyin`, auto-deploying from `main`. Push to `main` and Vercel rebuilds;
+there is nothing to run by hand.
 
+Verified against the live origin on 2026-09-08: deep links (`/dashboard`,
+`/invoices`, `/customers/abc`, `/admin/suppliers`) all return the app shell
+through the rewrite, the deployed asset hashes match the local build, every
+cache header from `vercel.json` is applied, the service worker registers and
+controls the page over real HTTPS, all 11 PWA install criteria pass, and an
+anonymous `GET /rest/v1/customers` from the public internet returns `[]` —
+RLS holds from outside with the publishable key that ships in the bundle.
+
+**`vercel.json` is schema-validated and rejects unknown top-level keys.** A
+`"comment"` key failed project creation outright with "should NOT have
+additional property". JSON has no comment syntax; explain the file here rather
+than in it.
+
+**Hobby is a non-commercial plan.** Once this serves paying suppliers, Vercel's
+terms expect Pro.
+
+### Still to do
 1. **Apply migration `023`.** Paste `supabase/migrations/023_admin_list_last_contacted.sql` into the Supabase SQL editor. Running it through `supabase db query` is **blocked by the auto-mode classifier** (it contains `DROP FUNCTION`, which is required — adding a column changes the return type and `CREATE OR REPLACE` refuses). Until it runs, "Last contacted" stays an em dash. Check with: `select pg_get_function_result(oid) from pg_proc where proname='admin_list_suppliers';`
-2. **Host:** import the repo, set **Root Directory `frontend`**, add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. These are read at *build* time — unset means a white screen, not a warning.
-3. **Supabase → Authentication → URL Configuration:** set **Site URL** to the deployed origin and add `<origin>/reset-password` to **Redirect URLs**. `ForgotPassword.tsx` sends `window.location.origin` so the code needs no change, but Supabase rejects a redirect that isn't allow-listed and the failure is silent.
-4. Then verify live: deep links through the rewrite, service worker registration, install criteria over real HTTPS, auth round-trip.
+2. **Supabase → Authentication → URL Configuration:** set **Site URL** to `https://buildsupplyin.vercel.app` and add `https://buildsupplyin.vercel.app/reset-password` to **Redirect URLs**. `ForgotPassword.tsx` sends `window.location.origin` so the code needs no change, but Supabase rejects a redirect that isn't allow-listed and **the failure is silent** — password reset simply never arrives.
+
+### Note on this machine
+Avast intercepts TLS and re-signs it, so Node tools (`npm`, `vercel`, `supabase`)
+fail with "unable to verify the first certificate". Fix is
+`NODE_OPTIONS=--use-system-ca`, which makes Node trust the Windows certificate
+store where Avast's CA lives. Never `NODE_TLS_REJECT_UNAUTHORIZED=0`.
 
 ### Known and accepted
 - The unused second Supabase project **`rnuiiymyhrvafwkfubqs` ("BuildSupplyProject")** still occupies a free-tier slot. `npx supabase projects delete` is **blocked by the Claude Code auto-mode classifier** — the user has to delete it from the Supabase dashboard themselves. Don't try to work around the block.
