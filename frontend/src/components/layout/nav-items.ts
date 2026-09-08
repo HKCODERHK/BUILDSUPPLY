@@ -3,7 +3,7 @@ import {
   Users,
   LayersPlus,
   FileText,
-  Layers,
+  ClipboardList,
   CreditCard,
   Truck,
   Bell,
@@ -36,7 +36,10 @@ export const NAV_ITEMS: NavItem[] = [
   // always here to do — top the stock up after a delivery arrives.
   { id: 'materials', labelKey: 'nav.materials', path: '/materials', icon: LayersPlus },
   { id: 'invoices', labelKey: 'nav.invoices', path: '/invoices', icon: FileText },
-  { id: 'quotations', labelKey: 'nav.quotations', path: '/quotations', icon: Layers },
+  // Moved off Layers when Stock took LayersPlus — at 19px in the phone tab bar
+  // the two differed only by a small plus. A clipboard also says "estimate"
+  // more plainly than a stack of layers ever did.
+  { id: 'quotations', labelKey: 'nav.quotations', path: '/quotations', icon: ClipboardList },
   { id: 'payments', labelKey: 'nav.payments', path: '/payments', icon: CreditCard },
   { id: 'deliveries', labelKey: 'nav.deliveries', path: '/deliveries', icon: Truck },
   { id: 'reminders', labelKey: 'nav.reminders', path: '/reminders', icon: Bell },
