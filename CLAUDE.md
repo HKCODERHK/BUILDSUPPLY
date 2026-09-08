@@ -124,6 +124,10 @@ union all select 'invoice->customer', count(*) from invoices i join customers c 
 union all select 'item->material', count(*) from invoice_items ii join materials m on m.id=ii.material_id where m.supplier_id <> ii.supplier_id;
 ```
 
+**Payments are capped at what a bill still owes.** `recordPayment` reads the invoice first and takes only the outstanding amount, returning the remainder as `leftOver` for the caller to report — the Payments screen shows it, and New Invoice warns before saving. Splits are trimmed **in order**, not scaled, so the modes stay truthful. Do not remove the cap: without it `paid` can exceed `total`, which shows the customer a negative khata and inflates the dashboard's collected figure.
+
+One row had already been corrupted this way and was corrected on 2026-09-08: **INV-1008** (Shree Balaji, customer *himanshu*) held ₹67,000 against a ₹64,300 total. Payments ran 60,000 + 4,000 = 64,000, leaving ₹300 due, and the third was recorded as ₹3,000. That third payment was trimmed to the ₹300 actually owed — exactly what the fixed code now does — bringing the customer's khata from **−₹2,700 back to ₹0**. Nothing was deleted; all three payment rows remain. A pre-change snapshot is in the session scratchpad as `inv1008-before.json`.
+
 **`invoice_no` is only unique per supplier**, not globally — KALYANI TRADERS, Shree Balaji and the admin all had an `INV-1001`. Never identify an invoice by its number alone when querying across suppliers; use the id.
 
 **How to test RLS without signing in** (useful, since entering passwords is off-limits) — simulate a user's exact context in SQL:
