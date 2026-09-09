@@ -209,7 +209,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           <LanguageToggle />
           <ThemeToggle />
         </div>
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 lg:pt-0">{children}</main>
+        {/* Less room above the first thing on the page than around it: the
+            header already reads as a boundary, so a full 16px on top of that
+            left the greeting floating away from the bar it belongs under.
+            Applies to every screen, not just the dashboard, so the distance
+            from the header stays the same wherever the supplier is. */}
+        <main className="flex-1 px-4 pt-2 pb-4 sm:px-6 sm:pt-3 sm:pb-6 lg:p-8 lg:pt-0">{children}</main>
       </div>
 
       {/* Phone/tablet bottom tab bar */}
