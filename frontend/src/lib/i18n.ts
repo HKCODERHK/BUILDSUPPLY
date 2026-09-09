@@ -82,6 +82,15 @@ const STRINGS = {
   'overdue.today': { en: 'pending since today', hi: 'आज से बाकी', mr: 'आजपासून बाकी' },
   'overdue.oldest': { en: 'Oldest pending', hi: 'सबसे पुराना बाकी', mr: 'सर्वात जुने बाकी' },
 
+  // ── Brand ─────────────────────────────────────────────────────────────
+  // Sits under the wordmark in the sidebar and the phone's top bar. "BuildSupply"
+  // itself is the name and stays as it is in every language.
+  'brand.tagline': {
+    en: 'Building Materials. Business Made Easy.',
+    hi: 'बिल्डिंग मटेरियल. बिज़नेस आसान.',
+    mr: 'बांधकाम साहित्य. व्यवसाय सोपा.',
+  },
+
   // ── Dashboard ─────────────────────────────────────────────────────────
   'dash.welcome': { en: 'Welcome back, {name}', hi: 'नमस्ते, {name}', mr: 'नमस्कार, {name}' },
   'dash.subtitle': {
