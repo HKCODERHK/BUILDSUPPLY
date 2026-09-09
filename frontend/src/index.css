@@ -65,6 +65,16 @@ body,
   height: 100%;
 }
 
+/* Nothing rubber-bands. The header and tab bar hold their positions during a
+   normal scroll, but dragging past either end used to bounce the whole page
+   and carry them with it — which is what the bars "moving" actually was. The
+   same gesture at the top is Android's pull-to-refresh, so a supplier tugging
+   a list could reload the app in the middle of writing a bill. */
+html,
+body {
+  overscroll-behavior: none;
+}
+
 /* The strip behind the phone's gesture bar is painted from the root element,
    not from the fixed tab bar sitting above it — so without this the bar's own
    white ends and something else shows underneath. Matches --color-card, the
