@@ -3,6 +3,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import { EmptyState } from '@/components/EmptyState'
 import { listCustomers } from '@/services/customers'
 import { listInvoices, type InvoiceWithCustomer } from '@/services/invoices'
 import { listPayments, type PaymentWithInvoice } from '@/services/payments'
@@ -93,10 +94,17 @@ export default function Reminders() {
 
       {loading ? (
         <p className="text-sm text-muted">{t('common.loading')}</p>
+      ) : pending.length === 0 ? (
+        // The one empty state that is good news, so it gets a tick rather than
+        // an object, and no button — there is deliberately nothing to do here.
+        <EmptyState
+          art="allClear"
+          title={t('empty.remindersTitle')}
+          hint={t('empty.remindersHint')}
+        />
       ) : (
         <Card>
           <div className="flex flex-col divide-y divide-border">
-            {pending.length === 0 && <p className="py-3 text-sm text-muted">{t('rem.none')}</p>}
             {pending.map((c) => (
               <div key={c.id} className="flex items-center justify-between gap-3 py-3 text-sm">
                 <div className="min-w-0">

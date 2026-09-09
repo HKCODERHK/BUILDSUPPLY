@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { AddCustomerModal } from '@/components/AddCustomerModal'
+import { EmptyState } from '@/components/EmptyState'
 import { listCustomers, listCustomerBalances } from '@/services/customers'
 import { listInvoices } from '@/services/invoices'
 import { oldestPendingDays, overdueTextClass, type AgeableInvoice } from '@/lib/overdue'
@@ -73,25 +74,46 @@ export default function Customers() {
       <PageHeader
         title={t('cust.title')}
         subtitle={t('cust.subtitle')}
+        // Hidden while the list is empty — the empty state below carries the
+        // same button, and two identical "Add customer" buttons on one screen
+        // just looks unfinished.
         action={
-          <Button onClick={() => setModalOpen(true)}>
-            <Plus size={16} /> {t('cust.add')}
-          </Button>
+          customers.length > 0 ? (
+            <Button onClick={() => setModalOpen(true)}>
+              <Plus size={16} /> {t('cust.add')}
+            </Button>
+          ) : undefined
         }
-      />
-
-      <Input
-        placeholder={t('cust.searchPlaceholder')}
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        className="mb-4 max-w-xs"
       />
 
       {loading ? (
         <p className="text-sm text-muted">{t('common.loading')}</p>
+      ) : customers.length === 0 ? (
+        <EmptyState
+          art="customers"
+          title={t('empty.customersTitle')}
+          hint={t('empty.customersHint')}
+          action={
+            <Button onClick={() => setModalOpen(true)}>
+              <Plus size={16} /> {t('cust.add')}
+            </Button>
+          }
+        />
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.length === 0 && <p className="text-sm text-muted">{t('cust.notFound')}</p>}
+        <>
+          {/* The search box only exists once there is something to search. */}
+          <Input
+            placeholder={t('cust.searchPlaceholder')}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="mb-4 max-w-xs"
+          />
+
+          {/* Outside the grid, so a no-match line spans the page rather than
+              sitting in the first of three columns. */}
+          {filtered.length === 0 && <p className="text-sm text-muted">{t('empty.customersNoMatch')}</p>}
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((c) => {
             const bal = balances[c.id]
             const pendingDays = oldestPendingDays(invoicesByCustomer[c.id] ?? [])
@@ -130,7 +152,8 @@ export default function Customers() {
               </Link>
             )
           })}
-        </div>
+          </div>
+        </>
       )}
 
       {modalOpen && supplier && (

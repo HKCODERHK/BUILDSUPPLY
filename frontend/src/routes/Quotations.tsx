@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import { EmptyState } from '@/components/EmptyState'
 import {
   listQuotations,
   listQuotationItems,
@@ -99,28 +100,40 @@ export default function Quotations() {
       <PageHeader
         title={t('quo.title')}
         subtitle={t('quo.subtitle')}
+        // Dropped while the list is empty — the empty state below carries the
+        // same button, and two of them on one screen looks unfinished.
         action={
-          <Link to="/quotations/new">
-            <Button>
-              <Plus size={16} /> {t('quo.new')}
-            </Button>
-          </Link>
+          quotations.length > 0 ? (
+            <Link to="/quotations/new">
+              <Button>
+                <Plus size={16} /> {t('quo.new')}
+              </Button>
+            </Link>
+          ) : undefined
         }
       />
 
       {loading ? (
         <p className="text-sm text-muted">{t('common.loading')}</p>
+      ) : quotations.length === 0 ? (
+        <EmptyState
+          art="quotations"
+          title={t('empty.quotationsTitle')}
+          hint={t('empty.quotationsHint')}
+          action={
+            <Link to="/quotations/new">
+              <Button>
+                <Plus size={16} /> {t('quo.new')}
+              </Button>
+            </Link>
+          }
+        />
       ) : (
         <>
           {/* Cards on a phone, table on a desktop. In a 360px window the table
               was 562px wide with 276px of it off-screen — and Convert to
               Invoice, the whole point of this screen, sat in the hidden half. */}
           <div className="flex flex-col gap-3 lg:hidden">
-            {quotations.length === 0 && (
-              <Card>
-                <p className="text-sm text-muted">{t('quo.none')}</p>
-              </Card>
-            )}
             {quotations.map((q) => (
               <Card key={q.id}>
                 <div className="mb-2 flex items-start justify-between gap-3">
@@ -167,13 +180,6 @@ export default function Quotations() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {quotations.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="py-4 text-muted">
-                      {t('quo.none')}
-                    </td>
-                  </tr>
-                )}
                 {quotations.map((q) => (
                   <tr key={q.id}>
                     <td className="py-2.5 pr-3 font-medium text-ink">
