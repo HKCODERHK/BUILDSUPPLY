@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import { EmptyState } from '@/components/EmptyState'
 import { listInvoices, markInvoiceDelivered, type InvoiceWithCustomer } from '@/services/invoices'
 import { getCustomer } from '@/services/customers'
 import { openWhatsAppShare } from '@/lib/whatsapp'
@@ -78,17 +79,34 @@ export default function Invoices() {
       <PageHeader
         title={t('inv.listTitle')}
         subtitle={t('inv.listSubtitle')}
+        // Dropped while the list is empty: the empty state below offers the
+        // same button, larger, and two of them would just look unfinished.
         action={
-          <Link to="/invoices/new">
-            <Button>
-              <Plus size={16} /> {t('inv.new')}
-            </Button>
-          </Link>
+          invoices.length > 0 ? (
+            <Link to="/invoices/new">
+              <Button>
+                <Plus size={16} /> {t('inv.new')}
+              </Button>
+            </Link>
+          ) : undefined
         }
       />
 
       {loading ? (
         <p className="text-sm text-muted">{t('common.loading')}</p>
+      ) : invoices.length === 0 ? (
+        <EmptyState
+          art="invoices"
+          title={t('empty.invoicesTitle')}
+          hint={t('empty.invoicesHint')}
+          action={
+            <Link to="/invoices/new">
+              <Button>
+                <Plus size={16} /> {t('inv.new')}
+              </Button>
+            </Link>
+          }
+        />
       ) : (
         <>
           <Input
@@ -107,7 +125,7 @@ export default function Invoices() {
           <div className="flex flex-col gap-3 lg:hidden">
             {filtered.length === 0 && (
               <Card>
-                <p className="text-sm text-muted">{invoices.length === 0 ? t('inv.noneYet') : t('inv.noMatch')}</p>
+                <p className="text-sm text-muted">{t('inv.noMatch')}</p>
               </Card>
             )}
             {filtered.map((inv) => {
@@ -194,7 +212,7 @@ export default function Invoices() {
                 {filtered.length === 0 && (
                   <tr>
                     <td colSpan={8} className="py-4 text-muted">
-                      {invoices.length === 0 ? t('inv.noneYet') : t('inv.noMatch')}
+                      {t('inv.noMatch')}
                     </td>
                   </tr>
                 )}

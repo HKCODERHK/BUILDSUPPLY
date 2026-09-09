@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import { EmptyState } from '@/components/EmptyState'
 import { listPayments, recordPayment, type PaymentWithInvoice } from '@/services/payments'
 import { listInvoices, type InvoiceWithCustomer } from '@/services/invoices'
 import { openWhatsAppShare } from '@/lib/whatsapp'
@@ -165,19 +166,45 @@ export default function Payments() {
       <PageHeader
         title={t('pay.title')}
         subtitle={t('pay.subtitle')}
+        // Dropped while the list is empty — the empty state below carries the
+        // action, and two buttons for it on one screen looks unfinished.
         action={
-          <Button onClick={() => setModalOpen(true)}>
-            <Plus size={16} /> {t('pay.record')}
-          </Button>
+          payments.length > 0 ? (
+            <Button onClick={() => setModalOpen(true)}>
+              <Plus size={16} /> {t('pay.record')}
+            </Button>
+          ) : undefined
         }
       />
 
       {loading ? (
         <p className="text-sm text-muted">{t('common.loading')}</p>
+      ) : payments.length === 0 ? (
+        <EmptyState
+          art="payments"
+          title={t('empty.paymentsTitle')}
+          hint={t('empty.paymentsHint')}
+          // A payment is always recorded against a bill, so with nothing
+          // outstanding the Record button opens a modal whose only dropdown is
+          // empty — a dead end on the very first screen a new supplier opens.
+          // Send them to make a bill instead; the payment follows from it.
+          action={
+            openInvoices.length > 0 ? (
+              <Button onClick={() => setModalOpen(true)}>
+                <Plus size={16} /> {t('pay.record')}
+              </Button>
+            ) : (
+              <Link to="/invoices/new">
+                <Button>
+                  <Plus size={16} /> {t('inv.new')}
+                </Button>
+              </Link>
+            )
+          }
+        />
       ) : (
         <Card>
           <div className="flex flex-col divide-y divide-border">
-            {payments.length === 0 && <p className="py-3 text-sm text-muted">{t('pay.none')}</p>}
             {payments.slice(0, shown).map((p) => (
               <div key={p.id} className="flex items-center justify-between py-2.5 text-sm">
                 <div>

@@ -313,7 +313,6 @@ const STRINGS = {
   },
   'pay.record': { en: 'Record payment', hi: 'पेमेंट दर्ज करें', mr: 'पेमेंट नोंदवा' },
   'pay.recording': { en: 'Recording…', hi: 'दर्ज हो रहा है…', mr: 'नोंदवत आहे…' },
-  'pay.none': { en: 'No payments recorded yet.', hi: 'अभी कोई पेमेंट दर्ज नहीं।', mr: 'अजून पेमेंट नोंदवले नाही.' },
   'pay.invoice': { en: 'Invoice', hi: 'बिल', mr: 'बिल' },
   'pay.selectInvoice': { en: 'Select an unpaid invoice…', hi: 'बाकी वाला बिल चुनें…', mr: 'बाकी असलेले बिल निवडा…' },
   'pay.amountReceived': { en: 'Amount received', hi: 'कितना मिला', mr: 'किती मिळाले' },
@@ -350,11 +349,6 @@ const STRINGS = {
     en: 'Sends the customer their full statement PDF — nothing goes out automatically',
     hi: 'ग्राहक को उनका पूरा हिसाब पीडीएफ में भेजता है — अपने आप कुछ नहीं जाता',
     mr: 'ग्राहकाला त्यांचा पूर्ण हिशोब पीडीएफमध्ये पाठवते — आपोआप काहीही जात नाही',
-  },
-  'rem.none': {
-    en: "No pending balances — everyone's paid up.",
-    hi: 'किसी की उधारी बाकी नहीं — सब चुक्ता है।',
-    mr: 'कोणाचीही उधारी बाकी नाही — सर्व फिटले आहे.',
   },
   'rem.remind': { en: 'Remind', hi: 'याद दिलाएँ', mr: 'आठवण करा' },
   'rem.noPhone': { en: 'No phone on file', hi: 'फ़ोन नंबर नहीं है', mr: 'फोन नंबर नाही' },
@@ -463,7 +457,6 @@ const STRINGS = {
   },
   'inv.colInvoice': { en: 'Invoice', hi: 'बिल', mr: 'बिल' },
   'inv.colDelivery': { en: 'Delivery', hi: 'डिलीवरी', mr: 'डिलिव्हरी' },
-  'inv.noneYet': { en: 'No invoices yet.', hi: 'अभी कोई बिल नहीं।', mr: 'अजून बिल नाही.' },
   'inv.noMatch': { en: 'No invoices match your search.', hi: 'खोज से कोई बिल नहीं मिला।', mr: 'शोधाशी जुळणारे बिल नाही.' },
   'inv.deliveredBadge': { en: 'Delivered', hi: 'दे दिया', mr: 'दिले' },
   'inv.markDelivered': { en: 'Mark delivered', hi: 'डिलीवर हुआ', mr: 'डिलिव्हर झाले' },
@@ -494,7 +487,6 @@ const STRINGS = {
     mr: 'व्हॉट्सॲपवर अंदाज पाठवा आणि एका क्लिकमध्ये बिल करा',
   },
   'quo.new': { en: 'New Estimate', hi: 'नया अनुमान', mr: 'नवीन अंदाज' },
-  'quo.none': { en: 'No estimates yet.', hi: 'अभी कोई अनुमान नहीं।', mr: 'अजून अंदाज नाही.' },
   'quo.colNo': { en: 'No.', hi: 'नंबर', mr: 'नंबर' },
   'quo.convert': { en: 'Convert to Invoice', hi: 'बिल बनाएँ', mr: 'बिल करा' },
   'quo.converting': { en: 'Converting…', hi: 'बन रहा है…', mr: 'होत आहे…' },
@@ -748,6 +740,60 @@ const STRINGS = {
     mr: '{total} पैकी {shown} दिसत आहेत',
   },
   'common.required': { en: 'required', hi: 'ज़रूरी', mr: 'आवश्यक' },
+
+  // ── Empty states ──────────────────────────────────────────────────────
+  // Two different things, deliberately worded apart. A *Title/Hint* pair is
+  // for a supplier who has not started yet — it says what the screen is for
+  // and the button next to it starts them off. A *NoMatch* line is for a
+  // search that found nothing, where the supplier knows perfectly well what
+  // the screen is for and just wants their list back.
+  'empty.customersTitle': { en: 'No customers yet', hi: 'अभी कोई ग्राहक नहीं', mr: 'अजून ग्राहक नाही' },
+  'empty.customersHint': {
+    en: 'Add the people you sell to. Their khata, pending balance and bills all sit here.',
+    hi: 'जिन्हें आप माल बेचते हैं उन्हें जोड़ें। उनका खाता, बाकी और बिल सब यहीं रहेंगे।',
+    mr: 'ज्यांना तुम्ही माल विकता त्यांना जोडा. त्यांचे खाते, बाकी आणि बिल सर्व इथेच राहील.',
+  },
+  'empty.customersNoMatch': {
+    en: 'No customers match your search.',
+    hi: 'खोज से कोई ग्राहक नहीं मिला।',
+    mr: 'शोधाशी जुळणारा ग्राहक नाही.',
+  },
+  'empty.invoicesTitle': { en: 'No bills yet', hi: 'अभी कोई बिल नहीं', mr: 'अजून बिल नाही' },
+  'empty.invoicesHint': {
+    en: 'Make a bill in a few taps and send it straight to the customer on WhatsApp.',
+    hi: 'कुछ ही टैप में बिल बनाएँ और सीधे ग्राहक को WhatsApp पर भेजें।',
+    mr: 'काही टॅपमध्ये बिल बनवा आणि थेट ग्राहकाला WhatsApp वर पाठवा.',
+  },
+  'empty.quotationsTitle': { en: 'No estimates yet', hi: 'अभी कोई कोटेशन नहीं', mr: 'अजून कोटेशन नाही' },
+  'empty.quotationsHint': {
+    en: 'Send rates before the order. When it comes through, turn the estimate into a bill in one tap.',
+    hi: 'ऑर्डर से पहले रेट भेजें। ऑर्डर मिलते ही एक टैप में कोटेशन को बिल बना लें।',
+    mr: 'ऑर्डरआधी रेट पाठवा. ऑर्डर मिळताच एका टॅपमध्ये कोटेशनचे बिल करा.',
+  },
+  'empty.paymentsTitle': { en: 'No payments yet', hi: 'अभी कोई पेमेंट नहीं', mr: 'अजून पेमेंट नाही' },
+  'empty.paymentsHint': {
+    en: 'Record what a customer pays and their khata updates on its own.',
+    hi: 'ग्राहक जो पेमेंट करे उसे दर्ज करें — खाता अपने आप अपडेट हो जाएगा।',
+    mr: 'ग्राहकाने केलेले पेमेंट नोंदवा — खाते आपोआप अपडेट होईल.',
+  },
+  'empty.materialsTitle': { en: 'No materials yet', hi: 'अभी कोई माल नहीं', mr: 'अजून माल नाही' },
+  'empty.materialsHint': {
+    en: 'Pick from the catalog and the unit and rate come filled in — or add your own item.',
+    hi: 'कैटलॉग से चुनें, यूनिट और रेट भरे हुए मिलेंगे — या अपना माल जोड़ें।',
+    mr: 'कॅटलॉगमधून निवडा, युनिट आणि रेट भरलेले मिळतील — किंवा स्वतःचा माल जोडा.',
+  },
+  'empty.materialsNoMatch': {
+    en: 'No materials match your search.',
+    hi: 'खोज से कोई माल नहीं मिला।',
+    mr: 'शोधाशी जुळणारा माल नाही.',
+  },
+  'empty.remindersTitle': { en: "Everyone's paid up", hi: 'सबका हिसाब चुक्ता है', mr: 'सर्वांचा हिशोब फिटला आहे' },
+  'empty.remindersHint': {
+    en: 'No customer has a pending balance right now. Nothing to chase.',
+    hi: 'अभी किसी ग्राहक की उधारी बाकी नहीं है। किसी को याद दिलाने की ज़रूरत नहीं।',
+    mr: 'सध्या कोणत्याही ग्राहकाची उधारी बाकी नाही. कोणालाही आठवण करायची गरज नाही.',
+  },
+
   // ── Errors ────────────────────────────────────────────────────────────
   // These were hardcoded English on supplier screens, so a supplier working
   // in Hindi hit an English wall the moment anything went wrong.

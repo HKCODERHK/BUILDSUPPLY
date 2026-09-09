@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Modal } from '@/components/ui/modal'
 import { ActionMenu } from '@/components/ui/action-menu'
+import { EmptyState } from '@/components/EmptyState'
 import { listMaterials, createMaterial, updateMaterial } from '@/services/materials'
 import { searchCatalog, type VariantWithLookups } from '@/services/materialCatalog'
 import { summarizeAttributes } from '@/lib/catalogAttributes'
@@ -223,7 +224,11 @@ export default function Materials() {
         title={t('mat.title')}
         subtitle={t('mat.subtitle')}
         action={
-          view === 'mine' && (
+          // Both of these need a material to act on — with none, the primary
+          // button would be permanently disabled and the menu's two items
+          // would do nothing. The empty state below offers the way in instead.
+          view === 'mine' &&
+          materials.length > 0 && (
             // Topping up stock is the most-used action in the whole app;
             // adding a material or sharing rates is occasional by comparison.
             <div className="flex items-center gap-2">
@@ -252,7 +257,10 @@ export default function Materials() {
         </p>
       )}
 
-      {view === 'mine' && !loading && (
+      {/* Stock value and low-stock count are both zero before anything is
+          added, which is two meaningless figures sitting above an empty
+          screen. They appear with the first material. */}
+      {view === 'mine' && !loading && materials.length > 0 && (
         <div className="mb-5 grid grid-cols-2 gap-3">
           <Card>
             <div className="text-xs font-medium text-muted">{t('mat.stockValue')}</div>
@@ -283,14 +291,34 @@ export default function Materials() {
       </div>
 
       {view === 'mine' ? (
-        <>
-          <Input placeholder={t('mat.searchPlaceholder')} value={query} onChange={(e) => setQuery(e.target.value)} className="mb-4 max-w-xs" />
+        loading ? (
+          <p className="text-sm text-muted">{t('common.loading')}</p>
+        ) : materials.length === 0 ? (
+          // The catalog comes first on purpose: picking a variant fills in the
+          // unit, the per-label and the rate, which is the whole reason it
+          // exists. Adding your own is the fallback for what it doesn't carry.
+          <EmptyState
+            art="materials"
+            title={t('empty.materialsTitle')}
+            hint={t('empty.materialsHint')}
+            action={
+              <>
+                <Button onClick={() => setView('catalog')}>{t('mat.catalog')}</Button>
+                <Button variant="outline" onClick={openCreate}>
+                  <Plus size={16} /> {t('mat.addMaterial')}
+                </Button>
+              </>
+            }
+          />
+        ) : (
+          <>
+            <Input placeholder={t('mat.searchPlaceholder')} value={query} onChange={(e) => setQuery(e.target.value)} className="mb-4 max-w-xs" />
 
-          {loading ? (
-            <p className="text-sm text-muted">{t('common.loading')}</p>
-          ) : (
+            {/* Outside the grid, so it spans the page rather than sitting in
+                the first of three columns. */}
+            {filtered.length === 0 && <p className="text-sm text-muted">{t('empty.materialsNoMatch')}</p>}
+
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.length === 0 && <p className="text-sm text-muted">{t('mat.notFound')}</p>}
               {filtered.map((m) => (
                 <Card key={m.id}>
                   <div className="mb-2 flex items-start justify-between">
@@ -316,8 +344,8 @@ export default function Materials() {
                 </Card>
               ))}
             </div>
-          )}
-        </>
+          </>
+        )
       ) : (
         <>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
