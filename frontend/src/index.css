@@ -57,6 +57,11 @@
 :root {
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* The phone tab bar's height. AppShell overwrites this with the bar's real
+     measured height once it mounts; this value only covers the first paint,
+     and is what the desktop layout keeps, where the bar does not exist. */
+  --tabbar-h: 3.75rem;
 }
 
 html,
