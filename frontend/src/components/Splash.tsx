@@ -118,7 +118,11 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
             viewBox renders 65px tall, so anything shorter would clip the
             tipper. Road sits where the wheels actually meet it rather than
             cutting through them. */}
-        <div className="relative mt-6 h-[76px] w-full overflow-hidden" aria-hidden>
+        {/* 104px, not 76px: the tipper renders 65px tall and the name's line
+            is about 19px, so at 76px the two shared the same band and the
+            truck drove straight through the lettering. This gives the name a
+            clear line of its own with roughly 15px between them. */}
+        <div className="relative mt-6 h-[104px] w-full overflow-hidden" aria-hidden>
           {/* The supplier's own name, sitting behind the tipper so the truck
               drives across it. Faint on purpose — it is theirs to recognise,
               not a headline, and at full strength it would compete with the
@@ -135,7 +139,7 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
               rather than 0.1em because at 15px the wider spacing put "Shree
               Balaji Building Materials" at 323px in a 319px row — four pixels
               over, and clipped. This leaves 24px spare. */}
-          <span className="splash-name absolute inset-x-0 top-[4px] px-2 text-center text-[15px] font-extrabold uppercase leading-tight tracking-[0.04em] text-white/55">
+          <span className="splash-name absolute inset-x-0 top-0 px-2 text-center text-[15px] font-extrabold uppercase leading-tight tracking-[0.04em] text-white/55">
             {supplier?.business_name ?? ''}
           </span>
           <div className="absolute inset-x-0 bottom-[6px] h-px bg-white/12" />
