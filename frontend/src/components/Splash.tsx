@@ -90,10 +90,14 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
             side-on shape as the vehicles on the KALYANI signboard, in the
             app's own green. It also does a job: something moving says the app
             is working, which matters over six seconds. */}
-        <div className="relative mt-6 h-14 w-full overflow-hidden" aria-hidden>
-          <div className="absolute inset-x-0 bottom-[9px] h-px bg-white/12" />
-          <div className="splash-road absolute inset-x-0 bottom-[7px] h-[3px]" />
-          <svg className="splash-truck absolute bottom-0 w-[118px]" viewBox="0 0 130 56" fill="none">
+        {/* Container height tracks the truck: 152px wide against a 130×56
+            viewBox renders 65px tall, so anything shorter would clip the
+            tipper. Road sits where the wheels actually meet it rather than
+            cutting through them. */}
+        <div className="relative mt-6 h-[76px] w-full overflow-hidden" aria-hidden>
+          <div className="absolute inset-x-0 bottom-[6px] h-px bg-white/12" />
+          <div className="splash-road absolute inset-x-0 bottom-[3px] h-[3px]" />
+          <svg className="splash-truck absolute bottom-[5px] w-[152px]" viewBox="0 0 130 56" fill="none">
             {/* Everything carries a dark edge and a lighter top face — that is
                 what gives the signboard vehicles their cut-from-metal look,
                 and it is also what keeps the shape legible against the
