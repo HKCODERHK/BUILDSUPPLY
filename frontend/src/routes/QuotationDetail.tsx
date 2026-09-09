@@ -149,7 +149,14 @@ export default function QuotationDetail() {
         action={
           // Turning the estimate into a bill is the point of this screen, and
           // sending it is how it gets there. Saving or printing a copy is not.
-          <div className="flex items-center gap-2">
+          //
+          // Wraps because it genuinely does not fit: "Convert to Invoice" and
+          // "Send on WhatsApp" together need 355px against the 328px a 360px
+          // phone leaves, and both buttons are already at the smaller size.
+          // Without wrapping the ⋯ — download, print, edit — is pushed off the
+          // right edge and only reachable by scrolling the row sideways, which
+          // nobody thinks to try.
+          <div className="flex flex-wrap items-center gap-2">
             {canConvert && (
               <Button size="sm" onClick={handleConvert} disabled={converting}>
                 <ArrowRightLeft size={14} /> {converting ? t('quo.converting') : t('quo.convert')}
