@@ -142,6 +142,17 @@ select,
     transform: rotate(360deg);
   }
 }
+/* The business name sits behind the tipper — z-index rather than source order
+   so the truck stays last in the markup where it reads. Fades in with the
+   profile rather than appearing mid-animation. */
+.splash-name {
+  z-index: 0;
+  animation: splash-logo-in 0.6s ease-out both;
+}
+.splash-truck {
+  z-index: 1;
+}
+
 /* `left` in percent resolves against the wrapper, so the tipper enters and
    leaves exactly at its edges whatever the screen width — a transform in
    percent would resolve against the truck's own width instead and overshoot

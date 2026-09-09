@@ -119,6 +119,16 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
             tipper. Road sits where the wheels actually meet it rather than
             cutting through them. */}
         <div className="relative mt-6 h-[76px] w-full overflow-hidden" aria-hidden>
+          {/* The supplier's own name, sitting behind the tipper so the truck
+              drives across it. Faint on purpose — it is theirs to recognise,
+              not a headline, and at full strength it would compete with the
+              wordmark directly above. Arrives with the profile, like the logo
+              in the ring, so it is simply absent on the launch screen. */}
+          {supplier?.business_name && (
+            <span className="splash-name absolute inset-x-0 top-[6px] truncate px-2 text-center text-[13px] font-bold uppercase tracking-[0.14em] text-white/[0.09]">
+              {supplier.business_name}
+            </span>
+          )}
           <div className="absolute inset-x-0 bottom-[6px] h-px bg-white/12" />
           <div className="splash-road absolute inset-x-0 bottom-[3px] h-[3px]" />
           <svg className="splash-truck absolute bottom-[5px] w-[152px]" viewBox="0 0 130 56" fill="none">
