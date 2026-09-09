@@ -61,7 +61,9 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
             alt=""
             onError={() => setArtFailed(true)}
             className="mt-7 w-full rounded-2xl object-cover shadow-lg"
-            style={{ aspectRatio: '16 / 10' }}
+            // 3:2 matches the artwork's own 940×630, so object-cover has
+            // nothing to crop and the tractor and truck keep their full width.
+            style={{ aspectRatio: '3 / 2' }}
           />
         )}
 
