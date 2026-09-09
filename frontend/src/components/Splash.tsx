@@ -50,32 +50,38 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
         </div>
         <p className="mt-2.5 text-xs text-sidebar-text">{t('brand.tagline')}</p>
 
+        {/* Landscape, so it sits as a band rather than inside the ring — a
+            circular crop would cut the tractor and the truck off at the
+            edges. Absent until public/splash-art.jpg exists, and the screen
+            composes fine without it, so a missing file is never a broken
+            image. */}
+        {!artFailed && (
+          <img
+            src="/splash-art.jpg"
+            alt=""
+            onError={() => setArtFailed(true)}
+            className="mt-7 w-full rounded-2xl object-cover shadow-lg"
+            style={{ aspectRatio: '16 / 10' }}
+          />
+        )}
+
         {/* The ring is the loading indicator. It fills to roughly two-thirds
             and keeps turning, rather than resting at a figure that would look
             stuck on a slow connection. */}
-        <div className="relative mt-9 h-[190px] w-[190px] shrink-0">
-          <svg viewBox="0 0 200 200" className="splash-ring absolute inset-0 -rotate-90" aria-hidden>
+        <div className={`relative h-[130px] w-[130px] shrink-0 ${artFailed ? 'mt-10' : 'mt-7'}`}>
+          <svg viewBox="0 0 200 200" className="absolute inset-0 -rotate-90" aria-hidden>
             <defs>
               <linearGradient id="splashArc" x1="0" y1="0" x2="1" y2="1">
                 <stop offset="0%" stopColor="#5FE08C" />
                 <stop offset="100%" stopColor="#198A45" />
               </linearGradient>
             </defs>
-            <circle cx="100" cy="100" r="85" fill="none" strokeWidth="7" stroke="rgba(255,255,255,.10)" />
+            <circle cx="100" cy="100" r="85" fill="none" strokeWidth="9" stroke="rgba(255,255,255,.10)" />
             <circle
-              cx="100" cy="100" r="85" fill="none" strokeWidth="7" strokeLinecap="round"
+              cx="100" cy="100" r="85" fill="none" strokeWidth="9" strokeLinecap="round"
               stroke="url(#splashArc)" className="splash-arc"
             />
           </svg>
-          {!artFailed && (
-            <img
-              src="/splash-art.png"
-              alt=""
-              onError={() => setArtFailed(true)}
-              className="absolute inset-[15px] h-auto w-auto rounded-full object-cover"
-              style={{ inset: '15px', width: 'calc(100% - 30px)', height: 'calc(100% - 30px)' }}
-            />
-          )}
         </div>
 
         <div className="mt-7 h-[7px] w-[178px] overflow-hidden rounded-full bg-white/15">

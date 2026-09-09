@@ -7,13 +7,16 @@ import { logActivity } from '@/services/activityLog'
 /**
  * Shortest time the splash stays up once it has appeared.
  *
- * On a fast connection the work behind it finishes in well under a tenth of a
- * second, and a screen that flashes past reads as a glitch rather than as
- * anything deliberate. This does not delay anything: the app carries on
- * loading underneath, and the splash leaves the moment both this and the work
- * are done.
+ * Six seconds at the user's request, so the artwork is actually seen. Worth
+ * knowing what it costs: on a fast connection the work behind it finishes in
+ * well under a second, so most of this is waiting the supplier would not
+ * otherwise have — on every cold start and every sign-in. If it starts to
+ * grate, this constant is the only thing to change.
+ *
+ * It is a floor, not a fixed duration: on a slow connection the splash stays
+ * until the work is done, however much longer that takes.
  */
-const MIN_SPLASH_MS = 900
+const MIN_SPLASH_MS = 6000
 
 /** Which line the splash shows, or null when it should not be on screen. */
 export type SplashPhase = 'launch' | 'signin' | null
