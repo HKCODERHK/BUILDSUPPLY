@@ -159,7 +159,7 @@ select,
    rest of the cycle, which is the tail driving out. */
 .splash-name {
   z-index: 0;
-  animation: splash-reveal 3s linear infinite;
+  animation: splash-reveal 6s linear forwards;
 }
 @keyframes splash-reveal {
   0% {
@@ -174,22 +174,34 @@ select,
   z-index: 1;
 }
 
-/* `left` in percent resolves against the wrapper, so the tipper enters and
-   leaves exactly at its edges whatever the screen width — a transform in
-   percent would resolve against the truck's own width instead and overshoot
-   on a wide screen. Two passes fill the six seconds without hurrying. */
+/* transform, never `left`. This animation runs while React is booting and the
+   first data is loading — that is the whole point of the splash — and `left`
+   is laid out on the main thread, so it simply stops while that work happens.
+   Measured: the animation's own clock sat at 0ms for 1.8s and then jumped
+   5.3s in one frame, which is what "the truck teleports" looks like. A
+   transform is composited and keeps running regardless.
+
+   cqw makes it exact: the row declares container-type, so 100cqw is the row's
+   own width and the truck travels from fully off the left (its own width) to
+   fully off the right, on any screen. A plain percentage would resolve against
+   the truck instead and overshoot.
+
+   One crossing over the whole six seconds, and `forwards` parks it off the
+   right afterwards — so when the splash outlasts its floor on a slow
+   connection the trip stays finished rather than starting over. */
+.splash-track {
+  container-type: inline-size;
+}
 .splash-truck {
-  animation: splash-drive 3s linear infinite;
+  left: 0;
+  animation: splash-drive 6s linear forwards;
 }
 @keyframes splash-drive {
   from {
-    /* Fully off-screen, so the cab crosses the left edge at the very start of
-       the cycle. At -28% the truck began half-visible, which meant the erase
-       could never start from a whole name. */
-    left: -46%;
+    transform: translateX(-152px);
   }
   to {
-    left: 100%;
+    transform: translateX(100cqw);
   }
 }
 /* The road it drives on, running the other way so the truck reads as moving
@@ -234,7 +246,7 @@ select,
   }
   .splash-truck {
     animation: none;
-    left: 36%;
+    transform: translateX(30cqw);
   }
   .splash-road {
     animation: none;

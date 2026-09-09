@@ -122,7 +122,7 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
             is about 19px, so at 76px the two shared the same band and the
             truck drove straight through the lettering. This gives the name a
             clear line of its own with roughly 15px between them. */}
-        <div className="relative mt-6 h-[104px] w-full overflow-hidden" aria-hidden>
+        <div className="splash-track relative mt-6 h-[104px] w-full overflow-hidden" aria-hidden>
           {/* The supplier's own name, sitting behind the tipper so the truck
               drives across it. Faint on purpose — it is theirs to recognise,
               not a headline, and at full strength it would compete with the
