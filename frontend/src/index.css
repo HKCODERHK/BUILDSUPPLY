@@ -65,6 +65,14 @@ body,
   height: 100%;
 }
 
+/* The strip behind the phone's gesture bar is painted from the root element,
+   not from the fixed tab bar sitting above it — so without this the bar's own
+   white ends and something else shows underneath. Matches --color-card, the
+   tab bar's background, so the two read as one surface. */
+html {
+  background: var(--color-card);
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);
