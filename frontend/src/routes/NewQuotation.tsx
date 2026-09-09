@@ -271,7 +271,7 @@ export default function NewQuotation() {
         </div>
       </Card>
 
-      <div className="sticky bottom-16 z-20 -mx-4 flex items-center gap-3 border-t border-border bg-card px-4 py-3 sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0">
+      <div className="sticky bottom-[var(--tabbar-h)] z-20 -mx-4 flex items-center gap-3 border-t border-border bg-card px-4 py-3 sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0">
         <div className="lg:hidden">
           <div className="text-[11px] text-muted">{t('common.total')}</div>
           <div className="text-base font-bold text-ink">

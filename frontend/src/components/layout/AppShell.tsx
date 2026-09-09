@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { LogOut, MoreHorizontal, X, ShieldCheck, Boxes, SlidersHorizontal, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -89,6 +89,31 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { t } = useLanguage()
   const navigate = useNavigate()
   const [moreOpen, setMoreOpen] = useState(false)
+  const tabBarRef = useRef<HTMLElement>(null)
+
+  // Publishes the tab bar's real height as --tabbar-h, for the things that have
+  // to sit exactly on top of it — the page's bottom padding, and the Save bar
+  // on New Invoice and New Quotation. That used to be a hard-coded 4rem in
+  // three separate files while the bar actually measures 60px, so a 4px strip
+  // of scrolling page showed through underneath Save. Measuring instead of
+  // guessing also survives the taller bar a home indicator produces, and
+  // Hindi or Marathi labels wrapping to a second line.
+  useEffect(() => {
+    const el = tabBarRef.current
+    if (!el) return
+    // getBoundingClientRect, not offsetHeight: the bar measures 60.3px and
+    // offsetHeight rounds that to 60, which leaves the last row of a list a
+    // third of a pixel underneath it.
+    const publish = () =>
+      document.documentElement.style.setProperty(
+        '--tabbar-h',
+        `${el.getBoundingClientRect().height}px`,
+      )
+    publish()
+    const observer = new ResizeObserver(publish)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   async function handleSignOut() {
     await signOut()
@@ -190,7 +215,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Reserves the fixed tab bar's height so the last row of a list isn't
           stuck behind it — and the bar is now that much taller on a phone
           with a home indicator, so this has to match. */}
-      <div className="flex min-w-0 flex-1 flex-col pb-[calc(4rem_+_var(--safe-bottom))] lg:pb-0">
+      <div className="flex min-w-0 flex-1 flex-col pb-[var(--tabbar-h)] lg:pb-0">
         {/* Phone/tablet top bar — the sidebar's brand header has no room
             here, so it moves up alongside the theme toggle. */}
         {/* pt keeps the brand out from under the status bar, which the
@@ -220,7 +245,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Phone/tablet bottom tab bar */}
       {/* pb lifts the tab labels clear of the home indicator; without it the
           gesture bar sits on top of the last few pixels of every tap target. */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-card pb-[var(--safe-bottom)] lg:hidden">
+      <nav
+        ref={tabBarRef}
+        className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-card pb-[var(--safe-bottom)] lg:hidden"
+      >
         {primaryItems.map((item) => (
           <NavLink
             key={item.id}
