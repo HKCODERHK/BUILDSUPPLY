@@ -192,15 +192,27 @@ export default function CustomerProfile() {
         action={
           // Taking money is why this page gets opened, and repeating last
           // week's bill is the other reason. Editing and chasing are rarer.
-          <div className="flex items-center gap-2">
+          // Three actions on a 375px screen came to 354px against 343px of
+          // room, so the ⋯ was clipped off the right edge and unreachable
+          // without scrolling sideways. The two named buttons drop a size on
+          // phones — 310px, comfortably inside — and go back to full size from
+          // sm up, where there was never a shortage of room. flex-wrap is the
+          // backstop: if a label ever grows, these move to a second line
+          // instead of pushing ⋯ out of reach again.
+          <div className="flex flex-wrap items-center gap-2">
             {totalPending > 0 && (
-              <Button onClick={() => setPayOpen(true)}>
+              <Button size="sm" className="sm:h-10 sm:px-4 sm:text-sm" onClick={() => setPayOpen(true)}>
                 <IndianRupee size={16} /> {t('cust.receivePayment')}
               </Button>
             )}
             {/* Billing this customer used to mean leaving for Invoices, then
                 New, then picking them again from the dropdown. */}
-            <Button variant="outline" onClick={() => navigate(`/invoices/new?customer=${customer.id}`)}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="sm:h-10 sm:px-4 sm:text-sm"
+              onClick={() => navigate(`/invoices/new?customer=${customer.id}`)}
+            >
               <Plus size={16} /> {t('inv.new')}
             </Button>
             <ActionMenu
