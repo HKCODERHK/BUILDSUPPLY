@@ -147,7 +147,14 @@ function SupplierDashboardView() {
 
           <Card className="mb-4">
             <div className="mb-2 text-xs font-semibold tracking-wide text-muted">{t('dash.today')}</div>
-            <div className="grid grid-cols-3 gap-2">
+            {/* Content-width columns, not equal thirds. A bill count is two
+                or three characters against nine for a rupee figure, so an
+                even split left most of the first column empty and pushed sold
+                and collected off to the right with a hole beside the count.
+                Measured at 360px: 253px of the card's 296px today, 289px even
+                with lakh figures, and it wraps rather than overflows past
+                that. */}
+            <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
               <div>
                 <div className="text-xl font-bold text-ink">{today.bills}</div>
                 <div className="text-xs text-muted">{t(today.bills === 1 ? 'dash.bill' : 'dash.bills')}</div>
