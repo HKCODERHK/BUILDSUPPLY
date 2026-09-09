@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react'
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
-import { AuthProvider } from '@/context/AuthContext'
+import { AuthProvider, useAuth } from '@/context/AuthContext'
 import { ThemeProvider } from '@/context/ThemeContext'
 import { LanguageProvider } from '@/context/LanguageContext'
 import { PinProvider } from '@/context/PinContext'
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
 import { AppShell } from '@/components/layout/AppShell'
+import { Splash } from '@/components/Splash'
 import Login from '@/routes/Login'
 import ForgotPassword from '@/routes/ForgotPassword'
 import ResetPassword from '@/routes/ResetPassword'
@@ -83,6 +84,13 @@ const router = createBrowserRouter([
   { path: '*', element: <Navigate to="/dashboard" replace /> },
 ])
 
+// Needs to be inside AuthProvider to read the splash phase, so it cannot live
+// in App's own body.
+function SplashGate() {
+  const { splash } = useAuth()
+  return splash ? <Splash phase={splash} /> : null
+}
+
 export default function App() {
   // The providers sit outside the router: none of them use router hooks, and
   // keeping them here means a navigation never remounts the auth session or
@@ -92,6 +100,10 @@ export default function App() {
       <LanguageProvider>
         <AuthProvider>
           <PinProvider>
+            {/* Over the router, not instead of it: the app carries on loading
+                underneath, so the splash is covering real work rather than
+                adding a wait in front of it. */}
+            <SplashGate />
             <RouterProvider router={router} />
           </PinProvider>
         </AuthProvider>

@@ -121,3 +121,90 @@ select,
 * {
   box-sizing: border-box;
 }
+
+/* Splash. Keyframes rather than Tailwind utilities because both animations
+   run two properties at once and need their own easing. */
+.splash-arc {
+  stroke-dasharray: 534;
+  stroke-dashoffset: 534;
+  transform-origin: 100px 100px;
+  animation:
+    splash-fill 2.4s cubic-bezier(0.4, 0, 0.2, 1) forwards,
+    splash-spin 2.4s linear infinite;
+}
+@keyframes splash-fill {
+  to {
+    stroke-dashoffset: 118;
+  }
+}
+@keyframes splash-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+/* `left` in percent resolves against the wrapper, so the tipper enters and
+   leaves exactly at its edges whatever the screen width — a transform in
+   percent would resolve against the truck's own width instead and overshoot
+   on a wide screen. Two passes fill the six seconds without hurrying. */
+.splash-truck {
+  animation: splash-drive 3s linear infinite;
+}
+@keyframes splash-drive {
+  from {
+    left: -28%;
+  }
+  to {
+    left: 100%;
+  }
+}
+/* The road it drives on, running the other way so the truck reads as moving
+   rather than the ground standing still under it. */
+.splash-road {
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.22) 0 14px,
+    transparent 14px 30px
+  );
+  animation: splash-road 1.4s linear infinite;
+}
+@keyframes splash-road {
+  to {
+    background-position-x: -30px;
+  }
+}
+
+/* The supplier's logo lands part-way through the splash, once the profile has
+   loaded, so it fades in rather than popping into an empty ring. */
+.splash-logo {
+  animation: splash-logo-in 0.45s ease-out both;
+}
+@keyframes splash-logo-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* The ring is the only progress indicator, so when motion is reduced it holds
+   its filled state rather than disappearing — otherwise nothing on the screen
+   says the app is doing anything. The tipper parks instead of driving. */
+@media (prefers-reduced-motion: reduce) {
+  .splash-arc {
+    animation: none;
+    stroke-dashoffset: 118;
+  }
+  .splash-truck {
+    animation: none;
+    left: 36%;
+  }
+  .splash-road {
+    animation: none;
+  }
+  .splash-logo {
+    animation: none;
+  }
+}
