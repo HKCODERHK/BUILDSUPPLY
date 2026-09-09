@@ -90,26 +90,30 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
             side-on shape as the vehicles on the KALYANI signboard, in the
             app's own green. It also does a job: something moving says the app
             is working, which matters over six seconds. */}
-        <div className="relative mt-6 h-11 w-full overflow-hidden" aria-hidden>
-          <div className="absolute inset-x-0 bottom-[7px] h-px bg-white/12" />
-          <div className="splash-road absolute inset-x-0 bottom-[6px] h-[3px]" />
-          <svg className="splash-truck absolute bottom-0 w-[86px]" viewBox="0 0 130 56" fill="none">
+        <div className="relative mt-6 h-14 w-full overflow-hidden" aria-hidden>
+          <div className="absolute inset-x-0 bottom-[9px] h-px bg-white/12" />
+          <div className="splash-road absolute inset-x-0 bottom-[7px] h-[3px]" />
+          <svg className="splash-truck absolute bottom-0 w-[118px]" viewBox="0 0 130 56" fill="none">
+            {/* Everything carries a dark edge and a lighter top face — that is
+                what gives the signboard vehicles their cut-from-metal look,
+                and it is also what keeps the shape legible against the
+                photograph's busy sky when the two are close together. */}
             {/* tipper bed, raised at the rear */}
-            <path d="M6 33 L15 11 L63 11 L63 33 Z" fill="#2E8F52" />
-            <path d="M15 11 L63 11 L63 16 L13 16 Z" fill="#3FB86A" />
+            <path d="M4 34 L14 8 L64 8 L64 34 Z" fill="#2E8F52" stroke="#0C2B22" strokeWidth="2.4" strokeLinejoin="round" />
+            <path d="M14 8 L64 8 L64 15 L11 15 Z" fill="#57C983" />
             {/* chassis */}
-            <rect x="8" y="33" width="72" height="7" rx="2" fill="#1C6038" />
+            <rect x="6" y="34" width="76" height="9" rx="2.5" fill="#17542F" stroke="#0C2B22" strokeWidth="2.2" />
             {/* cab */}
-            <path d="M80 40 L80 19 L97 19 L107 31 L107 40 Z" fill="#3FB86A" />
-            <path d="M93 22 L99 22 L104 30 L93 30 Z" fill="#0A2427" opacity=".5" />
-            <rect x="104" y="33" width="4" height="4" rx="1" fill="#FFD27A" />
+            <path d="M82 43 L82 16 L99 16 L110 30 L110 43 Z" fill="#43C275" stroke="#0C2B22" strokeWidth="2.4" strokeLinejoin="round" />
+            <path d="M94 20 L100 20 L106 29 L94 29 Z" fill="#0A2427" opacity=".55" />
+            <rect x="105" y="34" width="5" height="5" rx="1.4" fill="#FFD27A" />
             {/* wheels */}
-            <circle cx="27" cy="44" r="8" fill="#0E2528" />
-            <circle cx="46" cy="44" r="8" fill="#0E2528" />
-            <circle cx="93" cy="44" r="8" fill="#0E2528" />
-            <circle cx="27" cy="44" r="3.2" fill="#4FC077" />
-            <circle cx="46" cy="44" r="3.2" fill="#4FC077" />
-            <circle cx="93" cy="44" r="3.2" fill="#4FC077" />
+            <circle cx="26" cy="45" r="10" fill="#0E2528" stroke="#061B1C" strokeWidth="2" />
+            <circle cx="48" cy="45" r="10" fill="#0E2528" stroke="#061B1C" strokeWidth="2" />
+            <circle cx="95" cy="45" r="10" fill="#0E2528" stroke="#061B1C" strokeWidth="2" />
+            <circle cx="26" cy="45" r="4" fill="#5FE08C" />
+            <circle cx="48" cy="45" r="4" fill="#5FE08C" />
+            <circle cx="95" cy="45" r="4" fill="#5FE08C" />
           </svg>
         </div>
 
