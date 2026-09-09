@@ -121,3 +121,48 @@ select,
 * {
   box-sizing: border-box;
 }
+
+/* Splash. Keyframes rather than Tailwind utilities because both animations
+   run two properties at once and need their own easing. */
+.splash-arc {
+  stroke-dasharray: 534;
+  stroke-dashoffset: 534;
+  transform-origin: 100px 100px;
+  animation:
+    splash-fill 2.4s cubic-bezier(0.4, 0, 0.2, 1) forwards,
+    splash-spin 2.4s linear infinite;
+}
+@keyframes splash-fill {
+  to {
+    stroke-dashoffset: 118;
+  }
+}
+@keyframes splash-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.splash-bar {
+  width: 0;
+  background: linear-gradient(90deg, var(--color-accent-soft), #5fe08c);
+  animation: splash-grow 2.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes splash-grow {
+  to {
+    width: 72%;
+  }
+}
+
+/* A spinner is the one thing that should still move when motion is reduced —
+   it is the only signal the app is doing something — so the ring holds its
+   filled state and stops turning rather than disappearing. */
+@media (prefers-reduced-motion: reduce) {
+  .splash-arc {
+    animation: none;
+    stroke-dashoffset: 118;
+  }
+  .splash-bar {
+    animation: none;
+    width: 72%;
+  }
+}

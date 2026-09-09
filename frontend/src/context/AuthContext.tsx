@@ -4,10 +4,35 @@ import { supabase } from '@/lib/supabase'
 import type { Supplier } from '@/lib/database.types'
 import { logActivity } from '@/services/activityLog'
 
+/**
+ * Shortest time the splash stays up once it has appeared.
+ *
+ * On a fast connection the work behind it finishes in well under a tenth of a
+ * second, and a screen that flashes past reads as a glitch rather than as
+ * anything deliberate. This does not delay anything: the app carries on
+ * loading underneath, and the splash leaves the moment both this and the work
+ * are done.
+ */
+const MIN_SPLASH_MS = 900
+
+/** Which line the splash shows, or null when it should not be on screen. */
+export type SplashPhase = 'launch' | 'signin' | null
+
 interface AuthContextValue {
   session: Session | null
   supplier: Supplier | null
   loading: boolean
+  /**
+   * Set on a cold start and on a real sign-in, and at no other time.
+   *
+   * Deliberately *not* derived from `loading`: onAuthStateChange fires
+   * SIGNED_IN on every token refresh, so `loading` goes true roughly hourly
+   * and a splash tied to it would drop over a supplier part-way through
+   * writing a bill. `hadSessionRef` already separates a genuine sign-in from
+   * a refresh — it exists because counting refreshes as logins once buried
+   * the activity log — and that is the same distinction this needs.
+   */
+  splash: SplashPhase
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
   /** Re-reads the signed-in account's own row after editing it elsewhere. */
@@ -26,6 +51,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // this, ProtectedRoute and Login disagree about auth state during that window
   // (one requires session+supplier, the other only session) and redirect-loop.
   const [profileLoading, setProfileLoading] = useState(false)
+  const [splash, setSplash] = useState<SplashPhase>('launch')
+  // When the current splash is allowed to leave, so a fast load still shows a
+  // deliberate screen rather than a flicker.
+  const splashUntilRef = useRef(Date.now() + MIN_SPLASH_MS)
+
+  function beginSplash(phase: Exclude<SplashPhase, null>) {
+    splashUntilRef.current = Date.now() + MIN_SPLASH_MS
+    setSplash(phase)
+  }
+  function endSplash() {
+    const remaining = Math.max(0, splashUntilRef.current - Date.now())
+    window.setTimeout(() => setSplash(null), remaining)
+  }
   // Tracks whether a session already existed, so token refreshes and page
   // reloads aren't mistaken for new sign-ins (see onAuthStateChange below).
   const hadSessionRef = useRef(false)
@@ -60,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data.session)
       if (data.session) await loadSupplierProfile(data.session.user.id)
       setInitializing(false)
+      endSplash()
     })
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, newSession) => {
@@ -70,12 +109,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const isNewSignIn = event === 'SIGNED_IN' && !hadSessionRef.current
       hadSessionRef.current = !!newSession
 
+      // Only a real sign-in raises the splash. A token refresh lands here too
+      // and must pass through without covering whatever is on screen.
+      if (isNewSignIn) beginSplash('signin')
+
       setSession(newSession)
       if (newSession) {
         const profile = await loadSupplierProfile(newSession.user.id)
         if (isNewSignIn && profile) {
           void logActivity(profile.role, 'login')
         }
+        if (isNewSignIn) endSplash()
       } else {
         setSupplier(null)
       }
@@ -99,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, supplier, loading, signIn, signOut, refreshSupplier }}>
+    <AuthContext.Provider value={{ session, supplier, loading, splash, signIn, signOut, refreshSupplier }}>
       {children}
     </AuthContext.Provider>
   )

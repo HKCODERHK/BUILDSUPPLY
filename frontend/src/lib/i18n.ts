@@ -91,6 +91,23 @@ const STRINGS = {
     mr: 'बांधकाम साहित्य. व्यवसाय सोपा.',
   },
 
+  // ── Splash ────────────────────────────────────────────────────────────
+  'splash.launch': {
+    en: 'Loading your trusted building supply partner…',
+    hi: 'आपका भरोसेमंद बिल्डिंग सप्लाई पार्टनर खुल रहा है…',
+    mr: 'तुमचा विश्वासू बिल्डिंग सप्लाय पार्टनर उघडत आहे…',
+  },
+  'splash.signin': {
+    en: 'Preparing your dashboard…',
+    hi: 'आपका डैशबोर्ड तैयार हो रहा है…',
+    mr: 'तुमचा डॅशबोर्ड तयार होत आहे…',
+  },
+  'splash.cement': { en: 'Cement', hi: 'सीमेंट', mr: 'सिमेंट' },
+  'splash.steel': { en: 'Steel', hi: 'सरिया', mr: 'सळई' },
+  'splash.bricks': { en: 'Bricks', hi: 'ईंट', mr: 'वीट' },
+  'splash.delivery': { en: 'Delivery', hi: 'डिलीवरी', mr: 'डिलिव्हरी' },
+  'splash.trusted': { en: 'Trusted', hi: 'भरोसेमंद', mr: 'विश्वासू' },
+
   // ── Dashboard ─────────────────────────────────────────────────────────
   'dash.welcome': { en: 'Welcome back, {name}', hi: 'नमस्ते, {name}', mr: 'नमस्कार, {name}' },
   'dash.subtitle': {
