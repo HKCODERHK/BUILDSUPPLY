@@ -23,35 +23,7 @@
   </head>
   <body>
     <div id="root"></div>
-    <!-- TEMPORARY. Answers one question that cannot be answered from a desktop:
-         does Chrome lay this app out *under* the phone's navigation bar? If it
-         does, safe-area-inset-bottom is greater than zero and that strip is
-         ours to paint; if it is zero, the strip belongs to Android and no CSS
-         reaches it. Only renders with ?debug=insets, so it is invisible to
-         suppliers. Delete once the answer is known. -->
-    <script>
-      if (location.search.indexOf('debug=insets') !== -1) {
-        var probe = document.createElement('div');
-        probe.style.cssText =
-          'position:fixed;left:0;right:0;bottom:0;z-index:99999;padding:10px 12px;' +
-          'background:#B42318;color:#fff;font:12px/1.5 monospace;white-space:pre;';
-        var read = function (side) {
-          var el = document.createElement('div');
-          el.style.cssText = 'position:fixed;padding-' + side + ':env(safe-area-inset-' + side + ',0px)';
-          document.body.appendChild(el);
-          var v = getComputedStyle(el)['padding' + side.charAt(0).toUpperCase() + side.slice(1)];
-          el.remove();
-          return v;
-        };
-        probe.textContent =
-          'inset-bottom: ' + read('bottom') + '\n' +
-          'inset-top:    ' + read('top') + '\n' +
-          'innerHeight:  ' + window.innerHeight + '\n' +
-          'screen.height:' + window.screen.height + '\n' +
-          'standalone:   ' + window.matchMedia('(display-mode: standalone)').matches;
-        document.body.appendChild(probe);
-      }
-    </script>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
