@@ -29,7 +29,11 @@ function QuickActions() {
   return (
     // Four equal columns rather than free-flowing buttons, so they always sit
     // on one row — even on the narrowest phone.
-    <div className="mb-6 grid max-w-lg grid-cols-4 gap-2">
+    //
+    // mb-4 to match the low-stock banner and the Today card stacked under it;
+    // at mb-6 this row was the only 24px gap in that run and read as detached
+    // from the alert it sits directly above.
+    <div className="mb-4 grid max-w-lg grid-cols-4 gap-2">
       {QUICK_ACTIONS.map(({ labelKey, to }, i) => (
         <Link key={labelKey} to={to} className="block">
           <Button
