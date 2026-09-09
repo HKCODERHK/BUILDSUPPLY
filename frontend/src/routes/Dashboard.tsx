@@ -99,7 +99,10 @@ function SupplierDashboardView() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center gap-4">
+      {/* accent-bg rather than a literal green: it is the same token the app
+          uses for every other soft-green surface, and it already has a dark
+          counterpart, so this stays readable when the theme flips. */}
+      <div className="mb-6 flex items-center gap-4 rounded-xl bg-accent-bg p-4">
         {supplier?.logo_url && (
           <img
             src={supplier.logo_url}
@@ -107,7 +110,7 @@ function SupplierDashboardView() {
             className="h-14 w-14 shrink-0 rounded-lg border border-border object-cover"
           />
         )}
-        <div>
+        <div className="min-w-0">
           <h1 className="text-xl font-bold text-ink sm:text-2xl">
             {t('dash.welcome', { name: supplier?.business_name ?? '' })}
           </h1>

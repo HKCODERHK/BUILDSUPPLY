@@ -14,15 +14,26 @@ import { NAV_ITEMS, MOBILE_PRIMARY_IDS, ADMIN_NAV_IDS } from './nav-items'
 
 // Shown in the desktop sidebar header and, on mobile, in the top bar.
 function Brand() {
+  const { t } = useLanguage()
   return (
     <div className="flex items-center gap-2">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#35A85D" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#35A85D" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
         <path d="M3 21h18" />
         <path d="M5 21V8l5-4v17" />
         <path d="M10 21V11l6 3v7" />
         <path d="M16 21v-4l3 1.5V21" />
       </svg>
-      <span className="text-[17px] font-bold">BuildSupply</span>
+      <div className="min-w-0">
+        <span className="block text-[17px] font-bold leading-tight">BuildSupply</span>
+        {/* leading-tight above keeps the two lines together as one lockup rather
+            than a heading with a caption drifting below it. */}
+        {/* Wraps rather than truncates: the sidebar is only 230px, and the
+            Hindi and Marathi lines are longer than the English one, so an
+            ellipsis would eat the tagline exactly where it is tightest. */}
+        <span className="block text-[11px] leading-tight text-sidebar-text">
+          {t('brand.tagline')}
+        </span>
+      </div>
     </div>
   )
 }
