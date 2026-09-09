@@ -142,27 +142,12 @@ select,
     transform: rotate(360deg);
   }
 }
-.splash-bar {
-  width: 0;
-  background: linear-gradient(90deg, var(--color-accent-soft), #5fe08c);
-  animation: splash-grow 2.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-@keyframes splash-grow {
-  to {
-    width: 72%;
-  }
-}
-
-/* A spinner is the one thing that should still move when motion is reduced —
-   it is the only signal the app is doing something — so the ring holds its
-   filled state and stops turning rather than disappearing. */
+/* The ring is the only progress indicator, so when motion is reduced it holds
+   its filled state rather than disappearing — otherwise nothing on the screen
+   says the app is doing anything. */
 @media (prefers-reduced-motion: reduce) {
   .splash-arc {
     animation: none;
     stroke-dashoffset: 118;
-  }
-  .splash-bar {
-    animation: none;
-    width: 72%;
   }
 }

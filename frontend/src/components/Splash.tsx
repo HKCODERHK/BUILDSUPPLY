@@ -86,10 +86,7 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
           </svg>
         </div>
 
-        <div className="mt-7 h-[7px] w-[178px] overflow-hidden rounded-full bg-white/15">
-          <i className="splash-bar block h-full rounded-full" />
-        </div>
-        <p className="mt-3.5 text-xs text-sidebar-text">
+        <p className="mt-6 text-xs text-sidebar-text">
           {t(phase === 'launch' ? 'splash.launch' : 'splash.signin')}
         </p>
       </div>
