@@ -142,12 +142,50 @@ select,
     transform: rotate(360deg);
   }
 }
+/* `left` in percent resolves against the wrapper, so the tipper enters and
+   leaves exactly at its edges whatever the screen width — a transform in
+   percent would resolve against the truck's own width instead and overshoot
+   on a wide screen. Two passes fill the six seconds without hurrying. */
+.splash-truck {
+  animation: splash-drive 3s linear infinite;
+}
+@keyframes splash-drive {
+  from {
+    left: -28%;
+  }
+  to {
+    left: 100%;
+  }
+}
+/* The road it drives on, running the other way so the truck reads as moving
+   rather than the ground standing still under it. */
+.splash-road {
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.22) 0 14px,
+    transparent 14px 30px
+  );
+  animation: splash-road 1.4s linear infinite;
+}
+@keyframes splash-road {
+  to {
+    background-position-x: -30px;
+  }
+}
+
 /* The ring is the only progress indicator, so when motion is reduced it holds
    its filled state rather than disappearing — otherwise nothing on the screen
-   says the app is doing anything. */
+   says the app is doing anything. The tipper parks instead of driving. */
 @media (prefers-reduced-motion: reduce) {
   .splash-arc {
     animation: none;
     stroke-dashoffset: 118;
+  }
+  .splash-truck {
+    animation: none;
+    left: 36%;
+  }
+  .splash-road {
+    animation: none;
   }
 }

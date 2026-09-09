@@ -86,7 +86,34 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
           </svg>
         </div>
 
-        <p className="mt-6 text-xs text-sidebar-text">
+        {/* A tipper crossing the screen while the app loads — the same flat,
+            side-on shape as the vehicles on the KALYANI signboard, in the
+            app's own green. It also does a job: something moving says the app
+            is working, which matters over six seconds. */}
+        <div className="relative mt-6 h-11 w-full overflow-hidden" aria-hidden>
+          <div className="absolute inset-x-0 bottom-[7px] h-px bg-white/12" />
+          <div className="splash-road absolute inset-x-0 bottom-[6px] h-[3px]" />
+          <svg className="splash-truck absolute bottom-0 w-[86px]" viewBox="0 0 130 56" fill="none">
+            {/* tipper bed, raised at the rear */}
+            <path d="M6 33 L15 11 L63 11 L63 33 Z" fill="#2E8F52" />
+            <path d="M15 11 L63 11 L63 16 L13 16 Z" fill="#3FB86A" />
+            {/* chassis */}
+            <rect x="8" y="33" width="72" height="7" rx="2" fill="#1C6038" />
+            {/* cab */}
+            <path d="M80 40 L80 19 L97 19 L107 31 L107 40 Z" fill="#3FB86A" />
+            <path d="M93 22 L99 22 L104 30 L93 30 Z" fill="#0A2427" opacity=".5" />
+            <rect x="104" y="33" width="4" height="4" rx="1" fill="#FFD27A" />
+            {/* wheels */}
+            <circle cx="27" cy="44" r="8" fill="#0E2528" />
+            <circle cx="46" cy="44" r="8" fill="#0E2528" />
+            <circle cx="93" cy="44" r="8" fill="#0E2528" />
+            <circle cx="27" cy="44" r="3.2" fill="#4FC077" />
+            <circle cx="46" cy="44" r="3.2" fill="#4FC077" />
+            <circle cx="93" cy="44" r="3.2" fill="#4FC077" />
+          </svg>
+        </div>
+
+        <p className="mt-3 text-xs text-sidebar-text">
           {t(phase === 'launch' ? 'splash.launch' : 'splash.signin')}
         </p>
       </div>
