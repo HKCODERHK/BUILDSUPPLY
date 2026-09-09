@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
-import type { SplashPhase } from '@/context/AuthContext'
+import { useAuth, type SplashPhase } from '@/context/AuthContext'
 
 /**
  * The loading screen, shown on a cold start and after a real sign-in — and at
@@ -14,10 +14,23 @@ import type { SplashPhase } from '@/context/AuthContext'
  */
 export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
   const { t } = useLanguage()
+  const { supplier } = useAuth()
   // The artwork is optional: the ring reads perfectly well on its own, and a
   // broken image icon would be worse than none. Drop a file at
-  // public/splash-art.png and it appears with no code change.
+  // public/splash-art.jpg and it appears with no code change.
   const [artFailed, setArtFailed] = useState(false)
+  const [logoFailed, setLogoFailed] = useState(false)
+
+  // The supplier's own logo from Settings, sitting inside the ring so the wait
+  // belongs to their business rather than to ours.
+  //
+  // It arrives part-way through on purpose: the profile is one of the things
+  // the splash is covering, so on a cold start the ring turns empty for a
+  // moment and the logo fades in behind it. Fading rather than appearing keeps
+  // that from reading as a glitch. Plenty of suppliers will never upload one,
+  // and an empty ring is the right answer for them — not a placeholder telling
+  // them something is missing.
+  const logo = !logoFailed ? supplier?.logo_url : null
 
   return (
     <div
@@ -84,6 +97,17 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
               stroke="url(#splashArc)" className="splash-arc"
             />
           </svg>
+          {logo && (
+            <img
+              src={logo}
+              alt=""
+              onError={() => setLogoFailed(true)}
+              className="splash-logo absolute rounded-full object-cover"
+              // Inset clears the 9px stroke with room to breathe, so the logo
+              // sits inside the ring rather than tucked under it.
+              style={{ inset: '16px', width: 'calc(100% - 32px)', height: 'calc(100% - 32px)' }}
+            />
+          )}
         </div>
 
         {/* A tipper crossing the screen while the app loads — the same flat,
