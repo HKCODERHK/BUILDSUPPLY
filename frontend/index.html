@@ -8,7 +8,13 @@
     <!-- Installable on a phone's home screen and usable on a weak shop
          connection — see public/sw.js. -->
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#198A45" />
+    <!-- Must match --color-shell, the mobile header's background. Android
+         paints the status bar strip with this colour in an installed app, so
+         anything else here shows as a band of a different colour sitting on
+         top of the header. It was the brand green against a dark teal header,
+         which is exactly what that looked like. --color-shell is deliberately
+         the same in light and dark, so one value covers both themes. -->
+    <meta name="theme-color" content="#0A2427" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
