@@ -124,11 +124,20 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
               not a headline, and at full strength it would compete with the
               wordmark directly above. Arrives with the profile, like the logo
               in the ring, so it is simply absent on the launch screen. */}
-          {supplier?.business_name && (
-            <span className="splash-name absolute inset-x-0 top-[6px] truncate px-2 text-center text-[13px] font-bold uppercase tracking-[0.14em] text-white/[0.09]">
-              {supplier.business_name}
-            </span>
-          )}
+          {/* Rendered unconditionally, even before the name exists. Its reveal
+              has to stay in step with the truck, and a CSS animation's clock
+              starts when the element mounts — so mounting this later, once the
+              profile arrives, put the two permanently out of phase: the truck
+              would loop back to the left while the name carried on appearing.
+              Empty until the name loads costs nothing and keeps them locked. */}
+          {/* No truncate: this is the supplier's own business name and it has
+              to appear in full, never as "…MATERIA…". Tracking is 0.04em
+              rather than 0.1em because at 15px the wider spacing put "Shree
+              Balaji Building Materials" at 323px in a 319px row — four pixels
+              over, and clipped. This leaves 24px spare. */}
+          <span className="splash-name absolute inset-x-0 top-[4px] px-2 text-center text-[15px] font-extrabold uppercase leading-tight tracking-[0.04em] text-white/55">
+            {supplier?.business_name ?? ''}
+          </span>
           <div className="absolute inset-x-0 bottom-[6px] h-px bg-white/12" />
           <div className="splash-road absolute inset-x-0 bottom-[3px] h-[3px]" />
           <svg className="splash-truck absolute bottom-[5px] w-[152px]" viewBox="0 0 130 56" fill="none">

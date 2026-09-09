@@ -143,11 +143,32 @@ select,
   }
 }
 /* The business name sits behind the tipper — z-index rather than source order
-   so the truck stays last in the markup where it reads. Fades in with the
-   profile rather than appearing mid-animation. */
+   so the truck stays last in the markup where it reads.
+
+   The truck writes it as it goes: the name starts hidden and is uncovered
+   from the left, so each letter appears as the cab reaches it. Same 3s
+   duration and same linear timing as the truck, so the reveal point tracks
+   the cab rather than drifting away from it.
+
+   The 69% is worked out from the truck's geometry rather than guessed. It
+   travels left:-46% to 100% of the row — 146 points — and is itself about 45%
+   of the row wide, so its cab crosses the left edge at the very start and
+   reaches the right edge at (100 + 46 - 45) / 146 ≈ 69% of the cycle.
+   Revealing over exactly that window keeps each letter appearing under the cab
+   instead of long after it has gone by. The name then stands complete for the
+   rest of the cycle, which is the tail driving out. */
 .splash-name {
   z-index: 0;
-  animation: splash-logo-in 0.6s ease-out both;
+  animation: splash-reveal 3s linear infinite;
+}
+@keyframes splash-reveal {
+  0% {
+    clip-path: inset(0 100% 0 0);
+  }
+  69%,
+  100% {
+    clip-path: inset(0 0 0 0);
+  }
 }
 .splash-truck {
   z-index: 1;
@@ -162,7 +183,10 @@ select,
 }
 @keyframes splash-drive {
   from {
-    left: -28%;
+    /* Fully off-screen, so the cab crosses the left edge at the very start of
+       the cycle. At -28% the truck began half-visible, which meant the erase
+       could never start from a whole name. */
+    left: -46%;
   }
   to {
     left: 100%;
@@ -217,5 +241,11 @@ select,
   }
   .splash-logo {
     animation: none;
+  }
+  /* Fully shown rather than left clipped — with the truck parked there is
+     nothing to reveal it, and a half-drawn name would just look broken. */
+  .splash-name {
+    animation: none;
+    clip-path: none;
   }
 }
