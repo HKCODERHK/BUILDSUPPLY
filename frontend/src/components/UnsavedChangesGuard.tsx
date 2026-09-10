@@ -16,7 +16,17 @@ import { useLanguage } from '@/context/LanguageContext'
  * that fires on an empty form is worse than no guard, because people learn to
  * dismiss it without reading.
  */
-export function UnsavedChangesGuard({ when, message }: { when: boolean; message: string }) {
+export function UnsavedChangesGuard({
+  when,
+  message,
+  onLeave,
+}: {
+  when: boolean
+  message: string
+  /** Runs when the supplier confirms leaving — the moment their work is
+   *  abandoned on purpose, as opposed to lost. */
+  onLeave?: () => void
+}) {
   const { t } = useLanguage()
 
   // Read `when` through a ref so the blocker function keeps a stable
@@ -52,7 +62,14 @@ export function UnsavedChangesGuard({ when, message }: { when: boolean; message:
         <Button className="flex-1" onClick={() => blocker.reset()}>
           {t('unsaved.stay')}
         </Button>
-        <Button variant="danger" className="flex-1" onClick={() => blocker.proceed()}>
+        <Button
+          variant="danger"
+          className="flex-1"
+          onClick={() => {
+            onLeave?.()
+            blocker.proceed()
+          }}
+        >
           {t('unsaved.leave')}
         </Button>
       </div>
