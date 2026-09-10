@@ -115,6 +115,15 @@ const STRINGS = {
     hi: 'आपका कारोबार कैसा चल रहा है।',
     mr: 'तुमचा व्यवसाय कसा चालू आहे.',
   },
+  // Before the first bill. "Welcome back" is wrong on a first login, and
+  // "how your business is doing" sits badly over a card of steps. Hindi and
+  // Marathi were already neutral greetings, so only English changes.
+  'dash.welcomeNew': { en: 'Welcome, {name}', hi: 'नमस्ते, {name}', mr: 'नमस्कार, {name}' },
+  'dash.subtitleNew': {
+    en: 'Three steps and your first bill is out.',
+    hi: 'तीन कदम और आपका पहला बिल तैयार।',
+    mr: 'तीन पायऱ्या आणि तुमचे पहिले बिल तयार.',
+  },
   'dash.today': { en: 'TODAY', hi: 'आज', mr: 'आज' },
   'dash.bills': { en: 'bills', hi: 'बिल', mr: 'बिल' },
   'dash.bill': { en: 'bill', hi: 'बिल', mr: 'बिल' },
@@ -793,6 +802,41 @@ const STRINGS = {
     hi: 'अभी किसी ग्राहक की उधारी बाकी नहीं है। किसी को याद दिलाने की ज़रूरत नहीं।',
     mr: 'सध्या कोणत्याही ग्राहकाची उधारी बाकी नाही. कोणालाही आठवण करायची गरज नाही.',
   },
+
+  // ── Start here (the dashboard before the first bill) ──────────────────
+  'start.label': { en: 'START HERE', hi: 'यहाँ से शुरू करें', mr: 'इथून सुरुवात करा' },
+  'start.progress': { en: '{done} of {total} done', hi: '{total} में से {done} पूरे', mr: '{total} पैकी {done} पूर्ण' },
+  'start.materialsTitle': { en: 'Add your materials', hi: 'अपना माल जोड़ें', mr: 'तुमचा माल जोडा' },
+  'start.materialsHint': {
+    en: 'Pick from the catalog — the unit and rate fill themselves in.',
+    hi: 'कैटलॉग से चुनें — यूनिट और रेट अपने आप भर जाएँगे।',
+    mr: 'कॅटलॉगमधून निवडा — युनिट आणि रेट आपोआप भरले जातील.',
+  },
+  'start.customerTitle': { en: 'Add a customer', hi: 'एक ग्राहक जोड़ें', mr: 'एक ग्राहक जोडा' },
+  'start.customerHint': {
+    en: 'A name and phone number are enough to start.',
+    hi: 'शुरू करने के लिए नाम और फ़ोन नंबर काफ़ी है।',
+    mr: 'सुरुवातीला नाव आणि फोन नंबर पुरेसे आहेत.',
+  },
+  'start.billTitle': { en: 'Make your first bill', hi: 'अपना पहला बिल बनाएँ', mr: 'तुमचे पहिले बिल बनवा' },
+  'start.billHint': {
+    en: 'Then send it straight to the customer on WhatsApp.',
+    hi: 'फिर सीधे ग्राहक को WhatsApp पर भेजें।',
+    mr: 'मग थेट ग्राहकाला WhatsApp वर पाठवा.',
+  },
+  // "{items}" is a list built from the item keys below and joined with
+  // start.and. Every item is grammatically masculine in both Hindi and
+  // Marathi, which is what lets one अपना / तुमचा cover any combination.
+  'start.letterhead': {
+    en: 'Put your {items} on every bill.',
+    hi: 'हर बिल पर अपना {items} छापें।',
+    mr: 'प्रत्येक बिलावर तुमचा {items} छापा.',
+  },
+  'start.itemLogo': { en: 'logo', hi: 'लोगो', mr: 'लोगो' },
+  'start.itemAddress': { en: 'address', hi: 'पता', mr: 'पत्ता' },
+  'start.itemPhone': { en: 'phone number', hi: 'फ़ोन नंबर', mr: 'फोन नंबर' },
+  'start.itemGst': { en: 'GST number (if you have one)', hi: 'GST नंबर (अगर है तो)', mr: 'GST नंबर (असल्यास)' },
+  'start.and': { en: 'and', hi: 'और', mr: 'आणि' },
 
   // ── Errors ────────────────────────────────────────────────────────────
   // These were hardcoded English on supplier screens, so a supplier working

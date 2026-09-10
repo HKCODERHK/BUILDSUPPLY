@@ -13,6 +13,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import type { TranslationKey } from '@/lib/i18n'
 import { AdminDashboardView } from '@/routes/admin/AdminDashboardView'
+import { StartHereCard } from '@/components/StartHereCard'
 
 // Jump straight into the create flow for each — no extra click on the
 // destination page. Customers/Payments/Stock read `?new=1` to auto-open
@@ -83,6 +84,10 @@ function SupplierDashboardView() {
   const [today, setToday] = useState({ bills: 0, sold: 0, collected: 0 })
   const [lowStock, setLowStock] = useState<Material[]>([])
   const [loading, setLoading] = useState(true)
+  // What the Start-here card ticks off. Flags rather than the recent lists
+  // above, which are trimmed to five and drop cancelled bills — a supplier
+  // whose only bill was cancelled has still made their first bill.
+  const [setup, setSetup] = useState({ materials: false, customers: false, invoices: false })
 
   useEffect(() => {
     let active = true
@@ -94,12 +99,19 @@ function SupplierDashboardView() {
         setRecentCustomers(customers.slice(0, 5))
         setToday(summariseToday(invoices, payments))
         setLowStock(materials.filter((m) => m.stock_qty <= (m.low_stock_threshold ?? 5)))
+        setSetup({ materials: materials.length > 0, customers: customers.length > 0, invoices: invoices.length > 0 })
       })
       .finally(() => active && setLoading(false))
     return () => {
       active = false
     }
   }, [])
+
+  // Decided only once the data is in. Until then an existing supplier keeps
+  // their quick actions exactly as before; only a genuinely new one sees the
+  // row give way to the card, and on a cold start that happens under the
+  // splash.
+  const isNew = !loading && !setup.invoices
 
   return (
     <div>
@@ -116,16 +128,26 @@ function SupplierDashboardView() {
         )}
         <div className="min-w-0">
           <h1 className="text-xl font-bold text-ink sm:text-2xl">
-            {t('dash.welcome', { name: supplier?.business_name ?? '' })}
+            {t(isNew ? 'dash.welcomeNew' : 'dash.welcome', { name: supplier?.business_name ?? '' })}
           </h1>
-          <p className="mt-0.5 text-sm text-muted">{t('dash.subtitle')}</p>
+          <p className="mt-0.5 text-sm text-muted">{t(isNew ? 'dash.subtitleNew' : 'dash.subtitle')}</p>
         </div>
       </div>
 
-      <QuickActions />
+      {/* Hidden while the card is up: before a first bill, Payment and Stock
+          open modals whose only dropdown is empty, and Bill opens a bill with
+          no materials to put on it. The card covers the same ground in the
+          order that actually works. */}
+      {!isNew && <QuickActions />}
 
       {loading ? (
         <p className="text-sm text-muted">{t('common.loading')}</p>
+      ) : isNew ? (
+        // Replaces the low-stock banner too, not just the ₹0 figures. Every
+        // material added from the catalog starts at zero stock, so the moment
+        // step one is done they would all be "running low" — a red alarm on
+        // a new supplier's first morning for something that is not wrong.
+        <StartHereCard hasMaterials={setup.materials} hasCustomers={setup.customers} supplier={supplier} />
       ) : (
         <>
           {lowStock.length > 0 && (
