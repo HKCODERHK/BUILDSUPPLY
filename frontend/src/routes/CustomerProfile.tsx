@@ -12,9 +12,14 @@ import { ActionMenu } from '@/components/ui/action-menu'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { SuccessHeader } from '@/components/SuccessTick'
 import { getCustomer, updateCustomer } from '@/services/customers'
-import { recordCustomerPayment, type KhataPaymentResult } from '@/services/payments'
+import { listPayments, recordCustomerPayment, type KhataPaymentResult } from '@/services/payments'
+import { listInvoices } from '@/services/invoices'
+import { logActivity } from '@/services/activityLog'
 import { supabase } from '@/lib/supabase'
-import { openWhatsAppShare } from '@/lib/whatsapp'
+import { buildCustomerLedger } from '@/lib/customerLedger'
+import { customerLedgerPdfFile } from '@/lib/customerLedgerPdf'
+import { receiptPdfFile } from '@/lib/receiptPdf'
+import { shareDocumentOnWhatsApp } from '@/lib/shareDocument'
 import { sanitizeDecimal } from '@/lib/numberInput'
 import { oldestPendingDays, overdueTextClass } from '@/lib/overdue'
 import { useAuth } from '@/context/AuthContext'
@@ -52,6 +57,7 @@ export default function CustomerProfile() {
   // supplier who taps "send receipt" straight away would otherwise send the
   // customer the balance from *before* the payment they just made.
   const [paidSummary, setPaidSummary] = useState<{ amount: number; mode: PaymentMode; balance: number } | null>(null)
+  const [sharing, setSharing] = useState<'receipt' | 'statement' | null>(null)
 
   async function refresh() {
     if (!id) return
@@ -158,9 +164,10 @@ export default function CustomerProfile() {
   const creditLimit = customer.credit_limit != null ? Number(customer.credit_limit) : null
 
   // Receipt sent right after money is taken. Kills the "maine to paise de
-  // diye the" argument later, because the customer has it in writing.
-  function sendReceipt() {
-    if (!customer || !paidSummary) return
+  // diye the" argument later, because the customer has it in writing — as a
+  // receipt PDF naming the bills it cleared, not just a chat message.
+  async function sendReceipt() {
+    if (!supplier || !customer || !paidSummary) return
     const balanceLine =
       paidSummary.balance > 0 ? t('pay.receiptBalance', { amount: formatINR(paidSummary.balance) }) : t('pay.receiptSettled')
     const message = t('pay.receiptMessage', {
@@ -169,7 +176,41 @@ export default function CustomerProfile() {
       date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
       balance: balanceLine,
     })
-    openWhatsAppShare(customer.phone, message)
+    setSharing('receipt')
+    try {
+      const file = await receiptPdfFile(supplier, customer, { ...paidSummary, appliedTo: payResult?.applied ?? [] })
+      await shareDocumentOnWhatsApp({
+        file,
+        message,
+        title: 'Payment receipt',
+      })
+    } finally {
+      setSharing(null)
+    }
+  }
+
+  // The full statement Reminders sends — every bill and every payment — so
+  // the customer is chased with the record, not a number to argue with.
+  async function sendStatement() {
+    if (!supplier || !customer) return
+    setSharing('statement')
+    try {
+      const [allInvoices, allPayments] = await Promise.all([listInvoices(), listPayments()])
+      const ledger = buildCustomerLedger({ customerId: customer.id, invoices: allInvoices, payments: allPayments })
+      const file = await customerLedgerPdfFile(supplier, customer, ledger)
+      const outcome = await shareDocumentOnWhatsApp({
+        file,
+        message:
+          `Hi ${customer.name}, your pending balance with us is ${formatINR(totalPending)}. ` +
+          `The attached statement shows every bill and payment. Please clear it at your earliest convenience.`,
+        title: `Statement — ${customer.name}`,
+      })
+      if (outcome === 'shared') {
+        void logActivity('supplier', 'reminder_sent', { details: { customer: customer.name, format: 'pdf_share' } })
+      }
+    } finally {
+      setSharing(null)
+    }
   }
 
   // Sites come off this customer's own bills now, so a contractor can see
@@ -232,14 +273,10 @@ export default function CustomerProfile() {
                   : []),
                 { label: t('common.edit'), icon: <Pencil size={15} />, onSelect: openEdit },
                 {
-                  label: t('cust.remind'),
+                  label: sharing === 'statement' ? t('common.preparing') : t('cust.remind'),
                   icon: <WhatsAppIcon size={15} />,
-                  disabled: !customer.phone,
-                  onSelect: () =>
-                    openWhatsAppShare(
-                      customer.phone,
-                      `Hi ${customer.name}, your pending balance with us is ${formatINR(totalPending)}. Please clear it at your earliest convenience.`,
-                    ),
+                  disabled: !customer.phone || sharing !== null,
+                  onSelect: sendStatement,
                 },
               ]}
             />
@@ -428,8 +465,8 @@ export default function CustomerProfile() {
                 </p>
               )}
               {customer.phone && paidSummary && paidSummary.amount > 0 && (
-                <Button variant="outline" onClick={sendReceipt}>
-                  <WhatsAppIcon size={16} /> {t('pay.sendReceipt')}
+                <Button variant="outline" onClick={sendReceipt} disabled={sharing === 'receipt'}>
+                  <WhatsAppIcon size={16} /> {sharing === 'receipt' ? t('common.preparing') : t('pay.sendReceipt')}
                 </Button>
               )}
               <Button

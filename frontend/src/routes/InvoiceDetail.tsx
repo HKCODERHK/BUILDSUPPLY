@@ -70,8 +70,8 @@ export default function InvoiceDetail() {
     `Hi ${customer?.name ?? ''}, here is your bill ${invoice.invoice_no} for ${formatINR(invoice.total)}. ` +
     `${remaining > 0 ? `Pending: ${formatINR(remaining)}.` : 'Fully paid — thank you!'}`
 
-  // Sends the bill as a real PDF attachment where the device supports it,
-  // and falls back to download + wa.me everywhere else — see shareDocument.
+  // Sends the bill as a real PDF through the phone's share sheet — see
+  // shareDocument for why the supplier then picks the customer in WhatsApp.
   async function shareOnWhatsApp() {
     if (!invoice || !supplier) return
     setSharing(true)
@@ -81,11 +81,10 @@ export default function InvoiceDetail() {
         file,
         message,
         title: invoice.invoice_no,
-        phone: customer?.phone,
       })
-      if (outcome !== 'cancelled') {
+      if (outcome === 'shared') {
         void logActivity('supplier', 'invoice_generated', {
-          details: { invoice_no: invoice.invoice_no, format: outcome === 'shared' ? 'pdf_share' : 'text_fallback' },
+          details: { invoice_no: invoice.invoice_no, format: 'pdf_share' },
         })
       }
     } finally {

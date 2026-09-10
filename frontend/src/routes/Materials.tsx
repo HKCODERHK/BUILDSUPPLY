@@ -123,9 +123,9 @@ export default function Materials() {
         message: `${supplier.business_name} — today's rate list is attached. Rates may change; GST and transport extra where applicable.`,
         title: 'Rate list',
       })
-      if (outcome !== 'cancelled') {
+      if (outcome === 'shared') {
         void logActivity('supplier', 'rate_list_shared', {
-          details: { items: list.length, format: outcome === 'shared' ? 'pdf_share' : 'text_fallback' },
+          details: { items: list.length, format: 'pdf_share' },
         })
       }
     } finally {

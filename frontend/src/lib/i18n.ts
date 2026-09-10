@@ -68,6 +68,21 @@ const STRINGS = {
   'common.sendWhatsApp': { en: 'Send on WhatsApp', hi: 'व्हाट्सएप पर भेजें', mr: 'व्हॉट्सॲपवर पाठवा' },
   'common.preparing': { en: 'Preparing…', hi: 'तैयार हो रहा है…', mr: 'तयार होत आहे…' },
 
+  // ── Sending a PDF on WhatsApp (shareDocument.ts) ─────────────────────
+  'share.readyTitle': { en: 'Your PDF is ready', hi: 'PDF तैयार है', mr: 'PDF तयार आहे' },
+  'share.readyBody': {
+    en: 'Tap below, choose WhatsApp, then pick the customer and press Send.',
+    hi: 'नीचे दबाएँ, व्हाट्सएप चुनें, फिर ग्राहक चुनकर भेजें दबाएँ।',
+    mr: 'खाली दाबा, व्हॉट्सॲप निवडा, मग ग्राहक निवडून पाठवा दाबा.',
+  },
+  'share.unsupportedTitle': { en: "Can't attach the PDF here", hi: 'यहाँ PDF नहीं भेज सकते', mr: 'इथे PDF पाठवता येत नाही' },
+  'share.unsupportedBody': {
+    en: "This browser can't hand a PDF to WhatsApp. Open BuildSupply on your phone and send it from there.",
+    hi: 'यह ब्राउज़र PDF को व्हाट्सएप पर नहीं भेज सकता। फ़ोन पर BuildSupply खोलकर वहाँ से भेजें।',
+    mr: 'हा ब्राउझर PDF व्हॉट्सॲपला देऊ शकत नाही. फोनवर BuildSupply उघडून तिथून पाठवा.',
+  },
+  'share.understood': { en: 'OK', hi: 'ठीक है', mr: 'ठीक आहे' },
+
   // ── Invoice status ────────────────────────────────────────────────────
   'status.Unpaid': { en: 'Unpaid', hi: 'बाकी', mr: 'बाकी' },
   'status.Partial': { en: 'Partial', hi: 'कुछ जमा', mr: 'काही जमा' },

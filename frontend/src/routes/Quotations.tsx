@@ -16,7 +16,9 @@ import {
   type QuotationWithCustomer,
 } from '@/services/quotations'
 import { createInvoice } from '@/services/invoices'
-import { openWhatsAppShare } from '@/lib/whatsapp'
+import { getCustomer } from '@/services/customers'
+import { quotationPdfFile } from '@/lib/quotationPdf'
+import { shareDocumentOnWhatsApp } from '@/lib/shareDocument'
 import { logActivity } from '@/services/activityLog'
 import { QUOTATION_STATUS_TONE } from '@/lib/quotationStatus'
 import { useAuth } from '@/context/AuthContext'
@@ -71,14 +73,24 @@ export default function Quotations() {
     }
   }
 
+  // The estimate itself goes, not just its total — the same PDF as the
+  // estimate's own page sends. See shareDocument.
   async function handleShare(q: QuotationWithCustomer) {
+    if (!supplier) return
     setSharingId(q.id)
     try {
-      openWhatsAppShare(
-        q.customers?.phone,
-        `Hi ${q.customers?.name ?? ''}, here is your estimate ${q.quote_no} for ${formatINR(q.total)}. Let us know if you'd like to proceed.`,
-      )
-      void logActivity('supplier', 'quotation_shared', { details: { quote_no: q.quote_no } })
+      const [items, customer] = await Promise.all([
+        listQuotationItems(q.id),
+        q.customer_id ? getCustomer(q.customer_id) : Promise.resolve(null),
+      ])
+      const file = await quotationPdfFile(supplier, customer, q, items)
+      const outcome = await shareDocumentOnWhatsApp({
+        file,
+        message: `Hi ${q.customers?.name ?? ''}, here is your estimate ${q.quote_no} for ${formatINR(q.total)}. Let us know if you'd like to proceed.`,
+        title: q.quote_no,
+      })
+      if (outcome !== 'shared') return
+      void logActivity('supplier', 'quotation_shared', { details: { quote_no: q.quote_no, format: 'pdf_share' } })
       if (q.status === 'Draft') {
         await markQuotationSent(q.id)
         await refresh()
@@ -146,7 +158,7 @@ export default function Quotations() {
                     disabled={sharingId === q.id}
                     className="flex items-center gap-1.5 p-2.5 text-xs font-semibold text-accent-text hover:text-accent disabled:opacity-50"
                   >
-                    <WhatsAppIcon size={15} /> WhatsApp
+                    <WhatsAppIcon size={15} /> {sharingId === q.id ? t('common.preparing') : 'WhatsApp'}
                   </button>
                   {(q.status === 'Draft' || q.status === 'Sent') && (
                     <Button size="sm" onClick={() => handleConvert(q)} disabled={convertingId === q.id}>
@@ -192,7 +204,7 @@ export default function Quotations() {
                         disabled={sharingId === q.id}
                         className="flex items-center gap-1.5 p-2 text-xs font-semibold text-accent-text hover:text-accent disabled:opacity-50"
                       >
-                        <WhatsAppIcon size={14} /> WhatsApp
+                        <WhatsAppIcon size={14} /> {sharingId === q.id ? t('common.preparing') : 'WhatsApp'}
                       </button>
                     </td>
                     <td className="py-2.5 pr-3">

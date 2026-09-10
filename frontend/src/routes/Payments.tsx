@@ -13,7 +13,8 @@ import { EmptyState } from '@/components/EmptyState'
 import { SuccessHeader } from '@/components/SuccessTick'
 import { listPayments, recordPayment, type PaymentWithInvoice } from '@/services/payments'
 import { listInvoices, type InvoiceWithCustomer } from '@/services/invoices'
-import { openWhatsAppShare } from '@/lib/whatsapp'
+import { receiptPdfFile } from '@/lib/receiptPdf'
+import { shareDocumentOnWhatsApp } from '@/lib/shareDocument'
 import type { PaymentMode } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -42,12 +43,15 @@ interface Split {
 // What the receipt needs to say, captured at the moment of recording.
 interface Receipt {
   customerName: string
+  customerAddress: string | null
   phone: string | null
   amount: number
   mode: PaymentMode
   balance: number
   /** Offered but refused, because the bill did not owe that much. */
   leftOver: number
+  /** The bill the money went onto — the receipt PDF names it. */
+  appliedTo: { invoice_no: string; amount: number }[]
 }
 
 export default function Payments() {
@@ -63,6 +67,7 @@ export default function Payments() {
   const [splits, setSplits] = useState<Split[]>([{ key: crypto.randomUUID(), amount: '', mode: 'Cash' }])
   const [saving, setSaving] = useState(false)
   const [receipt, setReceipt] = useState<Receipt | null>(null)
+  const [sendingReceipt, setSendingReceipt] = useState(false)
   const [shown, setShown] = useState(PAGE_SIZE)
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -132,12 +137,14 @@ export default function Payments() {
           .reduce((sum, i) => sum + (Number(i.total) - Number(i.paid)), 0)
         setReceipt({
           customerName: invoice.customers?.name ?? '',
+          customerAddress: invoice.customers?.address ?? null,
           phone: invoice.customers?.phone ?? null,
           amount: result.applied,
           // The common case is one mode; a split payment names the first.
           mode: splits.find((s) => Number(s.amount) > 0)?.mode ?? 'Cash',
           balance: Math.max(0, owedBefore - result.applied),
           leftOver: result.leftOver,
+          appliedTo: result.applied > 0 ? [{ invoice_no: invoice.invoice_no, amount: result.applied }] : [],
         })
       } else {
         closeModal()
@@ -147,20 +154,32 @@ export default function Payments() {
     }
   }
 
-  // A written acknowledgement, sent the moment the money changes hands.
-  function sendReceipt() {
-    if (!receipt) return
+  // A written acknowledgement, sent the moment the money changes hands — as
+  // a receipt PDF, which holds up later in a way a chat message doesn't.
+  async function sendReceipt() {
+    if (!supplier || !receipt) return
     const balanceLine =
       receipt.balance > 0 ? t('pay.receiptBalance', { amount: formatINR(receipt.balance) }) : t('pay.receiptSettled')
-    openWhatsAppShare(
-      receipt.phone,
-      t('pay.receiptMessage', {
-        amount: formatINR(receipt.amount),
-        mode: t(`mode.${receipt.mode}`),
-        date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-        balance: balanceLine,
-      }),
-    )
+    setSendingReceipt(true)
+    try {
+      const file = await receiptPdfFile(
+        supplier,
+        { name: receipt.customerName, address: receipt.customerAddress, phone: receipt.phone },
+        { amount: receipt.amount, mode: receipt.mode, balance: receipt.balance, appliedTo: receipt.appliedTo },
+      )
+      await shareDocumentOnWhatsApp({
+        file,
+        message: t('pay.receiptMessage', {
+          amount: formatINR(receipt.amount),
+          mode: t(`mode.${receipt.mode}`),
+          date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+          balance: balanceLine,
+        }),
+        title: 'Payment receipt',
+      })
+    } finally {
+      setSendingReceipt(false)
+    }
   }
 
   return (
@@ -250,8 +269,8 @@ export default function Payments() {
                 </p>
               )}
               {receipt.phone && (
-                <Button variant="outline" onClick={sendReceipt}>
-                  <WhatsAppIcon size={16} /> {t('pay.sendReceipt')}
+                <Button variant="outline" onClick={sendReceipt} disabled={sendingReceipt}>
+                  <WhatsAppIcon size={16} /> {sendingReceipt ? t('common.preparing') : t('pay.sendReceipt')}
                 </Button>
               )}
               <Button onClick={closeModal}>{t('common.done')}</Button>

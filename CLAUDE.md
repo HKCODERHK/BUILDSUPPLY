@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `023`, run in order. **023 is the latest and is applied** (2026-09-08). (There is no `001` file in the repo; the base schema predates the migration folder.)
+- **Schema migrations**: `supabase/migrations/` — `002` through `023`, run in order. **023 is the latest and is applied** (2026-09-08). (A `024` storage bucket was applied and removed again on 2026-09-11 — see Phase 8. There is deliberately no 024 file.) (There is no `001` file in the repo; the base schema predates the migration folder.)
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -20,11 +20,11 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 - URL: `https://pefarymejlfdsmwusbbq.supabase.co`
 - Dashboard: `https://supabase.com/dashboard/project/pefarymejlfdsmwusbbq`
 - `frontend/.env` already has the real `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` wired up.
-- Dev server: `cd frontend && npm run dev` → `http://localhost:5173`
+- Dev server: `cd frontend && npm run dev` → `http://localhost:5173`. The `frontend-dev` launch config sets `autoPort` — another chat's server often holds 5173, and `vite.config.ts` reads `PORT` for exactly this.
 - Production preview (needed to test the service worker): `npm run build` then the `frontend-preview` config in `.claude/launch.json` → `http://localhost:4173`
 - Running SQL directly: `npx supabase db query --file <path> --project-ref pefarymejlfdsmwusbbq --linked`
 
-**Everything in this app is free.** No Stripe/Razorpay/Twilio, no WhatsApp Business API, no paid libraries — every dependency is MIT-licensed. WhatsApp works through free `wa.me` links and the device share sheet, which means *the supplier always taps send themselves*. Automated/background WhatsApp sending would cost money and is deliberately not built. Don't introduce a paid service without asking.
+**Everything in this app is free.** No Stripe/Razorpay/Twilio, no WhatsApp Business API, no paid libraries — every dependency is MIT-licensed. WhatsApp works through free `wa.me` links and the device share sheet, which means *the supplier always taps send themselves* — and documents go as real PDF attachments through the phone's share sheet, where the supplier picks the customer (Phase 8). Automated/background WhatsApp sending would cost money and is deliberately not built. Don't introduce a paid service without asking.
 
 ## Accounts
 
@@ -85,7 +85,7 @@ user to sign in first and leave the tab open.
 |---|---|---|
 | **Repeat last bill** | Customer profile → `/invoices/new?customer=<id>&repeat=1` | Prefills quantities, rates, site, GST and transport from the last non-cancelled bill |
 | **Last rate memory** | New Invoice line rows | Tappable chip "Last ₹8,000 · 30 Aug"; **hides when it matches the current rate** (nothing to add); excludes cancelled bills |
-| **Payment receipt on WhatsApp** | Customer profile + Payments | "Received ₹5,000 by UPI on 31 Aug 2026. Balance now ₹12,300. Thank you." |
+| **Payment receipt on WhatsApp** | Customer profile + Payments | "Received ₹5,000 by UPI on 31 Aug 2026. Balance now ₹12,300. Thank you." Since Phase 8 it carries a receipt PDF (`lib/receiptPdf.ts`) naming the bills the money cleared |
 | **Overdue age** | Customers, Customer profile, Reminders | Derived from invoice dates — no due-date field. Muted <30d, amber 30–59d, red ≥60d. Reminders sorts **oldest first** |
 | **Rate list share** | Materials & Stock | PDF on the supplier's letterhead; only priced items; **deliberately shows no stock quantities** — it goes to customers |
 | **Udhaar limit** | `customers.credit_limit` (migration 018) | Warns while billing, **never blocks**. Null for almost everyone |
@@ -134,6 +134,73 @@ PDF-only), and delete animations (bills are cancelled, which is already
 confirmed and PIN-gated). Feedback belongs only where it confirms something
 that just happened, on a screen that was appearing anyway.
 
+**Phase 8 — every customer WhatsApp button sends a real PDF (2026-09-11).**
+The user's requirement, in order of preference: **(1)** open the exact
+customer's WhatsApp chat with the real PDF already attached, supplier presses
+Send; failing that **(2)** the real PDF through the phone's share sheet, the
+supplier picks WhatsApp and then the customer, and presses Send. **Never a
+link, never Supabase Storage, never a PDF saved to Downloads, never anything
+sent automatically** — each was ruled out explicitly.
+
+- **(1) is not possible in this PWA — checked, not assumed.** There is no
+  native layer (no Capacitor, no `android/` or `ios/`). A web page reaches
+  WhatsApp only through a URL (`wa.me`: number and text, no file field) or the
+  Web Share API (files, but `ShareData` has only `title`, `text`, `url` and
+  `files` — no recipient). Chrome's `intent://` links carry only primitive
+  extras, not the file stream WhatsApp needs. A native Android app could do it
+  (a share intent with `EXTRA_STREAM`, `setPackage("com.whatsapp")` and the
+  undocumented `jid` extra) — see Still to do.
+- **(2) is what is built.** `lib/shareDocument.ts` hands the PDF, built in
+  memory, to `navigator.share` with the message as its text. All nine
+  customer-facing buttons use it: bill page, bills list, estimate page,
+  estimates list, Reminders, customer page → Remind (the full statement, the
+  same one Reminders sends), both payment receipts (`lib/receiptPdf.ts`), and
+  the rate list. The list buttons, Remind and receipts used to send text only.
+  Reports has a WhatsApp button beside every Download too, built from the
+  same description of the report so the two can't differ: the customer ledger
+  (a customer-facing message) and the five other reports (a plain "what and
+  which dates" line — they usually go to an accountant or partner). Its label
+  is just "WhatsApp" ("Send on WhatsApp" beside "Download PDF" measured 339px
+  against the 296px a report card has at 360px), and both buttons drop to
+  `size="sm"` on phones, full size from `sm` up, like the customer page's
+  header. At full size "पीडीएफ डाउनलोड" + "WhatsApp" is 303px, so Hindi and
+  Marathi wrapped while English (283px) did not — one place where English is
+  not the widest. At phone size: 244px English, 261px Hindi/Marathi, 287px
+  while "Preparing…".
+  The admin↔supplier WhatsApp buttons (renewal, login details, chasing a
+  supplier) stay `wa.me` text: they are messages, not documents.
+- **An expired tap gets a prompt, never a download.** A tap only lets a page
+  open the share sheet for a few seconds, and building the PDF — plus fetching
+  the bill, on the list screens — can outlast that. When
+  `navigator.userActivation.isActive` has lapsed, or the share throws
+  `NotAllowedError`, `components/ShareDocumentPrompt.tsx` (mounted once in
+  AppShell) offers "Your PDF is ready — Send on WhatsApp": a fresh tap. Where
+  the browser cannot share files at all (most desktops) it says so and stops.
+  Both pass `captureBack={false}`: they usually open over the payment dialog,
+  and two stacked dialogs both listening for back close together.
+- **A link-based version was built first and removed the same day.** It
+  uploaded each PDF to a `documents` bucket and sent a `/d/` link (migration
+  024, a `vercel.json` proxy, a service-worker exclusion). The user rejected
+  links outright. The code is gone, migration 024 never reached `main`, and in
+  the live database the policy was dropped and the bucket emptied and deleted —
+  verified: only `catalog` and `logos` remain. Don't bring it back.
+- **Saving a new customer as a phone contact — asked for, not possible here.**
+  No browser API writes to the phone's contacts (the Contact Picker API is
+  read-only), and the user ruled out the web-side substitutes: a VCF file,
+  copying the number, manual entry. It needs a native app too.
+- **Verified 2026-09-11 without a phone.** This browser pane has no
+  `navigator.share`, so it was simulated, and the real `shareDocument.ts` and
+  prompt were driven through every path with a real generated PDF: fresh tap →
+  one share call carrying one `application/pdf` File and no URL; sheet closed →
+  `cancelled`; expired tap → prompt → `shared`; `NotAllowedError` → prompt →
+  `shared`; no file sharing → the "can't attach" notice → `unsupported`. Across
+  all of it: zero network requests, zero downloads, zero `wa.me` opens, no link
+  in any message.
+- **Not yet verified: a real Android phone** — WhatsApp in the share sheet, the
+  customer picked, the PDF arriving as a document, Send. Only the user's phone
+  can show that. Whether WhatsApp keeps the message as the document's caption
+  or drops it is WhatsApp's choice, not ours.
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.
@@ -164,12 +231,12 @@ A 4-digit PIN asked before irreversible actions, for both roles. **It is a confi
 ## Architecture notes that matter
 
 ### Shared modules — change behaviour here, not in each caller
-- **`lib/pdfTheme.ts`** — every PDF's colours, money/date formatting, table styling, logo+business header, FROM/TO block and page footer. `invoicePdf.ts`, `quotationPdf.ts`, `customerLedgerPdf.ts`, `reportPdf.ts` and `rateListPdf.ts` all draw from it.
-- **`lib/shareDocument.ts`** — the one WhatsApp document-share path. Native share sheet where available (a real PDF attachment), otherwise download + `wa.me` with the message pre-filled. Returns `'shared' | 'cancelled' | 'fallback'`; **don't log activity on `'cancelled'`** — the supplier backed out.
+- **`lib/pdfTheme.ts`** — every PDF's colours, money/date formatting, table styling, logo+business header, FROM/TO block and page footer. `invoicePdf.ts`, `quotationPdf.ts`, `customerLedgerPdf.ts`, `reportPdf.ts`, `rateListPdf.ts` and `receiptPdf.ts` all draw from it.
+- **`lib/shareDocument.ts`** — the one WhatsApp document-share path, behind every WhatsApp document button — the nine customer-facing ones and the six on Reports (Phase 8). The PDF goes from memory into the phone's share sheet as a real file; the supplier picks WhatsApp, then the customer, then presses Send. **No upload, no download, no link, no `wa.me`** — the user ruled out each. Returns `'shared' | 'cancelled' | 'unsupported'`, resolving only once `ShareDocumentPrompt` is done with, if it had to appear. Log activity **only on `'shared'`**.
 - **`lib/overdue.ts`** — `oldestPendingDays()` / `overdueTextClass()`. Treats anything under ₹1 as settled so rounding on a split payment can't leave a customer looking permanently overdue by 40 paise.
 - **`lib/i18n.ts`** — flat `key → {en, hi, mr}` dictionary with `{placeholder}` interpolation, falling back to English so a missing translation shows readable text rather than a raw key. Add a key here, then use `const { t } = useLanguage()`.
 - **`lib/numberInput.ts`** — `sanitizeDigits` / `sanitizeDecimal`. All numeric fields are `type="text"` with `inputMode`, **not** `type="number"` (native number inputs don't support `.select()` reliably and allowed "05").
-- **`lib/whatsapp.ts`** — `openWhatsAppShare` and `normalizeWhatsAppNumber`, the single builder behind **all 24** WhatsApp call sites (`shareDocument.ts` routes through it too). wa.me needs a full international number with no `+`, no separators and **no leading zero**, and it answers anything it can't resolve with "phone number shared via url is invalid" — which looks to the supplier like the Send button is broken. Leading zeros are India's STD trunk prefix and are stripped; a bare 10-digit number gets `91`; 11–15 digits pass through untouched so an overseas number isn't mangled. **Not one phone number in the live database carries a country code**, so removing this breaks every WhatsApp button in the app at once.
+- **`lib/whatsapp.ts`** — `openWhatsAppShare` and `normalizeWhatsAppNumber`, the single builder behind every `wa.me` link in the app — since Phase 8 that means only the admin↔supplier messages, the Login page's subscription enquiry and the renewal banner. Customer documents never go through `wa.me`: it cannot carry a file. wa.me needs a full international number with no `+`, no separators and **no leading zero**, and it answers anything it can't resolve with "phone number shared via url is invalid" — which looks to the supplier like the Send button is broken. Leading zeros are India's STD trunk prefix and are stripped; a bare 10-digit number gets `91`; 11–15 digits pass through untouched so an overseas number isn't mangled. **Not one phone number in the live database carries a country code**, so removing this breaks every WhatsApp button in the app at once.
 - **`lib/localDate.ts`** — `localDateKey(iso)`, the calendar day a UTC timestamp falls on **in the phone's own timezone**, as `YYYY-MM-DD`. Every `created_at` is UTC but a supplier picking dates in an `<input type="date">` is thinking in IST, and India is UTC+5:30 — so slicing the first ten characters off the raw ISO string files anything recorded between midnight and 5:30am under the previous day. Used by `customerLedger.ts` and `Reports.tsx`; the Dashboard's "today" card has always used the same rule inline. **Never compare a raw `created_at.slice(0, 10)` against a date input.**
 - **`components/AddCustomerModal.tsx`** — one customer form shared by Customers, New Invoice and New Quotation so validation can't drift.
 - **`lib/drafts.ts`** — unfinished *new* bills and estimates, kept on the phone (localStorage `buildsupply-draft:<kind>:<supplierId>`, never the server). Written 400ms after each change **and at once on `visibilitychange`→hidden and `pagehide`**, because going into the background is exactly when Android kills the app. Offered back by a prompt on New Invoice / New Quotation and by a banner on the dashboard — where a killed app reopens — whose `?draft=1` restores without asking twice. Cleared the moment the bill exists (right after `createInvoice`, **before** `recordPayment`, so a failed payment can't leave a draft to be saved a second time), on Discard, and on Leave in the unsaved-work guard. Ignored after 3 days. Edit mode doesn't use it; it has the saved bill to fall back on.
@@ -185,7 +252,7 @@ A 4-digit PIN asked before irreversible actions, for both roles. **It is a confi
 - `updateInvoice()` **refuses** to make a total lower than what's already been paid, rather than silently deleting payments. Cancel the bill instead.
 
 ### Language and documents
-**Bills, statements, estimates and rate lists stay in English even when the app is in Hindi or Marathi.** A bill goes to customers, engineers and banks who may not read Devanagari, and a supplier changing their own app language must not change what the customer receives. There's a note saying so in Settings. Don't translate `pdfTheme.ts` or the PDF builders.
+**Bills, statements, estimates, receipts and rate lists stay in English even when the app is in Hindi or Marathi.** (The WhatsApp message carrying a receipt follows the app language, as it always has; the PDF does not.) A bill goes to customers, engineers and banks who may not read Devanagari, and a supplier changing their own app language must not change what the customer receives. There's a note saying so in Settings. Don't translate `pdfTheme.ts` or the PDF builders.
 
 ### RLS and the admin boundary
 `dashboard_totals` and `customer_balances` are views with **`security_invoker = true`** (verified live). A `create or replace view` on either **silently drops this option** and every supplier can then read every other supplier's totals — this actually happened in migration 016 and had to be fixed by 017. If you touch these views, re-assert `alter view ... set (security_invoker = true)` and verify.
@@ -256,8 +323,7 @@ prove the rollback held.
 - `site` lives on the **invoice/quotation**, not the customer (migration 014). A contractor runs several sites at once; the customer's `site` is only the default that gets pre-filled.
 - The service worker registers **only in a production build** (`import.meta.env.PROD`) — a worker caching Vite's dev modules would fight HMR. To test it: `npm run build`, then the `frontend-preview` launch config.
 - **`public/sw.js` must look things up with `cache.match(req, { ignoreVary: true })`.** Static hosts (Vite preview, Netlify, Vercel, Cloudflare) send `Vary: Origin` on assets, and the Cache API honours Vary — without `ignoreVary` the worker misses entries it stored moments earlier, falls through to the network, and fails offline, which is the one moment the cache existed for. This was a real bug, caught only by inspecting the live cache. Bump `CACHE` (currently `buildsupply-v3`) to force clients to drop old entries; `activate` deletes every cache that isn't the current name, which also clears assets left by previous builds.
-- **The navigation branch of `sw.js` only caches a response when `response.ok && response.type === 'basic'`.** Navigations are network-first so a deploy is picked up immediately, and the response is stored as the offline shell — so without that check a host 404 (from a missing SPA rewrite), a 500, or a cafe wifi sign-in page becomes the shell the app shows every time it opens offline, and keeps being served long after the network returns. Verified end to end: with the preview server **stopped**, a reload of `/dashboard` still boots from cache and renders.
-- **Safe-area insets.** `index.html` asks for `viewport-fit=cover`, which deliberately opts *into* drawing under the status bar and the home indicator, so anything pinned to a screen edge must keep that strip clear itself. `index.css` defines `--safe-top` / `--safe-bottom` from `env(safe-area-inset-*)` with a `0px` fallback, and four places in `AppShell.tsx` spend them: the mobile header's top padding, the fixed tab bar's bottom padding, **the content wrapper that reserves the tab bar's height** (the bar is taller on a notched phone, so the reservation has to match), and the "more" sheet. Only top and bottom exist — the manifest pins the installed app to `portrait`, so the notch is never on a side. Measured at 375×812: with no insets the padding is unchanged (12px / 64px / 0px); with an iPhone 14 Pro's 59px and 34px it becomes 71px / 98px / 34px and content still clears the bar.
+- **The navigation branch of `sw.js` only caches a response when `response.ok && response.type === 'basic'`.** Navigations are network-first so a deploy is picked up immediately, and the response is stored as the offline shell — so without that check a host 404 (from a missing SPA rewrite), a 500, or a cafe wifi sign-in page becomes the shell the app shows every time it opens offline, and keeps being served long after the network returns. Verified end to end: with the preview server **stopped**, a reload of `/dashboard` still boots from cache and renders.- **Safe-area insets.** `index.html` asks for `viewport-fit=cover`, which deliberately opts *into* drawing under the status bar and the home indicator, so anything pinned to a screen edge must keep that strip clear itself. `index.css` defines `--safe-top` / `--safe-bottom` from `env(safe-area-inset-*)` with a `0px` fallback, and four places in `AppShell.tsx` spend them: the mobile header's top padding, the fixed tab bar's bottom padding, **the content wrapper that reserves the tab bar's height** (the bar is taller on a notched phone, so the reservation has to match), and the "more" sheet. Only top and bottom exist — the manifest pins the installed app to `portrait`, so the notch is never on a side. Measured at 375×812: with no insets the padding is unchanged (12px / 64px / 0px); with an iPhone 14 Pro's 59px and 34px it becomes 71px / 98px / 34px and content still clears the bar.
 - **The Android navigation bar cannot be coloured from this app. Do not try again.** The strip under the tab bar looking dark against a light theme is the single most-reported thing about this app's appearance, and it took four attempts to settle because it can only be answered from a real installed phone. Measured there on 2026-09-09, with a temporary `?debug=insets` probe:
   ```
   inset-bottom 0px   inset-top 0px
@@ -294,6 +360,8 @@ prove the rollback held.
 - **Rendering a real component without signing in**: import it through the Vite dev graph from the login page — `await import('/src/components/X.tsx')` — with React from `/node_modules/.vite/deps/react.js?v=<hash>` and `react-dom_client.js` (the hash is in `performance.getEntriesByType('resource')`). Pre-bundled deps export under **`default`**. Import `LanguageProvider` from the exact `LanguageContext.tsx?t=…` URL the page loaded, or the component reads a different context instance and throws. Unmount afterwards: a fixed overlay left in `body` covers the sign-in form.
 - **Proving a save without writing to the database**: wrap `window.fetch` so every non-GET `/rest/v1/` request gets a plausible success and reads pass through. Drafts-clear-on-save and the success ticks were verified that way, with zero test rows created.
 - **Headless Edge won't lay out narrower than about 500px**, so a "360px" headless screenshot is cropped, not narrow. Use the Browser pane's `resize_window` for phone widths.
+- **`supabase storage cp` needs a relative local path.** Given `C:\…` it reads the drive letter as a remote scheme and fails with "Unsupported operation … copy between local directories", from PowerShell and Git Bash alike. Use a path relative to the project root, and `MSYS_NO_PATHCONV=1` in Git Bash so `ss:///bucket/…` is left alone. **`supabase storage rm` does not work from this machine at all** — it answers `"deleted":[]` for a path `ls` has just listed, from either shell — and a direct `delete from storage.objects` is refused by `storage.protect_delete()`. Delete test objects from the dashboard (Storage → the bucket), and prefer not to upload real ones to test with.
+- **This browser pane has no `navigator.share` at all**, so the share sheet can only be simulated here. Define `navigator.share`, `navigator.canShare` and `navigator.userActivation` with `Object.defineProperty(navigator, …, { configurable: true })`, record what `share` receives, mount `ShareDocumentPrompt` through the dev graph (recipe above), and `delete` the three properties afterwards. That is how every branch of Phase 8 was driven. The real share sheet needs the user's phone.
 
 ## Working conventions established in this project
 
@@ -315,7 +383,7 @@ prove the rollback held.
     git log --all --format='%h %(trailers:key=Co-authored-by,valueonly)' | grep -i claude
     ```
     The second command must print nothing.
-- Always type-check (`npx tsc -b` in `frontend/`) and run a full `npm run build` after changes, before calling something done. `npm run lint` should stay at **0 errors** (14 pre-existing warnings as of 2026-09-10, none of them in that day's files). oxlint prints no summary line; count with `npm run lint 2>&1 | grep -c ': warning'`.
+- Always type-check (`npx tsc -b` in `frontend/`) and run a full `npm run build` after changes, before calling something done. `npm run lint` should stay at **0 errors** (14 pre-existing warnings as of 2026-09-11, none of them on lines that day's work touched). oxlint prints no summary line; count with `npm run lint 2>&1 | grep -c ': warning'`.
 - **Don't claim a feature "works" without testing it live** — sign in, click through, query the database. This project has caught multiple real bugs that only surfaced this way and never in code review: a tenant data leak from a dropped `security_invoker`, silent error-swallowing, session races, a receipt quoting a stale balance, a transiently inflated stock count.
 - **Restore any test data you change.** Back-dating an invoice or recording a ₹1 payment to prove a feature is fine — put it back exactly, and verify the restore with a query.
 - Large/complex SQL (anything with `$$` PL/pgSQL blocks) should be pasted manually into the Supabase SQL editor by the user, to avoid editor auto-bracket-closing corruption. Short single-statement SQL is fine to run via the CLI.
@@ -341,7 +409,6 @@ RLS holds from outside with the publishable key that ships in the bundle.
 `"comment"` key failed project creation outright with "should NOT have
 additional property". JSON has no comment syntax; explain the file here rather
 than in it.
-
 **Hobby is a non-commercial plan.** Once this serves paying suppliers, Vercel's
 terms expect Pro.
 
@@ -418,6 +485,16 @@ confusable names, and the run silently did nothing here.
    - **There is no opening balance for a customer's old udhaar.** The
      workaround is a bill with a typed line, which then counts in that
      month's billing on the dashboard and in reports.
+5. **A native Android app — raised 2026-09-11, not decided.** Two things the
+   user asked for need one (Phase 8): opening the exact customer's WhatsApp
+   chat with the PDF already attached, and saving a new customer as a phone
+   contact. Capacitor (MIT) can wrap this same code. The costs are
+   distribution — Google Play's one-time $25 fee, or a free APK suppliers must
+   allow from unknown sources — and WhatsApp's `jid` extra being undocumented,
+   so it needs a test on a real phone with both WhatsApp and WhatsApp Business
+   before anyone relies on it. If it is built, opening the exact chat makes the
+   contact-saving largely unnecessary: the supplier would no longer be
+   searching WhatsApp for the customer.
 
 ### Note on this machine
 Avast intercepts TLS and re-signs it, so Node tools (`npm`, `vercel`, `supabase`)

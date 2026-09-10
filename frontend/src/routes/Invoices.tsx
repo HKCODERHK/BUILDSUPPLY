@@ -8,10 +8,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { EmptyState } from '@/components/EmptyState'
-import { listInvoices, markInvoiceDelivered, type InvoiceWithCustomer } from '@/services/invoices'
+import { listInvoices, listInvoiceItems, markInvoiceDelivered, type InvoiceWithCustomer } from '@/services/invoices'
 import { getCustomer } from '@/services/customers'
-import { openWhatsAppShare } from '@/lib/whatsapp'
+import { invoicePdfFile } from '@/lib/invoicePdf'
+import { shareDocumentOnWhatsApp } from '@/lib/shareDocument'
 import { logActivity } from '@/services/activityLog'
+import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { ShowMore } from '@/components/ShowMore'
 import { TruckLoader } from '@/components/TruckLoader'
@@ -23,8 +25,10 @@ function formatINR(n: number) {
 }
 
 export default function Invoices() {
+  const { supplier } = useAuth()
   const { t } = useLanguage()
   const [invoices, setInvoices] = useState<InvoiceWithCustomer[]>([])
+  const [sharingId, setSharingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [markingId, setMarkingId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -50,15 +54,30 @@ export default function Invoices() {
     }
   }
 
+  // The bill itself goes, not just its total — the same PDF the bill's own
+  // page sends. See shareDocument.
   async function shareInvoice(inv: InvoiceWithCustomer) {
-    if (!inv.customer_id) return
-    const customer = await getCustomer(inv.customer_id)
-    openWhatsAppShare(
-      customer.phone,
-      `Hi ${customer.name}, here is your bill ${inv.invoice_no} for ${formatINR(inv.total)}. ` +
-        `${inv.paid < inv.total ? `Pending: ${formatINR(inv.total - inv.paid)}.` : 'Fully paid — thank you!'}`,
-    )
-    void logActivity('supplier', 'invoice_generated', { details: { invoice_no: inv.invoice_no } })
+    if (!supplier || sharingId) return
+    setSharingId(inv.id)
+    try {
+      const [customer, items] = await Promise.all([
+        inv.customer_id ? getCustomer(inv.customer_id) : Promise.resolve(null),
+        listInvoiceItems(inv.id),
+      ])
+      const file = await invoicePdfFile(supplier, customer, inv, items)
+      const outcome = await shareDocumentOnWhatsApp({
+        file,
+        message:
+          `Hi ${customer?.name ?? ''}, here is your bill ${inv.invoice_no} for ${formatINR(inv.total)}. ` +
+          `${inv.paid < inv.total ? `Pending: ${formatINR(inv.total - inv.paid)}.` : 'Fully paid — thank you!'}`,
+        title: inv.invoice_no,
+      })
+      if (outcome === 'shared') {
+        void logActivity('supplier', 'invoice_generated', { details: { invoice_no: inv.invoice_no, format: 'pdf_share' } })
+      }
+    } finally {
+      setSharingId(null)
+    }
   }
 
   const allMatching = invoices.filter((inv) => {
@@ -182,9 +201,10 @@ export default function Invoices() {
                     )}
                     <button
                       onClick={() => shareInvoice(inv)}
-                      className="flex items-center gap-1.5 p-2.5 text-xs font-semibold text-accent-text hover:text-accent"
+                      disabled={sharingId === inv.id}
+                      className="flex items-center gap-1.5 p-2.5 text-xs font-semibold text-accent-text hover:text-accent disabled:opacity-50"
                     >
-                      <WhatsAppIcon size={15} /> {t('common.sendWhatsApp')}
+                      <WhatsAppIcon size={15} /> {sharingId === inv.id ? t('common.preparing') : t('common.sendWhatsApp')}
                     </button>
                   </div>
                 </Card>
@@ -259,7 +279,12 @@ export default function Invoices() {
                       )}
                     </td>
                     <td className="py-2.5 pr-3">
-                      <button onClick={() => shareInvoice(inv)} className="text-accent hover:text-accent-soft" aria-label="Share on WhatsApp">
+                      <button
+                        onClick={() => shareInvoice(inv)}
+                        disabled={sharingId === inv.id}
+                        className="text-accent hover:text-accent-soft disabled:opacity-50"
+                        aria-label="Share on WhatsApp"
+                      >
                         <WhatsAppIcon size={16} />
                       </button>
                     </td>

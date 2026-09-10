@@ -77,11 +77,10 @@ export default function Reminders() {
         file,
         message,
         title: `Statement — ${c.name}`,
-        phone: c.phone,
       })
-      if (outcome !== 'cancelled') {
+      if (outcome === 'shared') {
         void logActivity('supplier', 'reminder_sent', {
-          details: { customer: c.name, format: outcome === 'shared' ? 'pdf_share' : 'text_fallback' },
+          details: { customer: c.name, format: 'pdf_share' },
         })
       }
     } finally {

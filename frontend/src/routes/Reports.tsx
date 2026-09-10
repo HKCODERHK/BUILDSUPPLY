@@ -5,14 +5,16 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { listInvoices, listAllInvoiceItems, type InvoiceWithCustomer, type InvoiceItemWithInvoice } from '@/services/invoices'
 import { listCustomers } from '@/services/customers'
 import { listPayments, type PaymentWithInvoice } from '@/services/payments'
 import { listMaterials } from '@/services/materials'
 import type { Customer, Material } from '@/lib/database.types'
-import { downloadReportPdf } from '@/lib/reportPdf'
-import { downloadCustomerLedgerPdf } from '@/lib/customerLedgerPdf'
+import { downloadReportPdf, reportPdfFile, type ReportSpec } from '@/lib/reportPdf'
+import { customerLedgerPdfFile, downloadCustomerLedgerPdf } from '@/lib/customerLedgerPdf'
 import { buildCustomerLedger } from '@/lib/customerLedger'
+import { shareDocumentOnWhatsApp } from '@/lib/shareDocument'
 import { localDateKey } from '@/lib/localDate'
 import { logActivity } from '@/services/activityLog'
 import { useAuth } from '@/context/AuthContext'
@@ -33,6 +35,17 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
+// A date picker's YYYY-MM-DD, read as the supplier's own day.
+function formatDay(day: string) {
+  return new Date(`${day}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+function formatINR(n: number) {
+  return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
+}
+
+type ReportRows = (string | number)[][]
+
 interface ReportCardProps {
   title: string
   hint: string
@@ -41,18 +54,37 @@ interface ReportCardProps {
   label: string
   disabled?: boolean
   onDownload: () => void
+  /** Sends the same PDF on WhatsApp, as a real file — see shareDocument. */
+  onShare: () => void
+  shareLabel: string
+  sharing?: boolean
 }
 
-function ReportCard({ title, hint, label, disabled, onDownload }: ReportCardProps) {
+function ReportCard({ title, hint, label, disabled, onDownload, onShare, shareLabel, sharing }: ReportCardProps) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <p className="mb-4 text-sm text-muted">{hint}</p>
-      <Button variant="outline" disabled={disabled} onClick={onDownload}>
-        <Download size={15} /> {label}
-      </Button>
+      {/* A size down on phones, the way the customer page's header buttons
+          are: at full size "पीडीएफ डाउनलोड" + "WhatsApp" is 303px against the
+          296px a card has on a 360px phone, so Hindi and Marathi wrapped.
+          flex-wrap stays as the backstop if a label ever grows. */}
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="outline" className="sm:h-10 sm:px-4 sm:text-sm" disabled={disabled} onClick={onDownload}>
+          <Download size={15} /> {label}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="sm:h-10 sm:px-4 sm:text-sm"
+          disabled={disabled || sharing}
+          onClick={onShare}
+        >
+          <WhatsAppIcon size={15} /> {shareLabel}
+        </Button>
+      </div>
     </Card>
   )
 }
@@ -69,6 +101,8 @@ export default function Reports() {
   // The ledger is the one a supplier actually sends to a customer; the rest
   // are occasional. Folding them away keeps this screen to one decision.
   const [showOtherReports, setShowOtherReports] = useState(false)
+  // The report being turned into a PDF for WhatsApp, so only its button says so.
+  const [sharingId, setSharingId] = useState<string | null>(null)
 
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
@@ -134,7 +168,7 @@ export default function Reports() {
     [invoices, dateFrom, dateTo, customerId, site],
   )
 
-  function salesReportRows(): (string | number)[][] {
+  function salesReportRows(): ReportRows {
     return filteredInvoices.map((inv) => [
       inv.invoice_no,
       formatDate(inv.created_at),
@@ -149,7 +183,7 @@ export default function Reports() {
   // Derived from the filtered invoices rather than the customer_balances
   // view, so "who owes me on this site" actually works — the view can only
   // total a customer across every site at once.
-  function pendingAmountRows(): (string | number)[][] {
+  function pendingAmountRows(): ReportRows {
     const owed = new Map<string, { pending: number; sites: Set<string> }>()
     filteredInvoices.forEach((inv) => {
       if (!inv.customer_id) return
@@ -182,7 +216,19 @@ export default function Reports() {
     })
   }
 
-  function materialWiseSalesRows(): (string | number)[][] {
+  // What both ledger buttons print, so Download and WhatsApp can never differ.
+  function ledgerInput() {
+    const { openingBalance, entries } = customerLedgerData()
+    return {
+      entries,
+      openingBalance,
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo || undefined,
+      site: site || undefined,
+    }
+  }
+
+  function materialWiseSalesRows(): ReportRows {
     const totals = new Map<string, { qty: number; amount: number }>()
     items
       .filter(
@@ -203,7 +249,7 @@ export default function Reports() {
 
   // Category is dropped — the material name already carries the type
   // ("Cement — UltraTech — PPC • 50 KG"), so it only added a column.
-  function stockReportRows(): (string | number)[][] {
+  function stockReportRows(): ReportRows {
     return materials.map((m) => [
       m.name,
       `${m.stock_qty} ${m.stock_unit ?? ''}`.trim(),
@@ -212,15 +258,59 @@ export default function Reports() {
     ])
   }
 
-  function runReport(
+  function shareLabel(id: string) {
+    return sharingId === id ? t('common.preparing') : 'WhatsApp'
+  }
+
+  // Every WhatsApp button on this screen: a real PDF through the phone's
+  // share sheet, where the supplier picks the recipient and presses Send.
+  async function sharePdf(
+    id: string,
+    makeFile: () => Promise<File>,
+    message: string,
+    title: string,
+    details: Record<string, unknown>,
+  ) {
+    if (sharingId) return
+    setSharingId(id)
+    try {
+      const file = await makeFile()
+      const outcome = await shareDocumentOnWhatsApp({ file, message, title })
+      if (outcome === 'shared') {
+        void logActivity('supplier', 'report_shared', { details: { ...details, format: 'pdf_share' } })
+      }
+    } finally {
+      setSharingId(null)
+    }
+  }
+
+  // The one report here that leaves the business: it goes to the customer it
+  // belongs to, so it reads like the other messages a customer gets.
+  function shareLedger() {
+    const s = supplier
+    const c = selectedCustomer
+    if (!s || !c) return
+    const input = ledgerInput()
+    // The statement's own last line — as of the "To" date when one is set.
+    const closing = input.entries.length ? input.entries[input.entries.length - 1].balance : input.openingBalance
+    const message =
+      `Hi ${c.name}, here is your account statement${site ? ` for ${site}` : ''}. ` +
+      (closing > 0 ? `Closing balance: ${formatINR(closing)}.` : 'Your account is fully settled. Thank you!')
+    void sharePdf('ledger', () => customerLedgerPdfFile(s, c, input), message, `Statement — ${c.name}`, {
+      report: 'Customer Ledger',
+      rows: input.entries.length,
+    })
+  }
+
+  function reportSpec(
     title: string,
     head: string[],
-    rows: (string | number)[][],
+    rows: ReportRows,
     fileName: string,
     moneyColumns?: number[],
-  ) {
-    if (!supplier) return
-    void downloadReportPdf({
+  ): ReportSpec | null {
+    if (!supplier) return null
+    return {
       supplier,
       title,
       head,
@@ -233,8 +323,45 @@ export default function Reports() {
         customerName: selectedCustomer?.name,
         site: site || undefined,
       },
-    })
-    void logActivity('supplier', 'report_exported', { details: { report: title, format: 'pdf', rows: rows.length } })
+    }
+  }
+
+  // The other reports usually go to an accountant or a partner, not a
+  // customer, so the message just says what the report is and what it covers.
+  function reportMessage(title: string) {
+    const period =
+      dateFrom || dateTo
+        ? `${dateFrom ? formatDay(dateFrom) : 'the beginning'} to ${dateTo ? formatDay(dateTo) : 'today'}`
+        : 'all dates'
+    const scope = [selectedCustomer?.name, site].filter(Boolean).join(', ')
+    return `${supplier?.business_name ?? ''} — ${title}, ${period}${scope ? ` (${scope})` : ''}.`
+  }
+
+  // Both buttons of one report from a single description of it, so Download
+  // and WhatsApp can never produce different documents.
+  function reportActions(
+    id: string,
+    title: string,
+    head: string[],
+    rows: () => ReportRows,
+    fileName: string,
+    moneyColumns?: number[],
+  ) {
+    return {
+      onDownload: () => {
+        const spec = reportSpec(title, head, rows(), fileName, moneyColumns)
+        if (!spec) return
+        void downloadReportPdf(spec)
+        void logActivity('supplier', 'report_exported', { details: { report: title, format: 'pdf', rows: spec.rows.length } })
+      },
+      onShare: () => {
+        const spec = reportSpec(title, head, rows(), fileName, moneyColumns)
+        if (!spec) return
+        void sharePdf(id, () => reportPdfFile(spec), reportMessage(title), title, { report: title, rows: spec.rows.length })
+      },
+      shareLabel: shareLabel(id),
+      sharing: sharingId === id,
+    }
   }
 
   return (
@@ -323,18 +450,15 @@ export default function Reports() {
           disabled={!customerId}
           onDownload={() => {
             if (!supplier || !selectedCustomer) return
-            const { openingBalance, entries } = customerLedgerData()
-            void downloadCustomerLedgerPdf(supplier, selectedCustomer, {
-              entries,
-              openingBalance,
-              dateFrom: dateFrom || undefined,
-              dateTo: dateTo || undefined,
-              site: site || undefined,
-            })
+            const input = ledgerInput()
+            void downloadCustomerLedgerPdf(supplier, selectedCustomer, input)
             void logActivity('supplier', 'report_exported', {
-              details: { report: 'Customer Ledger', format: 'pdf', rows: entries.length },
+              details: { report: 'Customer Ledger', format: 'pdf', rows: input.entries.length },
             })
           }}
+          onShare={shareLedger}
+          shareLabel={shareLabel('ledger')}
+          sharing={sharingId === 'ledger'}
         />
 
         <button
@@ -357,63 +481,63 @@ export default function Reports() {
             title={t('rep.dailySales')}
             hint={t('rep.dailyHint', { count: filteredInvoices.length })}
             label={t('inv.download')}
-            onDownload={() =>
-              runReport(
-                'Daily Sales Report',
-                ['Invoice', 'Date', 'Customer', 'Site', 'Total', 'Paid', 'Status'],
-                salesReportRows(),
-                'daily-sales.pdf',
-                [4, 5],
-              )
-            }
+            {...reportActions(
+              'daily',
+              'Daily Sales Report',
+              ['Invoice', 'Date', 'Customer', 'Site', 'Total', 'Paid', 'Status'],
+              salesReportRows,
+              'daily-sales.pdf',
+              [4, 5],
+            )}
           />
 
           <ReportCard
             title={t('rep.monthlySales')}
             hint={t('rep.monthlyHint', { count: filteredInvoices.length })}
             label={t('inv.download')}
-            onDownload={() =>
-              runReport(
-                'Monthly Sales Report',
-                ['Invoice', 'Date', 'Customer', 'Site', 'Total', 'Paid', 'Status'],
-                salesReportRows(),
-                'monthly-sales.pdf',
-                [4, 5],
-              )
-            }
+            {...reportActions(
+              'monthly',
+              'Monthly Sales Report',
+              ['Invoice', 'Date', 'Customer', 'Site', 'Total', 'Paid', 'Status'],
+              salesReportRows,
+              'monthly-sales.pdf',
+              [4, 5],
+            )}
           />
 
           <ReportCard
             title={t('rep.pendingAmount')}
             hint={t('rep.pendingHint', { count: pendingAmountRows().length })}
             label={t('inv.download')}
-            onDownload={() =>
-              runReport('Pending Amount Report', ['Name', 'Phone', 'Site', 'Pending'], pendingAmountRows(), 'pending-amount.pdf', [3])
-            }
+            {...reportActions(
+              'pending',
+              'Pending Amount Report',
+              ['Name', 'Phone', 'Site', 'Pending'],
+              pendingAmountRows,
+              'pending-amount.pdf',
+              [3],
+            )}
           />
 
           <ReportCard
             title={t('rep.materialWise')}
             hint={t('rep.materialHint', { count: materialWiseSalesRows().length })}
             label={t('inv.download')}
-            onDownload={() =>
-              runReport(
-                'Material Wise Sales',
-                ['Material', 'Qty Sold', 'Sales Amount'],
-                materialWiseSalesRows(),
-                'material-wise-sales.pdf',
-                [2],
-              )
-            }
+            {...reportActions(
+              'material',
+              'Material Wise Sales',
+              ['Material', 'Qty Sold', 'Sales Amount'],
+              materialWiseSalesRows,
+              'material-wise-sales.pdf',
+              [2],
+            )}
           />
 
           <ReportCard
             title={t('rep.stockReport')}
             hint={t('rep.stockHint', { count: materials.length })}
             label={t('inv.download')}
-            onDownload={() =>
-              runReport('Stock Report', ['Material', 'Current', 'Min', 'Status'], stockReportRows(), 'stock-report.pdf')
-            }
+            {...reportActions('stock', 'Stock Report', ['Material', 'Current', 'Min', 'Status'], stockReportRows, 'stock-report.pdf')}
           />
           </div>
           )}
