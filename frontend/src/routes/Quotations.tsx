@@ -5,9 +5,9 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Modal } from '@/components/ui/modal'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { EmptyState } from '@/components/EmptyState'
+import { DeliveryPrompt, type SavedBill } from '@/components/DeliveryPrompt'
 import {
   listQuotations,
   listQuotationItems,
@@ -34,7 +34,7 @@ export default function Quotations() {
   const [loading, setLoading] = useState(true)
   const [convertingId, setConvertingId] = useState<string | null>(null)
   const [sharingId, setSharingId] = useState<string | null>(null)
-  const [deliveryPrompt, setDeliveryPrompt] = useState<{ id: string; invoice_no: string } | null>(null)
+  const [deliveryPrompt, setDeliveryPrompt] = useState<SavedBill | null>(null)
   const [confirmingDelivery, setConfirmingDelivery] = useState(false)
 
   async function refresh() {
@@ -61,7 +61,12 @@ export default function Quotations() {
       })
       await markQuotationConverted(q.id, invoice.id)
       await refresh()
-      setDeliveryPrompt({ id: invoice.id, invoice_no: invoice.invoice_no })
+      setDeliveryPrompt({
+        id: invoice.id,
+        invoice_no: invoice.invoice_no,
+        total: Number(invoice.total),
+        customerName: q.customers?.name ?? '',
+      })
     } finally {
       setConvertingId(null)
     }
@@ -219,18 +224,7 @@ export default function Quotations() {
       )}
 
       {deliveryPrompt && (
-        <Modal title={t('inv.delivery')} onClose={() => respondToDeliveryPrompt(false)}>
-          <p className="mb-4 text-sm text-ink">{t('inv.deliveryAsk', { no: deliveryPrompt.invoice_no })}</p>
-          <p className="mb-4 text-xs text-muted">{t('inv.deliveryHint')}</p>
-          <div className="flex gap-2">
-            <Button className="flex-1" disabled={confirmingDelivery} onClick={() => respondToDeliveryPrompt(true)}>
-              {t('inv.deliveredYes')}
-            </Button>
-            <Button variant="outline" className="flex-1" disabled={confirmingDelivery} onClick={() => respondToDeliveryPrompt(false)}>
-              {t('inv.deliveredNot')}
-            </Button>
-          </div>
-        </Modal>
+        <DeliveryPrompt bill={deliveryPrompt} busy={confirmingDelivery} onAnswer={respondToDeliveryPrompt} />
       )}
     </div>
   )

@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Modal } from '@/components/ui/modal'
 import { ActionMenu } from '@/components/ui/action-menu'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import { SuccessHeader } from '@/components/SuccessTick'
 import { getCustomer, updateCustomer } from '@/services/customers'
 import { recordCustomerPayment, type KhataPaymentResult } from '@/services/payments'
 import { supabase } from '@/lib/supabase'
@@ -403,7 +404,13 @@ export default function CustomerProfile() {
         >
           {payResult ? (
             <div className="flex flex-col gap-3">
-              <p className="rounded-lg bg-accent-bg p-3 text-sm text-accent-text">
+              {paidSummary && paidSummary.amount > 0 && (
+                <SuccessHeader
+                  title={t('pay.receivedAmount', { amount: formatINR(paidSummary.amount) })}
+                  detail={t(`mode.${paidSummary.mode}`)}
+                />
+              )}
+              <p className="border-t border-border pt-3 text-xs text-muted">
                 {t('pay.appliedTo', { count: payResult.applied.length })}
               </p>
               <div className="flex flex-col divide-y divide-border text-sm">

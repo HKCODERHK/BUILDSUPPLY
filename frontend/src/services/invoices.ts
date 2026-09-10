@@ -106,6 +106,9 @@ export async function lastRatesForCustomer(customerId: string): Promise<Map<stri
   return result
 }
 
+/** Every supplier's numbering starts here. */
+const FIRST_INVOICE_SEQ = 1001
+
 export async function nextInvoiceNumber(supplierId: string): Promise<string> {
   const { data, error } = await supabase
     .from('invoices')
@@ -116,9 +119,16 @@ export async function nextInvoiceNumber(supplierId: string): Promise<string> {
   if (error) throw error
 
   const last = data?.[0]?.invoice_no
-  const lastSeq = last ? Number(last.replace(/[^0-9]/g, '')) : 1000
-  const nextSeq = Number.isFinite(lastSeq) ? lastSeq + 1 : 1001
+  const lastSeq = last ? Number(last.replace(/[^0-9]/g, '')) : FIRST_INVOICE_SEQ - 1
+  const nextSeq = Number.isFinite(lastSeq) ? lastSeq + 1 : FIRST_INVOICE_SEQ
   return `INV-${nextSeq}`
+}
+
+/** A supplier's very first bill — nothing was ever numbered before it,
+ *  cancelled bills included. Costs no query, which is the point: the
+ *  save that just returned already knows. */
+export function isFirstInvoice(invoice: { invoice_no: string }) {
+  return invoice.invoice_no === `INV-${FIRST_INVOICE_SEQ}`
 }
 
 export interface NewInvoiceItem {

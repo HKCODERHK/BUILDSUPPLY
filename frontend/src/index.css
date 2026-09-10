@@ -373,3 +373,84 @@ select,
     animation: none;
   }
 }
+
+/* ── Success feedback (components/SuccessTick.tsx, lib/useFlash.ts) ─────
+   One tick and one highlight, for the moments that matter: money taken, a
+   bill saved, stock in, a customer added. Both play on a screen that was
+   appearing anyway and nothing waits on them — fast first, animated second.
+   Under reduced motion the tick is simply drawn and the highlight is a still
+   ring for the same moment. */
+.success-tick {
+  transform-origin: center;
+  animation: tick-pop 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+}
+@keyframes tick-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* The check has pathLength="1", so a dash of 1 is the whole stroke. */
+.success-tick-check {
+  stroke-dasharray: 1;
+  animation: tick-draw 0.25s ease-out 0.15s both;
+}
+@keyframes tick-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+/* The card that just changed. scroll-margin keeps it clear of the sticky
+   header and the tab bar when useFlash brings it into view. */
+.flash-success {
+  scroll-margin-top: 5rem;
+  scroll-margin-bottom: calc(var(--tabbar-h) + 1rem);
+  animation: flash-success 2.4s ease-out both;
+}
+@keyframes flash-success {
+  0%,
+  35% {
+    background-color: var(--color-accent-bg);
+    box-shadow: 0 0 0 2px var(--color-accent);
+  }
+  100% {
+    background-color: var(--color-card);
+    box-shadow: 0 0 0 2px transparent;
+  }
+}
+/* "+50 bags" beside the stock it went into. */
+.flash-chip {
+  animation: flash-chip 2.4s ease-out both;
+}
+@keyframes flash-chip {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  10%,
+  75% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .success-tick,
+  .success-tick-check,
+  .flash-chip {
+    animation: none;
+  }
+  .flash-success {
+    animation: none;
+    box-shadow: 0 0 0 2px var(--color-accent);
+  }
+}

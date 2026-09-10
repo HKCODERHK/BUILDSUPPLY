@@ -112,6 +112,29 @@ were outside what was asked: `components/ui/modal.tsx` has no `role="dialog"`,
 `aria-modal` or focus trap, and its close X is `type="submit"` (harmless only
 because it sits outside the `<form>`).
 
+**Phase 7 — day one for a new supplier (2026-09-10).** Five real suppliers
+start on the app, so this round was about what a new one sees first, not
+losing work on a budget Android phone, and the app confirming what it just
+did. Everything verified live against Shree Balaji and on a production build.
+
+| Built | Where | Notes |
+|---|---|---|
+| **Illustrated empty states** | `components/EmptyState.tsx` — Customers, Invoices, Quotations, Payments, Materials, Reminders | Branch on the *unfiltered* length, so a search that matches nothing still says "no match" instead of the welcome. The header action (and Materials' stat cards) hide while a list is empty — the empty state carries the one button. Payments offers **New invoice** when nothing is outstanding, since a payment needs a bill. |
+| **Start-here card** | `components/StartHereCard.tsx` on the Dashboard | Until the first bill exists: add materials (opens the catalog, `?view=catalog`) → add a customer (`?new=1`) → make a bill, a scene per step. **Skip for now** lasts one visit (sessionStorage `buildsupply-start-skipped:<supplierId>`) and the card returns next launch until a bill exists — on purpose. |
+| **An unfinished bill survives the phone closing the app** | `lib/drafts.ts`, `components/Drafts.tsx` | See the shared-modules entry. |
+| **Switching apps no longer wipes a bill** | `context/AuthContext.tsx` | See Known quirks — this was the real cause of "I went to WhatsApp and my bill was gone". |
+| **The splash tells the story** | `components/SplashStory.tsx` | Site → Materials → Delivery → Bill → Payment, told by the tipper. Replaced a generated photograph (`public/splash-art.jpg`, deleted). |
+| **Success ticks** | `components/SuccessTick.tsx`, `components/DeliveryPrompt.tsx`, `lib/useFlash.ts` | Payment received (Payments and the customer page); bill saved (New Invoice and estimate → bill — a supplier's first bill says "Your first bill is ready"); stock added (the card lights up with "+50 bags"); customer added (the new card lights up). |
+
+**Deliberately not animated**, agreed with the user against a 20-item wish
+list — the rule is *fast first, animated second*: "bill shared" (the share
+sheet resolves when a target is picked, not when WhatsApp sends, so it would
+sometimes be untrue), a loader on every screen (sub-second loads only flicker),
+page transitions, counting-up dashboard numbers, report charts (Reports is
+PDF-only), and delete animations (bills are cancelled, which is already
+confirmed and PIN-gated). Feedback belongs only where it confirms something
+that just happened, on a screen that was appearing anyway.
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.
@@ -150,6 +173,10 @@ A 4-digit PIN asked before irreversible actions, for both roles. **It is a confi
 - **`lib/whatsapp.ts`** — `openWhatsAppShare` and `normalizeWhatsAppNumber`, the single builder behind **all 24** WhatsApp call sites (`shareDocument.ts` routes through it too). wa.me needs a full international number with no `+`, no separators and **no leading zero**, and it answers anything it can't resolve with "phone number shared via url is invalid" — which looks to the supplier like the Send button is broken. Leading zeros are India's STD trunk prefix and are stripped; a bare 10-digit number gets `91`; 11–15 digits pass through untouched so an overseas number isn't mangled. **Not one phone number in the live database carries a country code**, so removing this breaks every WhatsApp button in the app at once.
 - **`lib/localDate.ts`** — `localDateKey(iso)`, the calendar day a UTC timestamp falls on **in the phone's own timezone**, as `YYYY-MM-DD`. Every `created_at` is UTC but a supplier picking dates in an `<input type="date">` is thinking in IST, and India is UTC+5:30 — so slicing the first ten characters off the raw ISO string files anything recorded between midnight and 5:30am under the previous day. Used by `customerLedger.ts` and `Reports.tsx`; the Dashboard's "today" card has always used the same rule inline. **Never compare a raw `created_at.slice(0, 10)` against a date input.**
 - **`components/AddCustomerModal.tsx`** — one customer form shared by Customers, New Invoice and New Quotation so validation can't drift.
+- **`lib/drafts.ts`** — unfinished *new* bills and estimates, kept on the phone (localStorage `buildsupply-draft:<kind>:<supplierId>`, never the server). Written 400ms after each change **and at once on `visibilitychange`→hidden and `pagehide`**, because going into the background is exactly when Android kills the app. Offered back by a prompt on New Invoice / New Quotation and by a banner on the dashboard — where a killed app reopens — whose `?draft=1` restores without asking twice. Cleared the moment the bill exists (right after `createInvoice`, **before** `recordPayment`, so a failed payment can't leave a draft to be saved a second time), on Discard, and on Leave in the unsaved-work guard. Ignored after 3 days. Edit mode doesn't use it; it has the saved bill to fall back on.
+- **`components/art.tsx` + `lib/artPalette.ts`** — the drawing kit: the tipper (the splash's own truck), cement bag, brick, storey, crane, bill, tick badge and ₹ coin, in one palette. The splash story, the Start-here card and the empty states all draw from it. **Draw ₹ as strokes (lucide's indian-rupee geometry), never an SVG `<text>`** — a text node leaked a stray "₹" into the page's text and depends on the phone's font.
+- **`components/SuccessTick.tsx` + `lib/useFlash.ts`** — the app's one way of saying "done". `SuccessHeader` is a tick that draws itself in 0.4s over a line saying what happened; `useFlash` lights the card that just changed for 2.4s and scrolls it into view only as far as needed. Neither delays anything, and both are still under reduced motion. Reuse them rather than inventing a second style.
+- **`components/DeliveryPrompt.tsx`** — the "Delivered?" dialog after any bill is saved, shared by New Invoice and estimate → bill (it used to be two copies). `isFirstInvoice()` in `services/invoices.ts` tells a supplier's first bill from its number alone — numbering always starts at `INV-1001` — so it costs no query.
 
 ### Stock rules
 - `adjustStock()` **clamps at 0** and there is a matching DB check constraint (migration 009). It can't throw for going negative.
@@ -246,8 +273,11 @@ prove the rollback held.
 - **A `sticky bottom-*` bar needs its container's bottom padding cancelled, or it detaches at the end of the scroll.** Both Save bars carry `-mb-4 sm:-mb-6 lg:mb-0` for exactly this. Sticky only holds its offset while there is page left to scroll; at the bottom it returns to its natural place in flow, and `main`'s padding then sits between it and the tab bar. This cost two rounds because the gap is invisible mid-scroll — **when checking anything sticky, measure at the top, the middle and the bottom**, since the bottom is where the supplier actually is when they reach for Save.
 - **Size mobile layouts against 360px, and measure rather than eyeball.** The user's phone is 360 logical pixels, not the 375 an iPhone-shaped mental model suggests, and the difference is the margin between fitting and not: the estimate action row overflowed by 12px at 375 but 27px at 360. Page padding takes 32px, so a full-width row has **328px**, and a `Card` another 32px inside that. Widths can be measured without signing in — `canvas.measureText` with `getComputedStyle(document.body).fontFamily` at the utility's own size and weight, plus the button's padding, gap and icon. Check all three languages while there; Hindi and Marathi are usually shorter than English, so English is normally the worst case, but that is worth confirming rather than assuming.
 - **The splash (`components/Splash.tsx`) shows on a cold start and a real sign-in, and at no other time.** Not tied to the general `loading` flag: `onAuthStateChange` fires `SIGNED_IN` on every token refresh, so `loading` goes true roughly hourly and a splash on it would drop over a supplier part-way through a bill. It rides `hadSessionRef` instead — the same distinction that stopped refreshes being logged as logins. `MIN_SPLASH_MS` (6s, the user's number) is a floor, not a fixed wait; the splash renders over the router so the app keeps loading underneath.
+- **The splash story (`components/SplashStory.tsx`) finishes at about 5.1s and holds.** The splash may leave the moment its 6s floor is up, so the payoff — the bill ticked, the ₹ back at the yard — has to land before then; timed to 6.0s, it vanished as it arrived. Each part is its own HTML box animating transform and opacity (the rule below), on a 300×200 grid, with distances in `cqw` against the band. The caption says "Site", not "Construction": it is the trade's own word, and the long one pushed the line past 360px.
 - **Animate `transform`, never `left` or `top`, in anything that runs while the app is booting.** The splash animation covers exactly the work that blocks the main thread — React mounting, the first query — and `left` is laid out there, so it freezes and then jumps. **Diagnose it by reading the clock, not by watching:** `el.getAnimations()[0].currentTime` sat at `0ms` for 1.8s and then jumped 5.3s in one frame, which no amount of squinting at the screen would have told you. `transform` is composited and kept perfect time through the same load. A percentage `transform` resolves against the element, not its parent — use `cqw` with `container-type: inline-size` on the track when you need the parent's width.
 - **Verify animation timing on the production build, never the dev server.** StrictMode's double mount and hot reload both restart animations, so `npm run dev` produced readings that looked like remounts and stalls that were not real, and sent two rounds of debugging the wrong way. `npm run build` then the `frontend-preview` config.
+- **Coming back to the app fires an auth event, and it must never unload the page.** auth-js (2.112.4) runs `_recoverAndRefresh` on every hidden→visible switch and emits `SIGNED_IN` — or `TOKEN_REFRESHED` inside the token's 90s expiry margin — which re-runs `loadSupplierProfile`. That used to flip `loading`, and `ProtectedRoute` swapped the page for a spinner, unmounting New Invoice and everything typed into it: a supplier glanced at WhatsApp and came back to an empty bill. Now `loading` is true only while there is a session **and no supplier yet**, a refetch returning the same row keeps the same object (so nothing downstream re-renders or resets), and a failed refetch for the same user keeps the supplier it had. Keep all three. Reproduce it without leaving the app by overriding `document.visibilityState` to `'hidden'`, then `'visible'`, dispatching `visibilitychange` each time.
+  The phone killing the app outright in the background is a different problem, and `lib/drafts.ts` is the answer to that one.
 - The app is a **fully installable PWA** — all of Chrome's install criteria verified live (secure context, linked manifest, name/short_name, start_url, `display: standalone`, 192px + 512px + maskable icons, active service worker controlling the page). **Deployed and verified in production on 2026-09-08 at `https://buildsupplyin.vercel.app`** (Vercel, team `hkcoderhk`, Hobby, project `buildsupplyin` — the plain `buildsupply.vercel.app` was already taken by someone else). All 11 install criteria re-checked against the live HTTPS origin, not just localhost.
 - Deploying the Edge Function: `npx supabase functions deploy admin-manage-supplier --project-ref pefarymejlfdsmwusbbq --use-api` from the project root (requires `npx supabase login` once per terminal — device-code flow).
 
@@ -258,6 +288,10 @@ prove the rollback held.
 - Element `ref_N` handles from `find` go stale almost immediately; re-find inside a `browser_batch`.
 - Console/network log buffers are sometimes stale — trust rendered content and direct DB queries.
 - **Session staleness**: after any password reset via the Edge Function or Supabase Admin API, do a full `localStorage.clear()` + fresh sign-in — stale sessions produce `Invalid session` / `session_not_found` errors that look like bugs but aren't.
+- **Reloading while a token refresh is in flight signs the dev tab out.** The old refresh token gets reused, Supabase answers 400, and the tab drops to the login screen. Nothing in the database is touched, but the user has to sign in again — so test without reloads where possible, re-inserting state instead.
+- **Rendering a real component without signing in**: import it through the Vite dev graph from the login page — `await import('/src/components/X.tsx')` — with React from `/node_modules/.vite/deps/react.js?v=<hash>` and `react-dom_client.js` (the hash is in `performance.getEntriesByType('resource')`). Pre-bundled deps export under **`default`**. Import `LanguageProvider` from the exact `LanguageContext.tsx?t=…` URL the page loaded, or the component reads a different context instance and throws. Unmount afterwards: a fixed overlay left in `body` covers the sign-in form.
+- **Proving a save without writing to the database**: wrap `window.fetch` so every non-GET `/rest/v1/` request gets a plausible success and reads pass through. Drafts-clear-on-save and the success ticks were verified that way, with zero test rows created.
+- **Headless Edge won't lay out narrower than about 500px**, so a "360px" headless screenshot is cropped, not narrow. Use the Browser pane's `resize_window` for phone widths.
 
 ## Working conventions established in this project
 
@@ -279,7 +313,7 @@ prove the rollback held.
     git log --all --format='%h %(trailers:key=Co-authored-by,valueonly)' | grep -i claude
     ```
     The second command must print nothing.
-- Always type-check (`npx tsc -b` in `frontend/`) and run a full `npm run build` after changes, before calling something done. `npm run lint` should stay at **0 errors** (8 pre-existing warnings are expected).
+- Always type-check (`npx tsc -b` in `frontend/`) and run a full `npm run build` after changes, before calling something done. `npm run lint` should stay at **0 errors** (14 pre-existing warnings as of 2026-09-10, none of them in that day's files). oxlint prints no summary line; count with `npm run lint 2>&1 | grep -c ': warning'`.
 - **Don't claim a feature "works" without testing it live** — sign in, click through, query the database. This project has caught multiple real bugs that only surfaced this way and never in code review: a tenant data leak from a dropped `security_invoker`, silent error-swallowing, session races, a receipt quoting a stale balance, a transiently inflated stock count.
 - **Restore any test data you change.** Back-dating an invoice or recording a ₹1 payment to prove a feature is fine — put it back exactly, and verify the restore with a query.
 - Large/complex SQL (anything with `$$` PL/pgSQL blocks) should be pasted manually into the Supabase SQL editor by the user, to avoid editor auto-bracket-closing corruption. Short single-statement SQL is fine to run via the CLI.
@@ -371,6 +405,17 @@ confusable names, and the run silently did nothing here.
    That last one closes a Phase 2 question that stayed open for several
    sessions purely because it can't be reproduced in a desktop browser. It was
    never a bug. Don't go looking for it again.
+
+4. **Raised with the user on 2026-09-10, not decided.** Both came up while
+   listing what to collect from a new supplier:
+   - **GST is one rate, 18%, on the whole bill** (`GST_RATE` in New Invoice
+     and New Quotation, and the `0.18` in `services/invoices.ts` and
+     `services/quotations.ts`). Right for cement and TMT; sand and gitti are
+     usually 5%. It matters the day a GST-registered sand or gitti supplier
+     signs up.
+   - **There is no opening balance for a customer's old udhaar.** The
+     workaround is a bill with a typed line, which then counts in that
+     month's billing on the dashboard and in reports.
 
 ### Note on this machine
 Avast intercepts TLS and re-signs it, so Node tools (`npm`, `vercel`, `supabase`)

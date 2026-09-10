@@ -14,6 +14,7 @@ import { oldestPendingDays, overdueTextClass, type AgeableInvoice } from '@/lib/
 import type { Customer, CustomerBalance } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
+import { useFlash, flashId } from '@/lib/useFlash'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
@@ -29,6 +30,8 @@ export default function Customers() {
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
+  // The customer just added, lit for a moment at the top of the list.
+  const [added, setAdded] = useFlash<{ id: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
 
   useEffect(() => {
@@ -119,7 +122,10 @@ export default function Customers() {
             const pendingDays = oldestPendingDays(invoicesByCustomer[c.id] ?? [])
             return (
               <Link key={c.id} to={`/customers/${c.id}`}>
-                <Card className="h-full transition-shadow hover:shadow-sm">
+                <Card
+                  id={flashId(c.id)}
+                  className={`h-full transition-shadow hover:shadow-sm ${added?.id === c.id ? 'flash-success' : ''}`}
+                >
                   <div className="mb-2 flex items-start justify-between">
                     <div className="font-semibold text-ink">{c.name}</div>
                     <Badge tone={c.status === 'Active' ? 'success' : 'neutral'}>
@@ -160,9 +166,11 @@ export default function Customers() {
         <AddCustomerModal
           supplierId={supplier.id}
           onClose={() => setModalOpen(false)}
-          onCreated={() => {
+          onCreated={(customer) => {
             setModalOpen(false)
-            void refresh()
+            // A search still typed in could hide the very card being lit.
+            setQuery('')
+            void refresh().then(() => setAdded({ id: customer.id }))
           }}
         />
       )}

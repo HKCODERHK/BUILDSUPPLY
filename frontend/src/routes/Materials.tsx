@@ -21,6 +21,7 @@ import type { Material } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { sanitizeDecimal } from '@/lib/numberInput'
+import { useFlash, flashId } from '@/lib/useFlash'
 
 const emptyForm = {
   name: '',
@@ -59,6 +60,8 @@ export default function Materials() {
   const [addStockOpen, setAddStockOpen] = useState(false)
   const [addStockForm, setAddStockForm] = useState({ materialId: '', qty: '' })
   const [addingStock, setAddingStock] = useState(false)
+  // The card just topped up, lit for a moment with how much went in.
+  const [stocked, setStocked] = useFlash<{ id: string; added: string }>()
   const [sharingRates, setSharingRates] = useState(false)
   const [rateListNote, setRateListNote] = useState<string | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
@@ -95,6 +98,7 @@ export default function Materials() {
       setAddStockForm({ materialId: '', qty: '' })
       setAddStockOpen(false)
       await refresh()
+      setStocked({ id: material.id, added: `+${qty} ${mt(material.stock_unit)}`.trim() })
     } finally {
       setAddingStock(false)
     }
@@ -324,7 +328,7 @@ export default function Materials() {
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {filtered.map((m) => (
-                <Card key={m.id}>
+                <Card key={m.id} id={flashId(m.id)} className={stocked?.id === m.id ? 'flash-success' : undefined}>
                   <div className="mb-2 flex items-start justify-between">
                     <div>
                       <div className="font-semibold text-ink">{mt(m.name)}</div>
@@ -341,9 +345,14 @@ export default function Materials() {
                   <div className="text-xs text-muted">{mt(m.unit_label)}</div>
                   <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-sm">
                     <span className="text-muted">{t('common.stock')}</span>
-                    <Badge tone={m.stock_qty <= (m.low_stock_threshold ?? 5) ? 'danger' : 'success'}>
-                      {m.stock_qty} {mt(m.stock_unit)}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      {stocked?.id === m.id && (
+                        <span className="flash-chip text-xs font-bold text-accent-text">{stocked.added}</span>
+                      )}
+                      <Badge tone={m.stock_qty <= (m.low_stock_threshold ?? 5) ? 'danger' : 'success'}>
+                        {m.stock_qty} {mt(m.stock_unit)}
+                      </Badge>
+                    </div>
                   </div>
                 </Card>
               ))}
