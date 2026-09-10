@@ -15,6 +15,7 @@ import type { TranslationKey } from '@/lib/i18n'
 import { AdminDashboardView } from '@/routes/admin/AdminDashboardView'
 import { StartHereCard } from '@/components/StartHereCard'
 import { DraftBanners } from '@/components/Drafts'
+import { TruckLoader } from '@/components/TruckLoader'
 
 // Jump straight into the create flow for each — no extra click on the
 // destination page. Customers/Payments/Stock read `?new=1` to auto-open
@@ -177,7 +178,7 @@ function SupplierDashboardView() {
       {!showStart && <QuickActions />}
 
       {loading ? (
-        <p className="text-sm text-muted">{t('common.loading')}</p>
+        <TruckLoader />
       ) : showStart ? (
         // Replaces the low-stock banner too, not just the ₹0 figures. Every
         // material added from the catalog starts at zero stock, so the moment

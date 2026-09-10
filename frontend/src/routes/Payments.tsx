@@ -20,6 +20,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { ShowMore } from '@/components/ShowMore'
 import { usePin } from '@/context/PinContext'
 import { sanitizeDecimal } from '@/lib/numberInput'
+import { TruckLoader } from '@/components/TruckLoader'
 
 const PAGE_SIZE = 25
 
@@ -179,7 +180,7 @@ export default function Payments() {
       />
 
       {loading ? (
-        <p className="text-sm text-muted">{t('common.loading')}</p>
+        <TruckLoader />
       ) : payments.length === 0 ? (
         <EmptyState
           art="payments"

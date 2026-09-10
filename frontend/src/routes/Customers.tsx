@@ -15,6 +15,7 @@ import type { Customer, CustomerBalance } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { useFlash, flashId } from '@/lib/useFlash'
+import { TruckLoader } from '@/components/TruckLoader'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
@@ -90,7 +91,7 @@ export default function Customers() {
       />
 
       {loading ? (
-        <p className="text-sm text-muted">{t('common.loading')}</p>
+        <TruckLoader />
       ) : customers.length === 0 ? (
         <EmptyState
           art="customers"

@@ -19,6 +19,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { QUOTATION_STATUS_TONE } from '@/lib/quotationStatus'
 import type { Quotation, QuotationItem, Customer } from '@/lib/database.types'
+import { TruckLoader } from '@/components/TruckLoader'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
@@ -59,7 +60,8 @@ export default function QuotationDetail() {
   if (loading || !quotation) {
     return (
       <div>
-        <PageHeader title={t('quo.detailTitle')} subtitle={t('common.loading')} />
+        <PageHeader title={t('quo.detailTitle')} />
+        <TruckLoader />
       </div>
     )
   }

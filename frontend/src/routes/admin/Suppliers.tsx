@@ -15,6 +15,7 @@ import {
 } from '@/lib/subscription'
 import type { SupplierAccountStatus, SupplierOverview } from '@/lib/database.types'
 import { AddSupplierModal } from './AddSupplierModal'
+import { TruckLoader } from '@/components/TruckLoader'
 
 type FilterId = SupplierAccountStatus | 'all' | 'expired' | 'expiring' | 'no-expiry'
 
@@ -170,7 +171,7 @@ export default function AdminSuppliers() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <TruckLoader label="Loading…" />
       ) : (
         <Card>
           <div className="overflow-x-auto">

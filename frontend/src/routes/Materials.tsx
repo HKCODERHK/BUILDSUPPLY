@@ -22,6 +22,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { sanitizeDecimal } from '@/lib/numberInput'
 import { useFlash, flashId } from '@/lib/useFlash'
+import { TruckLoader } from '@/components/TruckLoader'
 
 const emptyForm = {
   name: '',
@@ -300,7 +301,7 @@ export default function Materials() {
 
       {view === 'mine' ? (
         loading ? (
-          <p className="text-sm text-muted">{t('common.loading')}</p>
+          <TruckLoader />
         ) : materials.length === 0 ? (
           // The catalog comes first on purpose: picking a variant fills in the
           // unit, the per-label and the rate, which is the whole reason it
@@ -375,7 +376,7 @@ export default function Materials() {
           />
 
           {catalogLoading ? (
-            <p className="text-sm text-muted">{t('mat.searching')}</p>
+            <TruckLoader label={t('mat.searching')} />
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {catalog.length === 0 && <p className="text-sm text-muted">{t('mat.catalogNone')}</p>}

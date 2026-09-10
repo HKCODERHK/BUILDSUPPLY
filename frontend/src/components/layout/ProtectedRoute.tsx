@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
+import { TruckLoader } from '@/components/TruckLoader'
 
 export function ProtectedRoute({
   children,
@@ -21,7 +22,7 @@ export function ProtectedRoute({
   const { t } = useLanguage()
 
   if (loading) {
-    return <div className="flex min-h-screen items-center justify-center text-muted">{t('common.loading')}</div>
+    return <TruckLoader className="min-h-screen" />
   }
 
   if (!session || !supplier) {

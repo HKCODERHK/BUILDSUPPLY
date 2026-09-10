@@ -30,6 +30,7 @@ import {
   SUBSCRIPTION_TONE,
 } from '@/lib/subscription'
 import type { AdminActivityEntry, SupplierOverview } from '@/lib/database.types'
+import { TruckLoader } from '@/components/TruckLoader'
 
 type Tab = 'overview' | 'activity'
 
@@ -226,7 +227,7 @@ export default function SupplierProfile() {
     }
   }
 
-  if (loading) return <p className="text-sm text-muted">Loading…</p>
+  if (loading) return <TruckLoader label="Loading…" />
   if (!supplier) return <p className="text-sm text-muted">Supplier not found.</p>
 
   return (

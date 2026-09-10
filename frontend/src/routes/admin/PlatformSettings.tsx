@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase'
 import type { PlatformSettings } from '@/lib/database.types'
 import { sanitizeDigits, sanitizeDecimal } from '@/lib/numberInput'
 import { PinSettingsCard } from '@/components/PinSettingsCard'
+import { TruckLoader } from '@/components/TruckLoader'
 
 export default function AdminPlatformSettings() {
   const [settings, setSettings] = useState<PlatformSettings | null>(null)
@@ -41,7 +42,7 @@ export default function AdminPlatformSettings() {
     }
   }
 
-  if (loading || !settings) return <p className="text-sm text-muted">Loading…</p>
+  if (loading || !settings) return <TruckLoader label="Loading…" />
 
   return (
     <div>
