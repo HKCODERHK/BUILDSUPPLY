@@ -261,3 +261,115 @@ select,
     clip-path: none;
   }
 }
+
+/* ── Splash story (components/SplashStory.tsx) ─────────────────────────
+   Site → materials → delivery → bill → payment, told once over the six
+   seconds the splash is up. Every rule animates transform or opacity only,
+   on HTML boxes, so the compositor keeps it running while React boots — the
+   same reason the splash truck uses transform rather than `left`.
+
+   Each part has its own short animation and an inline delay, all counted
+   from the moment the splash mounts, so they stay in step with each other
+   and with the truck below. `both` holds the start state through the delay
+   and the end state afterwards, and the resting styles ARE the end state —
+   which is exactly what reduced motion shows: the finished picture. */
+.splash-story {
+  container-type: inline-size;
+}
+.story-pop {
+  transform-origin: 50% 100%;
+  animation: story-pop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
+}
+@keyframes story-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8%) scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.story-rise {
+  animation: story-rise 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes story-rise {
+  from {
+    opacity: 0;
+    transform: translateY(60%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.story-drop {
+  animation: story-drop 0.45s cubic-bezier(0.3, 0.7, 0.4, 1.2) both;
+}
+@keyframes story-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-120%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* 72 of the band's 300 grid units: the yard to the foot of the building. */
+.story-drive {
+  transform: translateX(24cqw);
+  animation: story-drive 1.5s cubic-bezier(0.45, 0, 0.3, 1) both;
+}
+@keyframes story-drive {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(24cqw);
+  }
+}
+/* From the bill back to the supplier's yard over a slight arc. The band is a
+   fixed 3:2, so cqw serves vertically too: one grid unit is a third of a cqw. */
+.story-coin {
+  transform: translate(-46.7cqw, 10.3cqw) scale(0.9);
+  animation: story-coin 1.1s ease-in-out both;
+}
+@keyframes story-coin {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.4);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  60% {
+    transform: translate(-23.3cqw, -8cqw) scale(1);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-46.7cqw, 10.3cqw) scale(0.9);
+  }
+}
+.story-step {
+  animation: story-step 0.35s ease-out both;
+}
+@keyframes story-step {
+  from {
+    opacity: 0.3;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .story-pop,
+  .story-rise,
+  .story-drop,
+  .story-drive,
+  .story-coin,
+  .story-step {
+    animation: none;
+  }
+}

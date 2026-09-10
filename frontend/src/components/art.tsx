@@ -54,3 +54,87 @@ export function Bag({ x, y, fill, w = 48, h = 28 }: { x: number; y: number; fill
     </>
   )
 }
+
+/** A brick, 14×8 — terracotta, because a green brick is not a brick. */
+export function Brick({ x, y }: { x: number; y: number }) {
+  return <rect x={x} y={y} width="14" height="8" rx="1.5" fill={INK.brick} stroke={INK.line} strokeWidth="1.6" />
+}
+
+/** One storey of a building going up, in its own 70×26 space: a slab with two
+ *  window openings. Stack them to raise a building a floor at a time. */
+export function Storey() {
+  return (
+    <>
+      <rect x="1.2" y="1.2" width="67.6" height="23.6" rx="1.5" fill={INK.paper} {...edge} />
+      <rect x="9" y="7" width="16" height="12" rx="1" fill={INK.line} opacity=".75" />
+      <rect x="45" y="7" width="16" height="12" rx="1" fill={INK.line} opacity=".75" />
+      <path d="M35 1.2v23.6" stroke={INK.line} strokeWidth="1.6" opacity=".35" />
+    </>
+  )
+}
+
+/** A tower crane in its own 60×112 space, in construction yellow — the lamp
+ *  colour. The mast stands on the bottom edge; the jib reaches left. */
+export function Crane() {
+  return (
+    <>
+      <rect x="44" y="8" width="7" height="102" fill={INK.lamp} stroke={INK.line} strokeWidth="1.8" />
+      <path d="M44 22l7 9M44 40l7 9M44 58l7 9M44 76l7 9M44 94l7 9" stroke={INK.line} strokeWidth="1.3" opacity=".55" />
+      <rect x="2" y="6" width="56" height="6" rx="1" fill={INK.lamp} stroke={INK.line} strokeWidth="1.8" />
+      <rect x="50" y="12" width="9" height="8" rx="1.5" fill={INK.body} stroke={INK.line} strokeWidth="1.6" />
+      <path d="M12 12v20" stroke={INK.line} strokeWidth="1.4" />
+      <rect x="8" y="32" width="8" height="5" rx="1" fill={INK.line} />
+    </>
+  )
+}
+
+/** A bill in its own 48×62 space: folded corner, a green heading, three lines
+ *  and the total. */
+export function BillSheet() {
+  return (
+    <>
+      <path d="M5 1.2h28l13.8 13.8v42a4 4 0 0 1-4 4H5a4 4 0 0 1-4-4V5.2a4 4 0 0 1 4-4Z" fill={INK.paper} {...edge} />
+      <path d="M33 1.2v10a4 4 0 0 0 4 4h9.8Z" fill={INK.lit} opacity=".6" />
+      <rect x="8" y="12" width="18" height="5" rx="2.5" fill={INK.body} />
+      <rect x="8" y="24" width="30" height="4" rx="2" fill={INK.line} opacity=".22" />
+      <rect x="8" y="33" width="24" height="4" rx="2" fill={INK.line} opacity=".16" />
+      <rect x="8" y="42" width="28" height="4" rx="2" fill={INK.line} opacity=".16" />
+      <rect x="24" y="50" width="16" height="6" rx="3" fill={INK.cab} stroke={INK.line} strokeWidth="1.5" />
+    </>
+  )
+}
+
+/** A green tick in a circle, 28×28 — settled, done. */
+export function TickBadge() {
+  return (
+    <>
+      <circle cx="14" cy="14" r="12.5" fill={INK.body} {...edge} />
+      <path d="m8.5 14.5 3.8 3.8 7.2-8" fill="none" stroke={INK.paper} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  )
+}
+
+/** A gold ₹ coin, 26×26. The ₹ is strokes, not a text node — lucide's own
+ *  indian-rupee geometry — so it never depends on the phone's font. */
+export function RupeeCoin() {
+  return (
+    <>
+      <circle cx="13" cy="13" r="11.8" fill={INK.lamp} {...edge} />
+      <circle cx="13" cy="13" r="8" fill="none" stroke={INK.line} strokeWidth="1.2" opacity=".25" />
+      <g
+        transform="translate(13 13) scale(0.62) translate(-12 -12)"
+        stroke={INK.line}
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      >
+        <path d="M6 3h12" />
+        <path d="M6 8h12" />
+        <path d="m6 13 8.5 8" />
+        <path d="M6 13h3" />
+        <path d="M9 13c6.667 0 6.667-10 0-10" />
+      </g>
+    </>
+  )
+}

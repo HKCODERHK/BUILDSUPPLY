@@ -107,6 +107,14 @@ const STRINGS = {
   'splash.bricks': { en: 'Bricks', hi: 'ईंट', mr: 'वीट' },
   'splash.delivery': { en: 'Delivery', hi: 'डिलीवरी', mr: 'डिलिव्हरी' },
   'splash.trusted': { en: 'Trusted', hi: 'भरोसेमंद', mr: 'विश्वासू' },
+  // The splash story's caption (SplashStory), lit a word at a time. "Site",
+  // not "Construction": it is the trade's own word, and the long one pushed
+  // the five-word line past a 360px phone.
+  'story.site': { en: 'Site', hi: 'साइट', mr: 'साइट' },
+  'story.materials': { en: 'Materials', hi: 'माल', mr: 'माल' },
+  'story.delivery': { en: 'Delivery', hi: 'डिलीवरी', mr: 'डिलिव्हरी' },
+  'story.bill': { en: 'Bill', hi: 'बिल', mr: 'बिल' },
+  'story.payment': { en: 'Payment', hi: 'पेमेंट', mr: 'पेमेंट' },
 
   // ── Dashboard ─────────────────────────────────────────────────────────
   'dash.welcome': { en: 'Welcome back, {name}', hi: 'नमस्ते, {name}', mr: 'नमस्कार, {name}' },
