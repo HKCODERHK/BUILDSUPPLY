@@ -21,7 +21,6 @@ import {
   listInvoices,
   lastBillForCustomer,
   lastRatesForCustomer,
-  markInvoiceDelivered,
   type NewInvoiceItem,
   type LastRate,
 } from '@/services/invoices'
@@ -144,7 +143,6 @@ export default function NewInvoice() {
   // alone; this ref blocks re-entry immediately, in the same tick.
   const savingRef = useRef(false)
   const [deliveryPrompt, setDeliveryPrompt] = useState<SavedBill | null>(null)
-  const [confirmingDelivery, setConfirmingDelivery] = useState(false)
   const [addCustomerOpen, setAddCustomerOpen] = useState(false)
   // A bill left unfinished last time, waiting on Continue or Discard.
   const [pendingDraft, setPendingDraft] = useState<SavedDraft | null>(null)
@@ -432,17 +430,6 @@ export default function NewInvoice() {
     } finally {
       savingRef.current = false
       setSaving(false)
-    }
-  }
-
-  async function respondToDeliveryPrompt(delivered: boolean) {
-    if (!deliveryPrompt) return
-    setConfirmingDelivery(true)
-    try {
-      if (delivered) await markInvoiceDelivered(deliveryPrompt.id)
-      navigate(`/invoices/${deliveryPrompt.id}`)
-    } finally {
-      setConfirmingDelivery(false)
     }
   }
 
@@ -821,9 +808,7 @@ export default function NewInvoice() {
         />
       )}
 
-      {deliveryPrompt && (
-        <DeliveryPrompt bill={deliveryPrompt} busy={confirmingDelivery} onAnswer={respondToDeliveryPrompt} />
-      )}
+      {deliveryPrompt && <DeliveryPrompt bill={deliveryPrompt} />}
     </div>
   )
 }
