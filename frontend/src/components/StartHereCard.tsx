@@ -10,9 +10,10 @@ import type { TranslationKey } from '@/lib/i18n'
  * What a supplier sees on the dashboard until their first bill exists — in
  * place of the quick-action row and six figures that would all read ₹0.
  *
- * Every step ticks itself off from real data; there is nothing to mark done
- * and nothing to dismiss. The card simply stops rendering once a bill exists,
- * which is why the last step is never drawn ticked.
+ * Every step ticks itself off from real data; there is nothing to mark done.
+ * The card stops rendering for good once a bill exists, which is why the last
+ * step is never drawn ticked. "Skip for now" only hides it until the app is
+ * next opened — the dashboard owns that, see `skipped` there.
  *
  * The order is a recommendation, not a lock. Materials come first because a
  * bill made before them has to be typed item by item, but every step stays
@@ -39,10 +40,12 @@ export function StartHereCard({
   hasMaterials,
   hasCustomers,
   supplier,
+  onSkip,
 }: {
   hasMaterials: boolean
   hasCustomers: boolean
   supplier: Supplier | null
+  onSkip: () => void
 }) {
   const { t } = useLanguage()
 
@@ -138,6 +141,17 @@ export function StartHereCard({
           <span className="shrink-0 text-xs font-semibold text-accent-text">{t('nav.settings')} →</span>
         </Link>
       )}
+
+      {/* Last, small and muted: available to the supplier who has a customer
+          waiting and just wants the ordinary dashboard, without pulling the
+          eye away from step one for everyone else. Centred on its own row
+          rather than beside Settings, where two links would sit stacked at
+          the right edge. */}
+      <div className="mt-2 -mb-2 flex justify-center">
+        <button type="button" onClick={onSkip} className="px-4 py-2.5 text-xs font-medium text-muted hover:text-ink">
+          {t('start.skip')}
+        </button>
+      </div>
     </Card>
   )
 }

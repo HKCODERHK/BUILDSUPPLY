@@ -837,6 +837,7 @@ const STRINGS = {
   'start.itemPhone': { en: 'phone number', hi: 'फ़ोन नंबर', mr: 'फोन नंबर' },
   'start.itemGst': { en: 'GST number (if you have one)', hi: 'GST नंबर (अगर है तो)', mr: 'GST नंबर (असल्यास)' },
   'start.and': { en: 'and', hi: 'और', mr: 'आणि' },
+  'start.skip': { en: 'Skip for now', hi: 'अभी के लिए छोड़ें', mr: 'सध्या वगळा' },
 
   // ── Errors ────────────────────────────────────────────────────────────
   // These were hardcoded English on supplier screens, so a supplier working

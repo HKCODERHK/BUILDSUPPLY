@@ -88,6 +88,30 @@ function SupplierDashboardView() {
   // above, which are trimmed to five and drop cancelled bills — a supplier
   // whose only bill was cancelled has still made their first bill.
   const [setup, setSetup] = useState({ materials: false, customers: false, invoices: false })
+  // "Skip for now" on the Start-here card lasts for this visit only. Session
+  // storage, so the card is back the next time the app is opened: it stays
+  // useful until the first bill, and a supplier who skipped it with a customer
+  // waiting has not decided they never want it. Keyed by supplier so a shared
+  // phone does not carry one supplier's choice over to another. Guarded,
+  // because storage throws in some privacy modes and that must not take the
+  // dashboard down with it.
+  const skipKey = `buildsupply-start-skipped:${supplier?.id ?? ''}`
+  const [skipped, setSkipped] = useState(() => {
+    try {
+      return sessionStorage.getItem(skipKey) === '1'
+    } catch {
+      return false
+    }
+  })
+  function skipStart() {
+    try {
+      sessionStorage.setItem(skipKey, '1')
+    } catch {
+      // Still hidden for the rest of this visit via state; it just won't
+      // survive a reload.
+    }
+    setSkipped(true)
+  }
 
   useEffect(() => {
     let active = true
@@ -111,7 +135,13 @@ function SupplierDashboardView() {
   // their quick actions exactly as before; only a genuinely new one sees the
   // row give way to the card, and on a cold start that happens under the
   // splash.
-  const isNew = !loading && !setup.invoices
+  //
+  // firstRun is the fact (no bill yet); showStart is whether the card is up.
+  // They differ only after a skip — the greeting still says "Welcome" rather
+  // than "Welcome back" to someone who has never billed, but everything else
+  // is the ordinary dashboard they asked for.
+  const firstRun = !loading && !setup.invoices
+  const showStart = firstRun && !skipped
 
   return (
     <div>
@@ -128,9 +158,9 @@ function SupplierDashboardView() {
         )}
         <div className="min-w-0">
           <h1 className="text-xl font-bold text-ink sm:text-2xl">
-            {t(isNew ? 'dash.welcomeNew' : 'dash.welcome', { name: supplier?.business_name ?? '' })}
+            {t(firstRun ? 'dash.welcomeNew' : 'dash.welcome', { name: supplier?.business_name ?? '' })}
           </h1>
-          <p className="mt-0.5 text-sm text-muted">{t(isNew ? 'dash.subtitleNew' : 'dash.subtitle')}</p>
+          <p className="mt-0.5 text-sm text-muted">{t(showStart ? 'dash.subtitleNew' : 'dash.subtitle')}</p>
         </div>
       </div>
 
@@ -138,16 +168,21 @@ function SupplierDashboardView() {
           open modals whose only dropdown is empty, and Bill opens a bill with
           no materials to put on it. The card covers the same ground in the
           order that actually works. */}
-      {!isNew && <QuickActions />}
+      {!showStart && <QuickActions />}
 
       {loading ? (
         <p className="text-sm text-muted">{t('common.loading')}</p>
-      ) : isNew ? (
+      ) : showStart ? (
         // Replaces the low-stock banner too, not just the ₹0 figures. Every
         // material added from the catalog starts at zero stock, so the moment
         // step one is done they would all be "running low" — a red alarm on
         // a new supplier's first morning for something that is not wrong.
-        <StartHereCard hasMaterials={setup.materials} hasCustomers={setup.customers} supplier={supplier} />
+        <StartHereCard
+          hasMaterials={setup.materials}
+          hasCustomers={setup.customers}
+          supplier={supplier}
+          onSkip={skipStart}
+        />
       ) : (
         <>
           {lowStock.length > 0 && (
