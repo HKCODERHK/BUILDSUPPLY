@@ -54,6 +54,8 @@ export function Modal({
       onCloseRef.current()
     }
     window.addEventListener('popstate', onPop)
+    // The screen this dialog opened over — see the unwind below.
+    const openedOn = window.location.pathname
 
     return () => {
       window.removeEventListener('popstate', onPop)
@@ -62,6 +64,12 @@ export function Modal({
       if (!pushedRef.current) return
       unwindRef.current = window.setTimeout(() => {
         unwindRef.current = undefined
+        // Unless the app has moved to another screen meanwhile — a saved bill
+        // opening, say. Our entry is underneath that move then, and going back
+        // would undo it: that is what dropped suppliers on a blank New Invoice
+        // after they answered "Delivered?". The pathname, not the whole URL,
+        // so a screen tidying its own ?new=1 away doesn't count as moving.
+        if (window.location.pathname !== openedOn) return
         window.history.back()
       }, 0)
     }

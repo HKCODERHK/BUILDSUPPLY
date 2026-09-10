@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
@@ -15,7 +15,7 @@ import {
   markQuotationSent,
   type QuotationWithCustomer,
 } from '@/services/quotations'
-import { createInvoice, markInvoiceDelivered } from '@/services/invoices'
+import { createInvoice } from '@/services/invoices'
 import { openWhatsAppShare } from '@/lib/whatsapp'
 import { logActivity } from '@/services/activityLog'
 import { QUOTATION_STATUS_TONE } from '@/lib/quotationStatus'
@@ -29,13 +29,11 @@ function formatINR(n: number) {
 export default function Quotations() {
   const { supplier } = useAuth()
   const { t } = useLanguage()
-  const navigate = useNavigate()
   const [quotations, setQuotations] = useState<QuotationWithCustomer[]>([])
   const [loading, setLoading] = useState(true)
   const [convertingId, setConvertingId] = useState<string | null>(null)
   const [sharingId, setSharingId] = useState<string | null>(null)
   const [deliveryPrompt, setDeliveryPrompt] = useState<SavedBill | null>(null)
-  const [confirmingDelivery, setConfirmingDelivery] = useState(false)
 
   async function refresh() {
     setQuotations(await listQuotations())
@@ -86,17 +84,6 @@ export default function Quotations() {
       }
     } finally {
       setSharingId(null)
-    }
-  }
-
-  async function respondToDeliveryPrompt(delivered: boolean) {
-    if (!deliveryPrompt) return
-    setConfirmingDelivery(true)
-    try {
-      if (delivered) await markInvoiceDelivered(deliveryPrompt.id)
-      navigate(`/invoices/${deliveryPrompt.id}`)
-    } finally {
-      setConfirmingDelivery(false)
     }
   }
 
@@ -223,9 +210,7 @@ export default function Quotations() {
         </>
       )}
 
-      {deliveryPrompt && (
-        <DeliveryPrompt bill={deliveryPrompt} busy={confirmingDelivery} onAnswer={respondToDeliveryPrompt} />
-      )}
+      {deliveryPrompt && <DeliveryPrompt bill={deliveryPrompt} />}
     </div>
   )
 }
