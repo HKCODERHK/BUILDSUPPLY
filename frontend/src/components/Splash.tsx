@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useAuth, type SplashPhase } from '@/context/AuthContext'
+import { Tipper } from '@/components/art'
 
 /**
  * The loading screen, shown on a cold start and after a real sign-in — and at
@@ -145,26 +146,8 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
           <div className="absolute inset-x-0 bottom-[6px] h-px bg-white/12" />
           <div className="splash-road absolute inset-x-0 bottom-[3px] h-[3px]" />
           <svg className="splash-truck absolute bottom-[5px] w-[152px]" viewBox="0 0 130 56" fill="none">
-            {/* Everything carries a dark edge and a lighter top face — that is
-                what gives the signboard vehicles their cut-from-metal look,
-                and it is also what keeps the shape legible against the
-                photograph's busy sky when the two are close together. */}
-            {/* tipper bed, raised at the rear */}
-            <path d="M4 34 L14 8 L64 8 L64 34 Z" fill="#2E8F52" stroke="#0C2B22" strokeWidth="2.4" strokeLinejoin="round" />
-            <path d="M14 8 L64 8 L64 15 L11 15 Z" fill="#57C983" />
-            {/* chassis */}
-            <rect x="6" y="34" width="76" height="9" rx="2.5" fill="#17542F" stroke="#0C2B22" strokeWidth="2.2" />
-            {/* cab */}
-            <path d="M82 43 L82 16 L99 16 L110 30 L110 43 Z" fill="#43C275" stroke="#0C2B22" strokeWidth="2.4" strokeLinejoin="round" />
-            <path d="M94 20 L100 20 L106 29 L94 29 Z" fill="#0A2427" opacity=".55" />
-            <rect x="105" y="34" width="5" height="5" rx="1.4" fill="#FFD27A" />
-            {/* wheels */}
-            <circle cx="26" cy="45" r="10" fill="#0E2528" stroke="#061B1C" strokeWidth="2" />
-            <circle cx="48" cy="45" r="10" fill="#0E2528" stroke="#061B1C" strokeWidth="2" />
-            <circle cx="95" cy="45" r="10" fill="#0E2528" stroke="#061B1C" strokeWidth="2" />
-            <circle cx="26" cy="45" r="4" fill="#5FE08C" />
-            <circle cx="48" cy="45" r="4" fill="#5FE08C" />
-            <circle cx="95" cy="45" r="4" fill="#5FE08C" />
+            {/* The shared tipper — the same truck the Start-here scenes use. */}
+            <Tipper />
           </svg>
         </div>
 

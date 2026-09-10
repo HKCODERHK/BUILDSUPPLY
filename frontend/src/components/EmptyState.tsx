@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 import { Card } from '@/components/ui/card'
+import { Bag } from '@/components/art'
+import { INK, edge } from '@/lib/artPalette'
 
 /**
  * The screen a supplier sees before they have any data — and, on Reminders,
@@ -26,18 +28,9 @@ import { Card } from '@/components/ui/card'
 // and keeps light and dark identical.
 const TILE = 'radial-gradient(120% 100% at 50% 0%, #17434A 0%, #0D2B2F 72%)'
 
-const LINE = '#0C2B22'
-const BODY = '#2E8F52'
-const LIT = '#57C983'
-const CAB = '#43C275'
-const DARK = '#17542F'
-const GLOW = '#5FE08C'
-const LAMP = '#FFD27A'
-const PAPER = '#EAF4EE'
-
-// Shared outline settings — every shape carries the same edge, which is what
-// makes six separate drawings read as one set.
-const edge = { stroke: LINE, strokeWidth: 2.4, strokeLinejoin: 'round' } as const
+// From the shared palette, so these drawings, the splash tipper and the
+// Start-here scenes cannot drift apart.
+const { line: LINE, body: BODY, lit: LIT, cab: CAB, dark: DARK, glow: GLOW, lamp: LAMP, paper: PAPER } = INK
 
 /** A khata: the ledger a supplier keeps a customer's account in. */
 function ArtCustomers() {
@@ -125,26 +118,8 @@ function ArtPayments() {
   )
 }
 
-/** Cement bags — the most recognisable thing in any of these godowns.
- *
- *  The printed band across the middle and the creases at each end are what do
- *  the work: without them three rounded rectangles read as bricks, or as
- *  nothing at all. */
-function Bag({ x, y, fill }: { x: number; y: number; fill: string }) {
-  const w = 48
-  const h = 28
-  return (
-    <>
-      {/* Fully rounded, so it reads as a filled sack rather than a brick —
-          rx of half the height is what makes the difference at this size. */}
-      <rect x={x} y={y} width={w} height={h} rx={h / 2} fill={fill} {...edge} />
-      {/* The pale printed stripe every cement bag carries. Pale, not dark: a
-          dark band across the middle reads as a slot cut through the shape. */}
-      <rect x={x + 9} y={y + h / 2 - 3.5} width={w - 18} height="7" rx="3.5" fill={PAPER} opacity=".45" />
-    </>
-  )
-}
-
+/** Cement bags — the most recognisable thing in any of these godowns. The
+ *  bag itself is shared, in components/art.tsx. */
 function ArtMaterials() {
   return (
     <>
