@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useAuth, type SplashPhase } from '@/context/AuthContext'
 import { Tipper } from '@/components/art'
+import { SplashStory } from '@/components/SplashStory'
 
 /**
  * The loading screen, shown on a cold start and after a real sign-in — and at
@@ -16,10 +17,6 @@ import { Tipper } from '@/components/art'
 export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
   const { t } = useLanguage()
   const { supplier } = useAuth()
-  // The artwork is optional: the ring reads perfectly well on its own, and a
-  // broken image icon would be worse than none. Drop a file at
-  // public/splash-art.jpg and it appears with no code change.
-  const [artFailed, setArtFailed] = useState(false)
   const [logoFailed, setLogoFailed] = useState(false)
 
   // The supplier's own logo from Settings, sitting inside the ring so the wait
@@ -64,27 +61,16 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
         </div>
         <p className="mt-2.5 text-xs text-sidebar-text">{t('brand.tagline')}</p>
 
-        {/* Landscape, so it sits as a band rather than inside the ring — a
-            circular crop would cut the tractor and the truck off at the
-            edges. Absent until public/splash-art.jpg exists, and the screen
-            composes fine without it, so a missing file is never a broken
-            image. */}
-        {!artFailed && (
-          <img
-            src="/splash-art.jpg"
-            alt=""
-            onError={() => setArtFailed(true)}
-            className="mt-7 w-full rounded-2xl object-cover shadow-lg"
-            // 3:2 matches the artwork's own 940×630, so object-cover has
-            // nothing to crop and the tractor and truck keep their full width.
-            style={{ aspectRatio: '3 / 2' }}
-          />
-        )}
+        {/* What BuildSupply is for — a building going up, its materials,
+            the delivery, the bill and the payment — told in the six
+            seconds this screen is up anyway, by the same truck as the rest
+            of the app. It replaced a generated photograph; see SplashStory. */}
+        <SplashStory />
 
         {/* The ring is the loading indicator. It fills to roughly two-thirds
             and keeps turning, rather than resting at a figure that would look
             stuck on a slow connection. */}
-        <div className={`relative h-[130px] w-[130px] shrink-0 ${artFailed ? 'mt-10' : 'mt-7'}`}>
+        <div className="relative mt-7 h-[130px] w-[130px] shrink-0">
           <svg viewBox="0 0 200 200" className="absolute inset-0 -rotate-90" aria-hidden>
             <defs>
               <linearGradient id="splashArc" x1="0" y1="0" x2="1" y2="1">
