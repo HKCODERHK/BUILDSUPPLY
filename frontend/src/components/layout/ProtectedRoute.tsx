@@ -22,7 +22,7 @@ export function ProtectedRoute({
   const { t } = useLanguage()
 
   if (loading) {
-    return <TruckLoader className="min-h-screen" />
+    return <TruckLoader className="lg:min-h-screen" />
   }
 
   if (!session || !supplier) {
