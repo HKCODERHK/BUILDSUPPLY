@@ -433,6 +433,9 @@ const STRINGS = {
   'auth.email': { en: 'Email', hi: 'ईमेल', mr: 'ईमेल' },
   'auth.password': { en: 'Password', hi: 'पासवर्ड', mr: 'पासवर्ड' },
   'auth.forgot': { en: 'Forgot password?', hi: 'पासवर्ड भूल गए?', mr: 'पासवर्ड विसरलात?' },
+  // The eye in the password field — read aloud, never shown.
+  'auth.showPassword': { en: 'Show password', hi: 'पासवर्ड दिखाएँ', mr: 'पासवर्ड दाखवा' },
+  'auth.hidePassword': { en: 'Hide password', hi: 'पासवर्ड छिपाएँ', mr: 'पासवर्ड लपवा' },
   'auth.signIn': { en: 'Sign in', hi: 'लॉग इन करें', mr: 'लॉग इन करा' },
   'auth.signingIn': { en: 'Signing in…', hi: 'लॉग इन हो रहा है…', mr: 'लॉग इन होत आहे…' },
   'auth.noAccount': { en: "Don't have an account?", hi: 'खाता नहीं है?', mr: 'खाते नाही?' },
