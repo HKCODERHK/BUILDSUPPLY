@@ -73,15 +73,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function loadSupplierProfile(userId: string): Promise<Supplier | null> {
     setProfileLoading(true)
-    const { data, error } = await supabase.from('suppliers').select('*').eq('id', userId).single()
-    setProfileLoading(false)
-    if (error) {
-      console.error('Failed to load supplier profile:', error.message)
-      setSupplier(null)
-      return null
+    try {
+      const { data, error } = await supabase.from('suppliers').select('*').eq('id', userId).single()
+      if (error) {
+        console.error('Failed to load supplier profile:', error.message)
+        // A failed *re*load keeps the profile already on screen. This runs
+        // every time the app comes back into view, so on a shop's patchy
+        // signal, nulling it would send a signed-in supplier to the login page
+        // part-way through a bill. Only a first load — no profile yet, or a
+        // different user — has nothing worth keeping.
+        setSupplier((prev) => (prev?.id === userId ? prev : null))
+        return null
+      }
+      const next = data as Supplier
+      // The same object when nothing changed, so a routine refresh does not
+      // re-render every screen that reads the profile or re-run effects keyed
+      // on it.
+      setSupplier((prev) => (prev && JSON.stringify(prev) === JSON.stringify(next) ? prev : next))
+      return next
+    } finally {
+      setProfileLoading(false)
     }
-    setSupplier(data as Supplier)
-    return data as Supplier
   }
 
   async function refreshSupplier() {
@@ -134,7 +146,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const loading = initializing || (!!session && profileLoading)
+  // Only the *first* profile load blocks the screen. Supabase fires an auth
+  // event every time the app comes back into view — SIGNED_IN from
+  // _recoverAndRefresh in auth-js 2.112.4, or TOKEN_REFRESHED when the token
+  // is near expiry — and each one reloads the profile. When that reload set
+  // `loading`, ProtectedRoute swapped the whole page for "Loading…" and
+  // unmounted it: switching to WhatsApp and back threw away a half-written
+  // bill, with no warning, because nothing had navigated. Proved live by
+  // typing into an unsaved bill and switching away. Once a profile is on
+  // screen, reloads now update it in place.
+  //
+  // The first-load case is unchanged: straight after a sign-in the session is
+  // set but the profile is not, and without this gate ProtectedRoute and Login
+  // disagree about auth state and redirect-loop (see profileLoading above).
+  const loading = initializing || (!!session && profileLoading && !supplier)
 
   async function signIn(email: string, password: string) {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
