@@ -9,7 +9,7 @@ import { listInvoices, type InvoiceWithCustomer } from '@/services/invoices'
 import { listPayments, type PaymentWithInvoice } from '@/services/payments'
 import { buildCustomerLedger } from '@/lib/customerLedger'
 import { customerLedgerPdfFile } from '@/lib/customerLedgerPdf'
-import { shareDocumentOnWhatsApp, shareFormat } from '@/lib/shareDocument'
+import { shareDocumentOnWhatsApp } from '@/lib/shareDocument'
 import { oldestPendingDays, overdueTextClass } from '@/lib/overdue'
 import { logActivity } from '@/services/activityLog'
 import { useAuth } from '@/context/AuthContext'
@@ -70,19 +70,17 @@ export default function Reminders() {
       const { openingBalance, entries } = buildCustomerLedger({ customerId: c.id, invoices, payments })
       const message =
         `Hi ${c.name}, a gentle reminder that your pending balance with us is ${formatINR(c.pending)}. ` +
-        `The statement below shows every bill and payment. Please clear it at your earliest convenience.`
+        `The attached statement shows every bill and payment. Please clear it at your earliest convenience.`
 
       const file = await customerLedgerPdfFile(supplier, c, { entries, openingBalance })
       const outcome = await shareDocumentOnWhatsApp({
         file,
         message,
         title: `Statement — ${c.name}`,
-        phone: c.phone,
-        linkLabel: 'Statement (PDF)',
       })
-      if (outcome !== 'cancelled') {
+      if (outcome === 'shared') {
         void logActivity('supplier', 'reminder_sent', {
-          details: { customer: c.name, format: shareFormat(outcome) },
+          details: { customer: c.name, format: 'pdf_share' },
         })
       }
     } finally {

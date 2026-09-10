@@ -60,13 +60,6 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url)
   if (url.origin !== self.location.origin) return
 
-  // A bill or receipt sent to a customer — /d/ is proxied to storage by the
-  // host (migration 024). Hands off entirely. The navigation branch below
-  // would otherwise store it as the offline shell: a supplier tapping their
-  // own link in WhatsApp opens it inside the installed app, and the PDF comes
-  // back same-origin and ok, which is all that branch checks.
-  if (url.pathname.startsWith('/d/')) return
-
   // Navigations: network first so a deploy is picked up immediately, falling
   // back to the cached shell when the connection drops.
   if (request.mode === 'navigate') {

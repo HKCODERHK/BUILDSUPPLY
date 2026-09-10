@@ -12,7 +12,7 @@ import { getQuotation, listQuotationItems, markQuotationConverted, markQuotation
 import { getCustomer } from '@/services/customers'
 import { createInvoice, markInvoiceDelivered } from '@/services/invoices'
 import { downloadQuotationPdf, printQuotationPdf, quotationPdfFile } from '@/lib/quotationPdf'
-import { shareDocumentOnWhatsApp, shareFormat } from '@/lib/shareDocument'
+import { shareDocumentOnWhatsApp } from '@/lib/shareDocument'
 import { logActivity } from '@/services/activityLog'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -68,8 +68,8 @@ export default function QuotationDetail() {
   const message = `Hi ${customer?.name ?? ''}, here is your estimate ${quotation.quote_no} for ${formatINR(quotation.total)}. Let us know if you'd like to proceed.`
   const canConvert = quotation.status === 'Draft' || quotation.status === 'Sent'
 
-  // Sent the same way as a bill — the customer's own chat, with the estimate
-  // as a PDF link. See shareDocument.
+  // Sent the same way as a bill — a real PDF through the share sheet. See
+  // shareDocument.
   async function shareOnWhatsApp() {
     if (!quotation || !supplier) return
     setSharing(true)
@@ -79,12 +79,10 @@ export default function QuotationDetail() {
         file,
         message,
         title: quotation.quote_no,
-        phone: customer?.phone,
-        linkLabel: 'Estimate (PDF)',
       })
-      if (outcome === 'cancelled') return
+      if (outcome !== 'shared') return
       void logActivity('supplier', 'quotation_shared', {
-        details: { quote_no: quotation.quote_no, format: shareFormat(outcome) },
+        details: { quote_no: quotation.quote_no, format: 'pdf_share' },
       })
       if (quotation.status === 'Draft') {
         await markQuotationSent(quotation.id)

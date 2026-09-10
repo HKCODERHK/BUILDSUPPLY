@@ -7,7 +7,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
-import { WhatsAppReadyPrompt } from '@/components/WhatsAppReadyPrompt'
+import { ShareDocumentPrompt } from '@/components/ShareDocumentPrompt'
 import { openWhatsAppShare } from '@/lib/whatsapp'
 import { ADMIN_WHATSAPP_NUMBER } from '@/lib/adminContact'
 import { daysUntilExpiry, subscriptionState } from '@/lib/subscription'
@@ -242,7 +242,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             from the header stays the same wherever the supplier is. */}
         <main className="flex-1 px-4 pt-2 pb-4 sm:px-6 sm:pt-3 sm:pb-6 lg:p-8 lg:pt-0">{children}</main>
         {/* After main, so it stacks above a page's own dialog. */}
-        <WhatsAppReadyPrompt />
+        <ShareDocumentPrompt />
       </div>
 
       {/* Phone/tablet bottom tab bar */}

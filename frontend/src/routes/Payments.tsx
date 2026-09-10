@@ -176,8 +176,6 @@ export default function Payments() {
           balance: balanceLine,
         }),
         title: 'Payment receipt',
-        phone: receipt.phone,
-        linkLabel: t('share.receiptLink'),
       })
     } finally {
       setSendingReceipt(false)

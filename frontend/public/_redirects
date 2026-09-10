@@ -7,12 +7,6 @@
 # app appears completely broken the moment it is installed, and a refresh on
 # any screen but "/" loses the supplier's place.
 #
-# Bills, estimates, statements and receipts sent to customers on WhatsApp
-# (migration 024). Proxied, not redirected, so the link the customer taps
-# stays on this domain. It has to sit above the catch-all. Netlify only —
-# Cloudflare Pages cannot proxy to another host from this file.
-/d/*  https://pefarymejlfdsmwusbbq.supabase.co/storage/v1/object/public/documents/:splat  200
-
 # Real files are served first; this only catches what the filesystem misses.
 # The 200 matters: it rewrites rather than redirecting, so the URL the
 # supplier is on stays the URL they see.

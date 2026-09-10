@@ -19,7 +19,7 @@ import { supabase } from '@/lib/supabase'
 import { buildCustomerLedger } from '@/lib/customerLedger'
 import { customerLedgerPdfFile } from '@/lib/customerLedgerPdf'
 import { receiptPdfFile } from '@/lib/receiptPdf'
-import { shareDocumentOnWhatsApp, shareFormat } from '@/lib/shareDocument'
+import { shareDocumentOnWhatsApp } from '@/lib/shareDocument'
 import { sanitizeDecimal } from '@/lib/numberInput'
 import { oldestPendingDays, overdueTextClass } from '@/lib/overdue'
 import { useAuth } from '@/context/AuthContext'
@@ -183,8 +183,6 @@ export default function CustomerProfile() {
         file,
         message,
         title: 'Payment receipt',
-        phone: customer.phone,
-        linkLabel: t('share.receiptLink'),
       })
     } finally {
       setSharing(null)
@@ -204,13 +202,11 @@ export default function CustomerProfile() {
         file,
         message:
           `Hi ${customer.name}, your pending balance with us is ${formatINR(totalPending)}. ` +
-          `The statement below shows every bill and payment. Please clear it at your earliest convenience.`,
+          `The attached statement shows every bill and payment. Please clear it at your earliest convenience.`,
         title: `Statement — ${customer.name}`,
-        phone: customer.phone,
-        linkLabel: 'Statement (PDF)',
       })
-      if (outcome !== 'cancelled') {
-        void logActivity('supplier', 'reminder_sent', { details: { customer: customer.name, format: shareFormat(outcome) } })
+      if (outcome === 'shared') {
+        void logActivity('supplier', 'reminder_sent', { details: { customer: customer.name, format: 'pdf_share' } })
       }
     } finally {
       setSharing(null)

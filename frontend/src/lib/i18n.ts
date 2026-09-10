@@ -71,13 +71,17 @@ const STRINGS = {
   // ── Sending a PDF on WhatsApp (shareDocument.ts) ─────────────────────
   'share.readyTitle': { en: 'Your PDF is ready', hi: 'PDF तैयार है', mr: 'PDF तयार आहे' },
   'share.readyBody': {
-    en: 'Tap below to open WhatsApp with the message and link ready to send.',
-    hi: 'नीचे दबाएँ — व्हाट्सएप मैसेज और लिंक के साथ खुलेगा, बस भेजना है।',
-    mr: 'खाली दाबा — व्हॉट्सॲप मेसेज आणि लिंकसह उघडेल, फक्त पाठवा.',
+    en: 'Tap below, choose WhatsApp, then pick the customer and press Send.',
+    hi: 'नीचे दबाएँ, व्हाट्सएप चुनें, फिर ग्राहक चुनकर भेजें दबाएँ।',
+    mr: 'खाली दाबा, व्हॉट्सॲप निवडा, मग ग्राहक निवडून पाठवा दाबा.',
   },
-  'share.openWhatsApp': { en: 'Open WhatsApp', hi: 'व्हाट्सएप खोलें', mr: 'व्हॉट्सॲप उघडा' },
-  // Goes into the customer's message, which is in the supplier's language.
-  'share.receiptLink': { en: 'Receipt (PDF)', hi: 'रसीद (PDF)', mr: 'पावती (PDF)' },
+  'share.unsupportedTitle': { en: "Can't attach the PDF here", hi: 'यहाँ PDF नहीं भेज सकते', mr: 'इथे PDF पाठवता येत नाही' },
+  'share.unsupportedBody': {
+    en: "This browser can't hand a PDF to WhatsApp. Open BuildSupply on your phone and send it from there.",
+    hi: 'यह ब्राउज़र PDF को व्हाट्सएप पर नहीं भेज सकता। फ़ोन पर BuildSupply खोलकर वहाँ से भेजें।',
+    mr: 'हा ब्राउझर PDF व्हॉट्सॲपला देऊ शकत नाही. फोनवर BuildSupply उघडून तिथून पाठवा.',
+  },
+  'share.understood': { en: 'OK', hi: 'ठीक है', mr: 'ठीक आहे' },
 
   // ── Invoice status ────────────────────────────────────────────────────
   'status.Unpaid': { en: 'Unpaid', hi: 'बाकी', mr: 'बाकी' },

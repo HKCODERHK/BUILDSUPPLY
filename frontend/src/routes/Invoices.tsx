@@ -11,7 +11,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { listInvoices, listInvoiceItems, markInvoiceDelivered, type InvoiceWithCustomer } from '@/services/invoices'
 import { getCustomer } from '@/services/customers'
 import { invoicePdfFile } from '@/lib/invoicePdf'
-import { shareDocumentOnWhatsApp, shareFormat } from '@/lib/shareDocument'
+import { shareDocumentOnWhatsApp } from '@/lib/shareDocument'
 import { logActivity } from '@/services/activityLog'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -71,11 +71,9 @@ export default function Invoices() {
           `Hi ${customer?.name ?? ''}, here is your bill ${inv.invoice_no} for ${formatINR(inv.total)}. ` +
           `${inv.paid < inv.total ? `Pending: ${formatINR(inv.total - inv.paid)}.` : 'Fully paid — thank you!'}`,
         title: inv.invoice_no,
-        phone: customer?.phone,
-        linkLabel: 'Bill (PDF)',
       })
-      if (outcome !== 'cancelled') {
-        void logActivity('supplier', 'invoice_generated', { details: { invoice_no: inv.invoice_no, format: shareFormat(outcome) } })
+      if (outcome === 'shared') {
+        void logActivity('supplier', 'invoice_generated', { details: { invoice_no: inv.invoice_no, format: 'pdf_share' } })
       }
     } finally {
       setSharingId(null)

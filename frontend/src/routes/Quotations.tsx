@@ -18,7 +18,7 @@ import {
 import { createInvoice } from '@/services/invoices'
 import { getCustomer } from '@/services/customers'
 import { quotationPdfFile } from '@/lib/quotationPdf'
-import { shareDocumentOnWhatsApp, shareFormat } from '@/lib/shareDocument'
+import { shareDocumentOnWhatsApp } from '@/lib/shareDocument'
 import { logActivity } from '@/services/activityLog'
 import { QUOTATION_STATUS_TONE } from '@/lib/quotationStatus'
 import { useAuth } from '@/context/AuthContext'
@@ -88,11 +88,9 @@ export default function Quotations() {
         file,
         message: `Hi ${q.customers?.name ?? ''}, here is your estimate ${q.quote_no} for ${formatINR(q.total)}. Let us know if you'd like to proceed.`,
         title: q.quote_no,
-        phone: customer?.phone,
-        linkLabel: 'Estimate (PDF)',
       })
-      if (outcome === 'cancelled') return
-      void logActivity('supplier', 'quotation_shared', { details: { quote_no: q.quote_no, format: shareFormat(outcome) } })
+      if (outcome !== 'shared') return
+      void logActivity('supplier', 'quotation_shared', { details: { quote_no: q.quote_no, format: 'pdf_share' } })
       if (q.status === 'Draft') {
         await markQuotationSent(q.id)
         await refresh()

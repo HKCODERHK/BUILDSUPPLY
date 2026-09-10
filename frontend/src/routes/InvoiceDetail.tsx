@@ -11,7 +11,7 @@ import { getInvoice, listInvoiceItems, cancelInvoice } from '@/services/invoices
 import { Modal } from '@/components/ui/modal'
 import { getCustomer } from '@/services/customers'
 import { downloadInvoicePdf, printInvoicePdf, invoicePdfFile } from '@/lib/invoicePdf'
-import { shareDocumentOnWhatsApp, shareFormat } from '@/lib/shareDocument'
+import { shareDocumentOnWhatsApp } from '@/lib/shareDocument'
 import { logActivity } from '@/services/activityLog'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -70,8 +70,8 @@ export default function InvoiceDetail() {
     `Hi ${customer?.name ?? ''}, here is your bill ${invoice.invoice_no} for ${formatINR(invoice.total)}. ` +
     `${remaining > 0 ? `Pending: ${formatINR(remaining)}.` : 'Fully paid — thank you!'}`
 
-  // Opens the customer's own chat with the bill as a PDF link — see
-  // shareDocument for why a link, and what happens when there's no signal.
+  // Sends the bill as a real PDF through the phone's share sheet — see
+  // shareDocument for why the supplier then picks the customer in WhatsApp.
   async function shareOnWhatsApp() {
     if (!invoice || !supplier) return
     setSharing(true)
@@ -81,12 +81,10 @@ export default function InvoiceDetail() {
         file,
         message,
         title: invoice.invoice_no,
-        phone: customer?.phone,
-        linkLabel: 'Bill (PDF)',
       })
-      if (outcome !== 'cancelled') {
+      if (outcome === 'shared') {
         void logActivity('supplier', 'invoice_generated', {
-          details: { invoice_no: invoice.invoice_no, format: shareFormat(outcome) },
+          details: { invoice_no: invoice.invoice_no, format: 'pdf_share' },
         })
       }
     } finally {

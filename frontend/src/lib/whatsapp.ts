@@ -20,20 +20,6 @@ export function normalizeWhatsAppNumber(phone: string | null | undefined): strin
   return ''
 }
 
-// Set by WhatsAppReadyPrompt, which AppShell mounts once.
-let askForTap: ((url: string) => void) | null = null
-
-/**
- * A tap only lets a page open a window for a few seconds. Making a PDF and
- * uploading it on slow 4G can take longer than that, and the browser then
- * blocks WhatsApp from opening without a word — the supplier taps Send and
- * nothing happens. Once that permission has run out the link goes to this
- * handler instead, which shows a button: a fresh tap, allowed to open it.
- */
-export function setWhatsAppTapHandler(handler: ((url: string) => void) | null) {
-  askForTap = handler
-}
-
 // Opens WhatsApp with a pre-filled message. No Business API, no automated
 // sending — the user still has to hit "send" inside WhatsApp themselves.
 export function openWhatsAppShare(phone: string | null | undefined, message: string) {
@@ -42,11 +28,5 @@ export function openWhatsAppShare(phone: string | null | undefined, message: str
   // have no number on file.
   const target = normalizeWhatsAppNumber(phone)
   const url = `https://wa.me/${target}?text=${encodeURIComponent(message)}`
-  // Browsers without userActivation keep the old behaviour.
-  const activation = (navigator as Navigator & { userActivation?: { isActive: boolean } }).userActivation
-  if (askForTap && activation && !activation.isActive) {
-    askForTap(url)
-    return
-  }
   window.open(url, '_blank', 'noopener,noreferrer')
 }
