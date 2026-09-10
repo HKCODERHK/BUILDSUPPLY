@@ -21,6 +21,7 @@ import { logActivity } from '@/services/activityLog'
 import { QUOTATION_STATUS_TONE } from '@/lib/quotationStatus'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
+import { TruckLoader } from '@/components/TruckLoader'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
@@ -106,7 +107,7 @@ export default function Quotations() {
       />
 
       {loading ? (
-        <p className="text-sm text-muted">{t('common.loading')}</p>
+        <TruckLoader />
       ) : quotations.length === 0 ? (
         <EmptyState
           art="quotations"

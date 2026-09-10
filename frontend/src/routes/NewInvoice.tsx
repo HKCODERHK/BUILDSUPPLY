@@ -31,6 +31,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { usePin } from '@/context/PinContext'
 import { sanitizeDigits, sanitizeDecimal } from '@/lib/numberInput'
 import { cn } from '@/lib/utils'
+import { TruckLoader } from '@/components/TruckLoader'
 
 const GST_RATE = 0.18
 const PAYMENT_MODES: PaymentMode[] = ['Cash', 'UPI', 'Bank/Cheque']
@@ -452,7 +453,8 @@ export default function NewInvoice() {
   if (loading) {
     return (
       <div>
-        <PageHeader title={isEdit ? t('inv.editTitle') : t('inv.createTitle')} subtitle={t('common.loading')} />
+        <PageHeader title={isEdit ? t('inv.editTitle') : t('inv.createTitle')} />
+        <TruckLoader />
       </div>
     )
   }

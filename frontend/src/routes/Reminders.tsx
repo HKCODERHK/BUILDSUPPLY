@@ -15,6 +15,7 @@ import { logActivity } from '@/services/activityLog'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import type { Customer } from '@/lib/database.types'
+import { TruckLoader } from '@/components/TruckLoader'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
@@ -93,7 +94,7 @@ export default function Reminders() {
       <PageHeader title={t('rem.title')} subtitle={t('rem.subtitle')} />
 
       {loading ? (
-        <p className="text-sm text-muted">{t('common.loading')}</p>
+        <TruckLoader />
       ) : pending.length === 0 ? (
         // The one empty state that is good news, so it gets a tick rather than
         // an object, and no button — there is deliberately nothing to do here.

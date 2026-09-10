@@ -454,3 +454,55 @@ select,
     box-shadow: 0 0 0 2px var(--color-accent);
   }
 }
+
+/* ── Truck loader (components/TruckLoader.tsx) ───────────────────────────
+   The tipper from the splash, driving on the spot while something loads. It
+   waits 0.3s before fading in, so the loads that finish sooner — most of
+   them — show nothing rather than flashing a truck for a frame; anything slow
+   enough to notice gets it. Transform and opacity only, so it keeps moving
+   while the main thread is busy with the very work it is waiting on (the
+   splash's road animates background-position, which does not). Under reduced
+   motion the truck stands still, but still fades in after the same pause. */
+.truck-loader {
+  animation: truck-loader-in 0.25s ease-out 0.3s both;
+}
+@keyframes truck-loader-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* A bump in the road twice a second. */
+.truck-loader-bob {
+  animation: truck-loader-bob 0.5s ease-in-out infinite;
+}
+@keyframes truck-loader-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4%);
+  }
+}
+/* Dashes 10px long every 20px, sliding one period left each cycle, so the
+   road runs under a truck that stays put. The strip is a period wider than
+   its window, so the loop never shows a gap. */
+.truck-loader-road {
+  width: calc(100% + 20px);
+  background: repeating-linear-gradient(90deg, var(--color-muted-2) 0 10px, transparent 10px 20px);
+  animation: truck-loader-road 0.45s linear infinite;
+}
+@keyframes truck-loader-road {
+  to {
+    transform: translateX(-20px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .truck-loader-bob,
+  .truck-loader-road {
+    animation: none;
+  }
+}

@@ -129,8 +129,7 @@ did. Everything verified live against Shree Balaji and on a production build.
 **Deliberately not animated**, agreed with the user against a 20-item wish
 list — the rule is *fast first, animated second*: "bill shared" (the share
 sheet resolves when a target is picked, not when WhatsApp sends, so it would
-sometimes be untrue), a loader on every screen (sub-second loads only flicker),
-page transitions, counting-up dashboard numbers, report charts (Reports is
+sometimes be untrue), page transitions, counting-up dashboard numbers, report charts (Reports is
 PDF-only), and delete animations (bills are cancelled, which is already
 confirmed and PIN-gated). Feedback belongs only where it confirms something
 that just happened, on a screen that was appearing anyway.
@@ -177,6 +176,7 @@ A 4-digit PIN asked before irreversible actions, for both roles. **It is a confi
 - **`components/art.tsx` + `lib/artPalette.ts`** — the drawing kit: the tipper (the splash's own truck), cement bag, brick, storey, crane, bill, tick badge and ₹ coin, in one palette. The splash story, the Start-here card and the empty states all draw from it. **Draw ₹ as strokes (lucide's indian-rupee geometry), never an SVG `<text>`** — a text node leaked a stray "₹" into the page's text and depends on the phone's font.
 - **`components/SuccessTick.tsx` + `lib/useFlash.ts`** — the app's one way of saying "done". `SuccessHeader` is a tick that draws itself in 0.4s over a line saying what happened; `useFlash` lights the card that just changed for 2.4s and scrolls it into view only as far as needed. Neither delays anything, and both are still under reduced motion. Reuse them rather than inventing a second style.
 - **`components/DeliveryPrompt.tsx`** — the "Delivered?" dialog after any bill is saved, shared by New Invoice and estimate → bill (it used to be two copies). `isFirstInvoice()` in `services/invoices.ts` tells a supplier's first bill from its number alone — numbering always starts at `INV-1001` — so it costs no query.
+- **`components/TruckLoader.tsx`** — every loading state in the app: the splash's tipper driving on the spot over a moving road, with the word under it. **It fades in only after 0.3s**, so the loads that finish sooner — most of them — show nothing instead of flashing a truck. That delay is what answered the flicker that first kept a loader off the list; the user then asked for it everywhere. Use it for any new wait rather than a "Loading…" line. Buttons keep their own "Saving…" / "Preparing…" words, and admin screens pass `label="Loading…"` to stay English.
 
 ### Stock rules
 - `adjustStock()` **clamps at 0** and there is a matching DB check constraint (migration 009). It can't throw for going negative.

@@ -17,6 +17,7 @@ import { localDateKey } from '@/lib/localDate'
 import { logActivity } from '@/services/activityLog'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
+import { TruckLoader } from '@/components/TruckLoader'
 
 function isLowStock(m: Material) {
   const threshold = m.low_stock_threshold ?? 5
@@ -301,7 +302,7 @@ export default function Reports() {
       </Card>
 
       {loading ? (
-        <p className="text-sm text-muted">{t('common.loading')}</p>
+        <TruckLoader />
       ) : (
         <>
         <ReportCard

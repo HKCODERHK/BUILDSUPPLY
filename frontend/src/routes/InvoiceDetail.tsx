@@ -17,6 +17,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { usePin } from '@/context/PinContext'
 import type { Invoice, InvoiceItem, Customer } from '@/lib/database.types'
+import { TruckLoader } from '@/components/TruckLoader'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
@@ -57,7 +58,8 @@ export default function InvoiceDetail() {
   if (loading || !invoice) {
     return (
       <div>
-        <PageHeader title={t('pay.invoice')} subtitle={t('common.loading')} />
+        <PageHeader title={t('pay.invoice')} />
+        <TruckLoader />
       </div>
     )
   }

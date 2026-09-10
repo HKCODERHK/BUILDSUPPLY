@@ -25,6 +25,7 @@ import {
 } from '@/services/materialCatalog'
 import { CATEGORY_ATTRIBUTE_CONFIG, summarizeAttributes } from '@/lib/catalogAttributes'
 import type { Brand, MaterialCategory, MaterialType, VariantAttributes } from '@/lib/database.types'
+import { TruckLoader } from '@/components/TruckLoader'
 
 function describeError(err: unknown) {
   return err instanceof Error ? err.message : 'Something went wrong. Please try again.'
@@ -204,7 +205,7 @@ export default function MaterialCatalog() {
     return true
   })
 
-  if (loading) return <p className="text-sm text-muted">Loading…</p>
+  if (loading) return <TruckLoader label="Loading…" />
 
   return (
     <div>

@@ -16,6 +16,7 @@ import {
   type SubscriptionState,
 } from '@/lib/subscription'
 import type { AdminDashboardStats, SupplierOverview } from '@/lib/database.types'
+import { TruckLoader } from '@/components/TruckLoader'
 
 // The whole point of this screen: who needs attention, who needs renewing,
 // who do I contact — answered without clicking into anything, with the action
@@ -114,7 +115,7 @@ export function AdminDashboardView() {
       />
 
       {loading ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <TruckLoader label="Loading…" />
       ) : (
         <>
           {attention.length > 0 && (

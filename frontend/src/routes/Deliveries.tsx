@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { listInvoices, markInvoiceDelivered, type InvoiceWithCustomer } from '@/services/invoices'
 import { useLanguage } from '@/context/LanguageContext'
+import { TruckLoader } from '@/components/TruckLoader'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
@@ -41,7 +42,7 @@ export default function Deliveries() {
       <PageHeader title={t('del.title')} subtitle={t('del.subtitle')} />
 
       {loading ? (
-        <p className="text-sm text-muted">{t('common.loading')}</p>
+        <TruckLoader />
       ) : (
         <Card>
           <div className="flex flex-col divide-y divide-border">

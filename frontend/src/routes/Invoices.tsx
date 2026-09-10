@@ -14,6 +14,7 @@ import { openWhatsAppShare } from '@/lib/whatsapp'
 import { logActivity } from '@/services/activityLog'
 import { useLanguage } from '@/context/LanguageContext'
 import { ShowMore } from '@/components/ShowMore'
+import { TruckLoader } from '@/components/TruckLoader'
 
 const PAGE_SIZE = 25
 
@@ -93,7 +94,7 @@ export default function Invoices() {
       />
 
       {loading ? (
-        <p className="text-sm text-muted">{t('common.loading')}</p>
+        <TruckLoader />
       ) : invoices.length === 0 ? (
         <EmptyState
           art="invoices"

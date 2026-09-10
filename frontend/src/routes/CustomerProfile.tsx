@@ -21,6 +21,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { usePin } from '@/context/PinContext'
 import type { Customer, Invoice, PaymentMode } from '@/lib/database.types'
+import { TruckLoader } from '@/components/TruckLoader'
 
 const PAYMENT_MODES: PaymentMode[] = ['Cash', 'UPI', 'Bank/Cheque']
 
@@ -145,7 +146,7 @@ export default function CustomerProfile() {
     }
   }
 
-  if (loading) return <p className="text-sm text-muted">{t('common.loading')}</p>
+  if (loading) return <TruckLoader />
   if (!customer) return <p className="text-sm text-muted">{t('cust.notFound')}</p>
 
   // Cancelled bills stay visible in the khata list below, but never count
