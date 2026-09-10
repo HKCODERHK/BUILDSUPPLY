@@ -37,7 +37,8 @@ export default function Invoices() {
   const [shown, setShown] = useState(PAGE_SIZE)
 
   async function refresh() {
-    setInvoices(await listInvoices())
+    // Bills only — a customer's opening balance is not a bill to list.
+    setInvoices(await listInvoices({ billsOnly: true }))
   }
 
   useEffect(() => {

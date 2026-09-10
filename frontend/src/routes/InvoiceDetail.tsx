@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link, Navigate } from 'react-router-dom'
 import { Download, Printer, Ban, Pencil } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
@@ -64,7 +64,15 @@ export default function InvoiceDetail() {
     )
   }
 
+  // An opening balance lives in the invoices table but is not a bill to
+  // open, edit or share — it belongs on the customer's page.
+  if (invoice.kind === 'opening') {
+    return <Navigate to={invoice.customer_id ? `/customers/${invoice.customer_id}` : '/customers'} replace />
+  }
+
   const remaining = Math.max(0, invoice.total - invoice.paid)
+  // Money taken on a bill for a known customer can stay with them as advance.
+  const canKeepPayment = invoice.paid > 0 && !!invoice.customer_id
 
   const message =
     `Hi ${customer?.name ?? ''}, here is your bill ${invoice.invoice_no} for ${formatINR(invoice.total)}. ` +
@@ -102,14 +110,14 @@ export default function InvoiceDetail() {
     await printInvoicePdf(supplier, customer, invoice, items)
   }
 
-  async function handleCancel() {
+  async function handleCancel(keepPayments: boolean) {
     if (!invoice) return
-    // Cancelling wipes the payments recorded against the bill and puts stock
-    // back — worth confirming it is the owner doing it.
+    // Cancelling moves or removes the money recorded against the bill and
+    // puts stock back — worth confirming it is the owner doing it.
     if (!(await confirmWithPin(t('pin.reasonCancelBill')))) return
     setCancelling(true)
     try {
-      await cancelInvoice(invoice.id)
+      await cancelInvoice(invoice.id, keepPayments)
       setConfirmCancel(false)
       await refresh()
     } finally {
@@ -284,19 +292,38 @@ export default function InvoiceDetail() {
           </p>
           <ul className="mb-4 list-disc space-y-1 pl-5 text-xs text-muted">
             {invoice.delivered && <li>{t('inv.cancelStock')}</li>}
-            {invoice.paid > 0 && (
+            {invoice.paid > 0 && !canKeepPayment && (
               <li className="text-red-600">{t('inv.cancelPayment', { amount: formatINR(invoice.paid) })}</li>
             )}
             <li>{t('inv.cancelKept')}</li>
           </ul>
-          <div className="flex gap-2">
-            <Button variant="outline" className="flex-1" disabled={cancelling} onClick={() => setConfirmCancel(false)}>
-              {t('inv.keepBill')}
-            </Button>
-            <Button variant="danger" className="flex-1" disabled={cancelling} onClick={handleCancel}>
-              {cancelling ? t('inv.cancelling') : t('inv.confirmCancel')}
-            </Button>
-          </div>
+          {canKeepPayment ? (
+            // The money was really received, so it is the supplier's call:
+            // keep it as the customer's advance, or take it off entirely.
+            <div className="flex flex-col gap-2">
+              <p className="mb-1 text-sm font-medium text-ink">
+                {t('inv.cancelPaymentQuestion', { amount: formatINR(invoice.paid) })}
+              </p>
+              <Button disabled={cancelling} onClick={() => handleCancel(true)}>
+                {cancelling ? t('inv.cancelling') : t('inv.cancelKeepAdvance', { amount: formatINR(invoice.paid) })}
+              </Button>
+              <Button variant="danger" disabled={cancelling} onClick={() => handleCancel(false)}>
+                {t('inv.cancelRemovePayment', { amount: formatINR(invoice.paid) })}
+              </Button>
+              <Button variant="outline" disabled={cancelling} onClick={() => setConfirmCancel(false)}>
+                {t('inv.keepBill')}
+              </Button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" disabled={cancelling} onClick={() => setConfirmCancel(false)}>
+                {t('inv.keepBill')}
+              </Button>
+              <Button variant="danger" className="flex-1" disabled={cancelling} onClick={() => handleCancel(false)}>
+                {cancelling ? t('inv.cancelling') : t('inv.confirmCancel')}
+              </Button>
+            </div>
+          )}
         </Modal>
       )}
     </div>

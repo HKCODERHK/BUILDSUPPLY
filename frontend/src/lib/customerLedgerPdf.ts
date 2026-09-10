@@ -23,7 +23,8 @@ import {
 
 export interface LedgerEntry {
   date: string
-  type: 'Invoice' | 'Payment'
+  // 'Opening' is the customer's old udhaar from before BuildSupply.
+  type: 'Invoice' | 'Payment' | 'Opening'
   ref: string
   mode: PaymentMode | null
   debit: number
@@ -159,13 +160,21 @@ function buildCustomerLedgerPdf(
   doc.text('Full transaction history', PDF_MARGIN_X, y)
 
   const body: string[][] = []
+  // "Brought forward", not "opening balance": that name belongs to the
+  // customer's old udhaar, which can appear as a row of its own below.
   if (input.openingBalance !== 0) {
-    body.push(['—', 'Opening balance brought forward', '', '', '', formatINR(input.openingBalance)])
+    body.push(['—', 'Balance brought forward', '', '', '', formatINR(input.openingBalance)])
   }
   input.entries.forEach((e) => {
     body.push([
       formatDate(e.date),
-      e.type === 'Invoice' ? `Bill ${e.ref}` : `Payment against ${e.ref}`,
+      e.type === 'Opening'
+        ? 'Opening balance'
+        : e.type === 'Invoice'
+          ? `Bill ${e.ref}`
+          : e.ref
+            ? `Payment against ${e.ref}`
+            : 'Advance received',
       e.mode ?? '',
       e.debit ? formatINR(e.debit) : '',
       e.credit ? formatINR(e.credit) : '',

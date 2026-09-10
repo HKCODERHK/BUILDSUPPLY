@@ -6,7 +6,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
-import { listInvoices, listAllInvoiceItems, type InvoiceWithCustomer, type InvoiceItemWithInvoice } from '@/services/invoices'
+import {
+  isBill,
+  listInvoices,
+  listAllInvoiceItems,
+  type InvoiceWithCustomer,
+  type InvoiceItemWithInvoice,
+} from '@/services/invoices'
 import { listCustomers } from '@/services/customers'
 import { listPayments, type PaymentWithInvoice } from '@/services/payments'
 import { listMaterials } from '@/services/materials'
@@ -168,8 +174,12 @@ export default function Reports() {
     [invoices, dateFrom, dateTo, customerId, site],
   )
 
+  // Sales are bills only; an opening balance is money owed, not a sale. It
+  // still counts in the pending report and the ledger, which use every row.
+  const filteredBills = filteredInvoices.filter(isBill)
+
   function salesReportRows(): ReportRows {
-    return filteredInvoices.map((inv) => [
+    return filteredBills.map((inv) => [
       inv.invoice_no,
       formatDate(inv.created_at),
       inv.customers?.name ?? '—',
@@ -479,7 +489,7 @@ export default function Reports() {
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <ReportCard
             title={t('rep.dailySales')}
-            hint={t('rep.dailyHint', { count: filteredInvoices.length })}
+            hint={t('rep.dailyHint', { count: filteredBills.length })}
             label={t('inv.download')}
             {...reportActions(
               'daily',
@@ -493,7 +503,7 @@ export default function Reports() {
 
           <ReportCard
             title={t('rep.monthlySales')}
-            hint={t('rep.monthlyHint', { count: filteredInvoices.length })}
+            hint={t('rep.monthlyHint', { count: filteredBills.length })}
             label={t('inv.download')}
             {...reportActions(
               'monthly',

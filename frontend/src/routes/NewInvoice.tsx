@@ -18,13 +18,13 @@ import {
   updateInvoice,
   getInvoice,
   listInvoiceItems,
-  listInvoices,
+  listKnownSites,
   lastBillForCustomer,
   lastRatesForCustomer,
   type NewInvoiceItem,
   type LastRate,
 } from '@/services/invoices'
-import { recordPayment } from '@/services/payments'
+import { newRequestId } from '@/services/db'
 import type { Customer, CustomerBalance, Invoice, Material, PaymentMode } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -143,6 +143,9 @@ export default function NewInvoice() {
   // the re-render that disables the button would slip through `saving`
   // alone; this ref blocks re-entry immediately, in the same tick.
   const savingRef = useRef(false)
+  // One id for this bill. Sent with the save, it makes a retry after a
+  // dropped connection return the bill already made instead of a second one.
+  const requestIdRef = useRef(newRequestId())
   const [deliveryPrompt, setDeliveryPrompt] = useState<SavedBill | null>(null)
   const [addCustomerOpen, setAddCustomerOpen] = useState(false)
   // A bill left unfinished last time, waiting on Continue or Discard.
@@ -151,10 +154,10 @@ export default function NewInvoice() {
   useEffect(() => {
     let active = true
     async function load() {
-      const [customerList, materialList, invoiceList, balanceList] = await Promise.all([
+      const [customerList, materialList, siteList, balanceList] = await Promise.all([
         listCustomers(),
         listMaterials(),
-        listInvoices(),
+        listKnownSites(),
         listCustomerBalances(),
       ])
       if (!active) return
@@ -164,9 +167,7 @@ export default function NewInvoice() {
       // Sites already used before, offered as type-ahead suggestions so a
       // repeat site never has to be typed out twice.
       setKnownSites(
-        Array.from(
-          new Set([...invoiceList.map((i) => i.site), ...customerList.map((c) => c.site)].filter((s): s is string => !!s)),
-        ).sort(),
+        Array.from(new Set([...siteList, ...customerList.map((c) => c.site)].filter((s): s is string => !!s))).sort(),
       )
 
       if (isEdit && editingId) {
@@ -326,7 +327,11 @@ export default function NewInvoice() {
   const transportLabourAmount = Number(transportLabour) || 0
   const total = subtotal + gst + transportLabourAmount
   const paidNowAmount = isEdit ? 0 : Number(paidNow) || 0
-  const remaining = Math.max(0, total - paidNowAmount)
+  // Money this customer paid ahead goes onto a new bill before anything is
+  // collected (create_invoice). An edit leaves payments exactly as they are.
+  const advanceHeld = isEdit ? 0 : Number(balances[customerId]?.advance ?? 0)
+  const advanceUsed = Math.min(advanceHeld, total)
+  const remaining = Math.max(0, total - advanceUsed - paidNowAmount)
 
   const selectedCustomer = customers.find((c) => c.id === customerId) ?? null
 
@@ -365,7 +370,9 @@ export default function NewInvoice() {
   const currentPending = Number(balances[customerId]?.pending ?? 0)
   const alreadyOnThisBill = editingInvoice ? Math.max(0, Number(editingInvoice.total) - Number(editingInvoice.paid)) : 0
   const projectedPending =
-    currentPending - alreadyOnThisBill + Math.max(0, total - (editingInvoice ? Number(editingInvoice.paid) : paidNowAmount))
+    currentPending -
+    alreadyOnThisBill +
+    Math.max(0, total - (editingInvoice ? Number(editingInvoice.paid) : paidNowAmount + advanceUsed))
   const overLimit = creditLimit != null && creditLimit > 0 && projectedPending > creditLimit
   const nearLimit =
     creditLimit != null && creditLimit > 0 && !overLimit && projectedPending >= creditLimit * 0.8 && total > 0
@@ -404,19 +411,21 @@ export default function NewInvoice() {
         return
       }
 
-      const invoice = await createInvoice(supplier.id, {
+      // One step in the database: the number, the lines, any advance they
+      // already hold and the money taken now — all of it or none of it, so
+      // there is no bill left behind without its payment.
+      const { invoice } = await createInvoice({
+        requestId: requestIdRef.current,
         customer_id: customerId,
         site,
         items: payload,
         gstApplicable,
         transportLabourCharge: transportLabourAmount,
+        payment: paidNowAmount > 0 ? { amount: paidNowAmount, mode: paidMode } : null,
       })
-      // The bill exists from here on, whatever happens to the payment below,
-      // so its draft must not survive to be offered back and saved twice.
+      // The bill exists from here on, so its draft must not survive to be
+      // offered back and saved twice.
       clearDraft(supplier.id, 'invoice')
-      if (paidNowAmount > 0) {
-        await recordPayment(supplier.id, invoice.id, [{ amount: paidNowAmount, mode: paidMode }])
-      }
       setSaved(true)
       // Stock isn't touched yet — ask before deducting it, since billing and
       // delivery often happen at different times.
@@ -556,6 +565,14 @@ export default function NewInvoice() {
             })}
           </p>
         </div>
+      )}
+
+      {/* Paid ahead: used on this bill automatically, so the supplier asks
+          for less at the counter. */}
+      {advanceHeld > 0 && selectedCustomer && (
+        <p className="mb-4 rounded-xl bg-accent-bg px-4 py-3 text-sm font-medium text-accent-text">
+          {t('inv.advanceWillApply', { amount: formatINR(total > 0 ? advanceUsed : advanceHeld) })}
+        </p>
       )}
 
       <Card className="mb-4">
@@ -743,9 +760,11 @@ export default function NewInvoice() {
               </select>
             </div>
           </div>
-          {paidNowAmount > total && total > 0 && (
-            <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-              {t('inv.paidMoreThanBill', { amount: formatINR(total) })}
+          {/* Not refused any more: the extra clears older bills, then waits
+              as advance for the next one. */}
+          {paidNowAmount > total - advanceUsed && total > 0 && (
+            <p className="mt-3 rounded-lg bg-accent-bg p-3 text-xs text-accent-text">
+              {t('inv.paidMoreGoesToAdvance', { amount: formatINR(paidNowAmount - (total - advanceUsed)) })}
             </p>
           )}
           {paidNowAmount > 0 && (

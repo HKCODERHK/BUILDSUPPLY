@@ -13,7 +13,8 @@ import { clearDraft, readDraft, useDraftAutosave, type BillDraft, type SavedDraf
 import { listCustomers } from '@/services/customers'
 import { listMaterials } from '@/services/materials'
 import { createQuotation } from '@/services/quotations'
-import { listInvoices, type NewInvoiceItem } from '@/services/invoices'
+import { listKnownSites, type NewInvoiceItem } from '@/services/invoices'
+import { newRequestId } from '@/services/db'
 import type { Customer, Material } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -46,6 +47,8 @@ export default function NewQuotation() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const savingRef = useRef(false)
+  // One id for this estimate — a retry returns it rather than a second one.
+  const requestIdRef = useRef(newRequestId())
   const [addCustomerOpen, setAddCustomerOpen] = useState(false)
   const [searchParams] = useSearchParams()
   // Until the lists arrive there is nothing to back up, and a draft could not
@@ -55,14 +58,10 @@ export default function NewQuotation() {
   const [pendingDraft, setPendingDraft] = useState<SavedDraft | null>(null)
 
   useEffect(() => {
-    Promise.all([listCustomers(), listMaterials(), listInvoices()]).then(([c, m, inv]) => {
+    Promise.all([listCustomers(), listMaterials(), listKnownSites()]).then(([c, m, siteList]) => {
       setCustomers(c)
       setMaterials(m)
-      setKnownSites(
-        Array.from(
-          new Set([...inv.map((i) => i.site), ...c.map((x) => x.site)].filter((s): s is string => !!s)),
-        ).sort(),
-      )
+      setKnownSites(Array.from(new Set([...siteList, ...c.map((x) => x.site)].filter((s): s is string => !!s))).sort())
       // An estimate left unfinished last time — see NewInvoice.
       const draft = supplier ? readDraft(supplier.id, 'quotation') : null
       if (draft) {
@@ -154,7 +153,8 @@ export default function NewQuotation() {
     savingRef.current = true
     setSaving(true)
     try {
-      const quotation = await createQuotation(supplier.id, {
+      const quotation = await createQuotation({
+        requestId: requestIdRef.current,
         customer_id: customerId,
         site,
         items: items.map(({ key: _key, ...rest }) => rest),

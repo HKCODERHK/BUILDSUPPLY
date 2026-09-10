@@ -1,126 +1,146 @@
 import { supabase } from '@/lib/supabase'
-import type { Payment, PaymentMode } from '@/lib/database.types'
+import type { InvoiceKind, Payment, PaymentMode } from '@/lib/database.types'
 import { logActivity } from './activityLog'
+import { callRpc, fetchAll } from './db'
 
 export interface PaymentWithInvoice extends Payment {
-  invoices: { invoice_no: string; customers: { name: string } | null } | null
+  // Null for an advance — money received with no bill to go on yet.
+  invoices: { invoice_no: string; kind: InvoiceKind } | null
+  customers: { name: string } | null
 }
 
+const PAYMENT_SELECT = '*, invoices(invoice_no, kind), customers(name)'
+
 export async function listPayments(): Promise<PaymentWithInvoice[]> {
-  const { data, error } = await supabase
-    .from('payments')
-    .select('*, invoices(invoice_no, customers(name))')
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return data as PaymentWithInvoice[]
+  return fetchAll<PaymentWithInvoice>((from, to) =>
+    supabase
+      .from('payments')
+      .select(PAYMENT_SELECT, { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .order('id')
+      .range(from, to),
+  )
+}
+
+/** One customer's payments, advances included — for a statement. */
+export async function listPaymentsForCustomer(customerId: string): Promise<PaymentWithInvoice[]> {
+  return fetchAll<PaymentWithInvoice>((from, to) =>
+    supabase
+      .from('payments')
+      .select(PAYMENT_SELECT, { count: 'exact' })
+      .eq('customer_id', customerId)
+      .order('created_at', { ascending: false })
+      .order('id')
+      .range(from, to),
+  )
+}
+
+/** Payments received since a moment — the dashboard's "collected today". */
+export async function listPaymentsSince(iso: string): Promise<Payment[]> {
+  return fetchAll<Payment>((from, to) =>
+    supabase
+      .from('payments')
+      .select('*', { count: 'exact' })
+      .gte('created_at', iso)
+      .order('created_at', { ascending: false })
+      .order('id')
+      .range(from, to),
+  )
+}
+
+export interface AppliedPart {
+  invoice_id: string
+  invoice_no: string
+  amount: number
 }
 
 export interface PaymentResult {
-  /** How much actually went onto the bill. */
-  applied: number
-  /** Anything beyond what the bill still owed, which was NOT recorded. */
+  /** The bills the money went onto, in the order it was applied. */
+  applied: AppliedPart[]
+  /** What this payment kept as advance, beyond everything the customer owed. */
+  advance: number
+  /** Money not recorded at all — only possible on a bill with no customer. */
   leftOver: number
+  /** What the customer still owes, read straight after the payment. */
+  pending: number
+  /** The customer's whole advance, read straight after the payment. */
+  advanceBalance: number
+  /** True when this was a repeat of a save already made (a double tap). */
+  duplicate: boolean
 }
 
-// A "split" payment is just multiple payment rows against one invoice
-// (e.g. part Cash, part UPI) — recorded in a single call.
-//
-// Capped at what the bill still owes. Without the cap a supplier could record
-// ₹67,000 against a ₹64,300 bill, which is exactly what happened to INV-1008:
-// the customer's khata then read minus ₹2,700 and the dashboard collected
-// more than it had ever billed. There is no advance/credit feature for the
-// extra to live in, so it is refused and reported rather than absorbed.
+export interface RawPaymentResult {
+  applied?: { invoice_id: string; invoice_no: string; amount: number }[]
+  advance?: number
+  left_over?: number
+  pending?: number
+  advance_balance?: number
+  duplicate?: boolean
+}
+
+export function toPaymentResult(raw: RawPaymentResult): PaymentResult {
+  return {
+    applied: (raw.applied ?? []).map((a) => ({ invoice_id: a.invoice_id, invoice_no: a.invoice_no, amount: Number(a.amount) })),
+    advance: Number(raw.advance ?? 0),
+    leftOver: Number(raw.left_over ?? 0),
+    pending: Number(raw.pending ?? 0),
+    advanceBalance: Number(raw.advance_balance ?? 0),
+    duplicate: !!raw.duplicate,
+  }
+}
+
+/**
+ * Money against one bill, possibly split across modes (record_payment,
+ * migration 024). The bill is filled first, then the customer's older bills,
+ * and anything beyond all of it is kept as advance. Splits are taken in
+ * order, so the modes stay truthful: ₹5,000 cash and ₹3,000 UPI against
+ * ₹6,000 owed is ₹5,000 cash and ₹1,000 UPI on the bill, ₹2,000 UPI onward.
+ *
+ * The same `requestId` sent twice records it once — which is what a double
+ * tap on Save used to get wrong (INV-1024).
+ */
 export async function recordPayment(
-  supplierId: string,
+  requestId: string,
   invoiceId: string,
   splits: { amount: number; mode: PaymentMode }[],
 ): Promise<PaymentResult> {
   const offered = splits.filter((s) => s.amount > 0)
-  if (offered.length === 0) return { applied: 0, leftOver: 0 }
-
-  // Read the bill first: what it still owes decides how much may be taken.
-  const { data: invoice, error: invoiceError } = await supabase
-    .from('invoices')
-    .select('paid, total')
-    .eq('id', invoiceId)
-    .single()
-  if (invoiceError) throw invoiceError
-
-  const due = Math.max(0, Number(invoice.total) - Number(invoice.paid))
-  const offeredTotal = offered.reduce((sum, s) => sum + s.amount, 0)
-
-  // Trim the splits in order so the modes stay truthful — if ₹5,000 cash and
-  // ₹3,000 UPI are offered against ₹6,000 due, that is ₹5,000 cash and
-  // ₹1,000 UPI, not a flat scaling of both.
-  let budget = due
-  const rows: { supplier_id: string; invoice_id: string; amount: number; mode: PaymentMode }[] = []
-  for (const s of offered) {
-    if (budget <= 0) break
-    const amount = Math.min(s.amount, budget)
-    rows.push({ supplier_id: supplierId, invoice_id: invoiceId, amount, mode: s.mode })
-    budget -= amount
+  const result = toPaymentResult(
+    await callRpc<RawPaymentResult>('record_payment', {
+      p_request_id: requestId,
+      p_invoice_id: invoiceId,
+      p_splits: offered,
+    }),
+  )
+  if (!result.duplicate) {
+    const amount = offered.reduce((sum, s) => sum + s.amount, 0)
+    void logActivity('supplier', 'payment_recorded', { details: { invoice_id: invoiceId, amount } })
   }
-
-  const totalPaidNow = rows.reduce((sum, r) => sum + r.amount, 0)
-  if (totalPaidNow <= 0) return { applied: 0, leftOver: offeredTotal }
-
-  const { error } = await supabase.from('payments').insert(rows)
-  if (error) throw error
-
-  const newPaid = Number(invoice.paid) + totalPaidNow
-  const status = newPaid >= Number(invoice.total) ? 'Paid' : newPaid > 0 ? 'Partial' : 'Unpaid'
-
-  const { error: updateError } = await supabase
-    .from('invoices')
-    .update({ paid: newPaid, status })
-    .eq('id', invoiceId)
-  if (updateError) throw updateError
-
-  void logActivity('supplier', 'payment_recorded', { details: { invoice_id: invoiceId, amount: totalPaidNow } })
-  void logActivity('supplier', 'invoice_updated', { details: { invoice_id: invoiceId, status } })
-
-  return { applied: totalPaidNow, leftOver: offeredTotal - totalPaidNow }
+  return result
 }
 
-export interface KhataPaymentResult {
-  applied: { invoice_no: string; amount: number }[]
-  leftOver: number
-}
-
-// Money handed over against the khata as a whole rather than one bill —
-// which is how customers actually pay. Clears the oldest unpaid bills first
-// so the supplier never has to work out which invoice it belongs to.
+/**
+ * Money handed over against the khata as a whole rather than one bill —
+ * which is how customers actually pay (record_customer_payment). Clears the
+ * oldest unpaid bills first, opening balance before any bill, and keeps the
+ * rest as advance for their next bill.
+ */
 export async function recordCustomerPayment(
-  supplierId: string,
+  requestId: string,
   customerId: string,
   amount: number,
   mode: PaymentMode,
-): Promise<KhataPaymentResult> {
-  if (amount <= 0) return { applied: [], leftOver: 0 }
-
-  const { data: invoices, error } = await supabase
-    .from('invoices')
-    .select('id, invoice_no, total, paid')
-    .eq('customer_id', customerId)
-    .neq('status', 'Paid')
-    .neq('status', 'Cancelled')
-    .order('created_at', { ascending: true })
-  if (error) throw error
-
-  let remaining = amount
-  const applied: { invoice_no: string; amount: number }[] = []
-
-  for (const inv of invoices ?? []) {
-    if (remaining <= 0) break
-    const due = Number(inv.total) - Number(inv.paid)
-    if (due <= 0) continue
-    const part = Math.min(due, remaining)
-    await recordPayment(supplierId, inv.id, [{ amount: part, mode }])
-    applied.push({ invoice_no: inv.invoice_no, amount: part })
-    remaining -= part
+): Promise<PaymentResult> {
+  const result = toPaymentResult(
+    await callRpc<RawPaymentResult>('record_customer_payment', {
+      p_request_id: requestId,
+      p_customer_id: customerId,
+      p_amount: amount,
+      p_mode: mode,
+    }),
+  )
+  if (!result.duplicate) {
+    void logActivity('supplier', 'payment_recorded', { details: { customer_id: customerId, amount } })
   }
-
-  // Anything beyond what they owed is handed back to the caller to report,
-  // rather than silently parked as an unexplained credit.
-  return { applied, leftOver: remaining }
+  return result
 }

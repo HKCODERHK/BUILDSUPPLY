@@ -11,11 +11,11 @@ import { DeliveryPrompt, type SavedBill } from '@/components/DeliveryPrompt'
 import {
   listQuotations,
   listQuotationItems,
-  markQuotationConverted,
   markQuotationSent,
   type QuotationWithCustomer,
 } from '@/services/quotations'
 import { createInvoice } from '@/services/invoices'
+import { newRequestId } from '@/services/db'
 import { getCustomer } from '@/services/customers'
 import { quotationPdfFile } from '@/lib/quotationPdf'
 import { shareDocumentOnWhatsApp } from '@/lib/shareDocument'
@@ -36,6 +36,7 @@ export default function Quotations() {
   const [loading, setLoading] = useState(true)
   const [convertingId, setConvertingId] = useState<string | null>(null)
   const [sharingId, setSharingId] = useState<string | null>(null)
+  const [convertError, setConvertError] = useState<string | null>(null)
   const [deliveryPrompt, setDeliveryPrompt] = useState<SavedBill | null>(null)
 
   async function refresh() {
@@ -52,15 +53,20 @@ export default function Quotations() {
   async function handleConvert(q: QuotationWithCustomer) {
     if (!supplier || !q.customer_id) return
     setConvertingId(q.id)
+    setConvertError(null)
     try {
       const items = await listQuotationItems(q.id)
-      const invoice = await createInvoice(supplier.id, {
+      // The bill and "Converted" in one step, and the estimate's site comes
+      // with it (it used to be dropped when converting from this list).
+      const { invoice } = await createInvoice({
+        requestId: newRequestId(),
         customer_id: q.customer_id,
+        site: q.site,
         items: items.map((item) => ({ material_id: item.material_id, description: item.description, qty: item.qty, rate: item.rate })),
         gstApplicable: q.gst_amount > 0,
         transportLabourCharge: q.transport_labour_charge,
+        quotationId: q.id,
       })
-      await markQuotationConverted(q.id, invoice.id)
       await refresh()
       setDeliveryPrompt({
         id: invoice.id,
@@ -68,6 +74,8 @@ export default function Quotations() {
         total: Number(invoice.total),
         customerName: q.customers?.name ?? '',
       })
+    } catch (err) {
+      setConvertError(err instanceof Error ? err.message : t('error.generic'))
     } finally {
       setConvertingId(null)
     }
@@ -117,6 +125,10 @@ export default function Quotations() {
           ) : undefined
         }
       />
+
+      {convertError && (
+        <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{convertError}</p>
+      )}
 
       {loading ? (
         <TruckLoader />

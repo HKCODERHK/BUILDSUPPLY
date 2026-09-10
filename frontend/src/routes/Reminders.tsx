@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { EmptyState } from '@/components/EmptyState'
 import { listCustomers } from '@/services/customers'
-import { listInvoices, type InvoiceWithCustomer } from '@/services/invoices'
-import { listPayments, type PaymentWithInvoice } from '@/services/payments'
+import { listInvoices, listInvoicesForCustomer, type InvoiceWithCustomer } from '@/services/invoices'
+import { listPaymentsForCustomer } from '@/services/payments'
 import { buildCustomerLedger } from '@/lib/customerLedger'
 import { customerLedgerPdfFile } from '@/lib/customerLedgerPdf'
 import { shareDocumentOnWhatsApp } from '@/lib/shareDocument'
@@ -30,13 +30,13 @@ export default function Reminders() {
   const { supplier } = useAuth()
   const { t } = useLanguage()
   const [pending, setPending] = useState<PendingCustomer[]>([])
-  const [invoices, setInvoices] = useState<InvoiceWithCustomer[]>([])
-  const [payments, setPayments] = useState<PaymentWithInvoice[]>([])
   const [loading, setLoading] = useState(true)
   const [sendingId, setSendingId] = useState<string | null>(null)
 
   useEffect(() => {
-    Promise.all([listCustomers(), listInvoices(), listPayments()]).then(([customers, invs, pays]) => {
+    // Payments aren't needed to list who owes what — each statement reads its
+    // own customer's payments when it is sent.
+    Promise.all([listCustomers(), listInvoices()]).then(([customers, invs]) => {
       const owed = new Map<string, number>()
       const byCustomer = new Map<string, InvoiceWithCustomer[]>()
       invs.forEach((inv) => {
@@ -54,8 +54,6 @@ export default function Reminders() {
           // amount owed for four months is the one that turns into a bad debt.
           .sort((a, b) => (b.days ?? 0) - (a.days ?? 0) || b.pending - a.pending),
       )
-      setInvoices(invs)
-      setPayments(pays)
       setLoading(false)
     })
   }, [])
@@ -67,7 +65,15 @@ export default function Reminders() {
     if (!supplier) return
     setSendingId(c.id)
     try {
-      const { openingBalance, entries } = buildCustomerLedger({ customerId: c.id, invoices, payments })
+      const [customerInvoices, customerPayments] = await Promise.all([
+        listInvoicesForCustomer(c.id),
+        listPaymentsForCustomer(c.id),
+      ])
+      const { openingBalance, entries } = buildCustomerLedger({
+        customerId: c.id,
+        invoices: customerInvoices,
+        payments: customerPayments,
+      })
       const message =
         `Hi ${c.name}, a gentle reminder that your pending balance with us is ${formatINR(c.pending)}. ` +
         `The attached statement shows every bill and payment. Please clear it at your earliest convenience.`

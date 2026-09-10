@@ -1,11 +1,18 @@
 import { supabase } from '@/lib/supabase'
 import type { Material } from '@/lib/database.types'
 import { logActivity } from './activityLog'
+import { callRpc, fetchAll } from './db'
 
 export async function listMaterials(): Promise<Material[]> {
-  const { data, error } = await supabase.from('materials').select('*').order('category').order('name')
-  if (error) throw error
-  return data
+  return fetchAll<Material>((from, to) =>
+    supabase
+      .from('materials')
+      .select('*', { count: 'exact' })
+      .order('category')
+      .order('name')
+      .order('id')
+      .range(from, to),
+  )
 }
 
 export async function createMaterial(
@@ -50,21 +57,14 @@ export async function deleteMaterial(id: string): Promise<void> {
   if (error) throw error
 }
 
-// Used when an invoice is marked delivered, to keep stock quantities honest.
-// Clamped at 0 — stock can never go negative, even if a delivery is marked
-// for more than what's on hand (the DB has a matching check constraint as
-// the backstop; this clamp keeps that from ever surfacing as an error here).
-export async function adjustStock(materialId: string, deltaQty: number): Promise<void> {
-  const { data: material, error: fetchError } = await supabase
-    .from('materials')
-    .select('stock_qty')
-    .eq('id', materialId)
-    .single()
-  if (fetchError) throw fetchError
-
-  const { error } = await supabase
-    .from('materials')
-    .update({ stock_qty: Math.max(0, Number(material.stock_qty) + deltaQty) })
-    .eq('id', materialId)
-  if (error) throw error
+/**
+ * Moves a material's stock by a delta in one step (adjust_stock, migration
+ * 024) and returns the new quantity. It used to read the quantity, add on
+ * the phone and write it back, so two changes at once could lose one.
+ * Clamped at 0 — stock can never go negative.
+ */
+export async function adjustStock(material: { id: string; name: string }, deltaQty: number): Promise<number> {
+  const qty = await callRpc<number>('adjust_stock', { p_material_id: material.id, p_delta: deltaQty })
+  void logActivity('supplier', 'stock_updated', { details: { name: material.name, change: deltaQty } })
+  return Number(qty)
 }

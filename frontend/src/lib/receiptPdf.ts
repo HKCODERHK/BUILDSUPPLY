@@ -29,6 +29,10 @@ export interface ReceiptInput {
   balance: number
   /** The bills the money went onto. */
   appliedTo: { invoice_no: string; amount: number }[]
+  /** What this payment kept as advance, beyond everything they owed. */
+  advance?: number
+  /** Everything the customer now holds in advance. */
+  advanceBalance?: number
 }
 
 type ReceiptCustomer = Pick<Customer, 'name' | 'address' | 'phone'>
@@ -74,11 +78,18 @@ function buildReceiptPdf(
   doc.text(input.mode, right - 6, y + 18, { align: 'right' })
   y += boxHeight + 10
 
-  if (input.appliedTo.length > 0) {
+  // One line per bill (a split payment can touch the same bill twice), and
+  // the part kept for later as a line of its own.
+  const byBill = new Map<string, number>()
+  for (const a of input.appliedTo) byBill.set(a.invoice_no, (byBill.get(a.invoice_no) ?? 0) + a.amount)
+  const rows = Array.from(byBill.entries()).map(([no, amount]) => [no, formatINR(amount)])
+  if ((input.advance ?? 0) > 0) rows.push(['Kept as advance', formatINR(input.advance ?? 0)])
+
+  if (rows.length > 0) {
     autoTable(doc, {
       startY: y,
       head: [['Against bill', { content: 'Amount', styles: { halign: 'right' } }]],
-      body: input.appliedTo.map((a) => [a.invoice_no, formatINR(a.amount)]),
+      body: rows,
       columnStyles: { 1: { halign: 'right', cellWidth: 45 } },
       ...tableStyles,
       didDrawPage: () => drawPageFooter(doc, footer),
@@ -96,6 +107,9 @@ function buildReceiptPdf(
   if (input.balance > 0) {
     doc.setTextColor(...RED)
     doc.text(`Balance still due: ${formatINR(input.balance)}`, PDF_MARGIN_X, y)
+  } else if ((input.advanceBalance ?? 0) > 0) {
+    doc.setTextColor(...GREEN)
+    doc.text(`Nothing due. Advance with us: ${formatINR(input.advanceBalance ?? 0)}`, PDF_MARGIN_X, y)
   } else {
     doc.setTextColor(...GREEN)
     doc.text('Account fully settled. Thank you.', PDF_MARGIN_X, y)

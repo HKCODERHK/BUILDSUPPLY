@@ -18,7 +18,7 @@ export default function Deliveries() {
   const [markingId, setMarkingId] = useState<string | null>(null)
 
   async function refresh() {
-    setInvoices(await listInvoices())
+    setInvoices(await listInvoices({ billsOnly: true }))
   }
 
   useEffect(() => {
