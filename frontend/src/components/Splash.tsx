@@ -66,6 +66,21 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
             and kept turning — and the user asked for it to be still: the
             story and the truck already say the app is working. */}
         <div className="relative mt-7 h-[130px] w-[130px] shrink-0">
+          {/* The logo fills the ring right out to the green border, as the
+              user asked — no dark band between the picture and the ring. Its
+              edge runs just under the stroke, which is drawn on top (hence the
+              logo comes first), so there is no gap at any size. The stroke's
+              inner edge sits 12.7px in from the box (radius 80.5 of 100, at
+              130px); a 10px inset puts the picture's edge halfway under it. */}
+          {logo && (
+            <img
+              src={logo}
+              alt=""
+              onError={() => setLogoFailed(true)}
+              className="splash-logo absolute rounded-full object-cover"
+              style={{ inset: '10px', width: 'calc(100% - 20px)', height: 'calc(100% - 20px)' }}
+            />
+          )}
           <svg viewBox="0 0 200 200" className="absolute inset-0" aria-hidden>
             <defs>
               <linearGradient id="splashRing" x1="0" y1="0" x2="1" y2="1">
@@ -75,17 +90,6 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
             </defs>
             <circle cx="100" cy="100" r="85" fill="none" strokeWidth="9" stroke="url(#splashRing)" />
           </svg>
-          {logo && (
-            <img
-              src={logo}
-              alt=""
-              onError={() => setLogoFailed(true)}
-              className="splash-logo absolute rounded-full object-cover"
-              // Inset clears the 9px stroke with room to breathe, so the logo
-              // sits inside the ring rather than tucked under it.
-              style={{ inset: '16px', width: 'calc(100% - 32px)', height: 'calc(100% - 32px)' }}
-            />
-          )}
         </div>
 
         {/* What BuildSupply is for — a building going up, its materials,
