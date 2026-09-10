@@ -126,3 +126,9 @@ export async function downloadReportPdf(spec: ReportSpec) {
   const doc = await buildReportPdf(spec)
   doc.save(spec.fileName)
 }
+
+/** The same report as a File, for sending on WhatsApp — see shareDocument. */
+export async function reportPdfFile(spec: ReportSpec): Promise<File> {
+  const doc = await buildReportPdf(spec)
+  return new File([doc.output('blob')], spec.fileName, { type: 'application/pdf' })
+}

@@ -156,6 +156,17 @@ sent automatically** — each was ruled out explicitly.
   estimates list, Reminders, customer page → Remind (the full statement, the
   same one Reminders sends), both payment receipts (`lib/receiptPdf.ts`), and
   the rate list. The list buttons, Remind and receipts used to send text only.
+  Reports has a WhatsApp button beside every Download too, built from the
+  same description of the report so the two can't differ: the customer ledger
+  (a customer-facing message) and the five other reports (a plain "what and
+  which dates" line — they usually go to an accountant or partner). Its label
+  is just "WhatsApp" ("Send on WhatsApp" beside "Download PDF" measured 339px
+  against the 296px a report card has at 360px), and both buttons drop to
+  `size="sm"` on phones, full size from `sm` up, like the customer page's
+  header. At full size "पीडीएफ डाउनलोड" + "WhatsApp" is 303px, so Hindi and
+  Marathi wrapped while English (283px) did not — one place where English is
+  not the widest. At phone size: 244px English, 261px Hindi/Marathi, 287px
+  while "Preparing…".
   The admin↔supplier WhatsApp buttons (renewal, login details, chasing a
   supplier) stay `wa.me` text: they are messages, not documents.
 - **An expired tap gets a prompt, never a download.** A tap only lets a page
@@ -221,7 +232,7 @@ A 4-digit PIN asked before irreversible actions, for both roles. **It is a confi
 
 ### Shared modules — change behaviour here, not in each caller
 - **`lib/pdfTheme.ts`** — every PDF's colours, money/date formatting, table styling, logo+business header, FROM/TO block and page footer. `invoicePdf.ts`, `quotationPdf.ts`, `customerLedgerPdf.ts`, `reportPdf.ts`, `rateListPdf.ts` and `receiptPdf.ts` all draw from it.
-- **`lib/shareDocument.ts`** — the one WhatsApp document-share path, behind all nine customer-facing WhatsApp buttons (Phase 8). The PDF goes from memory into the phone's share sheet as a real file; the supplier picks WhatsApp, then the customer, then presses Send. **No upload, no download, no link, no `wa.me`** — the user ruled out each. Returns `'shared' | 'cancelled' | 'unsupported'`, resolving only once `ShareDocumentPrompt` is done with, if it had to appear. Log activity **only on `'shared'`**.
+- **`lib/shareDocument.ts`** — the one WhatsApp document-share path, behind every WhatsApp document button — the nine customer-facing ones and the six on Reports (Phase 8). The PDF goes from memory into the phone's share sheet as a real file; the supplier picks WhatsApp, then the customer, then presses Send. **No upload, no download, no link, no `wa.me`** — the user ruled out each. Returns `'shared' | 'cancelled' | 'unsupported'`, resolving only once `ShareDocumentPrompt` is done with, if it had to appear. Log activity **only on `'shared'`**.
 - **`lib/overdue.ts`** — `oldestPendingDays()` / `overdueTextClass()`. Treats anything under ₹1 as settled so rounding on a split payment can't leave a customer looking permanently overdue by 40 paise.
 - **`lib/i18n.ts`** — flat `key → {en, hi, mr}` dictionary with `{placeholder}` interpolation, falling back to English so a missing translation shows readable text rather than a raw key. Add a key here, then use `const { t } = useLanguage()`.
 - **`lib/numberInput.ts`** — `sanitizeDigits` / `sanitizeDecimal`. All numeric fields are `type="text"` with `inputMode`, **not** `type="number"` (native number inputs don't support `.select()` reliably and allowed "05").
