@@ -376,7 +376,7 @@ export default function Materials() {
           />
 
           {catalogLoading ? (
-            <TruckLoader label={t('mat.searching')} />
+            <TruckLoader inline label={t('mat.searching')} />
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {catalog.length === 0 && <p className="text-sm text-muted">{t('mat.catalogNone')}</p>}
