@@ -61,15 +61,11 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
         </div>
         <p className="mt-2.5 text-xs text-sidebar-text">{t('brand.tagline')}</p>
 
-        {/* What BuildSupply is for — a building going up, its materials,
-            the delivery, the bill and the payment — told in the six
-            seconds this screen is up anyway, by the same truck as the rest
-            of the app. It replaced a generated photograph; see SplashStory. */}
-        <SplashStory />
-
         {/* The ring is the loading indicator. It fills to roughly two-thirds
             and keeps turning, rather than resting at a figure that would look
-            stuck on a slow connection. */}
+            stuck on a slow connection. Right under the wordmark, above the
+            story, as the user asked: the supplier's own logo is the first
+            thing to settle in on the screen. */}
         <div className="relative mt-7 h-[130px] w-[130px] shrink-0">
           <svg viewBox="0 0 200 200" className="absolute inset-0 -rotate-90" aria-hidden>
             <defs>
@@ -96,6 +92,12 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
             />
           )}
         </div>
+
+        {/* What BuildSupply is for — a building going up, its materials,
+            the delivery, the bill and the payment — told in the six
+            seconds this screen is up anyway, by the same truck as the rest
+            of the app. It replaced a generated photograph; see SplashStory. */}
+        <SplashStory />
 
         {/* A tipper crossing the screen while the app loads — the same flat,
             side-on shape as the vehicles on the KALYANI signboard, in the
