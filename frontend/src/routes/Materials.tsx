@@ -74,7 +74,11 @@ export default function Materials() {
   useEffect(() => {
     if (searchParams.get('new') === '1') openCreate()
     if (searchParams.get('stock') === '1') setAddStockOpen(true)
-    if (searchParams.get('new') === '1' || searchParams.get('stock') === '1') {
+    // The dashboard's Start-here card lands a new supplier straight in the
+    // catalog: that is where rates and units come filled in, and it already
+    // carries "can't find it? add your own" for everything else.
+    if (searchParams.get('view') === 'catalog') setView('catalog')
+    if (searchParams.get('new') === '1' || searchParams.get('stock') === '1' || searchParams.get('view')) {
       setSearchParams({}, { replace: true })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
