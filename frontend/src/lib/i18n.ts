@@ -68,6 +68,17 @@ const STRINGS = {
   'common.sendWhatsApp': { en: 'Send on WhatsApp', hi: 'व्हाट्सएप पर भेजें', mr: 'व्हॉट्सॲपवर पाठवा' },
   'common.preparing': { en: 'Preparing…', hi: 'तैयार हो रहा है…', mr: 'तयार होत आहे…' },
 
+  // ── Sending a PDF on WhatsApp (shareDocument.ts) ─────────────────────
+  'share.readyTitle': { en: 'Your PDF is ready', hi: 'PDF तैयार है', mr: 'PDF तयार आहे' },
+  'share.readyBody': {
+    en: 'Tap below to open WhatsApp with the message and link ready to send.',
+    hi: 'नीचे दबाएँ — व्हाट्सएप मैसेज और लिंक के साथ खुलेगा, बस भेजना है।',
+    mr: 'खाली दाबा — व्हॉट्सॲप मेसेज आणि लिंकसह उघडेल, फक्त पाठवा.',
+  },
+  'share.openWhatsApp': { en: 'Open WhatsApp', hi: 'व्हाट्सएप खोलें', mr: 'व्हॉट्सॲप उघडा' },
+  // Goes into the customer's message, which is in the supplier's language.
+  'share.receiptLink': { en: 'Receipt (PDF)', hi: 'रसीद (PDF)', mr: 'पावती (PDF)' },
+
   // ── Invoice status ────────────────────────────────────────────────────
   'status.Unpaid': { en: 'Unpaid', hi: 'बाकी', mr: 'बाकी' },
   'status.Partial': { en: 'Partial', hi: 'कुछ जमा', mr: 'काही जमा' },

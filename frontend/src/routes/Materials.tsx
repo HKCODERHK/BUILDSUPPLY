@@ -15,7 +15,7 @@ import { listMaterials, createMaterial, updateMaterial } from '@/services/materi
 import { searchCatalog, type VariantWithLookups } from '@/services/materialCatalog'
 import { summarizeAttributes } from '@/lib/catalogAttributes'
 import { rateListMaterials, rateListPdfFile } from '@/lib/rateListPdf'
-import { shareDocumentOnWhatsApp } from '@/lib/shareDocument'
+import { shareDocumentOnWhatsApp, shareFormat } from '@/lib/shareDocument'
 import { logActivity } from '@/services/activityLog'
 import type { Material } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
@@ -125,7 +125,7 @@ export default function Materials() {
       })
       if (outcome !== 'cancelled') {
         void logActivity('supplier', 'rate_list_shared', {
-          details: { items: list.length, format: outcome === 'shared' ? 'pdf_share' : 'text_fallback' },
+          details: { items: list.length, format: shareFormat(outcome) },
         })
       }
     } finally {

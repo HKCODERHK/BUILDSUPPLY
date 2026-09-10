@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `023`, run in order. **023 is the latest and is applied** (2026-09-08). (There is no `001` file in the repo; the base schema predates the migration folder.)
+- **Schema migrations**: `supabase/migrations/` — `002` through `024`, run in order. **024 is the latest and is applied** (2026-09-11). (There is no `001` file in the repo; the base schema predates the migration folder.)
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -20,11 +20,11 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 - URL: `https://pefarymejlfdsmwusbbq.supabase.co`
 - Dashboard: `https://supabase.com/dashboard/project/pefarymejlfdsmwusbbq`
 - `frontend/.env` already has the real `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` wired up.
-- Dev server: `cd frontend && npm run dev` → `http://localhost:5173`
+- Dev server: `cd frontend && npm run dev` → `http://localhost:5173`. The `frontend-dev` launch config sets `autoPort` — another chat's server often holds 5173, and `vite.config.ts` reads `PORT` for exactly this — and both launch configs set `NODE_OPTIONS=--use-system-ca`, without which the `/d/` proxy answers 502 on this machine (see Note on this machine).
 - Production preview (needed to test the service worker): `npm run build` then the `frontend-preview` config in `.claude/launch.json` → `http://localhost:4173`
 - Running SQL directly: `npx supabase db query --file <path> --project-ref pefarymejlfdsmwusbbq --linked`
 
-**Everything in this app is free.** No Stripe/Razorpay/Twilio, no WhatsApp Business API, no paid libraries — every dependency is MIT-licensed. WhatsApp works through free `wa.me` links and the device share sheet, which means *the supplier always taps send themselves*. Automated/background WhatsApp sending would cost money and is deliberately not built. Don't introduce a paid service without asking.
+**Everything in this app is free.** No Stripe/Razorpay/Twilio, no WhatsApp Business API, no paid libraries — every dependency is MIT-licensed. WhatsApp works through free `wa.me` links and the device share sheet, which means *the supplier always taps send themselves* — and documents travel as a link to a PDF in Supabase Storage (Phase 8), because a free link can't carry a file. Automated/background WhatsApp sending would cost money and is deliberately not built. Don't introduce a paid service without asking.
 
 ## Accounts
 
@@ -85,7 +85,7 @@ user to sign in first and leave the tab open.
 |---|---|---|
 | **Repeat last bill** | Customer profile → `/invoices/new?customer=<id>&repeat=1` | Prefills quantities, rates, site, GST and transport from the last non-cancelled bill |
 | **Last rate memory** | New Invoice line rows | Tappable chip "Last ₹8,000 · 30 Aug"; **hides when it matches the current rate** (nothing to add); excludes cancelled bills |
-| **Payment receipt on WhatsApp** | Customer profile + Payments | "Received ₹5,000 by UPI on 31 Aug 2026. Balance now ₹12,300. Thank you." |
+| **Payment receipt on WhatsApp** | Customer profile + Payments | "Received ₹5,000 by UPI on 31 Aug 2026. Balance now ₹12,300. Thank you." Since Phase 8 it carries a receipt PDF (`lib/receiptPdf.ts`) naming the bills the money cleared |
 | **Overdue age** | Customers, Customer profile, Reminders | Derived from invoice dates — no due-date field. Muted <30d, amber 30–59d, red ≥60d. Reminders sorts **oldest first** |
 | **Rate list share** | Materials & Stock | PDF on the supplier's letterhead; only priced items; **deliberately shows no stock quantities** — it goes to customers |
 | **Udhaar limit** | `customers.credit_limit` (migration 018) | Warns while billing, **never blocks**. Null for almost everyone |
@@ -134,6 +134,63 @@ PDF-only), and delete animations (bills are cancelled, which is already
 confirmed and PIN-gated). Feedback belongs only where it confirms something
 that just happened, on a screen that was appearing anyway.
 
+**Phase 8 — every WhatsApp button sends a PDF, straight to the customer's chat
+(2026-09-11).** The user asked that any WhatsApp share go directly to the
+customer's own number and always be a PDF. **A free web app cannot do both in
+one tap:** the share sheet attaches a real file but WhatsApp always asks who to
+send it to, and a `wa.me` link opens the right chat but carries only text. Only
+the paid Business API or a native Android app can do both. Offered three ways —
+direct chat + PDF link, real attachment + pick the contact, direct chat +
+attach by hand — **the user chose direct chat + PDF link.**
+
+- **How it works** (`lib/shareDocument.ts`): the PDF is uploaded to the
+  `documents` bucket at `<supplier id>/<32 random hex>/<file>.pdf`, then
+  `wa.me/<customer>` opens with the message and `Bill (PDF): https://buildsupplyin.vercel.app/d/…`.
+  The supplier taps Send, as always.
+- **It falls back rather than fails.** If the upload fails (almost always no
+  signal) the file itself goes through the share sheet — WhatsApp queues it
+  offline — or, with no share sheet, is downloaded and the same customer's chat
+  opened. With no phone number (the rate list) it never uploads. Either way a
+  PDF goes.
+- **All nine customer-facing buttons** use it: bill page, bills list, estimate
+  page, estimates list, Reminders, customer page → Remind (now the full
+  statement, the same one Reminders sends), both payment receipts (new
+  `lib/receiptPdf.ts`), and the rate list. The admin↔supplier WhatsApp buttons
+  (renewal, login details, chasing a supplier) stay text: they are messages,
+  not documents, and a password in a hosted PDF would be worse than one in a chat.
+- **A slow upload can outlast the tap.** A tap only lets a page open a window
+  for a few seconds; past that the browser silently blocks WhatsApp and Send
+  looks dead. `openWhatsAppShare` checks `navigator.userActivation.isActive`
+  and, once it has lapsed, hands the link to `components/WhatsAppReadyPrompt.tsx`
+  (mounted once in AppShell): "Your PDF is ready — Open WhatsApp", a fresh tap.
+  It passes `captureBack={false}` because it usually opens over the payment
+  dialog, and two stacked dialogs both listening for back close together.
+- **The bucket (migration 024)** is public so the customer needs no account,
+  and has **no select policy, so nobody can list it** — a document is reachable
+  only by its exact path. PDF-only, 5 MB, insert-only, own folder only. The
+  MIME restriction matters more than it looks: `/d/` is served from the app's
+  own origin, so an HTML file there would run as a page on
+  `buildsupplyin.vercel.app` with the supplier's session in reach.
+- **Links go through `/d/`** on the app's own domain, proxied to
+  `…/storage/v1/object/public/documents/` by `vercel.json`, `_redirects`
+  (Netlify; Cloudflare Pages cannot proxy off-site), and Vite's
+  `server.proxy`/`preview.proxy`. The Vite key is `'/d/'` with the slash —
+  Vite matches by prefix, and `'/d'` would swallow `/dashboard`.
+- **Verified 2026-09-11 without signing in:** bucket and policy live; RLS
+  simulation — own-folder insert 1 row, the admin's folder refused with 42501;
+  anonymous upload refused; anonymous list of the root and a folder `[]`, a
+  signed-in supplier sees 0 objects; a `text/html` upload refused with 415; a
+  PDF fetched through `/d/` on the dev server and the production preview comes
+  back byte-identical as `application/pdf`, and `/dashboard` still serves the
+  app; with the service worker controlling the page a `/d/` fetch is not cached
+  and the shell stays `text/html`; the real `shareDocument.ts` driven with
+  storage stubbed — `09822012345` → `wa.me/919822012345` with the link, expired
+  tap → prompt, failed upload → the same chat, no phone → no upload; the prompt
+  rendered and its button opened WhatsApp; the receipt PDF was generated and read.
+- **Not yet verified:** a real upload from a signed-in supplier, and the link
+  opening on a real phone through the live Vercel rewrite. Sign in as Shree
+  Balaji and send one bill to your own number.
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.
@@ -164,12 +221,12 @@ A 4-digit PIN asked before irreversible actions, for both roles. **It is a confi
 ## Architecture notes that matter
 
 ### Shared modules — change behaviour here, not in each caller
-- **`lib/pdfTheme.ts`** — every PDF's colours, money/date formatting, table styling, logo+business header, FROM/TO block and page footer. `invoicePdf.ts`, `quotationPdf.ts`, `customerLedgerPdf.ts`, `reportPdf.ts` and `rateListPdf.ts` all draw from it.
-- **`lib/shareDocument.ts`** — the one WhatsApp document-share path. Native share sheet where available (a real PDF attachment), otherwise download + `wa.me` with the message pre-filled. Returns `'shared' | 'cancelled' | 'fallback'`; **don't log activity on `'cancelled'`** — the supplier backed out.
+- **`lib/pdfTheme.ts`** — every PDF's colours, money/date formatting, table styling, logo+business header, FROM/TO block and page footer. `invoicePdf.ts`, `quotationPdf.ts`, `customerLedgerPdf.ts`, `reportPdf.ts`, `rateListPdf.ts` and `receiptPdf.ts` all draw from it.
+- **`lib/shareDocument.ts`** — the one WhatsApp document-share path, behind every customer-facing WhatsApp button. With a phone number it uploads the PDF to the `documents` bucket and opens that customer's own chat with the message and a `/d/` link (Phase 8). With no number, or when the upload fails, it sends the file itself through the share sheet, else downloads it and opens `wa.me`. Returns `'link' | 'shared' | 'cancelled' | 'fallback'`; log it with `shareFormat(outcome)`, and **don't log activity on `'cancelled'`** — the supplier backed out.
 - **`lib/overdue.ts`** — `oldestPendingDays()` / `overdueTextClass()`. Treats anything under ₹1 as settled so rounding on a split payment can't leave a customer looking permanently overdue by 40 paise.
 - **`lib/i18n.ts`** — flat `key → {en, hi, mr}` dictionary with `{placeholder}` interpolation, falling back to English so a missing translation shows readable text rather than a raw key. Add a key here, then use `const { t } = useLanguage()`.
 - **`lib/numberInput.ts`** — `sanitizeDigits` / `sanitizeDecimal`. All numeric fields are `type="text"` with `inputMode`, **not** `type="number"` (native number inputs don't support `.select()` reliably and allowed "05").
-- **`lib/whatsapp.ts`** — `openWhatsAppShare` and `normalizeWhatsAppNumber`, the single builder behind **all 24** WhatsApp call sites (`shareDocument.ts` routes through it too). wa.me needs a full international number with no `+`, no separators and **no leading zero**, and it answers anything it can't resolve with "phone number shared via url is invalid" — which looks to the supplier like the Send button is broken. Leading zeros are India's STD trunk prefix and are stripped; a bare 10-digit number gets `91`; 11–15 digits pass through untouched so an overseas number isn't mangled. **Not one phone number in the live database carries a country code**, so removing this breaks every WhatsApp button in the app at once.
+- **`lib/whatsapp.ts`** — `openWhatsAppShare` and `normalizeWhatsAppNumber`, the single builder behind every `wa.me` link in the app (`shareDocument.ts` routes through it too). When the tap that started a share has expired it hands the link to `WhatsAppReadyPrompt` instead of opening it — see Phase 8. wa.me needs a full international number with no `+`, no separators and **no leading zero**, and it answers anything it can't resolve with "phone number shared via url is invalid" — which looks to the supplier like the Send button is broken. Leading zeros are India's STD trunk prefix and are stripped; a bare 10-digit number gets `91`; 11–15 digits pass through untouched so an overseas number isn't mangled. **Not one phone number in the live database carries a country code**, so removing this breaks every WhatsApp button in the app at once.
 - **`lib/localDate.ts`** — `localDateKey(iso)`, the calendar day a UTC timestamp falls on **in the phone's own timezone**, as `YYYY-MM-DD`. Every `created_at` is UTC but a supplier picking dates in an `<input type="date">` is thinking in IST, and India is UTC+5:30 — so slicing the first ten characters off the raw ISO string files anything recorded between midnight and 5:30am under the previous day. Used by `customerLedger.ts` and `Reports.tsx`; the Dashboard's "today" card has always used the same rule inline. **Never compare a raw `created_at.slice(0, 10)` against a date input.**
 - **`components/AddCustomerModal.tsx`** — one customer form shared by Customers, New Invoice and New Quotation so validation can't drift.
 - **`lib/drafts.ts`** — unfinished *new* bills and estimates, kept on the phone (localStorage `buildsupply-draft:<kind>:<supplierId>`, never the server). Written 400ms after each change **and at once on `visibilitychange`→hidden and `pagehide`**, because going into the background is exactly when Android kills the app. Offered back by a prompt on New Invoice / New Quotation and by a banner on the dashboard — where a killed app reopens — whose `?draft=1` restores without asking twice. Cleared the moment the bill exists (right after `createInvoice`, **before** `recordPayment`, so a failed payment can't leave a draft to be saved a second time), on Discard, and on Leave in the unsaved-work guard. Ignored after 3 days. Edit mode doesn't use it; it has the saved bill to fall back on.
@@ -185,7 +242,7 @@ A 4-digit PIN asked before irreversible actions, for both roles. **It is a confi
 - `updateInvoice()` **refuses** to make a total lower than what's already been paid, rather than silently deleting payments. Cancel the bill instead.
 
 ### Language and documents
-**Bills, statements, estimates and rate lists stay in English even when the app is in Hindi or Marathi.** A bill goes to customers, engineers and banks who may not read Devanagari, and a supplier changing their own app language must not change what the customer receives. There's a note saying so in Settings. Don't translate `pdfTheme.ts` or the PDF builders.
+**Bills, statements, estimates, receipts and rate lists stay in English even when the app is in Hindi or Marathi.** (The WhatsApp message carrying a receipt follows the app language, as it always has; the PDF does not.) A bill goes to customers, engineers and banks who may not read Devanagari, and a supplier changing their own app language must not change what the customer receives. There's a note saying so in Settings. Don't translate `pdfTheme.ts` or the PDF builders.
 
 ### RLS and the admin boundary
 `dashboard_totals` and `customer_balances` are views with **`security_invoker = true`** (verified live). A `create or replace view` on either **silently drops this option** and every supplier can then read every other supplier's totals — this actually happened in migration 016 and had to be fixed by 017. If you touch these views, re-assert `alter view ... set (security_invoker = true)` and verify.
@@ -257,6 +314,7 @@ prove the rollback held.
 - The service worker registers **only in a production build** (`import.meta.env.PROD`) — a worker caching Vite's dev modules would fight HMR. To test it: `npm run build`, then the `frontend-preview` launch config.
 - **`public/sw.js` must look things up with `cache.match(req, { ignoreVary: true })`.** Static hosts (Vite preview, Netlify, Vercel, Cloudflare) send `Vary: Origin` on assets, and the Cache API honours Vary — without `ignoreVary` the worker misses entries it stored moments earlier, falls through to the network, and fails offline, which is the one moment the cache existed for. This was a real bug, caught only by inspecting the live cache. Bump `CACHE` (currently `buildsupply-v3`) to force clients to drop old entries; `activate` deletes every cache that isn't the current name, which also clears assets left by previous builds.
 - **The navigation branch of `sw.js` only caches a response when `response.ok && response.type === 'basic'`.** Navigations are network-first so a deploy is picked up immediately, and the response is stored as the offline shell — so without that check a host 404 (from a missing SPA rewrite), a 500, or a cafe wifi sign-in page becomes the shell the app shows every time it opens offline, and keeps being served long after the network returns. Verified end to end: with the preview server **stopped**, a reload of `/dashboard` still boots from cache and renders.
+- **`sw.js` returns early for `/d/`, before either branch — keep it first.** Those are customers' PDFs (Phase 8). A supplier tapping their own link in WhatsApp opens it inside the installed app, and a PDF comes back same-origin and `ok`, which is all the navigation branch checks — it would become the offline shell. Verified on the production preview: a `/d/` fetch under a controlling worker is not cached and `/index.html` stays `text/html`.
 - **Safe-area insets.** `index.html` asks for `viewport-fit=cover`, which deliberately opts *into* drawing under the status bar and the home indicator, so anything pinned to a screen edge must keep that strip clear itself. `index.css` defines `--safe-top` / `--safe-bottom` from `env(safe-area-inset-*)` with a `0px` fallback, and four places in `AppShell.tsx` spend them: the mobile header's top padding, the fixed tab bar's bottom padding, **the content wrapper that reserves the tab bar's height** (the bar is taller on a notched phone, so the reservation has to match), and the "more" sheet. Only top and bottom exist — the manifest pins the installed app to `portrait`, so the notch is never on a side. Measured at 375×812: with no insets the padding is unchanged (12px / 64px / 0px); with an iPhone 14 Pro's 59px and 34px it becomes 71px / 98px / 34px and content still clears the bar.
 - **The Android navigation bar cannot be coloured from this app. Do not try again.** The strip under the tab bar looking dark against a light theme is the single most-reported thing about this app's appearance, and it took four attempts to settle because it can only be answered from a real installed phone. Measured there on 2026-09-09, with a temporary `?debug=insets` probe:
   ```
@@ -294,6 +352,8 @@ prove the rollback held.
 - **Rendering a real component without signing in**: import it through the Vite dev graph from the login page — `await import('/src/components/X.tsx')` — with React from `/node_modules/.vite/deps/react.js?v=<hash>` and `react-dom_client.js` (the hash is in `performance.getEntriesByType('resource')`). Pre-bundled deps export under **`default`**. Import `LanguageProvider` from the exact `LanguageContext.tsx?t=…` URL the page loaded, or the component reads a different context instance and throws. Unmount afterwards: a fixed overlay left in `body` covers the sign-in form.
 - **Proving a save without writing to the database**: wrap `window.fetch` so every non-GET `/rest/v1/` request gets a plausible success and reads pass through. Drafts-clear-on-save and the success ticks were verified that way, with zero test rows created.
 - **Headless Edge won't lay out narrower than about 500px**, so a "360px" headless screenshot is cropped, not narrow. Use the Browser pane's `resize_window` for phone widths.
+- **`supabase storage cp` needs a relative local path.** Given `C:\…` it reads the drive letter as a remote scheme and fails with "Unsupported operation … copy between local directories", from PowerShell and Git Bash alike. Use a path relative to the project root, and `MSYS_NO_PATHCONV=1` in Git Bash so `ss:///bucket/…` is left alone.
+- **Proving an upload path without a session**: import `/src/lib/supabase.ts` through the dev graph and replace `supabase.auth.getSession` and `supabase.storage.from` on that same object — `shareDocument.ts` imports the identical module instance — then stub `window.open`. That is how every branch of Phase 8 was driven with nothing written.
 
 ## Working conventions established in this project
 
@@ -315,7 +375,7 @@ prove the rollback held.
     git log --all --format='%h %(trailers:key=Co-authored-by,valueonly)' | grep -i claude
     ```
     The second command must print nothing.
-- Always type-check (`npx tsc -b` in `frontend/`) and run a full `npm run build` after changes, before calling something done. `npm run lint` should stay at **0 errors** (14 pre-existing warnings as of 2026-09-10, none of them in that day's files). oxlint prints no summary line; count with `npm run lint 2>&1 | grep -c ': warning'`.
+- Always type-check (`npx tsc -b` in `frontend/`) and run a full `npm run build` after changes, before calling something done. `npm run lint` should stay at **0 errors** (14 pre-existing warnings as of 2026-09-11, none of them on lines that day's work touched). oxlint prints no summary line; count with `npm run lint 2>&1 | grep -c ': warning'`.
 - **Don't claim a feature "works" without testing it live** — sign in, click through, query the database. This project has caught multiple real bugs that only surfaced this way and never in code review: a tenant data leak from a dropped `security_invoker`, silent error-swallowing, session races, a receipt quoting a stale balance, a transiently inflated stock count.
 - **Restore any test data you change.** Back-dating an invoice or recording a ₹1 payment to prove a feature is fine — put it back exactly, and verify the restore with a query.
 - Large/complex SQL (anything with `$$` PL/pgSQL blocks) should be pasted manually into the Supabase SQL editor by the user, to avoid editor auto-bracket-closing corruption. Short single-statement SQL is fine to run via the CLI.
@@ -341,6 +401,16 @@ RLS holds from outside with the publishable key that ships in the bundle.
 `"comment"` key failed project creation outright with "should NOT have
 additional property". JSON has no comment syntax; explain the file here rather
 than in it.
+
+So, what `vercel.json` does beyond the SPA rewrite: **`/d/:path*` is proxied
+to the `documents` storage bucket** (Phase 8), and it must stay *above* the
+`/(.*)` catch-all — rewrites match in order, and below it every customer's
+bill link would open the app's login page instead. The project ref is written
+out in full because the file cannot read env; it is public anyway, in the
+bundle. `/d/(.*)` also gets `X-Content-Type-Options: nosniff` and
+`X-Robots-Tag: noindex`, so a bill is only ever a PDF and never lands in a
+search engine that stumbles on a link. `_redirects` and `_headers` carry the
+same for Netlify.
 
 **Hobby is a non-commercial plan.** Once this serves paying suppliers, Vercel's
 terms expect Pro.
@@ -432,3 +502,6 @@ store where Avast's CA lives. Never `NODE_TLS_REJECT_UNAUTHORIZED=0`.
 - **iOS evicts `localStorage`** after extended non-use, which silently signs the supplier out. Expected, not a bug.
 - Contrast: the white-on-green primary button measures **4.41** against WCAG AA's 4.5. Darkening `--color-accent` (#198a45 → #147a3a) would fix it, but it is a brand decision and was left to the user.
 - `components/ui/modal.tsx` has no `role="dialog"`, `aria-modal` or focus trap.
+- **Shared PDFs accumulate in Storage.** About 8 kB for a receipt without a logo, more with one, against the free tier's 1 GB. Nothing deletes them, and deleting a supplier does not remove their `documents/<id>/` folder (nor their logo) — the Edge Function never touches Storage.
+- **A document link is a bearer link.** Anyone the customer forwards the message to can open that bill — exactly as if they had forwarded the PDF itself.
+- **Links made on a Vercel preview deployment point at the preview's domain**, which sits behind Vercel SSO, so a customer cannot open them. Test a preview by sending to your own number.

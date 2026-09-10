@@ -119,7 +119,14 @@ export function drawDocumentHeader(
 export function drawParties(
   doc: jsPDF,
   y: number,
-  opts: { supplier: Supplier; customer: Customer | null; toLabel?: string; site?: string | null },
+  opts: {
+    supplier: Supplier
+    // Only what the block prints, so a receipt can pass the name, address and
+    // phone it captured without fetching a whole customer row.
+    customer: Pick<Customer, 'name' | 'address' | 'phone'> | null
+    toLabel?: string
+    site?: string | null
+  },
 ): number {
   const pageWidth = doc.internal.pageSize.getWidth()
 

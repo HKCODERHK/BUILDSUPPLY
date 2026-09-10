@@ -10,7 +10,11 @@
         "run",
         "dev"
       ],
-      "port": 5173
+      "port": 5173,
+      "autoPort": true,
+      "env": {
+        "NODE_OPTIONS": "--use-system-ca"
+      }
     },
     {
       "name": "frontend-preview",
@@ -25,7 +29,10 @@
         "4173",
         "--host"
       ],
-      "port": 4173
+      "port": 4173,
+      "env": {
+        "NODE_OPTIONS": "--use-system-ca"
+      }
     }
   ]
 }

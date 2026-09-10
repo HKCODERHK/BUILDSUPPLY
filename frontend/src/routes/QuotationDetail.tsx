@@ -12,8 +12,7 @@ import { getQuotation, listQuotationItems, markQuotationConverted, markQuotation
 import { getCustomer } from '@/services/customers'
 import { createInvoice, markInvoiceDelivered } from '@/services/invoices'
 import { downloadQuotationPdf, printQuotationPdf, quotationPdfFile } from '@/lib/quotationPdf'
-import { openWhatsAppShare } from '@/lib/whatsapp'
-import { downloadFile } from '@/lib/downloadFile'
+import { shareDocumentOnWhatsApp, shareFormat } from '@/lib/shareDocument'
 import { logActivity } from '@/services/activityLog'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -69,29 +68,24 @@ export default function QuotationDetail() {
   const message = `Hi ${customer?.name ?? ''}, here is your estimate ${quotation.quote_no} for ${formatINR(quotation.total)}. Let us know if you'd like to proceed.`
   const canConvert = quotation.status === 'Draft' || quotation.status === 'Sent'
 
-  // Same native-share-first, text-fallback pattern as InvoiceDetail — see
-  // that file for why: free WhatsApp links can't attach files on their own.
+  // Sent the same way as a bill — the customer's own chat, with the estimate
+  // as a PDF link. See shareDocument.
   async function shareOnWhatsApp() {
     if (!quotation || !supplier) return
     setSharing(true)
     try {
       const file = await quotationPdfFile(supplier, customer, quotation, items)
-      if (navigator.canShare?.({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file], text: message, title: quotation.quote_no })
-          void logActivity('supplier', 'quotation_shared', { details: { quote_no: quotation.quote_no, format: 'pdf_share' } })
-          if (quotation.status === 'Draft') {
-            await markQuotationSent(quotation.id)
-            await refresh()
-          }
-          return
-        } catch (err) {
-          if ((err as Error).name === 'AbortError') return
-        }
-      }
-      downloadFile(file)
-      openWhatsAppShare(customer?.phone, message)
-      void logActivity('supplier', 'quotation_shared', { details: { quote_no: quotation.quote_no, format: 'text_fallback' } })
+      const outcome = await shareDocumentOnWhatsApp({
+        file,
+        message,
+        title: quotation.quote_no,
+        phone: customer?.phone,
+        linkLabel: 'Estimate (PDF)',
+      })
+      if (outcome === 'cancelled') return
+      void logActivity('supplier', 'quotation_shared', {
+        details: { quote_no: quotation.quote_no, format: shareFormat(outcome) },
+      })
       if (quotation.status === 'Draft') {
         await markQuotationSent(quotation.id)
         await refresh()
