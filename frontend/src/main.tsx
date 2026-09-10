@@ -2,12 +2,16 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { dismissKeyboardOnScroll } from './lib/dismissKeyboardOnScroll'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
   </StrictMode>,
 )
+
+// Scrolling puts the phone's keyboard away, on every screen.
+dismissKeyboardOnScroll()
 
 // Registers the service worker that makes BuildSupply installable and lets it
 // open on a weak shop connection (see public/sw.js). Only in a real build —
