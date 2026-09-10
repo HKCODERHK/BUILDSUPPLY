@@ -839,6 +839,24 @@ const STRINGS = {
   'start.and': { en: 'and', hi: 'और', mr: 'आणि' },
   'start.skip': { en: 'Skip for now', hi: 'अभी के लिए छोड़ें', mr: 'सध्या वगळा' },
 
+  // ── Unfinished bills and estimates (lib/drafts.ts) ────────────────────
+  'draft.billTitle': { en: 'Unsaved bill found', hi: 'अधूरा बिल मिला', mr: 'अपूर्ण बिल सापडले' },
+  'draft.estimateTitle': { en: 'Unsaved estimate found', hi: 'अधूरा कोटेशन मिला', mr: 'अपूर्ण कोटेशन सापडले' },
+  'draft.ask': {
+    en: 'This was not saved. Continue where you left off?',
+    hi: 'यह सेव नहीं हुआ था। जहाँ छोड़ा था वहीं से जारी रखें?',
+    mr: 'हे सेव्ह झाले नव्हते. जिथे सोडले तिथून पुढे चालू ठेवायचे?',
+  },
+  'draft.savedAt': { en: 'Last changed {when}', hi: 'आखिरी बदलाव {when}', mr: 'शेवटचा बदल {when}' },
+  'draft.continue': { en: 'Continue', hi: 'जारी रखें', mr: 'पुढे चालू ठेवा' },
+  'draft.discard': { en: 'Discard', hi: 'हटा दें', mr: 'काढून टाका' },
+  'draft.noCustomer': { en: 'No customer picked', hi: 'ग्राहक नहीं चुना', mr: 'ग्राहक निवडला नाही' },
+  'draft.itemOne': { en: '1 item', hi: '1 माल', mr: '1 माल' },
+  'draft.itemMany': { en: '{count} items', hi: '{count} माल', mr: '{count} माल' },
+  'draft.bannerBill': { en: 'Unsaved bill', hi: 'अधूरा बिल', mr: 'अपूर्ण बिल' },
+  'draft.bannerEstimate': { en: 'Unsaved estimate', hi: 'अधूरा कोटेशन', mr: 'अपूर्ण कोटेशन' },
+  'draft.continueArrow': { en: 'Continue →', hi: 'जारी रखें →', mr: 'पुढे चला →' },
+
   // ── Errors ────────────────────────────────────────────────────────────
   // These were hardcoded English on supplier screens, so a supplier working
   // in Hindi hit an English wall the moment anything went wrong.

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Trash2, Plus } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AddCustomerModal } from '@/components/AddCustomerModal'
 import { UnsavedChangesGuard } from '@/components/UnsavedChangesGuard'
+import { DraftPrompt } from '@/components/Drafts'
+import { clearDraft, readDraft, useDraftAutosave, type BillDraft, type SavedDraft } from '@/lib/drafts'
 import { listCustomers } from '@/services/customers'
 import { listMaterials } from '@/services/materials'
 import { createQuotation } from '@/services/quotations'
@@ -45,6 +47,12 @@ export default function NewQuotation() {
   const [saved, setSaved] = useState(false)
   const savingRef = useRef(false)
   const [addCustomerOpen, setAddCustomerOpen] = useState(false)
+  const [searchParams] = useSearchParams()
+  // Until the lists arrive there is nothing to back up, and a draft could not
+  // yet be matched to its customer or materials.
+  const [loaded, setLoaded] = useState(false)
+  // An estimate left unfinished last time, waiting on Continue or Discard.
+  const [pendingDraft, setPendingDraft] = useState<SavedDraft | null>(null)
 
   useEffect(() => {
     Promise.all([listCustomers(), listMaterials(), listInvoices()]).then(([c, m, inv]) => {
@@ -55,7 +63,15 @@ export default function NewQuotation() {
           new Set([...inv.map((i) => i.site), ...c.map((x) => x.site)].filter((s): s is string => !!s)),
         ).sort(),
       )
+      // An estimate left unfinished last time — see NewInvoice.
+      const draft = supplier ? readDraft(supplier.id, 'quotation') : null
+      if (draft) {
+        if (searchParams.get('draft') === '1') applyDraft(draft, m, c)
+        else setPendingDraft(draft)
+      }
+      setLoaded(true)
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Picking a customer pre-fills their usual site; it stays editable so one
@@ -66,6 +82,23 @@ export default function NewQuotation() {
       setGstApplicable(!!supplier.gst_number?.trim())
     }
   }, [supplier])
+
+  /** Puts a stored draft back into the form; see NewInvoice. */
+  function applyDraft(d: BillDraft, materialList: Material[], customerList: Customer[]) {
+    const known = new Set(materialList.map((mat) => mat.id))
+    setCustomerId(customerList.some((cust) => cust.id === d.customerId) ? d.customerId : '')
+    setSite(d.site)
+    setItems(
+      d.items.map((it) => ({
+        ...it,
+        material_id: it.material_id && known.has(it.material_id) ? it.material_id : null,
+        key: crypto.randomUUID(),
+      })),
+    )
+    gstDefaulted.current = true
+    setGstApplicable(d.gstApplicable)
+    setTransportLabour(d.transportLabour)
+  }
 
   function pickCustomer(id: string) {
     setCustomerId(id)
@@ -102,6 +135,20 @@ export default function NewQuotation() {
   const transportLabourAmount = Number(transportLabour) || 0
   const total = subtotal + gst + transportLabourAmount
 
+  const draftSnapshot: BillDraft | null =
+    !saved && items.length > 0
+      ? {
+          customerId,
+          customerName: customers.find((cust) => cust.id === customerId)?.name ?? '',
+          site,
+          items: items.map(({ material_id, description, qty, rate }) => ({ material_id, description, qty, rate })),
+          gstApplicable,
+          transportLabour,
+          total,
+        }
+      : null
+  useDraftAutosave(supplier?.id, 'quotation', draftSnapshot, loaded && !pendingDraft)
+
   async function handleSave() {
     if (!supplier || !customerId || items.length === 0 || savingRef.current) return
     savingRef.current = true
@@ -114,6 +161,7 @@ export default function NewQuotation() {
         gstApplicable,
         transportLabourCharge: transportLabourAmount,
       })
+      clearDraft(supplier.id, 'quotation')
       setSaved(true)
       navigate(`/quotations/${quotation.id}`)
     } finally {
@@ -287,7 +335,27 @@ export default function NewQuotation() {
         </Button>
       </div>
 
-      <UnsavedChangesGuard when={!saved && items.length > 0} message={t('unsaved.estimate')} />
+      {/* Leaving on purpose abandons the estimate, so it is not offered back. */}
+      <UnsavedChangesGuard
+        when={!saved && items.length > 0}
+        message={t('unsaved.estimate')}
+        onLeave={supplier ? () => clearDraft(supplier.id, 'quotation') : undefined}
+      />
+
+      {pendingDraft && (
+        <DraftPrompt
+          kind="quotation"
+          draft={pendingDraft}
+          onContinue={() => {
+            applyDraft(pendingDraft, materials, customers)
+            setPendingDraft(null)
+          }}
+          onDiscard={() => {
+            if (supplier) clearDraft(supplier.id, 'quotation')
+            setPendingDraft(null)
+          }}
+        />
+      )}
 
       {addCustomerOpen && supplier && (
         <AddCustomerModal

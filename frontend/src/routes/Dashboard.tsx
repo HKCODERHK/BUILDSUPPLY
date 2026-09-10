@@ -14,6 +14,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import type { TranslationKey } from '@/lib/i18n'
 import { AdminDashboardView } from '@/routes/admin/AdminDashboardView'
 import { StartHereCard } from '@/components/StartHereCard'
+import { DraftBanners } from '@/components/Drafts'
 
 // Jump straight into the create flow for each — no extra click on the
 // destination page. Customers/Payments/Stock read `?new=1` to auto-open
@@ -163,6 +164,11 @@ function SupplierDashboardView() {
           <p className="mt-0.5 text-sm text-muted">{t(showStart ? 'dash.subtitleNew' : 'dash.subtitle')}</p>
         </div>
       </div>
+
+      {/* An unfinished bill or estimate — most often because the phone closed
+          the app. First on the screen, because the app reopens here rather
+          than where the supplier left off. */}
+      <DraftBanners />
 
       {/* Hidden while the card is up: before a first bill, Payment and Stock
           open modals whose only dropdown is empty, and Bill opens a bill with

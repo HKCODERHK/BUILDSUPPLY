@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label'
 import { Modal } from '@/components/ui/modal'
 import { AddCustomerModal } from '@/components/AddCustomerModal'
 import { UnsavedChangesGuard } from '@/components/UnsavedChangesGuard'
+import { DraftPrompt } from '@/components/Drafts'
+import { clearDraft, readDraft, useDraftAutosave, type BillDraft, type SavedDraft } from '@/lib/drafts'
 import { listCustomers, listCustomerBalances } from '@/services/customers'
 import { listMaterials } from '@/services/materials'
 import {
@@ -144,6 +146,8 @@ export default function NewInvoice() {
   const [deliveryPrompt, setDeliveryPrompt] = useState<{ id: string; invoice_no: string } | null>(null)
   const [confirmingDelivery, setConfirmingDelivery] = useState(false)
   const [addCustomerOpen, setAddCustomerOpen] = useState(false)
+  // A bill left unfinished last time, waiting on Continue or Discard.
+  const [pendingDraft, setPendingDraft] = useState<SavedDraft | null>(null)
 
   useEffect(() => {
     let active = true
@@ -214,6 +218,16 @@ export default function NewInvoice() {
         if (!repeat) setSite(customerList.find((c) => c.id === preselect)?.site ?? '')
       }
       setItems(buildLineItems(materialList, source))
+
+      // A bill left unfinished last time — the app closed under it, or the
+      // supplier was pulled away. Straight back in when they tapped Continue
+      // on the dashboard; otherwise ask, since they may have come here to
+      // start a different bill.
+      const draft = supplier ? readDraft(supplier.id, 'invoice') : null
+      if (draft) {
+        if (searchParams.get('draft') === '1') applyDraft(draft, materialList, customerList)
+        else setPendingDraft(draft)
+      }
       setLoading(false)
     }
     load()
@@ -246,6 +260,26 @@ export default function NewInvoice() {
       active = false
     }
   }, [customerId])
+
+  /** Puts a stored draft back into the form. A line whose material has since
+   *  been deleted comes back as a plain custom line — kept, but no longer tied
+   *  to a material that would fail to save. */
+  function applyDraft(d: BillDraft, materialList: Material[], customerList: Customer[]) {
+    const known = new Set(materialList.map((m) => m.id))
+    setCustomerId(customerList.some((c) => c.id === d.customerId) ? d.customerId : '')
+    setSite(d.site)
+    setItems(
+      buildLineItems(
+        materialList,
+        d.items.map((it) => ({ ...it, material_id: it.material_id && known.has(it.material_id) ? it.material_id : null })),
+      ),
+    )
+    gstDefaulted.current = true
+    setGstApplicable(d.gstApplicable)
+    setTransportLabour(d.transportLabour)
+    setPaidNow(d.paidNow ?? '')
+    setPaidMode(d.paidMode ?? 'Cash')
+  }
 
   // Picking a customer pre-fills their usual site; the supplier can type a
   // different one for this bill (a contractor runs several sites at once).
@@ -306,6 +340,25 @@ export default function NewInvoice() {
   const hasUnsavedWork =
     !saved && (isEdit ? baselineRef.current !== null && signature !== baselineRef.current : billedItems.length > 0)
 
+  // What is kept on the phone while a new bill is being written — see
+  // lib/drafts.ts. Only the lines actually on the bill; the untouched preset
+  // rows rebuild themselves from the material list.
+  const draftSnapshot: BillDraft | null =
+    !isEdit && !saved && billedItems.length > 0
+      ? {
+          customerId,
+          customerName: selectedCustomer?.name ?? '',
+          site,
+          items: billedItems.map(({ material_id, description, qty, rate }) => ({ material_id, description, qty, rate })),
+          gstApplicable,
+          transportLabour,
+          total,
+          paidNow,
+          paidMode,
+        }
+      : null
+  useDraftAutosave(supplier?.id, 'invoice', draftSnapshot, !isEdit && !loading && !pendingDraft)
+
   // Udhaar limit check. In edit mode the bill's current balance is already
   // inside `pending`, so it comes out before the new one goes in — otherwise
   // editing a bill would look like doubling the customer's outstanding.
@@ -359,6 +412,9 @@ export default function NewInvoice() {
         gstApplicable,
         transportLabourCharge: transportLabourAmount,
       })
+      // The bill exists from here on, whatever happens to the payment below,
+      // so its draft must not survive to be offered back and saved twice.
+      clearDraft(supplier.id, 'invoice')
       if (paidNowAmount > 0) {
         await recordPayment(supplier.id, invoice.id, [{ amount: paidNowAmount, mode: paidMode }])
       }
@@ -730,7 +786,27 @@ export default function NewInvoice() {
         </Button>
       </div>
 
-      <UnsavedChangesGuard when={hasUnsavedWork} message={t('unsaved.bill')} />
+      {/* Leaving on purpose abandons the bill, so it is not offered back. */}
+      <UnsavedChangesGuard
+        when={hasUnsavedWork}
+        message={t('unsaved.bill')}
+        onLeave={!isEdit && supplier ? () => clearDraft(supplier.id, 'invoice') : undefined}
+      />
+
+      {pendingDraft && (
+        <DraftPrompt
+          kind="invoice"
+          draft={pendingDraft}
+          onContinue={() => {
+            applyDraft(pendingDraft, materials, customers)
+            setPendingDraft(null)
+          }}
+          onDiscard={() => {
+            if (supplier) clearDraft(supplier.id, 'invoice')
+            setPendingDraft(null)
+          }}
+        />
+      )}
 
       {addCustomerOpen && supplier && (
         <AddCustomerModal
