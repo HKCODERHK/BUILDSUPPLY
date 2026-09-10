@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { EmptyState } from '@/components/EmptyState'
+import { SuccessHeader } from '@/components/SuccessTick'
 import { listPayments, recordPayment, type PaymentWithInvoice } from '@/services/payments'
 import { listInvoices, type InvoiceWithCustomer } from '@/services/invoices'
 import { openWhatsAppShare } from '@/lib/whatsapp'
@@ -230,10 +231,13 @@ export default function Payments() {
         <Modal title={t('pay.record')} onClose={closeModal}>
           {receipt ? (
             <div className="flex flex-col gap-3">
-              <p className="rounded-lg bg-accent-bg p-3 text-sm text-accent-text">
-                {formatINR(receipt.amount)} · {t(`mode.${receipt.mode}`)} · {receipt.customerName}
-              </p>
-              <div className="flex justify-between text-sm">
+              {receipt.amount > 0 && (
+                <SuccessHeader
+                  title={t('pay.receivedAmount', { amount: formatINR(receipt.amount) })}
+                  detail={[t(`mode.${receipt.mode}`), receipt.customerName].filter(Boolean).join(' · ')}
+                />
+              )}
+              <div className="flex justify-between border-t border-border pt-3 text-sm">
                 <span className="text-muted">{t('common.pending')}</span>
                 <span className={`font-semibold ${receipt.balance > 0 ? 'text-red-600' : 'text-accent'}`}>
                   {receipt.balance > 0 ? formatINR(receipt.balance) : t('cust.settled')}

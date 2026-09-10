@@ -294,10 +294,14 @@ const STRINGS = {
   'inv.save': { en: 'Save invoice', hi: 'बिल सेव करें', mr: 'बिल सेव करा' },
   'inv.saveEdit': { en: 'Save changes', hi: 'बदलाव सेव करें', mr: 'बदल सेव करा' },
   'inv.delivery': { en: 'Delivery', hi: 'डिलीवरी', mr: 'डिलिव्हरी' },
-  'inv.deliveryAsk': {
-    en: '{no} is saved. Have you delivered the material to the customer?',
-    hi: '{no} सेव हो गया। क्या माल ग्राहक को दे दिया?',
-    mr: '{no} सेव झाले. माल ग्राहकाला दिला का?',
+  // The dialog after a bill is saved (DeliveryPrompt): the line under the
+  // tick, then the question. A supplier's very first bill gets its own line.
+  'inv.savedTitle': { en: '{no} saved', hi: '{no} सेव हो गया', mr: '{no} सेव झाले' },
+  'inv.firstBillTitle': { en: 'Your first bill is ready', hi: 'आपका पहला बिल तैयार है', mr: 'तुमचे पहिले बिल तयार आहे' },
+  'inv.deliveryQuestion': {
+    en: 'Have you delivered the material to the customer?',
+    hi: 'क्या माल ग्राहक को दे दिया?',
+    mr: 'माल ग्राहकाला दिला का?',
   },
   'inv.deliveryHint': {
     en: 'If yes, stock will be reduced now to match this bill. If not yet, you can mark it delivered later from the Invoices list.',
@@ -349,6 +353,8 @@ const STRINGS = {
     hi: '{count} बिल पर पेमेंट दर्ज हो गया।',
     mr: '{count} बिलावर पेमेंट नोंदवले.',
   },
+  // Under the tick once a payment is recorded.
+  'pay.receivedAmount': { en: '{amount} received', hi: '{amount} मिल गए', mr: '{amount} मिळाले' },
   'pay.pendingNow': {
     en: 'Pending right now: {amount}. Whatever you enter is applied to their oldest unpaid bills first.',
     hi: 'अभी बाकी: {amount}। जो रकम डालेंगे वह सबसे पुराने बिलों में पहले लगेगी।',

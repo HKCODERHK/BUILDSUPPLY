@@ -6,10 +6,10 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Modal } from '@/components/ui/modal'
 import { AddCustomerModal } from '@/components/AddCustomerModal'
 import { UnsavedChangesGuard } from '@/components/UnsavedChangesGuard'
 import { DraftPrompt } from '@/components/Drafts'
+import { DeliveryPrompt, type SavedBill } from '@/components/DeliveryPrompt'
 import { clearDraft, readDraft, useDraftAutosave, type BillDraft, type SavedDraft } from '@/lib/drafts'
 import { listCustomers, listCustomerBalances } from '@/services/customers'
 import { listMaterials } from '@/services/materials'
@@ -143,7 +143,7 @@ export default function NewInvoice() {
   // the re-render that disables the button would slip through `saving`
   // alone; this ref blocks re-entry immediately, in the same tick.
   const savingRef = useRef(false)
-  const [deliveryPrompt, setDeliveryPrompt] = useState<{ id: string; invoice_no: string } | null>(null)
+  const [deliveryPrompt, setDeliveryPrompt] = useState<SavedBill | null>(null)
   const [confirmingDelivery, setConfirmingDelivery] = useState(false)
   const [addCustomerOpen, setAddCustomerOpen] = useState(false)
   // A bill left unfinished last time, waiting on Continue or Discard.
@@ -421,7 +421,12 @@ export default function NewInvoice() {
       setSaved(true)
       // Stock isn't touched yet — ask before deducting it, since billing and
       // delivery often happen at different times.
-      setDeliveryPrompt({ id: invoice.id, invoice_no: invoice.invoice_no })
+      setDeliveryPrompt({
+        id: invoice.id,
+        invoice_no: invoice.invoice_no,
+        total: Number(invoice.total),
+        customerName: selectedCustomer?.name ?? '',
+      })
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : t('error.generic'))
     } finally {
@@ -817,18 +822,7 @@ export default function NewInvoice() {
       )}
 
       {deliveryPrompt && (
-        <Modal title={t('inv.delivery')} onClose={() => respondToDeliveryPrompt(false)}>
-          <p className="mb-4 text-sm text-ink">{t('inv.deliveryAsk', { no: deliveryPrompt.invoice_no })}</p>
-          <p className="mb-4 text-xs text-muted">{t('inv.deliveryHint')}</p>
-          <div className="flex gap-2">
-            <Button className="flex-1" disabled={confirmingDelivery} onClick={() => respondToDeliveryPrompt(true)}>
-              {t('inv.deliveredYes')}
-            </Button>
-            <Button variant="outline" className="flex-1" disabled={confirmingDelivery} onClick={() => respondToDeliveryPrompt(false)}>
-              {t('inv.deliveredNot')}
-            </Button>
-          </div>
-        </Modal>
+        <DeliveryPrompt bill={deliveryPrompt} busy={confirmingDelivery} onAnswer={respondToDeliveryPrompt} />
       )}
     </div>
   )
