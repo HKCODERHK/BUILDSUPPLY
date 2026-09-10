@@ -61,24 +61,19 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
         </div>
         <p className="mt-2.5 text-xs text-sidebar-text">{t('brand.tagline')}</p>
 
-        {/* The ring is the loading indicator. It fills to roughly two-thirds
-            and keeps turning, rather than resting at a figure that would look
-            stuck on a slow connection. Right under the wordmark, above the
-            story, as the user asked: the supplier's own logo is the first
-            thing to settle in on the screen. */}
+        {/* A solid green ring around the supplier's logo, right under the
+            wordmark. It used to be the loading indicator — an arc that filled
+            and kept turning — and the user asked for it to be still: the
+            story and the truck already say the app is working. */}
         <div className="relative mt-7 h-[130px] w-[130px] shrink-0">
-          <svg viewBox="0 0 200 200" className="absolute inset-0 -rotate-90" aria-hidden>
+          <svg viewBox="0 0 200 200" className="absolute inset-0" aria-hidden>
             <defs>
-              <linearGradient id="splashArc" x1="0" y1="0" x2="1" y2="1">
+              <linearGradient id="splashRing" x1="0" y1="0" x2="1" y2="1">
                 <stop offset="0%" stopColor="#5FE08C" />
                 <stop offset="100%" stopColor="#198A45" />
               </linearGradient>
             </defs>
-            <circle cx="100" cy="100" r="85" fill="none" strokeWidth="9" stroke="rgba(255,255,255,.10)" />
-            <circle
-              cx="100" cy="100" r="85" fill="none" strokeWidth="9" strokeLinecap="round"
-              stroke="url(#splashArc)" className="splash-arc"
-            />
+            <circle cx="100" cy="100" r="85" fill="none" strokeWidth="9" stroke="url(#splashRing)" />
           </svg>
           {logo && (
             <img
