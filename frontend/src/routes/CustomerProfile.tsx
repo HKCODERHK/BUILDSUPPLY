@@ -223,6 +223,8 @@ export default function CustomerProfile() {
   const liveInvoices = invoices.filter((i) => i.status !== 'Cancelled')
   const liveBills = liveInvoices.filter(isBill)
   const totalPending = liveInvoices.reduce((sum, i) => sum + (Number(i.total) - Number(i.paid)), 0)
+  // Paise-safe: a sum of rupee differences can land a hair above zero.
+  const hasDues = totalPending > 0.005
   const pendingDays = oldestPendingDays(invoices)
 
   const creditLimit = customer.credit_limit != null ? Number(customer.credit_limit) : null
@@ -680,7 +682,9 @@ export default function CustomerProfile() {
               )}
               {payResult.advance > 0 && (
                 <p className="rounded-lg bg-accent-bg p-3 text-xs font-medium text-accent-text">
-                  {payKind === 'advance' && payResult.applied.length === 0
+                  {/* All of it became advance (nothing was owed): show what they
+                      hold now, not "more than they owed". */}
+                  {payResult.applied.length === 0
                     ? t('pay.advanceHeldNow', { amount: formatINR(payResult.advanceBalance) })
                     : t('pay.keptAsAdvance', { amount: formatINR(payResult.advance) })}
                 </p>
@@ -696,12 +700,18 @@ export default function CustomerProfile() {
             <form onSubmit={handleReceivePayment} className="flex flex-col gap-4">
               <p className="text-sm text-muted">
                 {payKind === 'advance'
-                  ? totalPending > 0
+                  ? hasDues
                     ? t('pay.advanceIntroOwed', { amount: formatINR(totalPending) })
                     : advance > 0
                       ? t('pay.advanceIntroHeld', { amount: formatINR(advance) })
                       : t('pay.advanceIntro')
-                  : t('pay.pendingNow', { amount: formatINR(totalPending) })}
+                  : hasDues
+                    ? t('pay.pendingNow', { amount: formatINR(totalPending) })
+                    : // Nothing owed: a payment can only become advance — say so
+                      // up front rather than "Pending right now: ₹0".
+                      advance > 0
+                      ? t('pay.noDuesIntroHeld', { amount: formatINR(advance) })
+                      : t('pay.noDuesIntro')}
               </p>
               {payError && (
                 <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{payError}</p>

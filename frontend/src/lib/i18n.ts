@@ -443,6 +443,17 @@ const STRINGS = {
     hi: 'अभी बाकी: {amount}। रकम पहले सबसे पुराने बिलों में लगेगी; ज़्यादा हुई तो एडवांस में रहेगी।',
     mr: 'आत्ता बाकी: {amount}. रक्कम आधी सर्वात जुन्या बिलांना लागेल; जास्त असेल तर ॲडव्हान्स म्हणून राहील.',
   },
+  // Receive payment when nothing is owed: say where the money goes.
+  'pay.noDuesIntro': {
+    en: 'No pending dues, so this payment will be kept as advance. Their next bill uses it automatically.',
+    hi: 'कोई बकाया नहीं है, इसलिए यह भुगतान एडवांस में रखा जाएगा। अगले बिल में यह अपने-आप लग जाएगा।',
+    mr: 'कोणतीही बाकी नाही, म्हणून हे पेमेंट ॲडव्हान्स म्हणून ठेवले जाईल. पुढच्या बिलात ते आपोआप वापरले जाईल.',
+  },
+  'pay.noDuesIntroHeld': {
+    en: 'No pending dues, so this payment will be kept as advance, added to the {amount} they already hold. Their next bill uses it automatically.',
+    hi: 'कोई बकाया नहीं है, इसलिए यह भुगतान एडवांस में रखा जाएगा और पहले से जमा {amount} में जुड़ेगा। अगले बिल में यह अपने-आप लग जाएगा।',
+    mr: 'कोणतीही बाकी नाही, म्हणून हे पेमेंट ॲडव्हान्स म्हणून ठेवले जाईल आणि आधीच्या {amount} मध्ये जमा होईल. पुढच्या बिलात ते आपोआप वापरले जाईल.',
+  },
 
   // ── Reminders ─────────────────────────────────────────────────────────
   'rem.title': { en: 'Pending Reminders', hi: 'बाकी वाले ग्राहक', mr: 'बाकी असलेले ग्राहक' },
