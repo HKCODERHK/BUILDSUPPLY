@@ -1,9 +1,22 @@
 import { supabase } from '@/lib/supabase'
-import type { Customer, CustomerBalance } from '@/lib/database.types'
+import type { Customer, CustomerBalance, Invoice } from '@/lib/database.types'
 import { logActivity } from './activityLog'
+import { callRpc, fetchAll } from './db'
 
 export async function listCustomers(): Promise<Customer[]> {
-  const { data, error } = await supabase.from('customers').select('*').order('created_at', { ascending: false })
+  return fetchAll<Customer>((from, to) =>
+    supabase
+      .from('customers')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .order('id')
+      .range(from, to),
+  )
+}
+
+/** The newest few customers, for the dashboard. */
+export async function listRecentCustomers(limit: number): Promise<Customer[]> {
+  const { data, error } = await supabase.from('customers').select('*').order('created_at', { ascending: false }).limit(limit)
   if (error) throw error
   return data
 }
@@ -15,9 +28,41 @@ export async function getCustomer(id: string): Promise<Customer> {
 }
 
 export async function listCustomerBalances(): Promise<CustomerBalance[]> {
-  const { data, error } = await supabase.from('customer_balances').select('*')
+  return fetchAll<CustomerBalance>((from, to) =>
+    supabase.from('customer_balances').select('*', { count: 'exact' }).order('customer_id').range(from, to),
+  )
+}
+
+/** What one customer owes and holds in advance (customer_balances view). */
+export async function getCustomerBalance(customerId: string): Promise<CustomerBalance | null> {
+  const { data, error } = await supabase.from('customer_balances').select('*').eq('customer_id', customerId).maybeSingle()
   if (error) throw error
   return data
+}
+
+/** The customer's opening balance row, if they have one (migration 024). */
+export async function getOpeningBalance(customerId: string): Promise<Invoice | null> {
+  const { data, error } = await supabase
+    .from('invoices')
+    .select('*')
+    .eq('customer_id', customerId)
+    .eq('kind', 'opening')
+    // The live one; a replaced opening balance stays on record, cancelled.
+    .neq('status', 'Cancelled')
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
+/**
+ * What a customer already owed before BuildSupply — their old udhaar. It
+ * counts in their khata, their ageing and their statement, and is paid
+ * before any bill, but it is not sales. 0 removes it. `asOf` (YYYY-MM-DD) is
+ * the day it dates from, which is what the overdue age counts from.
+ */
+export async function setOpeningBalance(customerId: string, amount: number, asOf?: string): Promise<void> {
+  await callRpc('set_opening_balance', { p_customer_id: customerId, p_amount: amount, p_as_of: asOf || null })
+  void logActivity('supplier', 'opening_balance_set', { details: { customer_id: customerId, amount } })
 }
 
 // Postgres raises 23505 (unique_violation) when a phone number already

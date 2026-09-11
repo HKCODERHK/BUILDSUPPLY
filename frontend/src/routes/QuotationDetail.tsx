@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { ActionMenu } from '@/components/ui/action-menu'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
-import { getQuotation, listQuotationItems, markQuotationConverted, markQuotationSent } from '@/services/quotations'
+import { getQuotation, listQuotationItems, markQuotationSent } from '@/services/quotations'
+import { newRequestId } from '@/services/db'
 import { getCustomer } from '@/services/customers'
 import { createInvoice, markInvoiceDelivered } from '@/services/invoices'
 import { downloadQuotationPdf, printQuotationPdf, quotationPdfFile } from '@/lib/quotationPdf'
@@ -35,6 +36,7 @@ export default function QuotationDetail() {
   const [loading, setLoading] = useState(true)
   const [sharing, setSharing] = useState(false)
   const [converting, setConverting] = useState(false)
+  const [convertError, setConvertError] = useState<string | null>(null)
   const [deliveryPrompt, setDeliveryPrompt] = useState<{ id: string; invoice_no: string } | null>(null)
   const [confirmingDelivery, setConfirmingDelivery] = useState(false)
 
@@ -109,16 +111,22 @@ export default function QuotationDetail() {
   async function handleConvert() {
     if (!supplier || !quotation || !quotation.customer_id || converting) return
     setConverting(true)
+    setConvertError(null)
     try {
-      const invoice = await createInvoice(supplier.id, {
+      // The bill and "Converted" in one step — the database refuses a second
+      // conversion, so an estimate can never become two bills.
+      const { invoice } = await createInvoice({
+        requestId: newRequestId(),
         customer_id: quotation.customer_id,
         site: quotation.site,
         items: items.map((item) => ({ material_id: item.material_id, description: item.description, qty: item.qty, rate: item.rate })),
         gstApplicable: quotation.gst_amount > 0,
         transportLabourCharge: quotation.transport_labour_charge,
+        quotationId: quotation.id,
       })
-      await markQuotationConverted(quotation.id, invoice.id)
       setDeliveryPrompt({ id: invoice.id, invoice_no: invoice.invoice_no })
+    } catch (err) {
+      setConvertError(err instanceof Error ? err.message : t('error.generic'))
     } finally {
       setConverting(false)
     }
@@ -168,6 +176,10 @@ export default function QuotationDetail() {
           </div>
         }
       />
+
+      {convertError && (
+        <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{convertError}</p>
+      )}
 
       <Card>
         <div className="mb-6 flex items-start justify-between gap-4 border-b border-border pb-6">

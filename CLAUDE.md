@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `023`, run in order. **023 is the latest and is applied** (2026-09-08). (A `024` storage bucket was applied and removed again on 2026-09-11 — see Phase 8. There is deliberately no 024 file.) (There is no `001` file in the repo; the base schema predates the migration folder.)
+- **Schema migrations**: `supabase/migrations/` — `002` through `024`, run in order. **024 is the latest and is applied** (2026-09-11, pasted by the user — money integrity, see Phase 9). (An unrelated storage-bucket 024 from Phase 8 was applied and removed again on 2026-09-11 and its file deleted.) (There is no `001` file; the base schema is `supabase/schema.sql`, which predates the migration folder.)
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -201,6 +201,74 @@ sent automatically** — each was ruled out explicitly.
   can show that. Whether WhatsApp keeps the message as the document's caption
   or drops it is WhatsApp's choice, not ours.
 
+**Phase 9 — money integrity (migration 024, 2026-09-11). Applied to live and
+merged to `main` the same day.** The user's order: double payment
+→ overpayment/advance → atomic saves → duplicate numbers → the 1,000-row cap →
+opening balance. They chose the *simple version*: the complexity lives in the
+database, and the supplier sees two buttons and a few lines.
+
+- **Receipts are permanent.** A `payments` row is never edited or deleted.
+  Which bills a receipt paid lives in `payment_allocations`; when money moves
+  (bill cancelled, opening balance changed) the allocation gets `released_at`
+  and is never deleted. Triggers `payments_keep` / `payment_allocations_keep`
+  quietly skip any delete that isn't a cascade (the admin deleting a whole
+  supplier account still works). This matters because the app on `main`
+  deletes a bill's payments when it cancels it. `invoices_release_on_cancel`
+  releases the money however a bill is cancelled.
+- **Advance** is the unallocated part of receipts. A customer payment clears the
+  opening balance first, then the oldest bills, and anything left over is kept.
+  The next bill uses it automatically. **Receive advance** (`payments.is_advance`)
+  is only used on bills made *after* it, never on old dues.
+- **Every money or stock change is one database function**, run as the caller
+  (SECURITY INVOKER, so RLS still applies) under a lock on the customer:
+  `record_payment`, `record_customer_payment`, `record_advance`,
+  `create_invoice` (counter payment splits in `p_payments`), `update_invoice`,
+  `mark_invoice_delivered`, `cancel_invoice`, `adjust_stock`,
+  `create_quotation`, `set_opening_balance`. Every save carries a request id
+  (`client_requests`), so a double tap or two phones record it once — INV-1024
+  had two ₹830 payments 31 seconds apart.
+- **Row locks are `FOR NO KEY UPDATE`, never `FOR UPDATE`. Keep it that way.**
+  `FOR UPDATE` also blocks the key-share lock Postgres takes on a row a new bill
+  line merely names, so a delivery and a bill save touching the same materials
+  deadlocked (1 in 7,782 in the 20-phone test).
+- **Numbers**: an advisory lock plus `max(INV-<digits>) + 1` (first is
+  INV-1001); unique partial indexes back it up. Odd old formats are ignored,
+  and cancelled bills keep their numbers.
+- **Opening balance** is an `invoices` row with `kind = 'opening'` (one live row
+  per customer). Changing it cancels the old row and adds a new one, so old
+  figures stay on record. It counts in the khata but never in sales: see
+  `isBill()`, and the views' `kind = 'bill'` filters.
+- **`services/db.ts`**: `fetchAll` pages every "all of X" read past PostgREST's
+  silent 1,000-row cap (the order must end in `id`); `callRpc` passes the
+  function's plain-English error through; `newRequestId`.
+- **UI**: the customer page has Receive payment, with Receive advance below it
+  and a Ledger + WhatsApp button beside that. New Invoice has "+ Paid partly by
+  another mode?". The Payments list shows "Advance" or "2 bills". Cancel
+  says the money is kept.
+- **The migration** allocates existing payments to their bills oldest first,
+  capped at each total. It then **stops with "Nothing was changed"** if any
+  bill disagrees, and is safe to paste twice. The only visible change on live:
+  INV-1024's second ₹830 becomes that Shree Balaji customer's advance
+  (collected +₹830). KALYANI has no payments, so none of its money moves.
+- **Tested 2026-09-11 on a local Supabase in Docker**, not live. Its structure
+  was rebuilt from `schema.sql` + 002→023; 317 of 323 objects are identical to
+  live, and the other 6 differ only in whitespace. It used Shree Balaji's data
+  plus ~7,000 synthetic rows: **186/186 checks** pass, and a 20-phone `pgbench`
+  storm of 8,121 operations had 0 failures and 0 deadlocks. The old app keeps
+  working against 024 (tested). Setup notes: Docker Desktop is at
+  `%LOCALAPPDATA%\Programs\DockerDesktop`. Keep the local project **outside the
+  repo** (`supabase start --workdir <dir>`, storage enabled), because started
+  from the repo the CLI auto-applies `supabase/migrations` without the base
+  schema.
+- **Applied 2026-09-11** by the user in the SQL editor. The full backup is
+  `backups/2026-09-11_1625-live-after-024-found/`. Checked read-only on live
+  afterwards:
+  - All 38 bills and 76 payments are identical to the 03:02 backup.
+  - There are 75 allocations and 0 bills out of step.
+  - The only advance is ₹830, on INV-1024's customer.
+  - All 6 triggers and 10 functions are present, none callable signed out.
+  - RLS is on both new tables, and both views are still `security_invoker`.
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.
@@ -240,17 +308,18 @@ A 4-digit PIN asked before irreversible actions, for both roles. **It is a confi
 - **`lib/localDate.ts`** — `localDateKey(iso)`, the calendar day a UTC timestamp falls on **in the phone's own timezone**, as `YYYY-MM-DD`. Every `created_at` is UTC but a supplier picking dates in an `<input type="date">` is thinking in IST, and India is UTC+5:30 — so slicing the first ten characters off the raw ISO string files anything recorded between midnight and 5:30am under the previous day. Used by `customerLedger.ts` and `Reports.tsx`; the Dashboard's "today" card has always used the same rule inline. **Never compare a raw `created_at.slice(0, 10)` against a date input.**
 - **`components/AddCustomerModal.tsx`** — one customer form shared by Customers, New Invoice and New Quotation so validation can't drift.
 - **`components/ui/password-input.tsx`** — a password field with a show/hide eye, on the sign-in screen (added 2026-09-11). The eye is `type="button"` and cancels `mousedown`, so tapping it keeps focus — and the phone keyboard — in the field; Edge's own reveal button is hidden so there is one eye. Labels come in as props, like `Input`, so admin screens can stay English. Reset password, Platform Settings and the PIN fields still use plain `Input type="password"`; reuse this if they ever want the eye.
-- **`lib/drafts.ts`** — unfinished *new* bills and estimates, kept on the phone (localStorage `buildsupply-draft:<kind>:<supplierId>`, never the server). Written 400ms after each change **and at once on `visibilitychange`→hidden and `pagehide`**, because going into the background is exactly when Android kills the app. Offered back by a prompt on New Invoice / New Quotation and by a banner on the dashboard — where a killed app reopens — whose `?draft=1` restores without asking twice. Cleared the moment the bill exists (right after `createInvoice`, **before** `recordPayment`, so a failed payment can't leave a draft to be saved a second time), on Discard, and on Leave in the unsaved-work guard. Ignored after 3 days. Edit mode doesn't use it; it has the saved bill to fall back on.
+- **`lib/drafts.ts`** — unfinished *new* bills and estimates, kept on the phone (localStorage `buildsupply-draft:<kind>:<supplierId>`, never the server). Written 400ms after each change **and at once on `visibilitychange`→hidden and `pagehide`**, because going into the background is exactly when Android kills the app. Offered back by a prompt on New Invoice / New Quotation and by a banner on the dashboard — where a killed app reopens — whose `?draft=1` restores without asking twice. Cleared the moment the bill exists (right after `createInvoice`, which since 024 takes the counter payment in the same step — and its request id means a retry can't save the bill twice either), on Discard, and on Leave in the unsaved-work guard. Ignored after 3 days. Edit mode doesn't use it; it has the saved bill to fall back on.
 - **`components/art.tsx` + `lib/artPalette.ts`** — the drawing kit: the tipper (the splash's own truck), cement bag, brick, storey, crane, bill, tick badge and ₹ coin, in one palette. The splash story, the Start-here card and the empty states all draw from it. **Draw ₹ as strokes (lucide's indian-rupee geometry), never an SVG `<text>`** — a text node leaked a stray "₹" into the page's text and depends on the phone's font.
 - **`components/SuccessTick.tsx` + `lib/useFlash.ts`** — the app's one way of saying "done". `SuccessHeader` is a tick that draws itself in 0.4s over a line saying what happened; `useFlash` lights the card that just changed for 2.4s and scrolls it into view only as far as needed. Neither delays anything, and both are still under reduced motion. Reuse them rather than inventing a second style.
 - **`components/DeliveryPrompt.tsx`** — the "Delivered?" dialog after any bill is saved, shared by New Invoice and estimate → bill (it used to be two copies). `isFirstInvoice()` in `services/invoices.ts` tells a supplier's first bill from its number alone — numbering always starts at `INV-1001` — so it costs no query.
 - **`components/TruckLoader.tsx`** — every loading state in the app: the splash's tipper driving on the spot over a moving road, with the word under it. A screen's loader sits **in the middle of the phone screen, unless the screen already shows something there** — Reports' filters, say — and then in the middle of the empty space below it. It stays in the page's flow and measures where it starts, so it can never cover anything: fixed to the middle of the viewport, it landed across the Reports date and customer pickers. `inline` keeps it just under what it belongs to, for the catalog search, where the keyboard is up. **It fades in only after 0.3s**, so the loads that finish sooner — most of them — show nothing instead of flashing a truck. That delay is what answered the flicker that first kept a loader off the list; the user then asked for it everywhere. Use it for any new wait rather than a "Loading…" line. Buttons keep their own "Saving…" / "Preparing…" words, and admin screens pass `label="Loading…"` to stay English.
 
 ### Stock rules
-- `adjustStock()` **clamps at 0** and there is a matching DB check constraint (migration 009). It can't throw for going negative.
+- Stock **clamps at 0** (`greatest(0, …)`) and there is a matching DB check constraint (migration 009). It can't throw for going negative.
 - Stock moves on **delivery**, not on billing — suppliers often bill before goods leave the godown.
-- `updateInvoice()` computes **one net delta per material** (old qty − new qty) and applies it *after* the line-item swap succeeds. Editing 10 bags to 12 moves stock by 2, once. Don't refactor this back into "restore all old, then deduct all new" — that briefly puts stock back on the shelf, and a failure mid-way leaves it inflated.
-- `updateInvoice()` **refuses** to make a total lower than what's already been paid, rather than silently deleting payments. Cancel the bill instead.
+- Since 024 every stock change happens inside the database, in one step: `mark_invoice_delivered` (a second call changes nothing), `update_invoice`, `cancel_invoice` (stock goes back only if the bill was delivered) and `adjust_stock` (one statement, so two top-ups at once both count). Materials are locked in id order with `FOR NO KEY UPDATE` — see Phase 9.
+- `update_invoice` moves **one net delta per material** (old qty − new qty), and only if the bill was delivered. Editing 10 bags to 12 moves stock by 2, once. Don't turn it into "restore all old, then deduct all new".
+- `update_invoice` **refuses** to make a total lower than what's already been paid. Cancel the bill instead.
 
 ### Language and documents
 **Bills, statements, estimates, receipts and rate lists stay in English even when the app is in Hindi or Marathi.** (The WhatsApp message carrying a receipt follows the app language, as it always has; the PDF does not.) A bill goes to customers, engineers and banks who may not read Devanagari, and a supplier changing their own app language must not change what the customer receives. There's a note saying so in Settings. Don't translate `pdfTheme.ts` or the PDF builders.
@@ -286,7 +355,7 @@ union all select 'invoice->customer', count(*) from invoices i join customers c 
 union all select 'item->material', count(*) from invoice_items ii join materials m on m.id=ii.material_id where m.supplier_id <> ii.supplier_id;
 ```
 
-**Payments are capped at what a bill still owes.** `recordPayment` reads the invoice first and takes only the outstanding amount, returning the remainder as `leftOver` for the caller to report — the Payments screen shows it, and New Invoice warns before saving. Splits are trimmed **in order**, not scaled, so the modes stay truthful. Do not remove the cap: without it `paid` can exceed `total`, which shows the customer a negative khata and inflates the dashboard's collected figure.
+**A bill can never be paid past its total — but money beyond it is now kept as advance, not refused (024).** The old client-side cap (`recordPayment` trimming to the outstanding and returning `leftOver`) is gone. Now `invoices.paid` is always the sum of the bill's active allocations (`_refresh_paid`), allocations are capped at what each bill owes, and splits are applied **in order**, so the modes stay truthful. A deferred constraint trigger (`_check_allocation`) refuses at commit any bill paid past its total, or any receipt used for more than was received. Don't bypass it: `paid` above `total` shows the customer a negative khata and inflates the dashboard's collected figure.
 
 One row had already been corrupted this way and was corrected on 2026-09-08: **INV-1008** (Shree Balaji, customer *himanshu*) held ₹67,000 against a ₹64,300 total. Payments ran 60,000 + 4,000 = 64,000, leaving ₹300 due, and the third was recorded as ₹3,000. That third payment was trimmed to the ₹300 actually owed — exactly what the fixed code now does — bringing the customer's khata from **−₹2,700 back to ₹0**. Nothing was deleted; all three payment rows remain. A pre-change snapshot is in the session scratchpad as `inv1008-before.json`.
 
@@ -483,9 +552,9 @@ confusable names, and the run silently did nothing here.
      `services/quotations.ts`). Right for cement and TMT; sand and gitti are
      usually 5%. It matters the day a GST-registered sand or gitti supplier
      signs up.
-   - **There is no opening balance for a customer's old udhaar.** The
-     workaround is a bill with a typed line, which then counts in that
-     month's billing on the dashboard and in reports.
+   - ~~There is no opening balance for a customer's old udhaar.~~ Built in
+     024 (Phase 9): "Old balance (udhaar)" on Add / Edit customer, never
+     counted as sales.
 5. **A native Android app — raised 2026-09-11, not decided.** Two things the
    user asked for need one (Phase 8): opening the exact customer's WhatsApp
    chat with the PDF already attached, and saving a new customer as a phone
@@ -504,7 +573,7 @@ fail with "unable to verify the first certificate". Fix is
 store where Avast's CA lives. Never `NODE_TLS_REJECT_UNAUTHORIZED=0`.
 
 ### Known and accepted
-- The unused second Supabase project **`rnuiiymyhrvafwkfubqs` ("BuildSupplyProject")** still occupies a free-tier slot. `npx supabase projects delete` is **blocked by the Claude Code auto-mode classifier** — the user has to delete it from the Supabase dashboard themselves. Don't try to work around the block.
+- The second Supabase project `rnuiiymyhrvafwkfubqs` **no longer exists** (found gone 2026-09-11; only the live project is listed). Test risky SQL in a local Supabase in Docker instead — see Phase 9.
 - Bundle: `dist` is 1.7 MB total; the main chunk is 1.20 MB (**345 kB gzip**), plus jsPDF's `html2canvas` (44 kB gzip), `index.es` (47 kB) and `purify.es` (10 kB). Vite warns about the main chunk. Code-splitting the PDF libraries would fix it if it ever matters.
 - **Free-tier Supabase pauses after ~7 days idle.** Deploy, then leave it a week, and the app looks broken when it isn't.
 - **iOS evicts `localStorage`** after extended non-use, which silently signs the supplier out. Expected, not a bug.

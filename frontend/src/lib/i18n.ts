@@ -83,6 +83,72 @@ const STRINGS = {
   },
   'share.understood': { en: 'OK', hi: 'ठीक है', mr: 'ठीक आहे' },
 
+  // ── Advances and opening balances (migration 024) ────────────────────
+  'pay.advance': { en: 'Advance', hi: 'एडवांस', mr: 'ॲडव्हान्स' },
+  'pay.nBills': { en: '{n} bills', hi: '{n} बिल', mr: '{n} बिले' },
+  'pay.keptAsAdvance': {
+    en: '{amount} more than they owed — kept as advance for their next bill.',
+    hi: '{amount} बाकी से ज़्यादा था — अगले बिल के लिए एडवांस रखा गया।',
+    mr: '{amount} बाकीपेक्षा जास्त होते — पुढच्या बिलासाठी ॲडव्हान्स ठेवले.',
+  },
+  'pay.receiptAdvance': { en: 'Advance with us: {amount}.', hi: 'हमारे पास एडवांस: {amount}।', mr: 'आमच्याकडे ॲडव्हान्स: {amount}.' },
+  // "Receive advance" — the customer page's button while nothing is owed.
+  'cust.receiveAdvance': { en: 'Receive advance', hi: 'एडवांस लें', mr: 'ॲडव्हान्स घ्या' },
+  // The customer page's Ledger quick action and its WhatsApp icon.
+  'cust.ledger': { en: 'Ledger', hi: 'खाता', mr: 'खाते' },
+  'cust.ledgerShare': { en: 'Send ledger on WhatsApp', hi: 'खाता व्हाट्सएप पर भेजें', mr: 'खाते व्हॉट्सॲपवर पाठवा' },
+  'pay.recordAdvance': { en: 'Record advance', hi: 'एडवांस दर्ज करें', mr: 'ॲडव्हान्स नोंदवा' },
+  'pay.advanceIntro': {
+    en: 'Nothing is owed right now. This is kept as their advance, and their next bill uses it automatically.',
+    hi: 'अभी कुछ बाकी नहीं है। यह रकम इनके एडवांस में रहेगी, और अगले बिल में अपने-आप लग जाएगी।',
+    mr: 'आत्ता काही बाकी नाही. ही रक्कम यांच्या ॲडव्हान्समध्ये राहील, आणि पुढच्या बिलात आपोआप वापरली जाईल.',
+  },
+  'pay.advanceIntroHeld': {
+    en: 'Nothing is owed right now, and they already hold {amount} advance. This adds to it; their next bill uses it automatically.',
+    hi: 'अभी कुछ बाकी नहीं है, और इनके पास पहले से {amount} एडवांस है। यह रकम उसमें जुड़ेगी; अगले बिल में अपने-आप लग जाएगी।',
+    mr: 'आत्ता काही बाकी नाही, आणि यांच्याकडे आधीच {amount} ॲडव्हान्स आहे. ही रक्कम त्यात जमा होईल; पुढच्या बिलात आपोआप वापरली जाईल.',
+  },
+  'pay.advanceIntroOwed': {
+    en: 'This is kept apart as advance for their next bill. It is not used on the {amount} they already owe.',
+    hi: 'यह रकम अगले बिल के एडवांस के रूप में अलग रहेगी। पहले से बाकी {amount} में नहीं लगेगी।',
+    mr: 'ही रक्कम पुढच्या बिलासाठी ॲडव्हान्स म्हणून वेगळी राहील. आधीच्या {amount} बाकीत वापरली जाणार नाही.',
+  },
+  'pay.advanceReceived': { en: '{amount} advance received', hi: '{amount} एडवांस मिला', mr: '{amount} ॲडव्हान्स मिळाला' },
+  'pay.advanceHeldNow': {
+    en: 'Advance with you now: {amount}. Their next bill uses it automatically.',
+    hi: 'अब आपके पास एडवांस: {amount}। अगले बिल में यह अपने-आप लग जाएगा।',
+    mr: 'आता तुमच्याकडे ॲडव्हान्स: {amount}. पुढच्या बिलात तो आपोआप वापरला जाईल.',
+  },
+  'cust.advanceAmount': { en: 'Advance {amount}', hi: 'एडवांस {amount}', mr: 'ॲडव्हान्स {amount}' },
+  'cust.openingBalance': { en: 'Opening balance', hi: 'पुराना बाकी', mr: 'जुनी बाकी' },
+  'cust.openingField': { en: 'Old balance (udhaar)', hi: 'पुराना बाकी (उधार)', mr: 'जुनी बाकी (उधार)' },
+  'cust.openingHint': {
+    en: 'What they already owed before BuildSupply. It counts in their khata and is cleared first, but not in your sales.',
+    hi: 'BuildSupply से पहले का बाकी। यह खाते में जुड़ता है और सबसे पहले चुकता होता है, पर बिक्री में नहीं गिना जाता।',
+    mr: 'BuildSupply आधीची बाकी. ही खात्यात जमा होते आणि आधी फिटते, पण विक्रीत मोजली जात नाही.',
+  },
+  'cust.openingRetry': {
+    en: "The customer is saved, but the old balance wasn't. Tap Save again to add it.",
+    hi: 'ग्राहक सेव हो गया, पर पुराना बाकी नहीं जुड़ा। जोड़ने के लिए फिर से सेव दबाएँ।',
+    mr: 'ग्राहक सेव झाला, पण जुनी बाकी जोडली नाही. जोडण्यासाठी पुन्हा सेव दाबा.',
+  },
+  'inv.advanceWillApply': {
+    en: 'Their advance of {amount} will be used on this bill.',
+    hi: 'इनका {amount} एडवांस इस बिल में लग जाएगा।',
+    mr: 'यांचा {amount} ॲडव्हान्स या बिलात वापरला जाईल.',
+  },
+  'inv.paidMoreGoesToAdvance': {
+    en: 'That is more than this bill. The extra {amount} clears their older bills first, then is kept as advance.',
+    hi: 'यह बिल से ज़्यादा है। बाकी {amount} पहले पुराने बिलों में लगेगा, फिर एडवांस में रहेगा।',
+    mr: 'हे बिलापेक्षा जास्त आहे. उरलेले {amount} आधी जुन्या बिलांना लागेल, मग ॲडव्हान्स म्हणून राहील.',
+  },
+  'inv.cancelPaymentKept': {
+    en: 'The {amount} paid on it stays with {customer} as advance — their other unpaid bills use it first.',
+    hi: 'इस पर मिले {amount} {customer} के एडवांस में रहेंगे — पहले उनके बाकी बिलों में लगेंगे।',
+    mr: 'यावर मिळालेले {amount} {customer} यांच्या ॲडव्हान्समध्ये राहतील — आधी त्यांच्या बाकी बिलांना लागतील.',
+  },
+  'pin.reasonOpeningBalance': { en: 'Change an opening balance', hi: 'पुराना बाकी बदलना', mr: 'जुनी बाकी बदलणे' },
+
   // ── Invoice status ────────────────────────────────────────────────────
   'status.Unpaid': { en: 'Unpaid', hi: 'बाकी', mr: 'बाकी' },
   'status.Partial': { en: 'Partial', hi: 'कुछ जमा', mr: 'काही जमा' },
@@ -371,14 +437,9 @@ const STRINGS = {
   // Under the tick once a payment is recorded.
   'pay.receivedAmount': { en: '{amount} received', hi: '{amount} मिल गए', mr: '{amount} मिळाले' },
   'pay.pendingNow': {
-    en: 'Pending right now: {amount}. Whatever you enter is applied to their oldest unpaid bills first.',
-    hi: 'अभी बाकी: {amount}। जो रकम डालेंगे वह सबसे पुराने बिलों में पहले लगेगी।',
-    mr: 'आत्ता बाकी: {amount}. जी रक्कम टाकाल ती सर्वात जुन्या बिलांना आधी लागेल.',
-  },
-  'pay.leftOver': {
-    en: "{amount} was more than this customer owed, so it wasn't recorded. Their khata is now fully settled.",
-    hi: '{amount} ग्राहक की बाकी से ज़्यादा था, इसलिए दर्ज नहीं हुआ। उनका खाता अब पूरा चुक्ता है।',
-    mr: '{amount} ग्राहकाच्या बाकीपेक्षा जास्त होते, म्हणून नोंदवले नाही. त्यांचे खाते आता पूर्ण फिटले आहे.',
+    en: 'Pending right now: {amount}. It goes to their oldest unpaid bills first; anything more is kept as advance.',
+    hi: 'अभी बाकी: {amount}। रकम पहले सबसे पुराने बिलों में लगेगी; ज़्यादा हुई तो एडवांस में रहेगी।',
+    mr: 'आत्ता बाकी: {amount}. रक्कम आधी सर्वात जुन्या बिलांना लागेल; जास्त असेल तर ॲडव्हान्स म्हणून राहील.',
   },
 
   // ── Reminders ─────────────────────────────────────────────────────────
@@ -632,11 +693,6 @@ const STRINGS = {
     en: 'The stock it used will be added back.',
     hi: 'इसका इस्तेमाल हुआ स्टॉक वापस जुड़ जाएगा।',
     mr: 'याचा वापरलेला स्टॉक परत जमा होईल.',
-  },
-  'inv.cancelPayment': {
-    en: 'The {amount} recorded against it will be removed.',
-    hi: 'इस पर दर्ज {amount} हटा दिए जाएँगे।',
-    mr: 'यावर नोंदवलेले {amount} काढून टाकले जातील.',
   },
   'inv.cancelKept': {
     en: 'The bill stays in your records, marked cancelled.',
@@ -901,16 +957,6 @@ const STRINGS = {
     en: 'Phone number must be exactly 10 digits.',
     hi: 'फ़ोन नंबर पूरे 10 अंकों का होना चाहिए।',
     mr: 'फोन नंबर पूर्ण 10 अंकी असावा.',
-  },
-  'pay.leftOverBill': {
-    en: '{amount} was more than this bill still owed, so it was not recorded.',
-    hi: '{amount} इस बिल की बाकी रकम से ज़्यादा था, इसलिए दर्ज नहीं हुआ।',
-    mr: '{amount} या बिलाच्या बाकी रकमेपेक्षा जास्त होते, म्हणून नोंदवले नाही.',
-  },
-  'inv.paidMoreThanBill': {
-    en: 'That is more than this bill. Only {amount} will be recorded.',
-    hi: 'यह बिल से ज़्यादा है। सिर्फ़ {amount} दर्ज होगा।',
-    mr: 'हे बिलापेक्षा जास्त आहे. फक्त {amount} नोंदवले जाईल.',
   },
 } satisfies Record<string, Entry>
 

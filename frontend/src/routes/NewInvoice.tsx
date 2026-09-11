@@ -18,13 +18,13 @@ import {
   updateInvoice,
   getInvoice,
   listInvoiceItems,
-  listInvoices,
+  listKnownSites,
   lastBillForCustomer,
   lastRatesForCustomer,
   type NewInvoiceItem,
   type LastRate,
 } from '@/services/invoices'
-import { recordPayment } from '@/services/payments'
+import { newRequestId } from '@/services/db'
 import type { Customer, CustomerBalance, Invoice, Material, PaymentMode } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -130,6 +130,9 @@ export default function NewInvoice() {
   const [transportLabour, setTransportLabour] = useState('')
   const [paidNow, setPaidNow] = useState('')
   const [paidMode, setPaidMode] = useState<PaymentMode>('Cash')
+  // Now and then a customer pays part of it another way — cash, and the rest
+  // by UPI. Kept behind a link, exactly as on the Payments screen.
+  const [extraPayments, setExtraPayments] = useState<{ key: string; amount: string; mode: PaymentMode }[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -143,6 +146,9 @@ export default function NewInvoice() {
   // the re-render that disables the button would slip through `saving`
   // alone; this ref blocks re-entry immediately, in the same tick.
   const savingRef = useRef(false)
+  // One id for this bill. Sent with the save, it makes a retry after a
+  // dropped connection return the bill already made instead of a second one.
+  const requestIdRef = useRef(newRequestId())
   const [deliveryPrompt, setDeliveryPrompt] = useState<SavedBill | null>(null)
   const [addCustomerOpen, setAddCustomerOpen] = useState(false)
   // A bill left unfinished last time, waiting on Continue or Discard.
@@ -151,10 +157,10 @@ export default function NewInvoice() {
   useEffect(() => {
     let active = true
     async function load() {
-      const [customerList, materialList, invoiceList, balanceList] = await Promise.all([
+      const [customerList, materialList, siteList, balanceList] = await Promise.all([
         listCustomers(),
         listMaterials(),
-        listInvoices(),
+        listKnownSites(),
         listCustomerBalances(),
       ])
       if (!active) return
@@ -164,9 +170,7 @@ export default function NewInvoice() {
       // Sites already used before, offered as type-ahead suggestions so a
       // repeat site never has to be typed out twice.
       setKnownSites(
-        Array.from(
-          new Set([...invoiceList.map((i) => i.site), ...customerList.map((c) => c.site)].filter((s): s is string => !!s)),
-        ).sort(),
+        Array.from(new Set([...siteList, ...customerList.map((c) => c.site)].filter((s): s is string => !!s))).sort(),
       )
 
       if (isEdit && editingId) {
@@ -278,6 +282,7 @@ export default function NewInvoice() {
     setTransportLabour(d.transportLabour)
     setPaidNow(d.paidNow ?? '')
     setPaidMode(d.paidMode ?? 'Cash')
+    setExtraPayments((d.paidSplits ?? []).map((s) => ({ key: crypto.randomUUID(), amount: s.amount, mode: s.mode })))
   }
 
   // Picking a customer pre-fills their usual site; the supplier can type a
@@ -325,8 +330,15 @@ export default function NewInvoice() {
   const gst = gstApplicable ? Math.round(subtotal * GST_RATE) : 0
   const transportLabourAmount = Number(transportLabour) || 0
   const total = subtotal + gst + transportLabourAmount
-  const paidNowAmount = isEdit ? 0 : Number(paidNow) || 0
-  const remaining = Math.max(0, total - paidNowAmount)
+  // Every part taken at the counter, whatever the mode.
+  const paidNowAmount = isEdit
+    ? 0
+    : (Number(paidNow) || 0) + extraPayments.reduce((sum, s) => sum + (Number(s.amount) || 0), 0)
+  // Money this customer paid ahead goes onto a new bill before anything is
+  // collected (create_invoice). An edit leaves payments exactly as they are.
+  const advanceHeld = isEdit ? 0 : Number(balances[customerId]?.advance ?? 0)
+  const advanceUsed = Math.min(advanceHeld, total)
+  const remaining = Math.max(0, total - advanceUsed - paidNowAmount)
 
   const selectedCustomer = customers.find((c) => c.id === customerId) ?? null
 
@@ -354,6 +366,7 @@ export default function NewInvoice() {
           total,
           paidNow,
           paidMode,
+          paidSplits: extraPayments.map(({ amount, mode }) => ({ amount, mode })),
         }
       : null
   useDraftAutosave(supplier?.id, 'invoice', draftSnapshot, !isEdit && !loading && !pendingDraft)
@@ -365,7 +378,9 @@ export default function NewInvoice() {
   const currentPending = Number(balances[customerId]?.pending ?? 0)
   const alreadyOnThisBill = editingInvoice ? Math.max(0, Number(editingInvoice.total) - Number(editingInvoice.paid)) : 0
   const projectedPending =
-    currentPending - alreadyOnThisBill + Math.max(0, total - (editingInvoice ? Number(editingInvoice.paid) : paidNowAmount))
+    currentPending -
+    alreadyOnThisBill +
+    Math.max(0, total - (editingInvoice ? Number(editingInvoice.paid) : paidNowAmount + advanceUsed))
   const overLimit = creditLimit != null && creditLimit > 0 && projectedPending > creditLimit
   const nearLimit =
     creditLimit != null && creditLimit > 0 && !overLimit && projectedPending >= creditLimit * 0.8 && total > 0
@@ -404,19 +419,26 @@ export default function NewInvoice() {
         return
       }
 
-      const invoice = await createInvoice(supplier.id, {
+      // One step in the database: the number, the lines, any advance they
+      // already hold and the money taken now — all of it or none of it, so
+      // there is no bill left behind without its payment.
+      const { invoice } = await createInvoice({
+        requestId: requestIdRef.current,
         customer_id: customerId,
         site,
         items: payload,
         gstApplicable,
         transportLabourCharge: transportLabourAmount,
+        // One entry per mode, first row first — the database applies them in
+        // this order, so the modes on the receipt stay true.
+        payments: [
+          { amount: Number(paidNow) || 0, mode: paidMode },
+          ...extraPayments.map((s) => ({ amount: Number(s.amount) || 0, mode: s.mode })),
+        ].filter((p) => p.amount > 0),
       })
-      // The bill exists from here on, whatever happens to the payment below,
-      // so its draft must not survive to be offered back and saved twice.
+      // The bill exists from here on, so its draft must not survive to be
+      // offered back and saved twice.
       clearDraft(supplier.id, 'invoice')
-      if (paidNowAmount > 0) {
-        await recordPayment(supplier.id, invoice.id, [{ amount: paidNowAmount, mode: paidMode }])
-      }
       setSaved(true)
       // Stock isn't touched yet — ask before deducting it, since billing and
       // delivery often happen at different times.
@@ -556,6 +578,14 @@ export default function NewInvoice() {
             })}
           </p>
         </div>
+      )}
+
+      {/* Paid ahead: used on this bill automatically, so the supplier asks
+          for less at the counter. */}
+      {advanceHeld > 0 && selectedCustomer && (
+        <p className="mb-4 rounded-xl bg-accent-bg px-4 py-3 text-sm font-medium text-accent-text">
+          {t('inv.advanceWillApply', { amount: formatINR(total > 0 ? advanceUsed : advanceHeld) })}
+        </p>
       )}
 
       <Card className="mb-4">
@@ -743,9 +773,76 @@ export default function NewInvoice() {
               </select>
             </div>
           </div>
-          {paidNowAmount > total && total > 0 && (
-            <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-              {t('inv.paidMoreThanBill', { amount: formatINR(total) })}
+
+          {/* The rarer split — same link, same rows as the Payments screen. */}
+          {extraPayments.map((s) => (
+            <div key={s.key} className="mt-3">
+              <div className="flex items-center justify-between">
+                <Label className="mb-1.5">{t('pay.alsoPaidBy')}</Label>
+                <button
+                  type="button"
+                  onClick={() => setExtraPayments((prev) => prev.filter((x) => x.key !== s.key))}
+                  className="mb-1.5 text-muted hover:text-red-600"
+                  aria-label="Remove this part"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={s.amount}
+                  onChange={(e) =>
+                    setExtraPayments((prev) =>
+                      prev.map((x) => (x.key === s.key ? { ...x, amount: sanitizeDecimal(e.target.value) } : x)),
+                    )
+                  }
+                />
+                <select
+                  value={s.mode}
+                  onChange={(e) =>
+                    setExtraPayments((prev) =>
+                      prev.map((x) => (x.key === s.key ? { ...x, mode: e.target.value as PaymentMode } : x)),
+                    )
+                  }
+                  className="h-10 shrink-0 rounded-lg border border-border bg-card px-2 text-sm outline-none focus:border-accent"
+                >
+                  {PAYMENT_MODES.map((m) => (
+                    <option key={m} value={m}>
+                      {t(`mode.${m}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          ))}
+          <button
+            type="button"
+            // A second part is nearly always a different mode from the first.
+            onClick={() =>
+              setExtraPayments((prev) => [
+                ...prev,
+                { key: crypto.randomUUID(), amount: '', mode: paidMode === 'Cash' ? 'UPI' : 'Cash' },
+              ])
+            }
+            className="mt-3 text-xs font-semibold text-accent-text hover:text-accent"
+          >
+            {t('pay.addSplit')}
+          </button>
+          {extraPayments.length > 0 && paidNowAmount > 0 && (
+            <div className="mt-3 flex justify-between border-t border-border pt-3 text-sm">
+              <span className="text-muted">{t('pay.totalRecording')}</span>
+              <span className="font-semibold text-ink">{formatINR(paidNowAmount)}</span>
+            </div>
+          )}
+
+          {/* Not refused any more: the extra clears older bills, then waits
+              as advance for the next one. */}
+          {paidNowAmount > total - advanceUsed && total > 0 && (
+            <p className="mt-3 rounded-lg bg-accent-bg p-3 text-xs text-accent-text">
+              {t('inv.paidMoreGoesToAdvance', { amount: formatINR(paidNowAmount - (total - advanceUsed)) })}
             </p>
           )}
           {paidNowAmount > 0 && (

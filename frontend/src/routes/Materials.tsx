@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Modal } from '@/components/ui/modal'
 import { ActionMenu } from '@/components/ui/action-menu'
 import { EmptyState } from '@/components/EmptyState'
-import { listMaterials, createMaterial, updateMaterial } from '@/services/materials'
+import { listMaterials, createMaterial, updateMaterial, adjustStock } from '@/services/materials'
 import { searchCatalog, type VariantWithLookups } from '@/services/materialCatalog'
 import { summarizeAttributes } from '@/lib/catalogAttributes'
 import { rateListMaterials, rateListPdfFile } from '@/lib/rateListPdf'
@@ -95,7 +95,8 @@ export default function Materials() {
     if (!material || !qty || qty <= 0) return
     setAddingStock(true)
     try {
-      await updateMaterial(material.id, { stock_qty: Number(material.stock_qty) + qty })
+      // Added in the database in one step, so two top-ups at once both count.
+      await adjustStock(material, qty)
       setAddStockForm({ materialId: '', qty: '' })
       setAddStockOpen(false)
       await refresh()

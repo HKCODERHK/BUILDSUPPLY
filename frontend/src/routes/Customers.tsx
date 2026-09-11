@@ -153,7 +153,15 @@ export default function Customers() {
                         </div>
                       )}
                     </div>
-                    <span className="font-semibold text-red-600">{formatINR(bal?.pending ?? 0)}</span>
+                    <div className="text-right">
+                      <span className="font-semibold text-red-600">{formatINR(bal?.pending ?? 0)}</span>
+                      {/* Paid ahead — used up by their next bill. */}
+                      {Number(bal?.advance ?? 0) > 0 && (
+                        <div className="text-[11px] font-medium text-accent">
+                          {t('cust.advanceAmount', { amount: formatINR(Number(bal?.advance)) })}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </Card>
               </Link>

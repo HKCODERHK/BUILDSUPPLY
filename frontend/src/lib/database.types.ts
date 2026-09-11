@@ -4,6 +4,9 @@ export type BillingCycle = 'monthly' | 'yearly'
 export type CustomerStatus = 'Active' | 'Inactive'
 export type QuotationStatus = 'Draft' | 'Sent' | 'Converted' | 'Expired'
 export type InvoiceStatus = 'Unpaid' | 'Partial' | 'Paid' | 'Cancelled'
+// 'opening' is a customer's old udhaar, kept alongside their bills so it
+// counts in the khata but never in sales (migration 024).
+export type InvoiceKind = 'bill' | 'opening'
 export type PaymentMode = 'Cash' | 'UPI' | 'Bank/Cheque'
 export type SupplierAccountStatus = 'active' | 'suspended' | 'inactive'
 export type SubscriptionStatus = 'active' | 'expired' | 'cancelled'
@@ -204,6 +207,7 @@ export interface Invoice {
   paid: number
   status: InvoiceStatus
   delivered: boolean
+  kind: InvoiceKind
   created_at: string
 }
 
@@ -221,7 +225,13 @@ export interface InvoiceItem {
 export interface Payment {
   id: string
   supplier_id: string
-  invoice_id: string
+  // Null while the money is an advance — received, but with no bill to go
+  // on yet. The customer's next bill uses it up (migration 024).
+  invoice_id: string | null
+  customer_id: string | null
+  // Handed over for their NEXT bill ("Receive advance") — never used on
+  // dues they already had.
+  is_advance: boolean
   amount: number
   mode: PaymentMode
   created_at: string
@@ -232,6 +242,8 @@ export interface CustomerBalance {
   supplier_id: string
   sales: number
   pending: number
+  // Money received beyond everything they owe, waiting for their next bill.
+  advance: number
 }
 
 export interface DashboardTotals {

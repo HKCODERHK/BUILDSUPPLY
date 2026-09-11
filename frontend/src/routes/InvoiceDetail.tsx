@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link, Navigate } from 'react-router-dom'
 import { Download, Printer, Ban, Pencil } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
@@ -64,6 +64,12 @@ export default function InvoiceDetail() {
     )
   }
 
+  // An opening balance lives in the invoices table but is not a bill to
+  // open, edit or share — it belongs on the customer's page.
+  if (invoice.kind === 'opening') {
+    return <Navigate to={invoice.customer_id ? `/customers/${invoice.customer_id}` : '/customers'} replace />
+  }
+
   const remaining = Math.max(0, invoice.total - invoice.paid)
 
   const message =
@@ -104,8 +110,8 @@ export default function InvoiceDetail() {
 
   async function handleCancel() {
     if (!invoice) return
-    // Cancelling wipes the payments recorded against the bill and puts stock
-    // back — worth confirming it is the owner doing it.
+    // Cancelling moves the bill's money to the customer's advance and puts
+    // stock back — worth confirming it is the owner doing it.
     if (!(await confirmWithPin(t('pin.reasonCancelBill')))) return
     setCancelling(true)
     try {
@@ -284,8 +290,14 @@ export default function InvoiceDetail() {
           </p>
           <ul className="mb-4 list-disc space-y-1 pl-5 text-xs text-muted">
             {invoice.delivered && <li>{t('inv.cancelStock')}</li>}
+            {/* Real money, so it is never removed — it waits as advance. */}
             {invoice.paid > 0 && (
-              <li className="text-red-600">{t('inv.cancelPayment', { amount: formatINR(invoice.paid) })}</li>
+              <li className="font-medium text-accent-text">
+                {t('inv.cancelPaymentKept', {
+                  amount: formatINR(invoice.paid),
+                  customer: customer?.name ?? t('inv.cancelTheCustomer'),
+                })}
+              </li>
             )}
             <li>{t('inv.cancelKept')}</li>
           </ul>

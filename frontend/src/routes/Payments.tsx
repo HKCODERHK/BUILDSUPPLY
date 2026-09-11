@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -11,8 +11,15 @@ import { Modal } from '@/components/ui/modal'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { EmptyState } from '@/components/EmptyState'
 import { SuccessHeader } from '@/components/SuccessTick'
-import { listPayments, recordPayment, type PaymentWithInvoice } from '@/services/payments'
-import { listInvoices, type InvoiceWithCustomer } from '@/services/invoices'
+import {
+  activeAllocations,
+  listPayments,
+  recordPayment,
+  type AppliedPart,
+  type PaymentWithInvoice,
+} from '@/services/payments'
+import { isBill, listInvoices, type InvoiceWithCustomer } from '@/services/invoices'
+import { newRequestId } from '@/services/db'
 import { receiptPdfFile } from '@/lib/receiptPdf'
 import { shareDocumentOnWhatsApp } from '@/lib/shareDocument'
 import type { PaymentMode } from '@/lib/database.types'
@@ -40,18 +47,23 @@ interface Split {
   mode: PaymentMode
 }
 
-// What the receipt needs to say, captured at the moment of recording.
+// What the receipt needs to say, captured at the moment of recording —
+// straight from the database's answer, never worked out from the list.
 interface Receipt {
   customerName: string
   customerAddress: string | null
   phone: string | null
+  /** Everything received: onto bills, and into advance. */
   amount: number
   mode: PaymentMode
+  /** What the customer still owes after this, across every bill. */
   balance: number
-  /** Offered but refused, because the bill did not owe that much. */
-  leftOver: number
-  /** The bill the money went onto — the receipt PDF names it. */
-  appliedTo: { invoice_no: string; amount: number }[]
+  /** What this payment kept as advance, beyond everything they owed. */
+  advance: number
+  /** The customer's whole advance after this. */
+  advanceBalance: number
+  /** The bills the money went onto — the receipt PDF names them. */
+  appliedTo: AppliedPart[]
 }
 
 export default function Payments() {
@@ -59,13 +71,18 @@ export default function Payments() {
   const { t } = useLanguage()
   const { confirmWithPin } = usePin()
   const [payments, setPayments] = useState<PaymentWithInvoice[]>([])
-  const [allInvoices, setAllInvoices] = useState<InvoiceWithCustomer[]>([])
   const [openInvoices, setOpenInvoices] = useState<InvoiceWithCustomer[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [invoiceId, setInvoiceId] = useState('')
   const [splits, setSplits] = useState<Split[]>([{ key: crypto.randomUUID(), amount: '', mode: 'Cash' }])
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  // A second tap in the same tick, before `saving` disables the button —
+  // and the id makes the database record the payment once even if both
+  // requests get out. Renewed each time the dialog closes.
+  const submittingRef = useRef(false)
+  const requestId = useRef(newRequestId())
   const [receipt, setReceipt] = useState<Receipt | null>(null)
   const [sendingReceipt, setSendingReceipt] = useState(false)
   const [shown, setShown] = useState(PAGE_SIZE)
@@ -82,7 +99,7 @@ export default function Payments() {
   async function refresh() {
     const [paymentList, invoiceList] = await Promise.all([listPayments(), listInvoices()])
     setPayments(paymentList)
-    setAllInvoices(invoiceList)
+    // Opening balances included: old udhaar can be paid off here too.
     setOpenInvoices(invoiceList.filter((i) => i.status !== 'Paid' && i.status !== 'Cancelled'))
   }
 
@@ -107,49 +124,53 @@ export default function Payments() {
   function closeModal() {
     setModalOpen(false)
     setReceipt(null)
+    setSaveError(null)
     setInvoiceId('')
     setSplits([{ key: crypto.randomUUID(), amount: '', mode: 'Cash' }])
+    requestId.current = newRequestId()
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!supplier || !invoiceId) return
+    if (!supplier || !invoiceId || submittingRef.current) return
     const invoice = openInvoices.find((i) => i.id === invoiceId)
-    const threshold = Number(supplier.pin_payment_threshold) || 0
-    if (threshold > 0 && totalEntered >= threshold) {
-      if (!(await confirmWithPin(t('pin.reasonLargePayment', { amount: formatINR(totalEntered) })))) return
-    }
-    setSaving(true)
+    submittingRef.current = true
     try {
+      const threshold = Number(supplier.pin_payment_threshold) || 0
+      if (threshold > 0 && totalEntered >= threshold) {
+        if (!(await confirmWithPin(t('pin.reasonLargePayment', { amount: formatINR(totalEntered) })))) return
+      }
+      setSaving(true)
+      setSaveError(null)
+      // The bill first, then the customer's older bills, then advance — all
+      // in one step in the database (record_payment, migration 024).
       const result = await recordPayment(
-        supplier.id,
+        requestId.current,
         invoiceId,
         splits.map((s) => ({ amount: Number(s.amount) || 0, mode: s.mode })),
       )
       await refresh()
 
-      // What this customer still owes across every bill, worked out from the
-      // list as it was before the refresh plus the amount just taken — the
-      // customer wants their khata balance, not this one bill's.
       if (invoice?.customer_id) {
-        const owedBefore = allInvoices
-          .filter((i) => i.customer_id === invoice.customer_id && i.status !== 'Cancelled')
-          .reduce((sum, i) => sum + (Number(i.total) - Number(i.paid)), 0)
         setReceipt({
           customerName: invoice.customers?.name ?? '',
           customerAddress: invoice.customers?.address ?? null,
           phone: invoice.customers?.phone ?? null,
-          amount: result.applied,
+          amount: result.applied.reduce((sum, a) => sum + a.amount, 0) + result.advance,
           // The common case is one mode; a split payment names the first.
           mode: splits.find((s) => Number(s.amount) > 0)?.mode ?? 'Cash',
-          balance: Math.max(0, owedBefore - result.applied),
-          leftOver: result.leftOver,
-          appliedTo: result.applied > 0 ? [{ invoice_no: invoice.invoice_no, amount: result.applied }] : [],
+          balance: result.pending,
+          advance: result.advance,
+          advanceBalance: result.advanceBalance,
+          appliedTo: result.applied,
         })
       } else {
         closeModal()
       }
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : t('error.generic'))
     } finally {
+      submittingRef.current = false
       setSaving(false)
     }
   }
@@ -159,13 +180,24 @@ export default function Payments() {
   async function sendReceipt() {
     if (!supplier || !receipt) return
     const balanceLine =
-      receipt.balance > 0 ? t('pay.receiptBalance', { amount: formatINR(receipt.balance) }) : t('pay.receiptSettled')
+      receipt.balance > 0
+        ? t('pay.receiptBalance', { amount: formatINR(receipt.balance) })
+        : receipt.advanceBalance > 0
+          ? t('pay.receiptAdvance', { amount: formatINR(receipt.advanceBalance) })
+          : t('pay.receiptSettled')
     setSendingReceipt(true)
     try {
       const file = await receiptPdfFile(
         supplier,
         { name: receipt.customerName, address: receipt.customerAddress, phone: receipt.phone },
-        { amount: receipt.amount, mode: receipt.mode, balance: receipt.balance, appliedTo: receipt.appliedTo },
+        {
+          amount: receipt.amount,
+          mode: receipt.mode,
+          balance: receipt.balance,
+          appliedTo: receipt.appliedTo,
+          advance: receipt.advance,
+          advanceBalance: receipt.advanceBalance,
+        },
       )
       await shareDocumentOnWhatsApp({
         file,
@@ -180,6 +212,15 @@ export default function Payments() {
     } finally {
       setSendingReceipt(false)
     }
+  }
+
+  /** What a payment went onto: a bill number, the opening balance, or advance. */
+  function paymentLabel(p: PaymentWithInvoice) {
+    const onBills = activeAllocations(p)
+    if (onBills.length === 0) return t('pay.advance')
+    if (onBills.length > 1) return t('pay.nBills', { n: String(onBills.length) })
+    const only = onBills[0].invoices
+    return only && !isBill(only) ? t('cust.openingBalance') : (only?.invoice_no ?? '—')
   }
 
   return (
@@ -205,7 +246,7 @@ export default function Payments() {
           art="payments"
           title={t('empty.paymentsTitle')}
           hint={t('empty.paymentsHint')}
-          // A payment is always recorded against a bill, so with nothing
+          // A payment here is always recorded against a bill, so with nothing
           // outstanding the Record button opens a modal whose only dropdown is
           // empty — a dead end on the very first screen a new supplier opens.
           // Send them to make a bill instead; the payment follows from it.
@@ -229,8 +270,8 @@ export default function Payments() {
             {payments.slice(0, shown).map((p) => (
               <div key={p.id} className="flex items-center justify-between py-2.5 text-sm">
                 <div>
-                  <div className="font-medium text-ink">{p.invoices?.invoice_no ?? '—'}</div>
-                  <div className="text-xs text-muted">{p.invoices?.customers?.name ?? '—'}</div>
+                  <div className={`font-medium ${activeAllocations(p).length ? 'text-ink' : 'text-accent'}`}>{paymentLabel(p)}</div>
+                  <div className="text-xs text-muted">{p.customers?.name ?? '—'}</div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge tone="neutral">{t(`mode.${p.mode}`)}</Badge>
@@ -263,9 +304,9 @@ export default function Payments() {
                   {receipt.balance > 0 ? formatINR(receipt.balance) : t('cust.settled')}
                 </span>
               </div>
-              {receipt.leftOver > 0 && (
-                <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-                  {t('pay.leftOverBill', { amount: formatINR(receipt.leftOver) })}
+              {receipt.advance > 0 && (
+                <p className="rounded-lg bg-accent-bg p-3 text-xs font-medium text-accent-text">
+                  {t('pay.keptAsAdvance', { amount: formatINR(receipt.advance) })}
                 </p>
               )}
               {receipt.phone && (
@@ -277,6 +318,9 @@ export default function Payments() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              {saveError && (
+                <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{saveError}</p>
+              )}
               <div>
                 <Label htmlFor="invoice">{t('pay.invoice')}</Label>
                 <select
@@ -289,7 +333,8 @@ export default function Payments() {
                   <option value="">{t('pay.selectInvoice')}</option>
                   {openInvoices.map((inv) => (
                     <option key={inv.id} value={inv.id}>
-                      {inv.invoice_no} — {inv.customers?.name} ({formatINR(inv.total - inv.paid)})
+                      {isBill(inv) ? inv.invoice_no : t('cust.openingBalance')} — {inv.customers?.name} (
+                      {formatINR(inv.total - inv.paid)})
                     </option>
                   ))}
                 </select>

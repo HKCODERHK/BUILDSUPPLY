@@ -4,11 +4,17 @@ import { Plus, AlertTriangle } from 'lucide-react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { dashboardTotals, listInvoices, type InvoiceWithCustomer } from '@/services/invoices'
-import { listCustomers } from '@/services/customers'
-import { listPayments, type PaymentWithInvoice } from '@/services/payments'
+import {
+  dashboardTotals,
+  hasAnyBill,
+  listBillsSince,
+  listRecentBills,
+  type InvoiceWithCustomer,
+} from '@/services/invoices'
+import { listRecentCustomers } from '@/services/customers'
+import { listPaymentsSince } from '@/services/payments'
 import { listMaterials } from '@/services/materials'
-import type { Customer, DashboardTotals, Material } from '@/lib/database.types'
+import type { Customer, DashboardTotals, Invoice, Material, Payment } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import type { TranslationKey } from '@/lib/i18n'
@@ -56,17 +62,26 @@ function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
 }
 
+// Midnight on the phone's own clock — the supplier's "today".
+function startOfToday(): string {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  return d.toISOString()
+}
+
 // "How did today go" — the question a supplier has when they shut the shop.
 // Collected counts money taken in today whichever bill it was against, so a
-// payment on last week's invoice still shows in today's takings.
-function summariseToday(invoices: InvoiceWithCustomer[], payments: PaymentWithInvoice[]) {
+// payment on last week's invoice still shows in today's takings. Both lists
+// arrive already limited to today (since local midnight); the date check is
+// kept as a guard.
+function summariseToday(bills: Invoice[], payments: Payment[]) {
   const todayKey = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD, local
   const isToday = (iso: string) => new Date(iso).toLocaleDateString('en-CA') === todayKey
 
-  const bills = invoices.filter((i) => i.status !== 'Cancelled' && isToday(i.created_at))
+  const live = bills.filter((i) => i.status !== 'Cancelled' && isToday(i.created_at))
   return {
-    bills: bills.length,
-    sold: bills.reduce((sum, i) => sum + Number(i.total), 0),
+    bills: live.length,
+    sold: live.reduce((sum, i) => sum + Number(i.total), 0),
     collected: payments.filter((p) => isToday(p.created_at)).reduce((sum, p) => sum + Number(p.amount), 0),
   }
 }
@@ -117,15 +132,27 @@ function SupplierDashboardView() {
 
   useEffect(() => {
     let active = true
-    Promise.all([dashboardTotals(), listInvoices(), listCustomers(), listPayments(), listMaterials()])
-      .then(([totalsData, invoices, customers, payments, materials]) => {
+    // Only what this screen shows — the latest five, and today — rather than
+    // every bill and payment ever made. It is the screen the app opens on,
+    // on a budget phone, and the full lists only ever grow.
+    const since = startOfToday()
+    Promise.all([
+      dashboardTotals(),
+      listRecentBills(5),
+      listRecentCustomers(5),
+      listBillsSince(since),
+      listPaymentsSince(since),
+      listMaterials(),
+      hasAnyBill(),
+    ])
+      .then(([totalsData, recent, customers, todaysBills, todaysPayments, materials, anyBill]) => {
         if (!active) return
         setTotals(totalsData)
-        setRecentInvoices(invoices.filter((i) => i.status !== 'Cancelled').slice(0, 5))
-        setRecentCustomers(customers.slice(0, 5))
-        setToday(summariseToday(invoices, payments))
+        setRecentInvoices(recent)
+        setRecentCustomers(customers)
+        setToday(summariseToday(todaysBills, todaysPayments))
         setLowStock(materials.filter((m) => m.stock_qty <= (m.low_stock_threshold ?? 5)))
-        setSetup({ materials: materials.length > 0, customers: customers.length > 0, invoices: invoices.length > 0 })
+        setSetup({ materials: materials.length > 0, customers: customers.length > 0, invoices: anyBill })
       })
       .finally(() => active && setLoading(false))
     return () => {
