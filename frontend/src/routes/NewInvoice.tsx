@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Trash2, Plus, AlertTriangle } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -414,7 +415,10 @@ export default function NewInvoice() {
           gstApplicable,
           transportLabourCharge: transportLabourAmount,
         })
-        setSaved(true)
+        // Commit `saved` before navigating: the unsaved-work guard reads it
+        // from the last render, and without this it still sees a dirty form
+        // and asks "Leave without saving?" about a bill that just saved.
+        flushSync(() => setSaved(true))
         navigate(`/invoices/${editingId}`)
         return
       }
