@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `027`, run in order. **027 is the latest and is applied** (2026-09-12, pasted by the user — reject reasons the customer sees, see Phase 10). 024 (money integrity, Phase 9), 025 (supplier row guard) and 026 (online orders) are applied too. (An unrelated storage-bucket 024 from Phase 8 was applied and removed again on 2026-09-11 and its file deleted.) (There is no `001` file; the base schema is `supabase/schema.sql`, which predates the migration folder.)
+- **Schema migrations**: `supabase/migrations/` — `002` through `028`, run in order. **028 is the latest and is applied** (2026-09-12, pasted by the user — the customer khata link, see Phase 11). 024 (money integrity, Phase 9), 025 (supplier row guard), 026 (online orders) and 027 (reject reasons) are applied too. (An unrelated storage-bucket 024 from Phase 8 was applied and removed again on 2026-09-11 and its file deleted.) (There is no `001` file; the base schema is `supabase/schema.sql`, which predates the migration folder.)
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -330,6 +330,45 @@ moves stock or changes a balance** — approving makes an ordinary estimate.
   `navigate()` runs before `setSaved(true)` re-renders. The order path uses
   `flushSync(() => setSaved(true))`; the others still need it.
 - **Not yet done:** opening the order link on a real phone.
+
+**Phase 11 — the customer khata link (migration 028, 2026-09-12). Applied to
+live and merged the same day.** The user's rule for this round: keep every
+existing screen and flow exactly as it is, and only add small options.
+
+- **Supplier side:** one new item in the customer page's ⋯ menu, **Share
+  khata link** (`components/KhataLinkModal.tsx`) — Send on WhatsApp (a `wa.me`
+  link to that customer's own number, with the link in the text; the supplier
+  presses Send), Copy link, Open page, and **Stop this link**. Nothing else on
+  the customer page moved.
+- **Customer side:** `/khata/<32 hex>` (`routes/KhataPage.tsx`, public, no
+  splash) — Balance due and Advance with us (the customer page's own figures,
+  from `customer_balances`), every live bill and payment newest first with the
+  last 3 months open and "Show older", Download PDF (the same
+  `customerLedgerPdf` the supplier sends) and Call. The list is built by the
+  supplier's own `buildCustomerLedger`, so it and the PDF always agree.
+  English, Hindi and Marathi.
+- **Database (028):** `customers.khata_token` (random, made on first share,
+  unique, format-checked); `khata_link(customer, stop)` runs as the caller, so
+  only the supplier's own customers are found — another supplier or the admin
+  gets "not found"; stopping clears the code, sharing again makes a new one.
+  `customer_khata(code)` is SECURITY DEFINER for `anon` and returns only that
+  customer's statement and the business details the PDF prints — no ids,
+  notes, rates, stock or codes — and nothing while the supplier's account is
+  not active.
+- **Known, deliberately left as the existing screens do it:** with a
+  "Receive advance" payment taken while old dues were open, the top card says
+  Due ₹5,000 and Advance ₹2,000 (the customer page's figures) while the last
+  list line says Due ₹3,000 (netted, as the ledger PDF already does).
+- **Tested** on the local Docker copy: 305/305 checks, 21 of them for the
+  khata link, and a browser walk in three languages at 360px. **Checked on
+  live** read-only after pasting: link-making refused signed out, a guessed
+  code finds nothing, the customers table stays unreadable, counts unchanged.
+- **Next (Phase 2, agreed 2026-09-12):** UPI, only in two places the supplier
+  controls — a "Pay by UPI" section on the khata link (off by default, a
+  Settings switch plus the supplier's UPI ID), and **Show UPI QR** for an
+  amount on the customer page (shown on the supplier's phone to scan in
+  person, or sent as an image through the share sheet). Never recorded
+  automatically: the supplier checks the bank and uses Receive payment → UPI.
 
 ## The admin panel
 
