@@ -1,5 +1,5 @@
 import type { InvoiceWithCustomer } from '@/services/invoices'
-import type { PaymentWithInvoice } from '@/services/payments'
+import { activeAllocations, type PaymentWithInvoice } from '@/services/payments'
 import type { LedgerEntry } from './customerLedgerPdf'
 import { localDateKey } from './localDate'
 
@@ -20,8 +20,6 @@ export function buildCustomerLedger(opts: {
 }): { openingBalance: number; entries: LedgerEntry[] } {
   const { customerId, invoices, payments, site, dateFrom, dateTo } = opts
 
-  const invoiceSite = new Map(invoices.map((inv) => [inv.id, inv.site]))
-
   const all: Omit<LedgerEntry, 'balance'>[] = []
   invoices
     .filter((inv) => inv.customer_id === customerId && inv.status !== 'Cancelled' && (!site || inv.site === site))
@@ -36,24 +34,26 @@ export function buildCustomerLedger(opts: {
       }),
     )
   payments
-    .filter(
-      (p) =>
-        p.customer_id === customerId &&
-        // Narrowed to one site, only money that went onto that site's bills
-        // belongs; an advance can't be pinned to a site.
-        (!site || (p.invoice_id !== null && invoiceSite.get(p.invoice_id) === site)),
-    )
-    .forEach((p) =>
+    .filter((p) => p.customer_id === customerId)
+    .forEach((p) => {
+      // Narrowed to one site, only the part of a receipt that went onto that
+      // site's bills belongs; an advance can't be pinned to a site.
+      const onBills = activeAllocations(p).filter((a) => !site || a.invoices?.site === site)
+      const credit = site ? onBills.reduce((sum, a) => sum + Number(a.amount), 0) : Number(p.amount)
+      if (credit <= 0) return
       all.push({
         date: p.created_at,
         type: 'Payment',
         // Empty for an advance — the PDF says "Advance received".
-        ref: p.invoices ? (p.invoices.kind === 'opening' ? 'opening balance' : p.invoices.invoice_no) : '',
+        ref: onBills
+          .map((a) => (a.invoices ? (a.invoices.kind === 'opening' ? 'opening balance' : a.invoices.invoice_no) : ''))
+          .filter(Boolean)
+          .join(', '),
         mode: p.mode,
         debit: 0,
-        credit: Number(p.amount),
-      }),
-    )
+        credit,
+      })
+    })
   all.sort((a, b) => a.date.localeCompare(b.date))
 
   // Anything before `dateFrom` is folded into a brought-forward balance

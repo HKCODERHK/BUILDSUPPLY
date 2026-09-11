@@ -229,6 +229,9 @@ export interface Payment {
   // on yet. The customer's next bill uses it up (migration 024).
   invoice_id: string | null
   customer_id: string | null
+  // Handed over for their NEXT bill ("Receive advance") — never used on
+  // dues they already had.
+  is_advance: boolean
   amount: number
   mode: PaymentMode
   created_at: string

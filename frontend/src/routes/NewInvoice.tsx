@@ -130,6 +130,9 @@ export default function NewInvoice() {
   const [transportLabour, setTransportLabour] = useState('')
   const [paidNow, setPaidNow] = useState('')
   const [paidMode, setPaidMode] = useState<PaymentMode>('Cash')
+  // Now and then a customer pays part of it another way — cash, and the rest
+  // by UPI. Kept behind a link, exactly as on the Payments screen.
+  const [extraPayments, setExtraPayments] = useState<{ key: string; amount: string; mode: PaymentMode }[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -279,6 +282,7 @@ export default function NewInvoice() {
     setTransportLabour(d.transportLabour)
     setPaidNow(d.paidNow ?? '')
     setPaidMode(d.paidMode ?? 'Cash')
+    setExtraPayments((d.paidSplits ?? []).map((s) => ({ key: crypto.randomUUID(), amount: s.amount, mode: s.mode })))
   }
 
   // Picking a customer pre-fills their usual site; the supplier can type a
@@ -326,7 +330,10 @@ export default function NewInvoice() {
   const gst = gstApplicable ? Math.round(subtotal * GST_RATE) : 0
   const transportLabourAmount = Number(transportLabour) || 0
   const total = subtotal + gst + transportLabourAmount
-  const paidNowAmount = isEdit ? 0 : Number(paidNow) || 0
+  // Every part taken at the counter, whatever the mode.
+  const paidNowAmount = isEdit
+    ? 0
+    : (Number(paidNow) || 0) + extraPayments.reduce((sum, s) => sum + (Number(s.amount) || 0), 0)
   // Money this customer paid ahead goes onto a new bill before anything is
   // collected (create_invoice). An edit leaves payments exactly as they are.
   const advanceHeld = isEdit ? 0 : Number(balances[customerId]?.advance ?? 0)
@@ -359,6 +366,7 @@ export default function NewInvoice() {
           total,
           paidNow,
           paidMode,
+          paidSplits: extraPayments.map(({ amount, mode }) => ({ amount, mode })),
         }
       : null
   useDraftAutosave(supplier?.id, 'invoice', draftSnapshot, !isEdit && !loading && !pendingDraft)
@@ -421,7 +429,12 @@ export default function NewInvoice() {
         items: payload,
         gstApplicable,
         transportLabourCharge: transportLabourAmount,
-        payment: paidNowAmount > 0 ? { amount: paidNowAmount, mode: paidMode } : null,
+        // One entry per mode, first row first — the database applies them in
+        // this order, so the modes on the receipt stay true.
+        payments: [
+          { amount: Number(paidNow) || 0, mode: paidMode },
+          ...extraPayments.map((s) => ({ amount: Number(s.amount) || 0, mode: s.mode })),
+        ].filter((p) => p.amount > 0),
       })
       // The bill exists from here on, so its draft must not survive to be
       // offered back and saved twice.
@@ -760,6 +773,71 @@ export default function NewInvoice() {
               </select>
             </div>
           </div>
+
+          {/* The rarer split — same link, same rows as the Payments screen. */}
+          {extraPayments.map((s) => (
+            <div key={s.key} className="mt-3">
+              <div className="flex items-center justify-between">
+                <Label className="mb-1.5">{t('pay.alsoPaidBy')}</Label>
+                <button
+                  type="button"
+                  onClick={() => setExtraPayments((prev) => prev.filter((x) => x.key !== s.key))}
+                  className="mb-1.5 text-muted hover:text-red-600"
+                  aria-label="Remove this part"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={s.amount}
+                  onChange={(e) =>
+                    setExtraPayments((prev) =>
+                      prev.map((x) => (x.key === s.key ? { ...x, amount: sanitizeDecimal(e.target.value) } : x)),
+                    )
+                  }
+                />
+                <select
+                  value={s.mode}
+                  onChange={(e) =>
+                    setExtraPayments((prev) =>
+                      prev.map((x) => (x.key === s.key ? { ...x, mode: e.target.value as PaymentMode } : x)),
+                    )
+                  }
+                  className="h-10 shrink-0 rounded-lg border border-border bg-card px-2 text-sm outline-none focus:border-accent"
+                >
+                  {PAYMENT_MODES.map((m) => (
+                    <option key={m} value={m}>
+                      {t(`mode.${m}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          ))}
+          <button
+            type="button"
+            // A second part is nearly always a different mode from the first.
+            onClick={() =>
+              setExtraPayments((prev) => [
+                ...prev,
+                { key: crypto.randomUUID(), amount: '', mode: paidMode === 'Cash' ? 'UPI' : 'Cash' },
+              ])
+            }
+            className="mt-3 text-xs font-semibold text-accent-text hover:text-accent"
+          >
+            {t('pay.addSplit')}
+          </button>
+          {extraPayments.length > 0 && paidNowAmount > 0 && (
+            <div className="mt-3 flex justify-between border-t border-border pt-3 text-sm">
+              <span className="text-muted">{t('pay.totalRecording')}</span>
+              <span className="font-semibold text-ink">{formatINR(paidNowAmount)}</span>
+            </div>
+          )}
+
           {/* Not refused any more: the extra clears older bills, then waits
               as advance for the next one. */}
           {paidNowAmount > total - advanceUsed && total > 0 && (

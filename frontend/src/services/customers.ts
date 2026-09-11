@@ -47,6 +47,8 @@ export async function getOpeningBalance(customerId: string): Promise<Invoice | n
     .select('*')
     .eq('customer_id', customerId)
     .eq('kind', 'opening')
+    // The live one; a replaced opening balance stays on record, cancelled.
+    .neq('status', 'Cancelled')
     .maybeSingle()
   if (error) throw error
   return data

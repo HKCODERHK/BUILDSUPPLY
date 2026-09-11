@@ -11,7 +11,13 @@ import { Modal } from '@/components/ui/modal'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { EmptyState } from '@/components/EmptyState'
 import { SuccessHeader } from '@/components/SuccessTick'
-import { listPayments, recordPayment, type AppliedPart, type PaymentWithInvoice } from '@/services/payments'
+import {
+  activeAllocations,
+  listPayments,
+  recordPayment,
+  type AppliedPart,
+  type PaymentWithInvoice,
+} from '@/services/payments'
 import { isBill, listInvoices, type InvoiceWithCustomer } from '@/services/invoices'
 import { newRequestId } from '@/services/db'
 import { receiptPdfFile } from '@/lib/receiptPdf'
@@ -210,8 +216,11 @@ export default function Payments() {
 
   /** What a payment went onto: a bill number, the opening balance, or advance. */
   function paymentLabel(p: PaymentWithInvoice) {
-    if (!p.invoices) return t('pay.advance')
-    return isBill(p.invoices) ? p.invoices.invoice_no : t('cust.openingBalance')
+    const onBills = activeAllocations(p)
+    if (onBills.length === 0) return t('pay.advance')
+    if (onBills.length > 1) return t('pay.nBills', { n: String(onBills.length) })
+    const only = onBills[0].invoices
+    return only && !isBill(only) ? t('cust.openingBalance') : (only?.invoice_no ?? '—')
   }
 
   return (
@@ -261,7 +270,7 @@ export default function Payments() {
             {payments.slice(0, shown).map((p) => (
               <div key={p.id} className="flex items-center justify-between py-2.5 text-sm">
                 <div>
-                  <div className={`font-medium ${p.invoices ? 'text-ink' : 'text-accent'}`}>{paymentLabel(p)}</div>
+                  <div className={`font-medium ${activeAllocations(p).length ? 'text-ink' : 'text-accent'}`}>{paymentLabel(p)}</div>
                   <div className="text-xs text-muted">{p.customers?.name ?? '—'}</div>
                 </div>
                 <div className="flex items-center gap-2">

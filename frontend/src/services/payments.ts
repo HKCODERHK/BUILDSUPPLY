@@ -3,13 +3,26 @@ import type { InvoiceKind, Payment, PaymentMode } from '@/lib/database.types'
 import { logActivity } from './activityLog'
 import { callRpc, fetchAll } from './db'
 
-export interface PaymentWithInvoice extends Payment {
-  // Null for an advance — money received with no bill to go on yet.
-  invoices: { invoice_no: string; kind: InvoiceKind } | null
-  customers: { name: string } | null
+export interface PaymentAllocationRef {
+  amount: number
+  // Set once the bill it was on was cancelled or changed; it no longer counts.
+  released_at: string | null
+  invoices: { invoice_no: string; kind: InvoiceKind; site: string | null } | null
 }
 
-const PAYMENT_SELECT = '*, invoices(invoice_no, kind), customers(name)'
+export interface PaymentWithInvoice extends Payment {
+  customers: { name: string } | null
+  // Which bills this receipt paid (migration 024). None still active means it
+  // is advance, waiting for the customer's next bill.
+  payment_allocations: PaymentAllocationRef[]
+}
+
+const PAYMENT_SELECT = '*, customers(name), payment_allocations(amount, released_at, invoices(invoice_no, kind, site))'
+
+/** The bills a receipt is still on — released allocations no longer count. */
+export function activeAllocations(p: { payment_allocations?: PaymentAllocationRef[] | null }): PaymentAllocationRef[] {
+  return (p.payment_allocations ?? []).filter((a) => !a.released_at)
+}
 
 export async function listPayments(): Promise<PaymentWithInvoice[]> {
   return fetchAll<PaymentWithInvoice>((from, to) =>
@@ -141,6 +154,31 @@ export async function recordCustomerPayment(
   )
   if (!result.duplicate) {
     void logActivity('supplier', 'payment_recorded', { details: { customer_id: customerId, amount } })
+  }
+  return result
+}
+
+/**
+ * An advance handed over for the customer's NEXT bill (record_advance, the
+ * customer page's "Receive advance"). Kept apart from anything they already
+ * owe: it is only used on bills raised after it, starting with the next one.
+ */
+export async function recordAdvance(
+  requestId: string,
+  customerId: string,
+  amount: number,
+  mode: PaymentMode,
+): Promise<PaymentResult> {
+  const result = toPaymentResult(
+    await callRpc<RawPaymentResult>('record_advance', {
+      p_request_id: requestId,
+      p_customer_id: customerId,
+      p_amount: amount,
+      p_mode: mode,
+    }),
+  )
+  if (!result.duplicate) {
+    void logActivity('supplier', 'advance_recorded', { details: { customer_id: customerId, amount } })
   }
   return result
 }

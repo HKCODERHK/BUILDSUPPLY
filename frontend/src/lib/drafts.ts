@@ -43,6 +43,9 @@ export interface BillDraft {
   /** Bills only — an estimate never takes payment. */
   paidNow?: string
   paidMode?: PaymentMode
+  // The rarer "paid partly by another mode" rows, after the first. Absent
+  // from drafts saved before they existed, which restore with none.
+  paidSplits?: { amount: string; mode: PaymentMode }[]
 }
 
 export interface SavedDraft extends BillDraft {

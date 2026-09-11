@@ -228,9 +228,12 @@ export async function createInvoice(input: {
   items: NewInvoiceItem[]
   gstApplicable?: boolean
   transportLabourCharge?: number
-  payment?: { amount: number; mode: PaymentMode } | null
+  /** Money taken at the counter, one entry per mode, in the order given. */
+  payments?: { amount: number; mode: PaymentMode }[]
   quotationId?: string | null
 }): Promise<CreatedInvoice> {
+  const taken = (input.payments ?? []).filter((p) => p.amount > 0)
+  const takenTotal = taken.reduce((sum, p) => sum + p.amount, 0)
   const raw = await callRpc<{
     invoice: Invoice
     payment: RawPaymentResult | null
@@ -244,7 +247,7 @@ export async function createInvoice(input: {
     p_items: input.items,
     p_gst: !!input.gstApplicable,
     p_transport: input.transportLabourCharge ?? 0,
-    p_payment: input.payment && input.payment.amount > 0 ? input.payment : null,
+    p_payments: taken.length > 0 ? taken : null,
     p_quotation_id: input.quotationId ?? null,
   })
 
@@ -252,8 +255,8 @@ export async function createInvoice(input: {
     void logActivity('supplier', 'invoice_created', {
       details: { invoice_no: raw.invoice.invoice_no, total: Number(raw.invoice.total) },
     })
-    if (input.payment && input.payment.amount > 0) {
-      void logActivity('supplier', 'payment_recorded', { details: { invoice_id: raw.invoice.id, amount: input.payment.amount } })
+    if (takenTotal > 0) {
+      void logActivity('supplier', 'payment_recorded', { details: { invoice_id: raw.invoice.id, amount: takenTotal } })
     }
   }
 
@@ -313,11 +316,12 @@ export interface CancelResult {
 // Voids a bill entered by mistake. The row is kept (so the invoice number
 // isn't reused and the history still shows what happened) but it drops out
 // of every total and any stock it consumed goes back. Money taken on it is
-// either kept as the customer's advance or removed — the supplier chooses.
-export async function cancelInvoice(invoiceId: string, keepPayments: boolean): Promise<CancelResult> {
+// never removed: it becomes the customer's advance, and their other unpaid
+// bills use it first.
+export async function cancelInvoice(invoiceId: string): Promise<CancelResult> {
   const raw = await callRpc<{ already?: boolean; kept?: number; pending?: number; advance_balance?: number }>(
     'cancel_invoice',
-    { p_invoice_id: invoiceId, p_keep_payments: keepPayments },
+    { p_invoice_id: invoiceId },
   )
   if (!raw.already) {
     void logActivity('supplier', 'invoice_cancelled', { details: { invoice_id: invoiceId, kept_as_advance: Number(raw.kept ?? 0) } })

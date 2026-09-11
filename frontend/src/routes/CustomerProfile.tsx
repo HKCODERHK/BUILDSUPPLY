@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Pencil, IndianRupee, RotateCcw, Plus } from 'lucide-react'
+import { Pencil, IndianRupee, RotateCcw, Plus, HandCoins, BookOpen } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -12,16 +12,15 @@ import { ActionMenu } from '@/components/ui/action-menu'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { SuccessHeader } from '@/components/SuccessTick'
 import { getCustomer, getCustomerBalance, setOpeningBalance, updateCustomer } from '@/services/customers'
-import { listPaymentsForCustomer, recordCustomerPayment, type PaymentResult } from '@/services/payments'
+import { listPaymentsForCustomer, recordAdvance, recordCustomerPayment, type PaymentResult } from '@/services/payments'
 import { isBill, listInvoicesForCustomer } from '@/services/invoices'
 import { logActivity } from '@/services/activityLog'
 import { newRequestId } from '@/services/db'
 import { buildCustomerLedger } from '@/lib/customerLedger'
-import { customerLedgerPdfFile } from '@/lib/customerLedgerPdf'
+import { customerLedgerPdfFile, downloadCustomerLedgerPdf } from '@/lib/customerLedgerPdf'
 import { receiptPdfFile } from '@/lib/receiptPdf'
 import { shareDocumentOnWhatsApp } from '@/lib/shareDocument'
 import { sanitizeDecimal } from '@/lib/numberInput'
-import { localDateKey } from '@/lib/localDate'
 import { oldestPendingDays, overdueTextClass } from '@/lib/overdue'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -68,7 +67,6 @@ export default function CustomerProfile() {
     address: '',
     credit_limit: '',
     opening: '',
-    openingAsOf: '',
   })
   const [editError, setEditError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -82,6 +80,9 @@ export default function CustomerProfile() {
   const payingRef = useRef(false)
   const payRequestId = useRef(newRequestId())
   const [payResult, setPayResult] = useState<PaymentResult | null>(null)
+  // Fixed when the dialog opens, so it doesn't change its words the moment
+  // the money is recorded: with nothing owed, what they hand over is advance.
+  const [payKind, setPayKind] = useState<'payment' | 'advance'>('payment')
   // Everything the receipt needs, captured at the moment the money is
   // recorded — straight from the database's answer, so a supplier who taps
   // "send receipt" at once never sends a balance from before the payment.
@@ -92,7 +93,7 @@ export default function CustomerProfile() {
     advance: number
     advanceBalance: number
   } | null>(null)
-  const [sharing, setSharing] = useState<'receipt' | 'statement' | null>(null)
+  const [sharing, setSharing] = useState<'receipt' | 'statement' | 'ledger' | null>(null)
 
   async function refresh() {
     if (!id) return
@@ -118,7 +119,10 @@ export default function CustomerProfile() {
       }
       setPaying(true)
       setPayError(null)
-      const result = await recordCustomerPayment(payRequestId.current, id, amount, payForm.mode)
+      const result =
+        payKind === 'advance'
+          ? await recordAdvance(payRequestId.current, id, amount, payForm.mode)
+          : await recordCustomerPayment(payRequestId.current, id, amount, payForm.mode)
       const received = result.applied.reduce((sum, a) => sum + a.amount, 0) + result.advance
       setPayResult(result)
       setPaidSummary({
@@ -162,7 +166,8 @@ export default function CustomerProfile() {
     }
   }, [id])
 
-  const openingRow = invoices.find((i) => !isBill(i)) ?? null
+  // The live one — a replaced opening balance stays on record, cancelled.
+  const openingRow = invoices.find((i) => !isBill(i) && i.status !== 'Cancelled') ?? null
 
   function openEdit() {
     if (!customer) return
@@ -173,7 +178,6 @@ export default function CustomerProfile() {
       address: customer.address ?? '',
       credit_limit: customer.credit_limit != null ? String(customer.credit_limit) : '',
       opening: openingRow ? String(Number(openingRow.total)) : '',
-      openingAsOf: openingRow ? localDateKey(openingRow.created_at) : '',
     })
     setEditError(null)
     setEditOpen(true)
@@ -187,10 +191,7 @@ export default function CustomerProfile() {
       return
     }
     const newOpening = Number(editForm.opening) || 0
-    const oldOpening = openingRow ? Number(openingRow.total) : 0
-    const oldAsOf = openingRow ? localDateKey(openingRow.created_at) : ''
-    const openingChanged =
-      newOpening !== oldOpening || (newOpening > 0 && !!editForm.openingAsOf && editForm.openingAsOf !== oldAsOf)
+    const openingChanged = newOpening !== (openingRow ? Number(openingRow.total) : 0)
     // Changing an old balance rewrites what they owe — the owner's call.
     if (openingChanged && openingRow && !(await confirmWithPin(t('pin.reasonOpeningBalance')))) return
     setSaving(true)
@@ -203,7 +204,8 @@ export default function CustomerProfile() {
         address: editForm.address || null,
         credit_limit: editForm.credit_limit ? Number(editForm.credit_limit) : null,
       })
-      if (openingChanged) await setOpeningBalance(customer.id, newOpening, editForm.openingAsOf || undefined)
+      // The database keeps the date the balance already had.
+      if (openingChanged) await setOpeningBalance(customer.id, newOpening)
       setEditOpen(false)
       await refresh()
     } catch (err) {
@@ -224,6 +226,13 @@ export default function CustomerProfile() {
   const pendingDays = oldestPendingDays(invoices)
 
   const creditLimit = customer.credit_limit != null ? Number(customer.credit_limit) : null
+
+  // Two doors into the same dialog: a payment against what they owe, or an
+  // advance kept for their next bill.
+  function openPay(kind: 'payment' | 'advance') {
+    setPayKind(kind)
+    setPayOpen(true)
+  }
 
   /** A bill number as the supplier reads it; the opening balance by name. */
   function billLabel(no: string) {
@@ -267,18 +276,63 @@ export default function CustomerProfile() {
     }
   }
 
+  // This customer's whole record as a statement — every bill, every payment,
+  // the opening balance and any advance. Only their own rows are read,
+  // however large the business gets.
+  async function loadLedger(c: Customer) {
+    const [customerInvoices, customerPayments] = await Promise.all([
+      listInvoicesForCustomer(c.id),
+      listPaymentsForCustomer(c.id),
+    ])
+    return buildCustomerLedger({ customerId: c.id, invoices: customerInvoices, payments: customerPayments })
+  }
+
+  // The Ledger quick action: the complete record as a PDF.
+  async function downloadLedger() {
+    if (!supplier || !customer) return
+    setSharing('ledger')
+    try {
+      await downloadCustomerLedgerPdf(supplier, customer, await loadLedger(customer))
+      void logActivity('supplier', 'report_exported', { details: { report: 'Customer Ledger', format: 'pdf' } })
+    } finally {
+      setSharing(null)
+    }
+  }
+
+  // ...and its WhatsApp icon: the same PDF, sent as a real attachment.
+  async function shareLedger() {
+    if (!supplier || !customer) return
+    setSharing('ledger')
+    try {
+      const ledger = await loadLedger(customer)
+      // The statement's own last line: owed, in credit, or square.
+      const closing = ledger.entries.length ? ledger.entries[ledger.entries.length - 1].balance : ledger.openingBalance
+      const outcome = await shareDocumentOnWhatsApp({
+        file: await customerLedgerPdfFile(supplier, customer, ledger),
+        message:
+          `Hi ${customer.name}, here is your account statement. ` +
+          (closing > 0
+            ? `Closing balance: ${formatINR(closing)}.`
+            : closing < 0
+              ? `Advance with us: ${formatINR(-closing)}.`
+              : 'Your account is fully settled. Thank you!'),
+        title: `Statement — ${customer.name}`,
+      })
+      if (outcome === 'shared') {
+        void logActivity('supplier', 'report_shared', { details: { report: 'Customer Ledger', format: 'pdf_share' } })
+      }
+    } finally {
+      setSharing(null)
+    }
+  }
+
   // The full statement Reminders sends — every bill and every payment — so
   // the customer is chased with the record, not a number to argue with.
-  // Only this customer's records are read, however large the business gets.
   async function sendStatement() {
     if (!supplier || !customer) return
     setSharing('statement')
     try {
-      const [customerInvoices, customerPayments] = await Promise.all([
-        listInvoicesForCustomer(customer.id),
-        listPaymentsForCustomer(customer.id),
-      ])
-      const ledger = buildCustomerLedger({ customerId: customer.id, invoices: customerInvoices, payments: customerPayments })
+      const ledger = await loadLedger(customer)
       const file = await customerLedgerPdfFile(supplier, customer, ledger)
       const outcome = await shareDocumentOnWhatsApp({
         file,
@@ -297,11 +351,12 @@ export default function CustomerProfile() {
 
   // Sites come off this customer's own bills now, so a contractor can see
   // what each of their sites has run up and still owes. The opening balance
-  // has no site, so it gets a line of its own.
+  // belongs to no site, so it stays out — the Pending card already counts it.
   const siteBreakdown = Array.from(
     liveInvoices
+      .filter(isBill)
       .reduce((map, inv) => {
-        const key = !isBill(inv) ? t('cust.openingBalance') : inv.site?.trim() || t('cust.noSite')
+        const key = inv.site?.trim() || t('cust.noSite')
         const cur = map.get(key) ?? { billed: 0, pending: 0 }
         cur.billed += Number(inv.total)
         cur.pending += Number(inv.total) - Number(inv.paid)
@@ -325,12 +380,13 @@ export default function CustomerProfile() {
           // sm up, where there was never a shortage of room. flex-wrap is the
           // backstop: if a label ever grows, these move to a second line
           // instead of pushing ⋯ out of reach again.
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Always there, not only while something is owed: a customer
-                paying ahead of their next bill is an ordinary day. */}
-            <Button size="sm" className="sm:h-10 sm:px-4 sm:text-sm" onClick={() => setPayOpen(true)}>
-              <IndianRupee size={16} /> {t('cust.receivePayment')}
-            </Button>
+          <div className="flex flex-col items-start gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Money against what they owe: the oldest bills first, and
+                  anything beyond them is kept as advance. */}
+              <Button size="sm" className="sm:h-10 sm:px-4 sm:text-sm" onClick={() => openPay('payment')}>
+                <IndianRupee size={16} /> {t('cust.receivePayment')}
+              </Button>
             {/* Billing this customer used to mean leaving for Invoices, then
                 New, then picking them again from the dropdown. */}
             <Button
@@ -363,6 +419,38 @@ export default function CustomerProfile() {
                 },
               ]}
             />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Just below Receive payment: money handed over for their NEXT
+                  bill, kept apart from anything they already owe. */}
+              <Button size="sm" variant="outline" className="sm:h-10 sm:px-4 sm:text-sm" onClick={() => openPay('advance')}>
+                <HandCoins size={16} /> {t('cust.receiveAdvance')}
+              </Button>
+              {/* The customer's whole record in one tap, joined to a small
+                  WhatsApp icon that sends the same PDF. */}
+              <div className="flex items-center">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-r-none sm:h-10 sm:px-4 sm:text-sm"
+                  disabled={sharing !== null}
+                  onClick={downloadLedger}
+                >
+                  <BookOpen size={16} /> {sharing === 'ledger' ? t('common.preparing') : t('cust.ledger')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="-ml-px rounded-l-none px-2.5 text-accent sm:h-10"
+                  disabled={sharing !== null}
+                  onClick={shareLedger}
+                  aria-label={t('cust.ledgerShare')}
+                  title={t('cust.ledgerShare')}
+                >
+                  <WhatsAppIcon size={16} />
+                </Button>
+              </div>
+            </div>
           </div>
         }
       />
@@ -448,7 +536,8 @@ export default function CustomerProfile() {
         </CardHeader>
         <div className="flex flex-col divide-y divide-border">
           {invoices.length === 0 && <p className="py-3 text-sm text-muted">{t('cust.noInvoices')}</p>}
-          {invoices.map((inv) =>
+          {/* A replaced opening balance stays on record but not on screen. */}
+          {invoices.filter((inv) => isBill(inv) || inv.status !== 'Cancelled').map((inv) =>
             isBill(inv) ? (
               <Link
                 key={inv.id}
@@ -522,28 +611,17 @@ export default function CustomerProfile() {
               />
               <p className="mt-1.5 text-xs text-muted">{t('cust.creditLimitHint')}</p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="edit-opening">{t('cust.openingField')}</Label>
-                <Input
-                  id="edit-opening"
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="0"
-                  value={editForm.opening}
-                  onChange={(e) => setEditForm({ ...editForm, opening: sanitizeDecimal(e.target.value) })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-opening-date">{t('cust.openingAsOf')}</Label>
-                <Input
-                  id="edit-opening-date"
-                  type="date"
-                  value={editForm.openingAsOf}
-                  onChange={(e) => setEditForm({ ...editForm, openingAsOf: e.target.value })}
-                />
-              </div>
-              <p className="col-span-2 -mt-1.5 text-xs text-muted">{t('cust.openingHint')}</p>
+            <div>
+              <Label htmlFor="edit-opening">{t('cust.openingField')}</Label>
+              <Input
+                id="edit-opening"
+                type="text"
+                inputMode="decimal"
+                placeholder="0"
+                value={editForm.opening}
+                onChange={(e) => setEditForm({ ...editForm, opening: sanitizeDecimal(e.target.value) })}
+              />
+              <p className="mt-1.5 text-xs text-muted">{t('cust.openingHint')}</p>
             </div>
             <Button type="submit" disabled={saving}>
               {saving ? t('common.saving') : t('cust.saveChanges')}
@@ -553,12 +631,19 @@ export default function CustomerProfile() {
       )}
 
       {payOpen && (
-        <Modal title={`${t('cust.receivePayment')} — ${customer.name}`} onClose={closePay}>
+        <Modal
+          title={`${payKind === 'advance' ? t('cust.receiveAdvance') : t('cust.receivePayment')} — ${customer.name}`}
+          onClose={closePay}
+        >
           {payResult ? (
             <div className="flex flex-col gap-3">
               {paidSummary && paidSummary.amount > 0 && (
                 <SuccessHeader
-                  title={t('pay.receivedAmount', { amount: formatINR(paidSummary.amount) })}
+                  title={
+                    payKind === 'advance'
+                      ? t('pay.advanceReceived', { amount: formatINR(paidSummary.amount) })
+                      : t('pay.receivedAmount', { amount: formatINR(paidSummary.amount) })
+                  }
                   detail={t(`mode.${paidSummary.mode}`)}
                 />
               )}
@@ -579,7 +664,9 @@ export default function CustomerProfile() {
               )}
               {payResult.advance > 0 && (
                 <p className="rounded-lg bg-accent-bg p-3 text-xs font-medium text-accent-text">
-                  {t('pay.keptAsAdvance', { amount: formatINR(payResult.advance) })}
+                  {payKind === 'advance' && payResult.applied.length === 0
+                    ? t('pay.advanceHeldNow', { amount: formatINR(payResult.advanceBalance) })
+                    : t('pay.keptAsAdvance', { amount: formatINR(payResult.advance) })}
                 </p>
               )}
               {customer.phone && paidSummary && paidSummary.amount > 0 && (
@@ -591,7 +678,15 @@ export default function CustomerProfile() {
             </div>
           ) : (
             <form onSubmit={handleReceivePayment} className="flex flex-col gap-4">
-              <p className="text-sm text-muted">{t('pay.pendingNow', { amount: formatINR(totalPending) })}</p>
+              <p className="text-sm text-muted">
+                {payKind === 'advance'
+                  ? totalPending > 0
+                    ? t('pay.advanceIntroOwed', { amount: formatINR(totalPending) })
+                    : advance > 0
+                      ? t('pay.advanceIntroHeld', { amount: formatINR(advance) })
+                      : t('pay.advanceIntro')
+                  : t('pay.pendingNow', { amount: formatINR(totalPending) })}
+              </p>
               {payError && (
                 <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{payError}</p>
               )}
@@ -621,7 +716,7 @@ export default function CustomerProfile() {
                 </div>
               </div>
               <Button type="submit" disabled={paying || !Number(payForm.amount)}>
-                {paying ? t('pay.recording') : t('pay.record')}
+                {paying ? t('pay.recording') : payKind === 'advance' ? t('pay.recordAdvance') : t('pay.record')}
               </Button>
             </form>
           )}

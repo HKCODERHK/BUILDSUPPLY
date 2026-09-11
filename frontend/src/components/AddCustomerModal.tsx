@@ -28,7 +28,6 @@ export function AddCustomerModal({
     address: '',
     credit_limit: '',
     opening: '',
-    openingAsOf: '',
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -63,7 +62,7 @@ export function AddCustomerModal({
     }
     try {
       const opening = Number(form.opening) || 0
-      if (opening > 0) await setOpeningBalance(customer.id, opening, form.openingAsOf || undefined)
+      if (opening > 0) await setOpeningBalance(customer.id, opening)
       onCreated(customer)
     } catch {
       setError(t('cust.openingRetry'))
@@ -125,28 +124,17 @@ export function AddCustomerModal({
         </div>
         {/* Their old udhaar from before BuildSupply, so the khata is right
             from the first day instead of starting at zero. */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label htmlFor="new-cust-opening">{t('cust.openingField')}</Label>
-            <Input
-              id="new-cust-opening"
-              type="text"
-              inputMode="decimal"
-              placeholder="0"
-              value={form.opening}
-              onChange={(e) => setForm({ ...form, opening: sanitizeDecimal(e.target.value) })}
-            />
-          </div>
-          <div>
-            <Label htmlFor="new-cust-opening-date">{t('cust.openingAsOf')}</Label>
-            <Input
-              id="new-cust-opening-date"
-              type="date"
-              value={form.openingAsOf}
-              onChange={(e) => setForm({ ...form, openingAsOf: e.target.value })}
-            />
-          </div>
-          <p className="col-span-2 -mt-1.5 text-xs text-muted">{t('cust.openingHint')}</p>
+        <div>
+          <Label htmlFor="new-cust-opening">{t('cust.openingField')}</Label>
+          <Input
+            id="new-cust-opening"
+            type="text"
+            inputMode="decimal"
+            placeholder="0"
+            value={form.opening}
+            onChange={(e) => setForm({ ...form, opening: sanitizeDecimal(e.target.value) })}
+          />
+          <p className="mt-1.5 text-xs text-muted">{t('cust.openingHint')}</p>
         </div>
         <Button type="submit" disabled={saving}>
           {saving ? t('common.saving') : t('cust.saveCustomer')}
