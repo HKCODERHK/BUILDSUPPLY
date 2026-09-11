@@ -31,13 +31,14 @@ import AdminMaterialCatalog from '@/routes/admin/MaterialCatalog'
 import AdminPlatformSettings from '@/routes/admin/PlatformSettings'
 import OrderPage from '@/routes/OrderPage'
 import OrderStatus from '@/routes/OrderStatus'
+import KhataPage from '@/routes/KhataPage'
 import Orders from '@/routes/Orders'
 import OrderDetail from '@/routes/OrderDetail'
 
 // A supplier's public order page and a customer's status link: open to
 // anyone, no sign-in, and no BuildSupply splash in front of them.
 function isPublicOrderPath(path: string) {
-  return path.startsWith('/order/') || path.startsWith('/order-status/')
+  return path.startsWith('/order/') || path.startsWith('/order-status/') || path.startsWith('/khata/')
 }
 
 function Protected({
@@ -67,6 +68,7 @@ const router = createBrowserRouter([
   { path: '/reset-password', element: <ResetPassword /> },
   { path: '/order/:link', element: <OrderPage /> },
   { path: '/order-status/:token', element: <OrderStatus /> },
+  { path: '/khata/:token', element: <KhataPage /> },
   { path: '/dashboard', element: <Protected><Dashboard /></Protected> },
   { path: '/customers', element: <Protected supplierOnly><Customers /></Protected> },
   { path: '/customers/:id', element: <Protected supplierOnly><CustomerProfile /></Protected> },

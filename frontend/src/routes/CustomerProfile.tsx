@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Pencil, IndianRupee, RotateCcw, Plus, HandCoins, BookOpen, Phone, LoaderCircle } from 'lucide-react'
+import { Pencil, IndianRupee, RotateCcw, Plus, HandCoins, BookOpen, Phone, LoaderCircle, Link2 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -28,6 +28,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { usePin } from '@/context/PinContext'
 import type { Customer, Invoice, PaymentMode } from '@/lib/database.types'
 import { TruckLoader } from '@/components/TruckLoader'
+import { KhataLinkModal } from '@/components/KhataLinkModal'
 
 const PAYMENT_MODES: PaymentMode[] = ['Cash', 'UPI', 'Bank/Cheque']
 
@@ -95,6 +96,7 @@ export default function CustomerProfile() {
     advanceBalance: number
   } | null>(null)
   const [sharing, setSharing] = useState<'receipt' | 'statement' | 'ledger' | null>(null)
+  const [khataOpen, setKhataOpen] = useState(false)
 
   async function refresh() {
     if (!id) return
@@ -424,6 +426,8 @@ export default function CustomerProfile() {
                   disabled: !customer.phone || sharing !== null,
                   onSelect: sendStatement,
                 },
+                // Their own read-only account page (migration 028).
+                { label: t('khata.share'), icon: <Link2 size={15} />, onSelect: () => setKhataOpen(true) },
               ]}
             />
             </div>
@@ -480,6 +484,8 @@ export default function CustomerProfile() {
           </div>
         }
       />
+
+      {khataOpen && <KhataLinkModal customer={customer} onClose={() => setKhataOpen(false)} />}
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
