@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase'
 import type { PlatformSettings } from '@/lib/database.types'
 import { sanitizeDigits, sanitizeDecimal } from '@/lib/numberInput'
 import { PinSettingsCard } from '@/components/PinSettingsCard'
+import { isPasswordLeaked, MIN_PASSWORD_LENGTH } from '@/lib/passwordRules'
 import { TruckLoader } from '@/components/TruckLoader'
 
 export default function AdminPlatformSettings() {
@@ -110,11 +111,15 @@ function ChangePasswordCard() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (newPassword.length < 6) return
+    if (newPassword.length < MIN_PASSWORD_LENGTH) return
     setSaving(true)
     setSaved(false)
     setError(null)
     try {
+      if (await isPasswordLeaked(newPassword)) {
+        setError('This password has appeared in data leaks on other websites, so it is easy to guess. Choose a different one.')
+        return
+      }
       const { error } = await supabase.auth.updateUser({ password: newPassword })
       if (error) throw error
       setNewPassword('')
@@ -137,14 +142,15 @@ function ChangePasswordCard() {
           <Input
             id="admin_new_password"
             type="password"
-            minLength={6}
+            minLength={MIN_PASSWORD_LENGTH}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
           />
+          <p className="mt-1.5 text-xs text-muted">At least {MIN_PASSWORD_LENGTH} characters, and not one that has leaked online.</p>
         </div>
         {error && <p className="text-xs text-red-600">{error}</p>}
         <div className="flex items-center gap-3">
-          <Button type="submit" disabled={saving || newPassword.length < 6}>
+          <Button type="submit" disabled={saving || newPassword.length < MIN_PASSWORD_LENGTH}>
             {saving ? 'Saving…' : 'Update password'}
           </Button>
           {saved && <span className="text-xs text-accent">Saved!</span>}

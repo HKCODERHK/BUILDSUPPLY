@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { useLanguage } from '@/context/LanguageContext'
+import { isPasswordLeaked, MIN_PASSWORD_LENGTH } from '@/lib/passwordRules'
 
 // Reached via the link in the password-reset email. Supabase now sends a
 // PKCE `?code=...` param rather than an auto-detected token in the URL
@@ -37,8 +38,14 @@ export default function ResetPassword() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    if (password.length < MIN_PASSWORD_LENGTH) return
     setSubmitting(true)
     setError(null)
+    if (await isPasswordLeaked(password)) {
+      setSubmitting(false)
+      setError(t('set.pwLeaked'))
+      return
+    }
     const { error } = await supabase.auth.updateUser({ password })
     setSubmitting(false)
     if (error) {
@@ -65,16 +72,17 @@ export default function ResetPassword() {
               id="password"
               type="password"
               required
-              minLength={6}
+              minLength={MIN_PASSWORD_LENGTH}
               disabled={!ready}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
+            <p className="mt-1.5 text-xs text-muted">{t('set.pwShort', { min: MIN_PASSWORD_LENGTH })}</p>
           </div>
           {(linkInvalid || error) && (
             <p className="text-xs text-red-600">{linkInvalid ? t('auth.invalidLink') : error}</p>
           )}
-          <Button type="submit" disabled={submitting || !ready} className="w-full">
+          <Button type="submit" disabled={submitting || !ready || password.length < MIN_PASSWORD_LENGTH} className="w-full">
             {submitting ? t('common.saving') : ready ? t('auth.updatePassword') : t('auth.verifying')}
           </Button>
         </form>

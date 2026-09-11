@@ -530,6 +530,11 @@ const STRINGS = {
     mr: 'सध्याचा पासवर्ड चुकीचा आहे. काहीही बदलले नाही.',
   },
   'set.pwSave': { en: 'Change password', hi: 'पासवर्ड बदलें', mr: 'पासवर्ड बदला' },
+  'set.pwLeaked': {
+    en: 'This password has appeared in data leaks on other websites, so it is easy to guess. Please choose a different one.',
+    hi: 'यह पासवर्ड दूसरी वेबसाइटों के डेटा लीक में मिल चुका है, इसलिए इसे आसानी से पहचाना जा सकता है। कृपया कोई दूसरा पासवर्ड चुनें।',
+    mr: 'हा पासवर्ड इतर वेबसाइट्सच्या डेटा लीकमध्ये सापडला आहे, त्यामुळे तो सहज ओळखता येतो. कृपया दुसरा पासवर्ड निवडा.',
+  },
   'set.pwChanged': {
     en: 'Password changed. Use the new one next time you sign in.',
     hi: 'पासवर्ड बदल गया। अगली बार नए पासवर्ड से साइन इन करें।',
