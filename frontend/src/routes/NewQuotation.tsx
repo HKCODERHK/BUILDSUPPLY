@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Trash2, Plus } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -13,6 +14,8 @@ import { clearDraft, readDraft, useDraftAutosave, type BillDraft, type SavedDraf
 import { listCustomers } from '@/services/customers'
 import { listMaterials } from '@/services/materials'
 import { createQuotation } from '@/services/quotations'
+import { approveOrder, getOrder } from '@/services/orders'
+import type { OrderRequest } from '@/lib/database.types'
 import { listKnownSites, type NewInvoiceItem } from '@/services/invoices'
 import { newRequestId } from '@/services/db'
 import type { Customer, Material } from '@/lib/database.types'
@@ -56,17 +59,36 @@ export default function NewQuotation() {
   const [loaded, setLoaded] = useState(false)
   // An estimate left unfinished last time, waiting on Continue or Discard.
   const [pendingDraft, setPendingDraft] = useState<SavedDraft | null>(null)
+  // Approving an online order (?order=<id>): the estimate starts from the
+  // customer's request at today's rates, and saving it approves the order.
+  const orderId = searchParams.get('order')
+  const [order, setOrder] = useState<OrderRequest | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
-    Promise.all([listCustomers(), listMaterials(), listKnownSites()]).then(([c, m, siteList]) => {
+    Promise.all([
+      listCustomers(),
+      listMaterials(),
+      listKnownSites(),
+      orderId ? getOrder(orderId).catch(() => null) : Promise.resolve(null),
+    ]).then(([c, m, siteList, fromOrder]) => {
       setCustomers(c)
       setMaterials(m)
       setKnownSites(Array.from(new Set([...siteList, ...c.map((x) => x.site)].filter((s): s is string => !!s))).sort())
-      // An estimate left unfinished last time — see NewInvoice.
-      const draft = supplier ? readDraft(supplier.id, 'quotation') : null
-      if (draft) {
-        if (searchParams.get('draft') === '1') applyDraft(draft, m, c)
-        else setPendingDraft(draft)
+      if (fromOrder) {
+        // Already approved or rejected: show the order, never a second estimate.
+        if (fromOrder.status !== 'pending') {
+          navigate(`/orders/${fromOrder.id}`, { replace: true })
+          return
+        }
+        applyOrder(fromOrder, m, c)
+      } else {
+        // An estimate left unfinished last time — see NewInvoice.
+        const draft = supplier ? readDraft(supplier.id, 'quotation') : null
+        if (draft) {
+          if (searchParams.get('draft') === '1') applyDraft(draft, m, c)
+          else setPendingDraft(draft)
+        }
       }
       setLoaded(true)
     })
@@ -97,6 +119,31 @@ export default function NewQuotation() {
     gstDefaulted.current = true
     setGstApplicable(d.gstApplicable)
     setTransportLabour(d.transportLabour)
+  }
+
+  /**
+   * An online order into the form: the customer who has that phone number
+   * (or none — they are added only when this saves), their site, and each
+   * line at the supplier's rate today. Nothing the customer sent sets a price.
+   */
+  function applyOrder(o: OrderRequest, materialList: Material[], customerList: Customer[]) {
+    setOrder(o)
+    const match = customerList.find((cust) => cust.phone === o.phone)
+    setCustomerId(match?.id ?? '')
+    setSite(o.site ?? match?.site ?? '')
+    const byId = new Map(materialList.map((mat) => [mat.id, mat]))
+    setItems(
+      o.items.map((it) => {
+        const mat = byId.get(it.material_id)
+        return {
+          key: crypto.randomUUID(),
+          material_id: mat ? mat.id : null,
+          description: mat ? mat.name : it.name,
+          qty: Number(it.qty),
+          rate: mat ? Number(mat.rate) : 0,
+        }
+      }),
+    )
   }
 
   function pickCustomer(id: string) {
@@ -146,13 +193,35 @@ export default function NewQuotation() {
           total,
         }
       : null
-  useDraftAutosave(supplier?.id, 'quotation', draftSnapshot, loaded && !pendingDraft)
+  // Not for an order: it has its own record to come back to.
+  useDraftAutosave(supplier?.id, 'quotation', draftSnapshot, loaded && !pendingDraft && !order)
 
   async function handleSave() {
-    if (!supplier || !customerId || items.length === 0 || savingRef.current) return
+    // From an online order with no customer picked: the order's customer is
+    // added as new when this saves (approve_order), and only then.
+    const newFromOrder = !!order && !customerId
+    if (!supplier || (!customerId && !newFromOrder) || items.length === 0 || savingRef.current) return
     savingRef.current = true
     setSaving(true)
+    setSaveError(null)
     try {
+      if (order) {
+        const result = await approveOrder({
+          requestId: requestIdRef.current,
+          orderId: order.id,
+          customerId: customerId || null,
+          newCustomer: newFromOrder ? { name: order.customer_name, phone: order.phone, site: order.site ?? '' } : null,
+          site: site || null,
+          items: items.map(({ key: _key, ...rest }) => rest),
+          gstApplicable,
+          transportLabourCharge: transportLabourAmount,
+        })
+        // Commit `saved` before navigating: the unsaved-work guard reads it
+        // from the last render, and without this it still sees a dirty form.
+        flushSync(() => setSaved(true))
+        navigate(`/quotations/${result.quotationId}`)
+        return
+      }
       const quotation = await createQuotation({
         requestId: requestIdRef.current,
         customer_id: customerId,
@@ -164,6 +233,8 @@ export default function NewQuotation() {
       clearDraft(supplier.id, 'quotation')
       setSaved(true)
       navigate(`/quotations/${quotation.id}`)
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : t('error.generic'))
     } finally {
       savingRef.current = false
       setSaving(false)
@@ -173,6 +244,18 @@ export default function NewQuotation() {
   return (
     <div>
       <PageHeader title={t('quo.new')} subtitle={t('quo.newSubtitle')} />
+
+      {order && (
+        <div className="mb-4 rounded-xl bg-accent-bg p-3 text-sm text-accent-text">
+          <div className="font-semibold">{t('ord.fromOrder', { name: order.customer_name, phone: order.phone })}</div>
+          {!customerId && (
+            <div className="mt-1 text-xs">
+              {t('ord.addAsNew', { name: order.customer_name })} {t('ord.orPickExisting')}
+            </div>
+          )}
+          {order.note && <div className="mt-1 text-xs italic">“{order.note}”</div>}
+        </div>
+      )}
 
       <Card className="mb-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -319,6 +402,10 @@ export default function NewQuotation() {
         </div>
       </Card>
 
+      {saveError && (
+        <p className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{saveError}</p>
+      )}
+
       <div className="sticky bottom-[var(--tabbar-h)] z-20 -mx-4 -mb-4 sm:-mb-6 lg:mb-0 flex items-center gap-3 border-t border-border bg-card px-4 py-3 sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0">
         <div className="lg:hidden">
           <div className="text-[11px] text-muted">{t('common.total')}</div>
@@ -328,7 +415,7 @@ export default function NewQuotation() {
         </div>
         <Button
           onClick={handleSave}
-          disabled={saving || !customerId || items.length === 0}
+          disabled={saving || (!customerId && !order) || items.length === 0}
           className="ml-auto w-full max-w-56 lg:ml-0 lg:w-auto"
         >
           {saving ? t('common.saving') : t('quo.save')}

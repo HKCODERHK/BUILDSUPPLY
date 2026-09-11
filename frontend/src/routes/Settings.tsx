@@ -13,6 +13,7 @@ import { LANGUAGES } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { PinSettingsCard } from '@/components/PinSettingsCard'
 import { ChangePasswordCard } from '@/components/ChangePasswordCard'
+import { OrderSettingsCard } from '@/components/OrderSettingsCard'
 
 export default function Settings() {
   const { supplier } = useAuth()
@@ -146,6 +147,8 @@ export default function Settings() {
           </div>
         </form>
       </Card>
+
+      <OrderSettingsCard />
 
       <ChangePasswordCard />
     </div>

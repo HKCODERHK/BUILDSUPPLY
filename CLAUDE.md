@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `024`, run in order. **024 is the latest and is applied** (2026-09-11, pasted by the user — money integrity, see Phase 9). (An unrelated storage-bucket 024 from Phase 8 was applied and removed again on 2026-09-11 and its file deleted.) (There is no `001` file; the base schema is `supabase/schema.sql`, which predates the migration folder.)
+- **Schema migrations**: `supabase/migrations/` — `002` through `026`, run in order. **026 is the latest and is applied** (2026-09-11, pasted by the user — online orders, see Phase 10). 024 (money integrity, Phase 9) and 025 (supplier row guard) are applied too. (An unrelated storage-bucket 024 from Phase 8 was applied and removed again on 2026-09-11 and its file deleted.) (There is no `001` file; the base schema is `supabase/schema.sql`, which predates the migration folder.)
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -271,6 +271,57 @@ database, and the supplier sees two buttons and a few lines.
   - The only advance is ₹830, on INV-1024's customer.
   - All 6 triggers and 10 functions are present, none callable signed out.
   - RLS is on both new tables, and both views are still `security_invoker`.
+
+**Phase 10 — online orders (migration 026, 2026-09-11). Applied to live and
+merged the same day.** A supplier shares one link; a customer picks materials
+and sends a request; the supplier approves it into an estimate or rejects it.
+Free, no customer account, no SMS, and **an order never bills, takes money,
+moves stock or changes a balance** — approving makes an ordinary estimate.
+
+- **Customer side (public, outside `ProtectedRoute`, no splash):**
+  `/order/<link>` (`routes/OrderPage.tsx`) lists the supplier's materials with
+  −/+ quantities, then name, phone (`PhoneInput`), site, date (today to +90
+  days) and a note. Prices show only if the supplier turns them on, marked
+  indicative. The success view gives a status link, `/order-status/<32 hex>`
+  (`routes/OrderStatus.tsx`): status, items and dates only. Recent orders are
+  remembered on the customer's phone (localStorage `buildsupply-orders:<link>`).
+- **Supplier side:** Orders (`routes/Orders.tsx`, New / Approved / Rejected),
+  a count on Orders and a dot on the phone's More tab (`AppShell`), and a
+  Dashboard banner. Order detail (`routes/OrderDetail.tsx`) says "Possible
+  match" when the phone belongs to a customer, with Call and WhatsApp.
+  **Approve** opens New Estimate at `/quotations/new?order=<id>`, prefilled at
+  the supplier's rates today; saving calls `approve_order`, which uses the
+  unchanged `create_quotation` and adds the customer **only then**, if new —
+  an order never creates a customer by itself. **Reject**
+  (`components/RejectOrderModal.tsx`) takes an optional reason, shown to the
+  supplier only: the customer's page says "Not accepted — contact them". The
+  user has not decided whether customers should see the reason.
+- **Settings → Online orders** (`components/OrderSettingsCard.tsx`, hidden
+  for the admin): ordering on/off (**off by default**), show prices, the link
+  (suggested from the business name, editable, `^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$`,
+  unique), then Copy link / Share on WhatsApp (share sheet, else `wa.me` text —
+  the supplier sends it) / Open page.
+- **Database (026):** `order_requests` — RLS, a supplier reads and updates
+  only their own; `anon` has no table privileges at all. Items are stored as
+  material id, name, unit and quantity — **never a price**. The public reaches
+  it only through three SECURITY DEFINER functions granted to `anon`:
+  `order_page(link)`, `place_order(...)` and `order_status(token)`.
+  `approve_order` and `reject_order` are INVOKER, so RLS applies. Phones are
+  matched with `_normalize_phone`. Spam: a hidden honeypot field, 3 pending
+  per phone per 24h, 60 per supplier per hour, the same phone and items
+  within 10 minutes kept once, and a request id per form.
+- **Tested** on the local Docker copy (Phase 9 setup): 276/276 checks,
+  including 16 for orders, and a browser walk of every screen in English,
+  Hindi and Marathi at 360px. **Checked on live** read-only after pasting:
+  RLS on, anon limited to the three public functions, the 025 guard and both
+  `security_invoker` views intact, bills / payments / allocations unchanged
+  (43 / 94 / 86), ordering off for every supplier.
+- **Found in review, left for its own branch:** saving an ordinary New
+  Estimate shows a false "Leave without saving?" (and likely saving an edited
+  bill). `UnsavedChangesGuard` reads `when` from the last render, and
+  `navigate()` runs before `setSaved(true)` re-renders. The order path uses
+  `flushSync(() => setSaved(true))`; the others still need it.
+- **Not yet done:** opening the order link on a real phone.
 
 ## The admin panel
 
