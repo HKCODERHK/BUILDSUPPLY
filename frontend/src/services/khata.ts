@@ -34,6 +34,8 @@ export type KhataView =
       advance: number
       invoices: KhataInvoice[]
       payments: KhataPayment[]
+      /** Only when the supplier has switched "Pay by UPI" on (migration 029). */
+      upi_id?: string
     }
 
 /** The public page (no sign-in). */

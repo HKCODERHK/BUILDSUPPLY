@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `028`, run in order. **028 is the latest and is applied** (2026-09-12, pasted by the user — the customer khata link, see Phase 11). 024 (money integrity, Phase 9), 025 (supplier row guard), 026 (online orders) and 027 (reject reasons) are applied too. (An unrelated storage-bucket 024 from Phase 8 was applied and removed again on 2026-09-11 and its file deleted.) (There is no `001` file; the base schema is `supabase/schema.sql`, which predates the migration folder.)
+- **Schema migrations**: `supabase/migrations/` — `002` through `029`, run in order. **029 is the latest and is applied** (2026-09-12, pasted by the user — UPI settings, see Phase 12). 024 (money integrity, Phase 9), 025 (supplier row guard), 026 (online orders), 027 (reject reasons) and 028 (khata link) are applied too. (An unrelated storage-bucket 024 from Phase 8 was applied and removed again on 2026-09-11 and its file deleted.) (There is no `001` file; the base schema is `supabase/schema.sql`, which predates the migration folder.)
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -363,12 +363,53 @@ existing screen and flow exactly as it is, and only add small options.
   khata link, and a browser walk in three languages at 360px. **Checked on
   live** read-only after pasting: link-making refused signed out, a guessed
   code finds nothing, the customers table stays unreadable, counts unchanged.
-- **Next (Phase 2, agreed 2026-09-12):** UPI, only in two places the supplier
-  controls — a "Pay by UPI" section on the khata link (off by default, a
-  Settings switch plus the supplier's UPI ID), and **Show UPI QR** for an
-  amount on the customer page (shown on the supplier's phone to scan in
-  person, or sent as an image through the share sheet). Never recorded
-  automatically: the supplier checks the bank and uses Receive payment → UPI.
+
+**Phase 12 — UPI, only where the supplier chooses (migration 029,
+2026-09-12). Applied to live and merged the same day.** The user's rule:
+online payment must never become a default — many suppliers don't want
+customers paying online routinely (GST, accounting) — so it is a worst-case
+option for a customer with no cash, and the supplier stays in control.
+
+- **Settings → UPI payments** (`components/UpiSettingsCard.tsx`, hidden for
+  the admin): the supplier's UPI ID, and **Show "Pay by UPI" on khata links**,
+  off unless switched on (it can't be switched on without an ID).
+- **Customer page → ⋯ → Show UPI QR** (`components/UpiQrModal.tsx`): the
+  amount starts at what the customer owes and can be changed; a note appears
+  above ₹1,00,000, the usual single-payment UPI limit. The QR fills the
+  supplier's screen for the customer to scan in person, and **Send QR on
+  WhatsApp** shares it as a PNG through `shareDocumentOnWhatsApp` (the user
+  chose "A + C" of the three options offered; a payment request stored on the
+  khata link was left for later). With no UPI ID it points to Settings.
+- **Khata link:** a **Pay by UPI** card — a QR plus a "Pay ₹… in UPI app"
+  button, since a customer on their own phone has nothing to scan — only when
+  the switch is on and money is due. `customer_khata` returns `upi_id` only
+  then.
+- **Never recorded automatically, and bills, orders and estimates get
+  nothing.** The money goes straight to the supplier's account; the supplier
+  checks the bank and uses Receive payment → UPI.
+- **`lib/upi.ts` builds the `upi://pay` link by hand.** Android reads a `+` in
+  a query as a literal plus, so `URLSearchParams` would show the payee as
+  "Shree+Balaji"; spaces go as `%20`. The note (`tn`) is the customer's name,
+  so the supplier can spot the payment in their bank app.
+- **QR codes:** `qrcode-generator` 2.0.4 (MIT, no dependencies, added with the
+  user's OK) only computes the squares; `components/QrCode.tsx` draws an SVG
+  and `lib/qr.ts` a PNG, always black on white so they scan in dark mode. It
+  adds at most ~11 KB gzip.
+- **Postgres regular expressions allow at most 255 repeats.** The first draft
+  of 029's UPI ID check used `{2,256}`: Postgres accepted the constraint, then
+  refused every save containing an ID ("invalid regular expression"). The
+  local suite caught it before live. The rule is now
+  `^[A-Za-z0-9._-]{2,64}@[A-Za-z][A-Za-z0-9]{1,63}$`, identical in
+  `lib/upi.ts`.
+- **Test harness gotcha:** `set role anon` keeps whatever
+  `request.jwt.claims` an earlier step set, so "signed out" can still read a
+  supplier's own row. Clear the claims first; and prove any "signed out"
+  result with a real anon REST call, as was done here (local and live: `[]`).
+- **Tested** on the local Docker copy: 321/321 checks, 16 for UPI, and a
+  browser walk (settings, a bad ID refused, the QR and its shared image, the
+  khata card in three languages at 360px). **Checked on live** read-only after
+  pasting: the fixed rule is the one in place, nobody has UPI switched on, the
+  existing khata link untouched, counts unchanged.
 
 ## The admin panel
 

@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils'
 import { PinSettingsCard } from '@/components/PinSettingsCard'
 import { ChangePasswordCard } from '@/components/ChangePasswordCard'
 import { OrderSettingsCard } from '@/components/OrderSettingsCard'
+import { UpiSettingsCard } from '@/components/UpiSettingsCard'
 
 export default function Settings() {
   const { supplier } = useAuth()
@@ -149,6 +150,7 @@ export default function Settings() {
       </Card>
 
       <OrderSettingsCard />
+      <UpiSettingsCard />
 
       <ChangePasswordCard />
     </div>
