@@ -17,12 +17,13 @@
 // v5: icon-512 gained the name under the logo (Android's launch screen).
 // v6: only /assets/* is cache-first now, and the icons carry ?v=3 — see the
 // fetch handler; v5's copies of the old icons had to go.
-const CACHE = 'buildsupply-v6'
+// v7: icon-512's name went lowercase ("buildsupply"), so it is ?v=4 now.
+const CACHE = 'buildsupply-v7'
 
 // The shell only. Everything under /assets/ is content-hashed by Vite, so it
 // gets cached on first use instead of being listed here. The icon URLs must
 // match the manifest's and index.html's exactly, ?v= included.
-const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon-192.png?v=3', '/icon-512.png?v=3', '/favicon.svg?v=3']
+const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon-192.png?v=3', '/icon-512.png?v=4', '/favicon.svg?v=3']
 
 /**
  * Look something up in our cache by URL, ignoring `Vary`.
