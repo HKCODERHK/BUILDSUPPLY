@@ -42,12 +42,15 @@ if (-not (Test-Path $Cli)) {
   }
 }
 
-$Tables = @(
-  'activity_log', 'brands', 'customers', 'invoice_items', 'invoices',
-  'master_material_variants', 'material_categories', 'material_types',
-  'materials', 'payments', 'platform_settings', 'quotation_items',
-  'quotations', 'supplier_pins', 'suppliers'
-)
+# The tables are read from the database at the start of every run, not listed
+# here. A hand-typed list silently missed payment_allocations and
+# client_requests when migration 024 added them — the backup kept reporting
+# "OK" while leaving out which bill every payment had paid.
+#
+# These must always be there; if the list comes back without one of them,
+# something is wrong with the query, and a backup that quietly skipped them
+# would look complete while being useless.
+$MustHave = @('customers', 'invoices', 'invoice_items', 'payments', 'payment_allocations', 'suppliers')
 
 function Write-Log($message) {
   $line = '{0}  {1}' -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $message
@@ -63,53 +66,76 @@ New-Item -ItemType Directory -Force -Path $workDir | Out-Null
 
 $script:Succeeded = $false
 
+$sqlFile = Join-Path $workDir '_query.sql'
+$outFile = Join-Path $workDir '_stdout.txt'
+$errFile = Join-Path $workDir '_stderr.txt'
+
+# Runs one query and writes its `data` array to $target; returns the row count.
+function Export-Rows([string]$label, [string]$sql, [string]$target) {
+  Set-Content -Path $sqlFile -Value $sql -Encoding utf8
+
+  # Start-Process rather than the call operator, because PowerShell 5.1's
+  # `2>` redirects its own *error stream*: native stderr arrives wrapped in
+  # error records, which both corrupts the captured text and — under
+  # ErrorActionPreference = Stop — turns the CLI's harmless "Initialising
+  # login role..." progress line into a fatal error. Start-Process redirects
+  # the real handles to files, so stdout stays clean JSON and stderr stays
+  # readable. This is the difference between the script working by hand and
+  # failing under Task Scheduler.
+  #
+  # --output-format json explicitly. It defaults to *text*, which renders the
+  # result as an ASCII table sized to the terminal — and with no terminal to
+  # measure, a 3,767-row table came out as 9.7MB of box-drawing characters
+  # with the CLI still exiting 0. An interactive shell happens to get JSON,
+  # which is why this only ever failed when scheduled.
+  $cliArgs = @('db', 'query', '--file', $sqlFile, '--project-ref', $ProjectRef, '--linked', '--output-format', 'json')
+  # -WorkingDirectory explicitly: Start-Process does not inherit PowerShell's
+  # current location, so Push-Location above does not reach it. Under Task
+  # Scheduler the process starts in C:\Windows\System32, where the CLI finds
+  # no linked project and returns nothing on stdout while still exiting 0 —
+  # which is why this failed only when scheduled.
+  $proc = Start-Process -FilePath $Cli -ArgumentList $cliArgs -NoNewWindow -Wait -PassThru `
+            -WorkingDirectory $RepoRoot `
+            -RedirectStandardOutput $outFile -RedirectStandardError $errFile
+  $cliExit = $proc.ExitCode
+
+  $raw = if (Test-Path $outFile) { Get-Content $outFile -Raw } else { '' }
+  $count = $raw | & node $Extractor $target
+
+  if ($LASTEXITCODE -ne 0) {
+    $why = if (Test-Path $errFile) { (Get-Content $errFile -Raw).Trim() } else { '' }
+    if (-not $why) { $why = $count }
+    throw ('export failed for ' + $label + ' (cli exit ' + $cliExit + '): ' + $why)
+  }
+  return [int]$count
+}
+
 try {
-  Write-Log ('start — ' + $Tables.Count + ' tables')
   Push-Location $RepoRoot
 
-  $sqlFile  = Join-Path $workDir '_query.sql'
+  # Every table in the public schema, read fresh each run. Saved as .list so
+  # it is neither verified as a backup file nor zipped with them.
+  $listFile = Join-Path $workDir '_tables.list'
+  Export-Rows 'the table list' ("select coalesce(json_agg(table_name::text order by table_name), '[]'::json) as data " +
+    "from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE';") $listFile | Out-Null
+  # Assigned first, then wrapped: PowerShell 5.1's ConvertFrom-Json emits a
+  # JSON array as ONE object, so @(... | ConvertFrom-Json) made a one-item
+  # list holding the whole array (caught by the check below on first run).
+  $parsed = Get-Content $listFile -Raw | ConvertFrom-Json
+  $Tables = @($parsed)
+  $missing = @($MustHave | Where-Object { $Tables -notcontains $_ })
+  if ($missing.Count -gt 0) {
+    throw ('the table list came back without ' + ($missing -join ', ') + ' — got: ' + ($Tables -join ', '))
+  }
+
+  Write-Log ('start — ' + $Tables.Count + ' tables')
   $rowTotal = 0
 
   foreach ($table in $Tables) {
     $sql = 'select coalesce(json_agg(t),''[]''::json) as data from public.' + $table + ' t;'
-    Set-Content -Path $sqlFile -Value $sql -Encoding utf8
 
-    # Start-Process rather than the call operator, because PowerShell 5.1's
-    # `2>` redirects its own *error stream*: native stderr arrives wrapped in
-    # error records, which both corrupts the captured text and — under
-    # ErrorActionPreference = Stop — turns the CLI's harmless "Initialising
-    # login role..." progress line into a fatal error. Start-Process redirects
-    # the real handles to files, so stdout stays clean JSON and stderr stays
-    # readable. This is the difference between the script working by hand and
-    # failing under Task Scheduler.
-    $outFile = Join-Path $workDir '_stdout.txt'
-    $errFile = Join-Path $workDir '_stderr.txt'
-    # --output-format json explicitly. It defaults to *text*, which renders the
-    # result as an ASCII table sized to the terminal — and with no terminal to
-    # measure, a 3,767-row table came out as 9.7MB of box-drawing characters
-    # with the CLI still exiting 0. An interactive shell happens to get JSON,
-    # which is why this only ever failed when scheduled.
-    $args = @('db', 'query', '--file', $sqlFile, '--project-ref', $ProjectRef, '--linked', '--output-format', 'json')
-    # -WorkingDirectory explicitly: Start-Process does not inherit PowerShell's
-    # current location, so Push-Location above does not reach it. Under Task
-    # Scheduler the process starts in C:\Windows\System32, where the CLI finds
-    # no linked project and returns nothing on stdout while still exiting 0 —
-    # which is why this failed only when scheduled.
-    $proc = Start-Process -FilePath $Cli -ArgumentList $args -NoNewWindow -Wait -PassThru `
-              -WorkingDirectory $RepoRoot `
-              -RedirectStandardOutput $outFile -RedirectStandardError $errFile
-    $cliExit = $proc.ExitCode
-
-    $raw = if (Test-Path $outFile) { Get-Content $outFile -Raw } else { '' }
-    $target = Join-Path $workDir ($table + '.json')
-    $count = $raw | & node $Extractor $target
-
-    if ($LASTEXITCODE -ne 0) {
-      $why = if (Test-Path $errFile) { (Get-Content $errFile -Raw).Trim() } else { '' }
-      if (-not $why) { $why = $count }
-      throw ('export failed for ' + $table + ' (cli exit ' + $cliExit + '): ' + $why)
-    }
-    $rowTotal += [int]$count
+    $count = Export-Rows $table $sql (Join-Path $workDir ($table + '.json'))
+    $rowTotal += $count
     Write-Log ('  {0,6} rows  {1}' -f $count, $table)
   }
 

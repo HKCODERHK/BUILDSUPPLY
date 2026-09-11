@@ -496,7 +496,16 @@ the **project-scoped** link, `https://supabase.com/dashboard/project/<ref>/sql/n
 confusable names, and the run silently did nothing here.
 
 ### Still to do
-1. **Backups are manual and weekly — decided on 2026-09-09.** The free tier
+1. **Backups now run by themselves, nightly (superseding the note below).**
+   `scripts/backup.ps1`, registered by `scripts/install-backup-task.ps1` as
+   the Windows task "BuildSupply Daily Backup", exports every table at 9 PM
+   into `OneDrive\BuildSupply Backups` and keeps 14 archives. Since
+   2026-09-11 it reads the table list from the database each run — a
+   hand-typed list had silently missed `payment_allocations` and
+   `client_requests` after migration 024 — and refuses to call a run OK if a
+   core table is absent. A failed run leaves `BACKUP-FAILED-READ-ME.txt`
+   there. Earlier decision, for history:
+   **Backups are manual and weekly — decided on 2026-09-09.** The free tier
    automates none, and the database holds real businesses. The user takes one
    weekly and keeps a single archive per week in Google Drive, plus one before
    any risky change. **Just take one when asked** — it is about two minutes and
