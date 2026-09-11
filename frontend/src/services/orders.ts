@@ -73,6 +73,9 @@ export type OrderStatusView =
       created_at: string
       delivery_date: string | null
       items: { name: string; unit: string; qty: number }[]
+      /** Present only once the order is rejected (migration 027). */
+      reject_code?: OrderRequest['reject_code']
+      reject_reason?: string | null
     }
 
 export function getOrderStatus(token: string): Promise<OrderStatusView> {
@@ -180,8 +183,9 @@ export async function approveOrder(input: ApproveOrderInput): Promise<{ quotatio
   return { quotationId, customerId: raw.customer_id ?? input.customerId }
 }
 
-export async function rejectOrder(orderId: string, reason: string): Promise<void> {
-  const raw = await callRpc<{ ok?: boolean; already?: boolean }>('reject_order', { p_order_id: orderId, p_reason: reason })
+/** Reject with a reason from the list; `reason` is the words for "Other". The customer sees it. */
+export async function rejectOrder(orderId: string, code: NonNullable<OrderRequest['reject_code']>, reason: string): Promise<void> {
+  const raw = await callRpc<{ ok?: boolean; already?: boolean }>('reject_order', { p_order_id: orderId, p_reason: reason, p_code: code })
   if (!raw.already) void logActivity('supplier', 'order_rejected', { details: { order_id: orderId } })
 }
 

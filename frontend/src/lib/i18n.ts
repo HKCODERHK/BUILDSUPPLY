@@ -1153,17 +1153,33 @@ const STRINGS = {
   'ord.openEstimate': { en: 'Open estimate', hi: 'एस्टिमेट खोलें', mr: 'एस्टिमेट उघडा' },
   'ord.rejectedReason': { en: 'Reason: {reason}', hi: 'कारण: {reason}', mr: 'कारण: {reason}' },
   'ord.rejectTitle': { en: 'Reject this order?', hi: 'यह ऑर्डर नामंज़ूर करें?', mr: 'ही ऑर्डर नाकारायची?' },
-  'ord.rejectReason': { en: 'Reason (optional)', hi: 'कारण (वैकल्पिक)', mr: 'कारण (ऐच्छिक)' },
+  'ord.rejectReason': { en: 'Reason — the customer will see this', hi: 'कारण — ग्राहक को दिखेगा', mr: 'कारण — ग्राहकाला दिसेल' },
+  'ord.rejectChoose': { en: 'Choose a reason…', hi: 'कारण चुनें…', mr: 'कारण निवडा…' },
   'ord.rejectReasonPlaceholder': {
-    en: 'e.g. Delivery vehicle unavailable',
-    hi: 'जैसे: गाड़ी उपलब्ध नहीं',
-    mr: 'उदा. गाडी उपलब्ध नाही',
+    en: 'Write the reason for the customer',
+    hi: 'ग्राहक के लिए कारण लिखें',
+    mr: 'ग्राहकासाठी कारण लिहा',
   },
   'ord.rejectNote': {
-    en: 'Nothing else changes, and the customer is not messaged automatically.',
-    hi: 'और कुछ नहीं बदलता, और ग्राहक को अपने-आप कोई मैसेज नहीं जाता।',
-    mr: 'इतर काहीही बदलत नाही, आणि ग्राहकाला आपोआप कोणताही मेसेज जात नाही.',
+    en: 'The customer sees this reason on their order status link. No message is sent automatically, and nothing else changes.',
+    hi: 'ग्राहक को यह कारण अपने ऑर्डर स्टेटस लिंक पर दिखेगा। अपने-आप कोई मैसेज नहीं जाता, और कुछ और नहीं बदलता।',
+    mr: 'ग्राहकाला हे कारण त्याच्या ऑर्डर स्टेटस लिंकवर दिसेल. आपोआप कोणताही मेसेज जात नाही, आणि इतर काहीही बदलत नाही.',
   },
+  // Reject reasons (migration 027). Read by the supplier and, on the status
+  // link, by the customer — so they are written to the customer.
+  'rejectCode.no_stock': { en: 'Material not in stock right now', hi: 'सामान अभी स्टॉक में नहीं है', mr: 'साहित्य सध्या स्टॉकमध्ये नाही' },
+  'rejectCode.too_many_orders': {
+    en: 'Too many orders right now — please try again later',
+    hi: 'अभी बहुत ऑर्डर हैं — कृपया बाद में फिर कोशिश करें',
+    mr: 'सध्या खूप ऑर्डर आहेत — कृपया नंतर पुन्हा प्रयत्न करा',
+  },
+  'rejectCode.area_not_served': { en: 'We don’t deliver to this area', hi: 'हम इस इलाके में डिलीवरी नहीं करते', mr: 'आम्ही या भागात डिलिव्हरी करत नाही' },
+  'rejectCode.date_not_possible': {
+    en: 'Can’t deliver on the date you asked for',
+    hi: 'आपकी बताई तारीख पर डिलीवरी नहीं हो सकती',
+    mr: 'तुम्ही सांगितलेल्या तारखेला डिलिव्हरी शक्य नाही',
+  },
+  'rejectCode.other': { en: 'Other reason', hi: 'दूसरा कारण', mr: 'इतर कारण' },
   'ord.cancel': { en: 'Cancel', hi: 'रद्द करें', mr: 'रद्द करा' },
   'ord.whatsappMessage': {
     en: 'Hi {name}, about your order request with {business}: ',

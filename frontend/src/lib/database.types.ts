@@ -45,6 +45,9 @@ export interface Supplier {
 
 export type OrderStatus = 'pending' | 'approved' | 'rejected'
 
+/** Why an order was rejected, picked from a list (migration 027). The customer sees it. */
+export type RejectCode = 'no_stock' | 'too_many_orders' | 'area_not_served' | 'date_not_possible' | 'other'
+
 /** One line of a customer's order request — never a price. */
 export interface OrderItem {
   material_id: string
@@ -68,6 +71,8 @@ export interface OrderRequest {
   items: OrderItem[]
   customer_id: string | null
   quotation_id: string | null
+  reject_code: RejectCode | null
+  /** Only for "Other" (or orders rejected before 027): the words the supplier wrote. */
   reject_reason: string | null
   created_at: string
   decided_at: string | null
