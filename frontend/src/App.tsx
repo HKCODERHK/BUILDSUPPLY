@@ -29,6 +29,14 @@ import AdminSuppliers from '@/routes/admin/Suppliers'
 import AdminSupplierProfile from '@/routes/admin/SupplierProfile'
 import AdminMaterialCatalog from '@/routes/admin/MaterialCatalog'
 import AdminPlatformSettings from '@/routes/admin/PlatformSettings'
+import OrderPage from '@/routes/OrderPage'
+import OrderStatus from '@/routes/OrderStatus'
+
+// A supplier's public order page and a customer's status link: open to
+// anyone, no sign-in, and no BuildSupply splash in front of them.
+function isPublicOrderPath(path: string) {
+  return path.startsWith('/order/') || path.startsWith('/order-status/')
+}
 
 function Protected({
   children,
@@ -55,6 +63,8 @@ const router = createBrowserRouter([
   { path: '/login', element: <Login /> },
   { path: '/forgot-password', element: <ForgotPassword /> },
   { path: '/reset-password', element: <ResetPassword /> },
+  { path: '/order/:link', element: <OrderPage /> },
+  { path: '/order-status/:token', element: <OrderStatus /> },
   { path: '/dashboard', element: <Protected><Dashboard /></Protected> },
   { path: '/customers', element: <Protected supplierOnly><Customers /></Protected> },
   { path: '/customers/:id', element: <Protected supplierOnly><CustomerProfile /></Protected> },
@@ -88,6 +98,8 @@ const router = createBrowserRouter([
 // in App's own body.
 function SplashGate() {
   const { splash } = useAuth()
+  // A customer opening an order link is not opening BuildSupply.
+  if (isPublicOrderPath(window.location.pathname)) return null
   return splash ? <Splash phase={splash} /> : null
 }
 

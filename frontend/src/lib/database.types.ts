@@ -35,7 +35,42 @@ export interface Supplier {
   // when a PIN is actually set (migration 022). Not secret — the PIN hash
   // itself lives in supplier_pins, which no client can read.
   pin_payment_threshold: number
+  // Customer online orders (migration 026). order_link is the name in
+  // /order/<order_link>; null until the supplier sets ordering up.
+  order_link: string | null
+  ordering_enabled: boolean
+  order_show_prices: boolean
   created_at: string
+}
+
+export type OrderStatus = 'pending' | 'approved' | 'rejected'
+
+/** One line of a customer's order request — never a price. */
+export interface OrderItem {
+  material_id: string
+  name: string
+  unit: string
+  qty: number
+}
+
+/** A customer's order request (migration 026). Becomes an estimate only when the supplier approves it. */
+export interface OrderRequest {
+  id: string
+  supplier_id: string
+  status: OrderStatus
+  public_token: string
+  request_id: string
+  customer_name: string
+  phone: string
+  site: string | null
+  delivery_date: string | null
+  note: string | null
+  items: OrderItem[]
+  customer_id: string | null
+  quotation_id: string | null
+  reject_reason: string | null
+  created_at: string
+  decided_at: string | null
 }
 
 export interface SupplierOverview extends Supplier {
