@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { RefreshCw, Copy, Check } from 'lucide-react'
 import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
@@ -209,7 +210,7 @@ export function AddSupplierModal({ onClose, onCreated }: { onClose: () => void; 
         </div>
         <div>
           <Label htmlFor="phone">Phone</Label>
-          <Input id="phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          <PhoneInput id="phone" value={form.phone} onValueChange={(phone) => setForm({ ...form, phone })} />
           <p className="mt-1.5 text-xs text-muted">Needed to send the login details over WhatsApp.</p>
         </div>
         <div>

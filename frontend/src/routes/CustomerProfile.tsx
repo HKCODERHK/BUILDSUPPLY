@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Pencil, IndianRupee, RotateCcw, Plus, HandCoins, BookOpen, Phone } from 'lucide-react'
+import { Pencil, IndianRupee, RotateCcw, Plus, HandCoins, BookOpen, Phone, LoaderCircle } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { Label } from '@/components/ui/label'
 import { Modal } from '@/components/ui/modal'
 import { ActionMenu } from '@/components/ui/action-menu'
@@ -443,7 +444,14 @@ export default function CustomerProfile() {
                   disabled={sharing !== null}
                   onClick={downloadLedger}
                 >
-                  <BookOpen size={16} /> {sharing === 'ledger' ? t('common.preparing') : t('cust.ledger')}
+                  {/* A spinner, not "Preparing…": the wider word pushed Call
+                      under ⋯ onto a line of its own while the PDF was made. */}
+                  {sharing === 'ledger' ? (
+                    <LoaderCircle size={16} className="animate-spin" aria-label={t('common.preparing')} />
+                  ) : (
+                    <BookOpen size={16} />
+                  )}{' '}
+                  {t('cust.ledger')}
                 </Button>
                 <Button
                   size="sm"
@@ -597,12 +605,11 @@ export default function CustomerProfile() {
             </div>
             <div>
               <Label htmlFor="edit-phone">{t('common.phone')}</Label>
-              <Input
+              <PhoneInput
                 id="edit-phone"
-                inputMode="numeric"
                 placeholder={t('cust.phoneHint')}
                 value={editForm.phone}
-                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                onValueChange={(phone) => setEditForm({ ...editForm, phone })}
               />
             </div>
             <div>
