@@ -96,6 +96,8 @@ const STRINGS = {
   'cust.receiveAdvance': { en: 'Receive advance', hi: 'एडवांस लें', mr: 'ॲडव्हान्स घ्या' },
   // The customer page's Ledger quick action and its WhatsApp icon.
   'cust.ledger': { en: 'Ledger', hi: 'खाता', mr: 'खाते' },
+  'cust.call': { en: 'Call', hi: 'कॉल करें', mr: 'कॉल करा' },
+  'cust.callName': { en: 'Call {name}', hi: '{name} को कॉल करें', mr: '{name} यांना कॉल करा' },
   'cust.ledgerShare': { en: 'Send ledger on WhatsApp', hi: 'खाता व्हाट्सएप पर भेजें', mr: 'खाते व्हॉट्सॲपवर पाठवा' },
   'pay.recordAdvance': { en: 'Record advance', hi: 'एडवांस दर्ज करें', mr: 'ॲडव्हान्स नोंदवा' },
   'pay.advanceIntro': {
@@ -440,6 +442,17 @@ const STRINGS = {
     en: 'Pending right now: {amount}. It goes to their oldest unpaid bills first; anything more is kept as advance.',
     hi: 'अभी बाकी: {amount}। रकम पहले सबसे पुराने बिलों में लगेगी; ज़्यादा हुई तो एडवांस में रहेगी।',
     mr: 'आत्ता बाकी: {amount}. रक्कम आधी सर्वात जुन्या बिलांना लागेल; जास्त असेल तर ॲडव्हान्स म्हणून राहील.',
+  },
+  // Receive payment when nothing is owed: say where the money goes.
+  'pay.noDuesIntro': {
+    en: 'No pending dues, so this payment will be kept as advance. Their next bill uses it automatically.',
+    hi: 'कोई बकाया नहीं है, इसलिए यह भुगतान एडवांस में रखा जाएगा। अगले बिल में यह अपने-आप लग जाएगा।',
+    mr: 'कोणतीही बाकी नाही, म्हणून हे पेमेंट ॲडव्हान्स म्हणून ठेवले जाईल. पुढच्या बिलात ते आपोआप वापरले जाईल.',
+  },
+  'pay.noDuesIntroHeld': {
+    en: 'No pending dues, so this payment will be kept as advance, added to the {amount} they already hold. Their next bill uses it automatically.',
+    hi: 'कोई बकाया नहीं है, इसलिए यह भुगतान एडवांस में रखा जाएगा और पहले से जमा {amount} में जुड़ेगा। अगले बिल में यह अपने-आप लग जाएगा।',
+    mr: 'कोणतीही बाकी नाही, म्हणून हे पेमेंट ॲडव्हान्स म्हणून ठेवले जाईल आणि आधीच्या {amount} मध्ये जमा होईल. पुढच्या बिलात ते आपोआप वापरले जाईल.',
   },
 
   // ── Reminders ─────────────────────────────────────────────────────────

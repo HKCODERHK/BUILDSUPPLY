@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Pencil, IndianRupee, RotateCcw, Plus, HandCoins, BookOpen } from 'lucide-react'
+import { Pencil, IndianRupee, RotateCcw, Plus, HandCoins, BookOpen, Phone } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -223,6 +223,8 @@ export default function CustomerProfile() {
   const liveInvoices = invoices.filter((i) => i.status !== 'Cancelled')
   const liveBills = liveInvoices.filter(isBill)
   const totalPending = liveInvoices.reduce((sum, i) => sum + (Number(i.total) - Number(i.paid)), 0)
+  // Paise-safe: a sum of rupee differences can land a hair above zero.
+  const hasDues = totalPending > 0.005
   const pendingDays = oldestPendingDays(invoices)
 
   const creditLimit = customer.credit_limit != null ? Number(customer.credit_limit) : null
@@ -380,7 +382,10 @@ export default function CustomerProfile() {
           // sm up, where there was never a shortage of room. flex-wrap is the
           // backstop: if a label ever grows, these move to a second line
           // instead of pushing ⋯ out of reach again.
-          <div className="flex flex-col items-start gap-2">
+          // The two rows share the width of the wider one, and ⋯ and Call —
+          // the same 40×36 square — both sit at its right edge, so Call is
+          // always directly under ⋯ whatever the language makes the rows.
+          <div className="flex w-fit flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">
               {/* Money against what they owe: the oldest bills first, and
                   anything beyond them is kept as advance. */}
@@ -397,6 +402,7 @@ export default function CustomerProfile() {
             >
               <Plus size={16} /> {t('inv.new')}
             </Button>
+            <div className="ml-auto">
             <ActionMenu
               items={[
                 // Repeating last week's bill is a shortcut for the button
@@ -419,6 +425,7 @@ export default function CustomerProfile() {
                 },
               ]}
             />
+            </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {/* Just below Receive payment: money handed over for their NEXT
@@ -450,6 +457,17 @@ export default function CustomerProfile() {
                   <WhatsAppIcon size={16} />
                 </Button>
               </div>
+              {/* Under ⋯: ring the customer from the top of their page. */}
+              {customer.phone && (
+                <a
+                  href={`tel:${customer.phone}`}
+                  aria-label={t('cust.callName', { name: customer.name })}
+                  title={t('cust.call')}
+                  className="ml-auto inline-flex h-9 w-10 items-center justify-center rounded-lg border border-border bg-card text-accent transition-colors hover:bg-surface"
+                >
+                  <Phone size={16} />
+                </a>
+              )}
             </div>
           </div>
         }
@@ -664,7 +682,9 @@ export default function CustomerProfile() {
               )}
               {payResult.advance > 0 && (
                 <p className="rounded-lg bg-accent-bg p-3 text-xs font-medium text-accent-text">
-                  {payKind === 'advance' && payResult.applied.length === 0
+                  {/* All of it became advance (nothing was owed): show what they
+                      hold now, not "more than they owed". */}
+                  {payResult.applied.length === 0
                     ? t('pay.advanceHeldNow', { amount: formatINR(payResult.advanceBalance) })
                     : t('pay.keptAsAdvance', { amount: formatINR(payResult.advance) })}
                 </p>
@@ -680,12 +700,18 @@ export default function CustomerProfile() {
             <form onSubmit={handleReceivePayment} className="flex flex-col gap-4">
               <p className="text-sm text-muted">
                 {payKind === 'advance'
-                  ? totalPending > 0
+                  ? hasDues
                     ? t('pay.advanceIntroOwed', { amount: formatINR(totalPending) })
                     : advance > 0
                       ? t('pay.advanceIntroHeld', { amount: formatINR(advance) })
                       : t('pay.advanceIntro')
-                  : t('pay.pendingNow', { amount: formatINR(totalPending) })}
+                  : hasDues
+                    ? t('pay.pendingNow', { amount: formatINR(totalPending) })
+                    : // Nothing owed: a payment can only become advance — say so
+                      // up front rather than "Pending right now: ₹0".
+                      advance > 0
+                      ? t('pay.noDuesIntroHeld', { amount: formatINR(advance) })
+                      : t('pay.noDuesIntro')}
               </p>
               {payError && (
                 <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{payError}</p>
