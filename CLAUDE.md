@@ -324,11 +324,15 @@ moves stock or changes a balance** — approving makes an ordinary estimate.
   RLS on, anon limited to the three public functions, the 025 guard and both
   `security_invoker` views intact, bills / payments / allocations unchanged
   (43 / 94 / 86), ordering off for every supplier.
-- **Found in review, left for its own branch:** saving an ordinary New
-  Estimate shows a false "Leave without saving?" (and likely saving an edited
-  bill). `UnsavedChangesGuard` reads `when` from the last render, and
-  `navigate()` runs before `setSaved(true)` re-renders. The order path uses
-  `flushSync(() => setSaved(true))`; the others still need it.
+- **Found in review, fixed on its own branch (2026-09-12):** saving an
+  ordinary New Estimate, or an edited bill, showed a false "Leave without
+  saving?". `UnsavedChangesGuard` reads `when` from the last render, and
+  `navigate()` ran before `setSaved(true)` had re-rendered. **Rule: on a
+  guarded form, commit `saved` with `flushSync(() => setSaved(true))` before
+  navigating away.** New bills never had it: they show the Delivered? prompt
+  first. The fix matches the order-approve path, which was checked in the
+  browser; the estimate and edited-bill saves were checked by the user on a
+  phone after merging, since Docker Desktop would not start that day.
 - **Not yet done:** opening the order link on a real phone.
 
 **Phase 11 — the customer khata link (migration 028, 2026-09-12). Applied to
