@@ -1234,6 +1234,73 @@ const STRINGS = {
     hi: 'यह पेज सिर्फ़ आपका खाता दिखाता है। किसी भी सवाल के लिए {business} से संपर्क करें।',
     mr: 'हे पेज फक्त तुमचे खाते दाखवते. कोणत्याही प्रश्नासाठी {business} यांच्याशी संपर्क साधा.',
   },
+  // UPI (migration 029): Settings…
+  'upi.settingsTitle': { en: 'UPI payments', hi: 'UPI भुगतान', mr: 'UPI पेमेंट' },
+  'upi.settingsHint': {
+    en: 'Optional. A customer sees a UPI option only where you choose — bills, orders and estimates stay as they are.',
+    hi: 'वैकल्पिक। ग्राहक को UPI का विकल्प सिर्फ़ वहीं दिखेगा जहाँ आप चाहें — बिल, ऑर्डर और एस्टिमेट जैसे हैं वैसे ही रहेंगे।',
+    mr: 'ऐच्छिक. ग्राहकाला UPI पर्याय फक्त तुम्ही ठरवाल तिथेच दिसेल — बिले, ऑर्डर आणि एस्टिमेट आहेत तसेच राहतील.',
+  },
+  'upi.id': { en: 'Your UPI ID', hi: 'आपकी UPI ID', mr: 'तुमचा UPI ID' },
+  'upi.idHint': {
+    en: 'For example name@okaxis. Money goes straight to this account.',
+    hi: 'जैसे name@okaxis। पैसा सीधे इसी खाते में आएगा।',
+    mr: 'उदा. name@okaxis. पैसे थेट याच खात्यात येतील.',
+  },
+  'upi.idInvalid': {
+    en: 'That doesn’t look like a UPI ID. It should look like name@bank.',
+    hi: 'यह UPI ID जैसा नहीं लगता। यह name@bank जैसा होना चाहिए।',
+    mr: 'हा UPI ID सारखा वाटत नाही. तो name@bank सारखा असावा.',
+  },
+  'upi.khataSwitch': { en: 'Show “Pay by UPI” on khata links', hi: 'खाता लिंक पर “UPI से भुगतान” दिखाएँ', mr: 'खाते लिंकवर “UPI ने पेमेंट” दाखवा' },
+  'upi.khataSwitchHint': {
+    en: 'Off unless you turn it on. Customers then see a UPI QR for their balance due on their khata link.',
+    hi: 'जब तक आप चालू न करें, बंद रहेगा। चालू करने पर ग्राहकों को खाता लिंक पर बकाया रकम का UPI QR दिखेगा।',
+    mr: 'तुम्ही सुरू करेपर्यंत बंद राहील. सुरू केल्यावर ग्राहकांना खाते लिंकवर बाकी रकमेचा UPI QR दिसेल.',
+  },
+  'upi.needId': { en: 'Add your UPI ID first.', hi: 'पहले अपनी UPI ID डालें।', mr: 'आधी तुमचा UPI ID टाका.' },
+  // …the customer page's Show UPI QR…
+  'upi.showQr': { en: 'Show UPI QR', hi: 'UPI QR दिखाएँ', mr: 'UPI QR दाखवा' },
+  'upi.qrTitle': { en: 'UPI QR for {name}', hi: '{name} के लिए UPI QR', mr: '{name} साठी UPI QR' },
+  'upi.amount': { en: 'Amount (₹)', hi: 'रकम (₹)', mr: 'रक्कम (₹)' },
+  'upi.generate': { en: 'Show QR', hi: 'QR दिखाएँ', mr: 'QR दाखवा' },
+  'upi.change': { en: 'Change amount', hi: 'रकम बदलें', mr: 'रक्कम बदला' },
+  'upi.scanHint': {
+    en: 'Ask the customer to scan this with any UPI app. The amount is filled in for them.',
+    hi: 'ग्राहक से इसे किसी भी UPI ऐप से स्कैन करने को कहें। रकम अपने-आप भरी होगी।',
+    mr: 'ग्राहकाला हे कोणत्याही UPI ॲपने स्कॅन करायला सांगा. रक्कम आपोआप भरलेली असेल.',
+  },
+  'upi.limitNote': {
+    en: 'Many banks allow up to ₹1,00,000 in one UPI payment — a larger amount may be refused by the customer’s app.',
+    hi: 'कई बैंक एक UPI भुगतान में ₹1,00,000 तक ही देते हैं — इससे बड़ी रकम ग्राहक का ऐप मना कर सकता है।',
+    mr: 'अनेक बँका एका UPI पेमेंटमध्ये ₹1,00,000 पर्यंतच परवानगी देतात — यापेक्षा मोठी रक्कम ग्राहकाचे ॲप नाकारू शकते.',
+  },
+  'upi.sendQr': { en: 'Send QR on WhatsApp', hi: 'QR WhatsApp पर भेजें', mr: 'QR WhatsApp वर पाठवा' },
+  'upi.qrMessage': {
+    en: 'Hi {name}, please scan this QR with any UPI app to pay {amount} to {business}.',
+    hi: 'नमस्ते {name}, {business} को {amount} देने के लिए यह QR किसी भी UPI ऐप से स्कैन करें।',
+    mr: 'नमस्कार {name}, {business} यांना {amount} देण्यासाठी हा QR कोणत्याही UPI ॲपने स्कॅन करा.',
+  },
+  'upi.recordHint': {
+    en: 'When the money reaches your account, record it with Receive payment → UPI. Nothing is recorded by itself.',
+    hi: 'पैसा खाते में आने पर इसे “भुगतान लें → UPI” से दर्ज करें। अपने-आप कुछ दर्ज नहीं होता।',
+    mr: 'पैसे खात्यात आल्यावर “पेमेंट घ्या → UPI” ने नोंदवा. आपोआप काहीही नोंदवले जात नाही.',
+  },
+  'upi.noId': {
+    en: 'Add your UPI ID in Settings to show a QR.',
+    hi: 'QR दिखाने के लिए Settings में अपनी UPI ID डालें।',
+    mr: 'QR दाखवण्यासाठी Settings मध्ये तुमचा UPI ID टाका.',
+  },
+  'upi.goSettings': { en: 'Open Settings', hi: 'Settings खोलें', mr: 'Settings उघडा' },
+  'upi.imageCaption': { en: 'Scan with any UPI app', hi: 'किसी भी UPI ऐप से स्कैन करें', mr: 'कोणत्याही UPI ॲपने स्कॅन करा' },
+  // …and the customer's khata page.
+  'upi.payTitle': { en: 'Pay by UPI', hi: 'UPI से भुगतान', mr: 'UPI ने पेमेंट' },
+  'upi.payHint': {
+    en: 'Scan with any UPI app, or tap the button on this phone. It shows here once {business} has recorded it.',
+    hi: 'किसी भी UPI ऐप से स्कैन करें, या इसी फ़ोन पर बटन दबाएँ। {business} के दर्ज करने के बाद यह यहाँ दिखेगा।',
+    mr: 'कोणत्याही UPI ॲपने स्कॅन करा, किंवा याच फोनवर बटण दाबा. {business} यांनी नोंदवल्यावर हे इथे दिसेल.',
+  },
+  'upi.openApp': { en: 'Pay {amount} in UPI app', hi: 'UPI ऐप में {amount} दें', mr: 'UPI ॲपमध्ये {amount} द्या' },
   'ord.cancel': { en: 'Cancel', hi: 'रद्द करें', mr: 'रद्द करा' },
   'ord.whatsappMessage': {
     en: 'Hi {name}, about your order request with {business}: ',

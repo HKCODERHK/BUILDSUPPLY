@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Pencil, IndianRupee, RotateCcw, Plus, HandCoins, BookOpen, Phone, LoaderCircle, Link2 } from 'lucide-react'
+import { Pencil, IndianRupee, RotateCcw, Plus, HandCoins, BookOpen, Phone, LoaderCircle, Link2, QrCode } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -29,6 +29,7 @@ import { usePin } from '@/context/PinContext'
 import type { Customer, Invoice, PaymentMode } from '@/lib/database.types'
 import { TruckLoader } from '@/components/TruckLoader'
 import { KhataLinkModal } from '@/components/KhataLinkModal'
+import { UpiQrModal } from '@/components/UpiQrModal'
 
 const PAYMENT_MODES: PaymentMode[] = ['Cash', 'UPI', 'Bank/Cheque']
 
@@ -97,6 +98,7 @@ export default function CustomerProfile() {
   } | null>(null)
   const [sharing, setSharing] = useState<'receipt' | 'statement' | 'ledger' | null>(null)
   const [khataOpen, setKhataOpen] = useState(false)
+  const [upiOpen, setUpiOpen] = useState(false)
 
   async function refresh() {
     if (!id) return
@@ -428,6 +430,8 @@ export default function CustomerProfile() {
                 },
                 // Their own read-only account page (migration 028).
                 { label: t('khata.share'), icon: <Link2 size={15} />, onSelect: () => setKhataOpen(true) },
+                // For when the customer is standing there without cash (migration 029).
+                { label: t('upi.showQr'), icon: <QrCode size={15} />, onSelect: () => setUpiOpen(true) },
               ]}
             />
             </div>
@@ -486,6 +490,9 @@ export default function CustomerProfile() {
       />
 
       {khataOpen && <KhataLinkModal customer={customer} onClose={() => setKhataOpen(false)} />}
+      {upiOpen && (
+        <UpiQrModal customer={customer} defaultAmount={Math.max(0, Math.round(totalPending))} onClose={() => setUpiOpen(false)} />
+      )}
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>

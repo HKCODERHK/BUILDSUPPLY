@@ -15,6 +15,16 @@ export async function updateSupplierProfile(id: string, input: Partial<Supplier>
   return data
 }
 
+/** Settings → UPI (migration 029). A malformed UPI ID comes back as 'upi-invalid'. */
+export async function saveUpiSettings(id: string, input: Pick<Supplier, 'upi_id' | 'khata_upi_enabled'>): Promise<Supplier> {
+  const { data, error } = await supabase.from('suppliers').update(input).eq('id', id).select().single()
+  if (error) {
+    if (error.code === '23514') throw new Error('upi-invalid')
+    throw error
+  }
+  return data
+}
+
 export async function uploadLogo(supplierId: string, file: File): Promise<string> {
   const ext = file.name.split('.').pop()
   const path = `${supplierId}/logo.${ext}`

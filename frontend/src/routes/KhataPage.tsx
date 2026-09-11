@@ -12,6 +12,8 @@ import type { Customer, Supplier } from '@/lib/database.types'
 import type { InvoiceWithCustomer } from '@/services/invoices'
 import type { PaymentWithInvoice } from '@/services/payments'
 import { getKhata, type KhataView } from '@/services/khata'
+import { QrCode } from '@/components/QrCode'
+import { upiPayUrl } from '@/lib/upi'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
@@ -62,6 +64,12 @@ export default function KhataPage() {
   // Nothing in three months: still show the latest few rather than an empty list.
   const shown = showOlder ? newestFirst : recent.length > 0 ? recent : newestFirst.slice(0, 5)
   const olderCount = newestFirst.length - shown.length
+  // "Pay by UPI" (migration 029): only when the supplier switched it on, and
+  // only for money actually due. Nothing is recorded until the supplier does.
+  const upiUrl =
+    found?.upi_id && found.pending > 0.005
+      ? upiPayUrl({ upiId: found.upi_id, payee: found.supplier.business_name, amount: Math.round(Number(found.pending) * 100) / 100, note: found.customer.name })
+      : null
 
   async function download() {
     if (!found || !ledger || downloading) return
@@ -132,6 +140,21 @@ export default function KhataPage() {
                 )}
               </div>
             </Card>
+
+            {upiUrl && found.upi_id && (
+              <Card className="flex flex-col items-center gap-3 text-center">
+                <div className="self-start text-sm font-semibold text-ink">{t('upi.payTitle')}</div>
+                <div className="rounded-xl bg-white p-2">
+                  <QrCode text={upiUrl} size={200} label={t('upi.payTitle')} />
+                </div>
+                <div className="text-xs text-muted">{found.upi_id}</div>
+                {/* On the customer's own phone there is nothing to scan: this opens their UPI app instead. */}
+                <a href={upiUrl} className="w-full">
+                  <Button className="w-full">{t('upi.openApp', { amount: formatINR(Number(found.pending)) })}</Button>
+                </a>
+                <p className="text-xs text-muted">{t('upi.payHint', { business: found.supplier.business_name })}</p>
+              </Card>
+            )}
 
             <Card>
               <div className="mb-2 text-sm font-semibold text-ink">{t('khata.history')}</div>

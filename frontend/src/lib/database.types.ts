@@ -40,6 +40,10 @@ export interface Supplier {
   order_link: string | null
   ordering_enabled: boolean
   order_show_prices: boolean
+  // UPI, only where the supplier chooses (migration 029). khata_upi_enabled
+  // puts "Pay by UPI" on khata links; off by default.
+  upi_id: string | null
+  khata_upi_enabled: boolean
   created_at: string
 }
 
