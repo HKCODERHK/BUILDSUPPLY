@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `026`, run in order. **026 is the latest and is applied** (2026-09-11, pasted by the user — online orders, see Phase 10). 024 (money integrity, Phase 9) and 025 (supplier row guard) are applied too. (An unrelated storage-bucket 024 from Phase 8 was applied and removed again on 2026-09-11 and its file deleted.) (There is no `001` file; the base schema is `supabase/schema.sql`, which predates the migration folder.)
+- **Schema migrations**: `supabase/migrations/` — `002` through `027`, run in order. **027 is the latest and is applied** (2026-09-12, pasted by the user — reject reasons the customer sees, see Phase 10). 024 (money integrity, Phase 9), 025 (supplier row guard) and 026 (online orders) are applied too. (An unrelated storage-bucket 024 from Phase 8 was applied and removed again on 2026-09-11 and its file deleted.) (There is no `001` file; the base schema is `supabase/schema.sql`, which predates the migration folder.)
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -293,9 +293,17 @@ moves stock or changes a balance** — approving makes an ordinary estimate.
   the supplier's rates today; saving calls `approve_order`, which uses the
   unchanged `create_quotation` and adds the customer **only then**, if new —
   an order never creates a customer by itself. **Reject**
-  (`components/RejectOrderModal.tsx`) takes an optional reason, shown to the
-  supplier only: the customer's page says "Not accepted — contact them". The
-  user has not decided whether customers should see the reason.
+  (`components/RejectOrderModal.tsx`) asks for a reason from a dropdown — not
+  in stock, too many orders, area not served, date not possible, or Other with
+  a few words — and **the customer sees it** on their status link (the user's
+  decision, 2026-09-12; migration 027). A listed reason is stored as
+  `reject_code` and shown in the reader's own language (`rejectReasonText` in
+  `lib/orderFormat.ts`, i18n keys `rejectCode.*`); only "Other" keeps typed
+  words in `reject_reason`. `order_status` returns the reason only once an
+  order is rejected. Nothing is sent to the customer. `reject_order(uuid,
+  text, text)` replaced the two-argument version; `p_code` has a default, so
+  the older call still works. Checked on live read-only after pasting: one
+  version, runs as the caller, refused signed out, bills unchanged.
 - **Settings → Online orders** (`components/OrderSettingsCard.tsx`, hidden
   for the admin): ordering on/off (**off by default**), show prices, the link
   (suggested from the business name, editable, `^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$`,
