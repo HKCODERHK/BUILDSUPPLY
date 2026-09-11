@@ -13,7 +13,8 @@
 // content-hashed filenames mean old entries are never requested again.
 // v3: v2 could store a 404 or an error page as the offline shell, so any
 // client already holding one has to drop it rather than keep serving it.
-const CACHE = 'buildsupply-v3'
+// v4: the app icons became the BuildSupply logo; the shell below holds them.
+const CACHE = 'buildsupply-v4'
 
 // The shell only. Everything under /assets/ is content-hashed by Vite, so it
 // gets cached on first use instead of being listed here.
