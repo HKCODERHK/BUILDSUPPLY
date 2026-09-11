@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Pencil, IndianRupee, RotateCcw, Plus, HandCoins, BookOpen } from 'lucide-react'
+import { Pencil, IndianRupee, RotateCcw, Plus, HandCoins, BookOpen, Phone } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -380,7 +380,10 @@ export default function CustomerProfile() {
           // sm up, where there was never a shortage of room. flex-wrap is the
           // backstop: if a label ever grows, these move to a second line
           // instead of pushing ⋯ out of reach again.
-          <div className="flex flex-col items-start gap-2">
+          // The two rows share the width of the wider one, and ⋯ and Call —
+          // the same 40×36 square — both sit at its right edge, so Call is
+          // always directly under ⋯ whatever the language makes the rows.
+          <div className="flex w-fit flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">
               {/* Money against what they owe: the oldest bills first, and
                   anything beyond them is kept as advance. */}
@@ -397,6 +400,7 @@ export default function CustomerProfile() {
             >
               <Plus size={16} /> {t('inv.new')}
             </Button>
+            <div className="ml-auto">
             <ActionMenu
               items={[
                 // Repeating last week's bill is a shortcut for the button
@@ -419,6 +423,7 @@ export default function CustomerProfile() {
                 },
               ]}
             />
+            </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {/* Just below Receive payment: money handed over for their NEXT
@@ -450,6 +455,17 @@ export default function CustomerProfile() {
                   <WhatsAppIcon size={16} />
                 </Button>
               </div>
+              {/* Under ⋯: ring the customer from the top of their page. */}
+              {customer.phone && (
+                <a
+                  href={`tel:${customer.phone}`}
+                  aria-label={t('cust.callName', { name: customer.name })}
+                  title={t('cust.call')}
+                  className="ml-auto inline-flex h-9 w-10 items-center justify-center rounded-lg border border-border bg-card text-accent transition-colors hover:bg-surface"
+                >
+                  <Phone size={16} />
+                </a>
+              )}
             </div>
           </div>
         }

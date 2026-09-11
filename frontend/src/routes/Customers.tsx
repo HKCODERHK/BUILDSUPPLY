@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Phone, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -122,38 +122,21 @@ export default function Customers() {
             const bal = balances[c.id]
             const pendingDays = oldestPendingDays(invoicesByCustomer[c.id] ?? [])
             return (
-              <Card
-                key={c.id}
-                id={flashId(c.id)}
-                className={`relative h-full transition-shadow hover:shadow-sm ${added?.id === c.id ? 'flash-success' : ''}`}
-              >
-                  <div className="mb-2 flex items-start justify-between gap-3">
-                    {/* The name is the link to the profile, stretched over the
-                        whole card by its ::after — so the card still opens
-                        anywhere it's tapped, while Call sits above it as a
-                        sibling (an <a> inside an <a> is invalid HTML). */}
-                    <Link
-                      to={`/customers/${c.id}`}
-                      className="font-semibold text-ink outline-none after:absolute after:inset-0 after:rounded-2xl focus-visible:after:ring-2 focus-visible:after:ring-accent"
-                    >
-                      {c.name}
-                    </Link>
-                    <div className="flex shrink-0 flex-col items-end gap-2">
-                      <Badge tone={c.status === 'Active' ? 'success' : 'neutral'}>
-                        {t(c.status === 'Active' ? 'status.Active' : 'status.Inactive')}
-                      </Badge>
-                      {c.phone && (
-                        <a
-                          href={`tel:${c.phone}`}
-                          aria-label={t('cust.callName', { name: c.name })}
-                          className="relative z-10 flex h-8 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-xs font-semibold text-accent hover:bg-accent-bg"
-                        >
-                          <Phone size={14} /> {t('cust.call')}
-                        </a>
-                      )}
-                    </div>
+              <Link key={c.id} to={`/customers/${c.id}`}>
+                <Card
+                  id={flashId(c.id)}
+                  className={`h-full transition-shadow hover:shadow-sm ${added?.id === c.id ? 'flash-success' : ''}`}
+                >
+                  <div className="mb-2 flex items-start justify-between">
+                    <div className="font-semibold text-ink">{c.name}</div>
+                    <Badge tone={c.status === 'Active' ? 'success' : 'neutral'}>
+                      {t(c.status === 'Active' ? 'status.Active' : 'status.Inactive')}
+                    </Badge>
                   </div>
                   <div className="text-xs text-muted">{c.site ?? '—'}</div>
+                  {/* Plain text here on purpose: the whole card is already a
+                      link to the profile, and an <a> inside an <a> is invalid
+                      HTML. The number is tappable on the profile itself. */}
                   <div className="text-xs text-muted">{c.phone ?? '—'}</div>
                   <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-sm">
                     <div>
@@ -180,7 +163,8 @@ export default function Customers() {
                       )}
                     </div>
                   </div>
-              </Card>
+                </Card>
+              </Link>
             )
           })}
           </div>
