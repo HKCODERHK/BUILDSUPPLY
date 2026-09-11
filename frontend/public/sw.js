@@ -14,7 +14,8 @@
 // v3: v2 could store a 404 or an error page as the offline shell, so any
 // client already holding one has to drop it rather than keep serving it.
 // v4: the app icons became the BuildSupply logo; the shell below holds them.
-const CACHE = 'buildsupply-v4'
+// v5: icon-512 gained the name under the logo (Android's launch screen).
+const CACHE = 'buildsupply-v5'
 
 // The shell only. Everything under /assets/ is content-hashed by Vite, so it
 // gets cached on first use instead of being listed here.
