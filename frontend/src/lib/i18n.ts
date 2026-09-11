@@ -96,6 +96,8 @@ const STRINGS = {
   'cust.receiveAdvance': { en: 'Receive advance', hi: 'एडवांस लें', mr: 'ॲडव्हान्स घ्या' },
   // The customer page's Ledger quick action and its WhatsApp icon.
   'cust.ledger': { en: 'Ledger', hi: 'खाता', mr: 'खाते' },
+  'cust.call': { en: 'Call', hi: 'कॉल करें', mr: 'कॉल करा' },
+  'cust.callName': { en: 'Call {name}', hi: '{name} को कॉल करें', mr: '{name} यांना कॉल करा' },
   'cust.ledgerShare': { en: 'Send ledger on WhatsApp', hi: 'खाता व्हाट्सएप पर भेजें', mr: 'खाते व्हॉट्सॲपवर पाठवा' },
   'pay.recordAdvance': { en: 'Record advance', hi: 'एडवांस दर्ज करें', mr: 'ॲडव्हान्स नोंदवा' },
   'pay.advanceIntro': {
