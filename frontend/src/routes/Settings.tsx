@@ -3,8 +3,10 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { Label } from '@/components/ui/label'
 import { updateSupplierProfile, uploadLogo } from '@/services/suppliers'
+import { sanitizePhone } from '@/lib/numberInput'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { LANGUAGES } from '@/lib/i18n'
@@ -16,7 +18,9 @@ export default function Settings() {
   const { lang, setLang, t } = useLanguage()
   const [form, setForm] = useState({
     business_name: supplier?.business_name ?? '',
-    phone: supplier?.phone ?? '',
+    // A number saved before the phone field cleaned itself may still carry
+    // "+91 " — tidied here, so saving the form stores just the 10 digits.
+    phone: sanitizePhone(supplier?.phone ?? ''),
     address: supplier?.address ?? '',
     gst_number: supplier?.gst_number ?? '',
   })
@@ -108,7 +112,7 @@ export default function Settings() {
           </div>
           <div>
             <Label htmlFor="phone">{t('common.phone')}</Label>
-            <Input id="phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            <PhoneInput id="phone" value={form.phone} onValueChange={(phone) => setForm({ ...form, phone })} />
           </div>
           <div>
             {/* Printed in the FROM block of every invoice, estimate and

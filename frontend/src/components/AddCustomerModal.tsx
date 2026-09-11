@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { Label } from '@/components/ui/label'
 import { createCustomer, setOpeningBalance } from '@/services/customers'
 import { sanitizeDecimal } from '@/lib/numberInput'
@@ -87,13 +88,12 @@ export function AddCustomerModal({
         </div>
         <div>
           <Label htmlFor="new-cust-phone">{t('common.phone')}</Label>
-          <Input
+          <PhoneInput
             id="new-cust-phone"
-            inputMode="numeric"
             placeholder={t('cust.phoneHint')}
             disabled={!!created}
             value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+            onValueChange={(phone) => setForm({ ...form, phone })}
           />
         </div>
         <div>

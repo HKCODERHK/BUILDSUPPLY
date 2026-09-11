@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { Label } from '@/components/ui/label'
 import { Modal } from '@/components/ui/modal'
 import { ActionMenu } from '@/components/ui/action-menu'
@@ -604,12 +605,11 @@ export default function CustomerProfile() {
             </div>
             <div>
               <Label htmlFor="edit-phone">{t('common.phone')}</Label>
-              <Input
+              <PhoneInput
                 id="edit-phone"
-                inputMode="numeric"
                 placeholder={t('cust.phoneHint')}
                 value={editForm.phone}
-                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                onValueChange={(phone) => setEditForm({ ...editForm, phone })}
               />
             </div>
             <div>
