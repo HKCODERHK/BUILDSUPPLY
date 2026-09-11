@@ -231,7 +231,8 @@ export default function NewQuotation() {
         transportLabourCharge: transportLabourAmount,
       })
       clearDraft(supplier.id, 'quotation')
-      setSaved(true)
+      // As above: commit `saved` first, or the guard stops the navigation.
+      flushSync(() => setSaved(true))
       navigate(`/quotations/${quotation.id}`)
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : t('error.generic'))
