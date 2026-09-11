@@ -549,6 +549,13 @@ const STRINGS = {
   },
 
   // ── Blocked account ───────────────────────────────────────────────────
+  'account.loadFailed': { en: "Couldn't open your account", hi: 'आपका खाता नहीं खुल सका', mr: 'तुमचे खाते उघडता आले नाही' },
+  'account.loadFailedHint': {
+    en: 'You are signed in, but your business details did not load. This is usually a weak connection — check your internet and try again.',
+    hi: 'आप साइन इन हैं, पर आपके व्यापार की जानकारी लोड नहीं हुई। अक्सर यह कमज़ोर नेटवर्क की वजह से होता है — इंटरनेट देखकर फिर से कोशिश करें।',
+    mr: 'तुम्ही साइन इन आहात, पण तुमच्या व्यवसायाची माहिती लोड झाली नाही. हे बहुतेक कमकुवत नेटवर्कमुळे होते — इंटरनेट तपासून पुन्हा प्रयत्न करा.',
+  },
+  'account.retry': { en: 'Try again', hi: 'फिर से कोशिश करें', mr: 'पुन्हा प्रयत्न करा' },
   'account.suspended': { en: 'Your account is suspended.', hi: 'आपका खाता रोक दिया गया है।', mr: 'तुमचे खाते थांबवले आहे.' },
   'account.deactivated': { en: 'Your account is deactivated.', hi: 'आपका खाता बंद कर दिया गया है।', mr: 'तुमचे खाते बंद केले आहे.' },
   'account.contactAdmin': {

@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { TruckLoader } from '@/components/TruckLoader'
+import { AccountLoadError } from '@/components/AccountLoadError'
 
 export function ProtectedRoute({
   children,
@@ -25,8 +26,14 @@ export function ProtectedRoute({
     return <TruckLoader inline className="min-h-screen" />
   }
 
-  if (!session || !supplier) {
+  if (!session) {
     return <Navigate to="/login" replace />
+  }
+
+  // Signed in, but the profile didn't load. Not /login: Login sends anyone
+  // with a session back here, and the two redirected each other forever.
+  if (!supplier) {
+    return <AccountLoadError />
   }
 
   // Belt-and-suspenders alongside the Supabase Auth-level ban: a session
