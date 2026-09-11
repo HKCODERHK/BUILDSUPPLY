@@ -4,11 +4,9 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { PasswordInput } from '@/components/ui/password-input'
 import { changeOwnPassword, WrongPasswordError } from '@/services/account'
+import { isPasswordLeaked, MIN_PASSWORD_LENGTH as MIN_LENGTH } from '@/lib/passwordRules'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
-
-// Supabase's default minimum, and what the admin's own card asks for.
-const MIN_LENGTH = 6
 
 /**
  * Settings → Change password. A supplier starts with a password the admin
@@ -45,6 +43,11 @@ export function ChangePasswordCard() {
     setSaving(true)
     setError(null)
     try {
+      // A leaked password is what makes Chrome warn at every sign-in.
+      if (await isPasswordLeaked(form.next)) {
+        setError(t('set.pwLeaked'))
+        return
+      }
       await changeOwnPassword(email, form.current, form.next)
       setForm({ current: '', next: '', confirm: '' })
       setDone(true)
