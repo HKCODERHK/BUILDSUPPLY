@@ -122,6 +122,36 @@ select,
   box-sizing: border-box;
 }
 
+/* Scrollbars: thin, rounded and grey rather than the browser's thick default
+   — which is a desktop and laptop thing; Android draws its own thin bar that
+   fades. The track is left transparent, so no light strip runs down beside
+   the dark header or the tab bar. It stays the whole page's bar on purpose:
+   the page scrolling (not an inner box) is what keeps the header pinned and
+   pull-to-refresh off, above. Chrome, Edge and Safari read the ::-webkit-
+   rules; Firefox reads the standard pair — kept out of Chrome's way, since
+   there it would override the ::-webkit- ones. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-muted-2) transparent;
+  }
+}
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-muted-2) 65%, transparent);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-2);
+}
+
 /* Splash (components/Splash.tsx). The ring round the supplier's logo is a
    still, solid green circle now, so it needs no rules here. */
 /* The business name sits behind the tipper — z-index rather than source order
