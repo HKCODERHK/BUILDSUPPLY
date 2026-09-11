@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils'
 import type { Customer, OrderRequest, OrderStatus } from '@/lib/database.types'
 import { listCustomers } from '@/services/customers'
 import { listOrders } from '@/services/orders'
-import { formatOrderDate, orderItemsSummary } from '@/lib/orderFormat'
+import { formatOrderDate, orderItemsSummary, rejectReasonText } from '@/lib/orderFormat'
 
 const TABS: OrderStatus[] = ['pending', 'approved', 'rejected']
 
@@ -92,6 +92,9 @@ export default function Orders() {
                       : ''}
                   </div>
                   {order.note && <div className="line-clamp-2 text-xs italic text-muted">“{order.note}”</div>}
+                  {order.status === 'rejected' && rejectReasonText(order, t) && (
+                    <div className="text-xs text-muted">{t('ord.rejectedReason', { reason: rejectReasonText(order, t) ?? '' })}</div>
+                  )}
                 </Link>
                 {order.status === 'pending' && (
                   <div className="mt-1 flex gap-2 border-t border-border pt-3">

@@ -6,6 +6,7 @@ import { LanguageToggle } from '@/components/LanguageToggle'
 import { TruckLoader } from '@/components/TruckLoader'
 import { useLanguage } from '@/context/LanguageContext'
 import { getOrderStatus, type OrderStatusView } from '@/services/orders'
+import { rejectReasonText } from '@/lib/orderFormat'
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -13,8 +14,9 @@ function formatDate(iso: string) {
 
 /**
  * /order-status/<code> — the link a customer got when they placed an order.
- * The code is random (migration 026); this shows only the status, the items
- * and the dates, never prices or the supplier's notes.
+ * The code is random (migration 026); this shows only the status, the items,
+ * the dates and — once rejected — the reason the supplier picked (027). Never
+ * prices, the phone number or the customer's note.
  */
 export default function OrderStatus() {
   const { token = '' } = useParams()
@@ -52,6 +54,11 @@ export default function OrderStatus() {
             <div>
               <Badge tone={tone}>{t(`order.status.${found.status}`)}</Badge>
               <p className="mt-3 text-sm text-ink">{t(`order.status.${found.status}Body`, { business: found.business_name })}</p>
+              {found.status === 'rejected' && rejectReasonText(found, t) && (
+                <p className="mt-2 rounded-lg bg-surface p-3 text-sm font-medium text-ink">
+                  {t('ord.rejectedReason', { reason: rejectReasonText(found, t) ?? '' })}
+                </p>
+              )}
             </div>
             <div className="flex flex-col divide-y divide-border border-t border-border text-sm">
               {found.items.map((item, i) => (

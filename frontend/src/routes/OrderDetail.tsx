@@ -14,7 +14,7 @@ import { openWhatsAppShare } from '@/lib/whatsapp'
 import type { Customer, OrderRequest } from '@/lib/database.types'
 import { listCustomers } from '@/services/customers'
 import { getOrder } from '@/services/orders'
-import { formatOrderDate } from '@/lib/orderFormat'
+import { formatOrderDate, rejectReasonText } from '@/lib/orderFormat'
 
 /** One online order in full, with the customer match and Approve / Reject. */
 export default function OrderDetail() {
@@ -120,8 +120,8 @@ export default function OrderDetail() {
             <Button variant="outline">{t('ord.openEstimate')}</Button>
           </Link>
         )}
-        {order.status === 'rejected' && order.reject_reason && (
-          <p className="text-sm text-muted">{t('ord.rejectedReason', { reason: order.reject_reason })}</p>
+        {order.status === 'rejected' && rejectReasonText(order, t) && (
+          <p className="text-sm text-muted">{t('ord.rejectedReason', { reason: rejectReasonText(order, t) ?? '' })}</p>
         )}
       </div>
 
