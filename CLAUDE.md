@@ -196,10 +196,13 @@ sent automatically** — each was ruled out explicitly.
   `shared`; no file sharing → the "can't attach" notice → `unsupported`. Across
   all of it: zero network requests, zero downloads, zero `wa.me` opens, no link
   in any message.
-- **Not yet verified: a real Android phone** — WhatsApp in the share sheet, the
-  customer picked, the PDF arriving as a document, Send. Only the user's phone
-  can show that. Whether WhatsApp keeps the message as the document's caption
-  or drops it is WhatsApp's choice, not ours.
+- **Verified on the user's Android phone (2026-09-11)**: the customer page's
+  Ledger → WhatsApp share sends the statement PDF as a document. Whether
+  WhatsApp keeps the message as the document's caption or drops it is
+  WhatsApp's choice, not ours.
+- **The Ledger button shows a spinner, not "Preparing…"**, while the PDF is
+  built. The wider word pushed the Call button (under ⋯) onto a line of its
+  own. Keep that row's widths fixed.
 
 **Phase 9 — money integrity (migration 024, 2026-09-11). Applied to live and
 merged to `main` the same day.** The user's order: double payment

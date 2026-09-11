@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Pencil, IndianRupee, RotateCcw, Plus, HandCoins, BookOpen, Phone } from 'lucide-react'
+import { Pencil, IndianRupee, RotateCcw, Plus, HandCoins, BookOpen, Phone, LoaderCircle } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -443,7 +443,14 @@ export default function CustomerProfile() {
                   disabled={sharing !== null}
                   onClick={downloadLedger}
                 >
-                  <BookOpen size={16} /> {sharing === 'ledger' ? t('common.preparing') : t('cust.ledger')}
+                  {/* A spinner, not "Preparing…": the wider word pushed Call
+                      under ⋯ onto a line of its own while the PDF was made. */}
+                  {sharing === 'ledger' ? (
+                    <LoaderCircle size={16} className="animate-spin" aria-label={t('common.preparing')} />
+                  ) : (
+                    <BookOpen size={16} />
+                  )}{' '}
+                  {t('cust.ledger')}
                 </Button>
                 <Button
                   size="sm"
