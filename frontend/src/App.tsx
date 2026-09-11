@@ -31,6 +31,8 @@ import AdminMaterialCatalog from '@/routes/admin/MaterialCatalog'
 import AdminPlatformSettings from '@/routes/admin/PlatformSettings'
 import OrderPage from '@/routes/OrderPage'
 import OrderStatus from '@/routes/OrderStatus'
+import Orders from '@/routes/Orders'
+import OrderDetail from '@/routes/OrderDetail'
 
 // A supplier's public order page and a customer's status link: open to
 // anyone, no sign-in, and no BuildSupply splash in front of them.
@@ -77,6 +79,8 @@ const router = createBrowserRouter([
   { path: '/quotations', element: <Protected supplierOnly><Quotations /></Protected> },
   { path: '/quotations/new', element: <Protected supplierOnly><NewQuotation /></Protected> },
   { path: '/quotations/:id', element: <Protected supplierOnly><QuotationDetail /></Protected> },
+  { path: '/orders', element: <Protected supplierOnly><Orders /></Protected> },
+  { path: '/orders/:id', element: <Protected supplierOnly><OrderDetail /></Protected> },
   // Stock merged into Materials — keep the old path working.
   { path: '/stock', element: <Navigate to="/materials" replace /> },
   { path: '/payments', element: <Protected supplierOnly><Payments /></Protected> },

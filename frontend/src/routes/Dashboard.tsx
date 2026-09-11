@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, AlertTriangle } from 'lucide-react'
+import { Plus, AlertTriangle, Inbox } from 'lucide-react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,7 @@ import {
 import { listRecentCustomers } from '@/services/customers'
 import { listPaymentsSince } from '@/services/payments'
 import { listMaterials } from '@/services/materials'
+import { countPendingOrders } from '@/services/orders'
 import type { Customer, DashboardTotals, Invoice, Material, Payment } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -100,6 +101,18 @@ function SupplierDashboardView() {
   const [recentCustomers, setRecentCustomers] = useState<Customer[]>([])
   const [today, setToday] = useState({ bills: 0, sold: 0, collected: 0 })
   const [lowStock, setLowStock] = useState<Material[]>([])
+  // Online orders waiting to be reviewed (migration 026). Read on its own, so
+  // a problem here never holds up the rest of the dashboard.
+  const [pendingOrders, setPendingOrders] = useState(0)
+  useEffect(() => {
+    let active = true
+    countPendingOrders()
+      .then((n) => active && setPendingOrders(n))
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [])
   const [loading, setLoading] = useState(true)
   // What the Start-here card ticks off. Flags rather than the recent lists
   // above, which are trimmed to five and drop cancelled bills — a supplier
@@ -219,6 +232,21 @@ function SupplierDashboardView() {
         />
       ) : (
         <>
+          {pendingOrders > 0 && (
+            <Link
+              to="/orders"
+              className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-accent/30 bg-accent-bg px-4 py-3"
+            >
+              <div className="flex items-center gap-2.5">
+                <Inbox size={18} className="shrink-0 text-accent" />
+                <span className="text-sm font-medium text-accent-text">
+                  {pendingOrders === 1 ? t('dash.newOrdersOne') : t('dash.newOrdersMany', { count: pendingOrders })}
+                </span>
+              </div>
+              <span className="shrink-0 text-xs font-semibold text-accent-text">{t('dash.reviewOrders')}</span>
+            </Link>
+          )}
+
           {lowStock.length > 0 && (
             <Link
               to="/materials"

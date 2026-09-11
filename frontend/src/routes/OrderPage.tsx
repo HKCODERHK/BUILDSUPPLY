@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Minus, Plus, Search } from 'lucide-react'
 import { Card } from '@/components/ui/card'
@@ -92,10 +92,10 @@ export default function OrderPage() {
   const open = page && page.found && page.open ? page : null
   const materials = open?.materials ?? []
   const showSearch = materials.length > 8
-  const visible = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return q ? materials.filter((m) => m.name.toLowerCase().includes(q) || (m.category ?? '').toLowerCase().includes(q)) : materials
-  }, [materials, query])
+  const search = query.trim().toLowerCase()
+  const visible = search
+    ? materials.filter((m) => m.name.toLowerCase().includes(search) || (m.category ?? '').toLowerCase().includes(search))
+    : materials
 
   const chosen = materials
     .map((m) => ({ material: m, qty: Number(qty[m.id]) || 0 }))

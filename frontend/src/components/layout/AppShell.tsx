@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { LogOut, MoreHorizontal, X, ShieldCheck, Boxes, SlidersHorizontal, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
@@ -11,6 +11,7 @@ import { ShareDocumentPrompt } from '@/components/ShareDocumentPrompt'
 import { openWhatsAppShare } from '@/lib/whatsapp'
 import { ADMIN_WHATSAPP_NUMBER } from '@/lib/adminContact'
 import { daysUntilExpiry, subscriptionState } from '@/lib/subscription'
+import { countPendingOrders } from '@/services/orders'
 import { NAV_ITEMS, MOBILE_PRIMARY_IDS, ADMIN_NAV_IDS } from './nav-items'
 
 // Shown in the desktop sidebar header and, on mobile, in the top bar.
@@ -116,6 +117,22 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => observer.disconnect()
   }, [])
 
+  // Online orders waiting to be reviewed (migration 026): a count on Orders,
+  // and a dot on More, which is where Orders sits on a phone. Re-read on each
+  // screen change — one small count, never the orders themselves.
+  const location = useLocation()
+  const [pendingOrders, setPendingOrders] = useState(0)
+  useEffect(() => {
+    if (!supplier || supplier.role !== 'supplier') return
+    let active = true
+    countPendingOrders()
+      .then((n) => active && setPendingOrders(n))
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [supplier, location.pathname])
+
   async function handleSignOut() {
     await signOut()
     navigate('/login', { replace: true })
@@ -157,6 +174,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               <item.icon size={17} />
               {t(item.labelKey)}
+              {item.id === 'orders' && pendingOrders > 0 && (
+                <span className="ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[11px] font-semibold leading-none text-white">
+                  {pendingOrders}
+                </span>
+              )}
             </NavLink>
           ))}
           {supplier?.role === 'admin' && (
@@ -272,9 +294,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         ))}
         <button
           onClick={() => setMoreOpen(true)}
-          className="flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-muted"
+          className="relative flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-muted"
         >
           <MoreHorizontal size={19} />
+          {pendingOrders > 0 && (
+            <span aria-hidden="true" className="absolute right-[calc(50%-16px)] top-2 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-card" />
+          )}
           {t('nav.more')}
         </button>
       </nav>
@@ -300,10 +325,15 @@ export function AppShell({ children }: { children: ReactNode }) {
                   key={item.id}
                   to={item.path}
                   onClick={() => setMoreOpen(false)}
-                  className="flex flex-col items-center gap-1.5 rounded-xl border border-border p-3 text-xs font-medium text-ink"
+                  className="relative flex flex-col items-center gap-1.5 rounded-xl border border-border p-3 text-xs font-medium text-ink"
                 >
                   <item.icon size={18} />
                   {t(item.labelKey)}
+                  {item.id === 'orders' && pendingOrders > 0 && (
+                    <span className="absolute right-2 top-2 rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                      {pendingOrders}
+                    </span>
+                  )}
                 </NavLink>
               ))}
               {supplier?.role === 'admin' && (

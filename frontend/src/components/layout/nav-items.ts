@@ -4,6 +4,7 @@ import {
   LayersPlus,
   FileText,
   ClipboardList,
+  Inbox,
   CreditCard,
   Truck,
   Bell,
@@ -40,6 +41,9 @@ export const NAV_ITEMS: NavItem[] = [
   // the two differed only by a small plus. A clipboard also says "estimate"
   // more plainly than a stack of layers ever did.
   { id: 'quotations', labelKey: 'nav.quotations', path: '/quotations', icon: ClipboardList },
+  // Orders customers sent from the supplier's order link (migration 026).
+  // An inbox tray — nothing like the clipboard above it or the card below.
+  { id: 'orders', labelKey: 'nav.orders', path: '/orders', icon: Inbox },
   { id: 'payments', labelKey: 'nav.payments', path: '/payments', icon: CreditCard },
   { id: 'deliveries', labelKey: 'nav.deliveries', path: '/deliveries', icon: Truck },
   { id: 'reminders', labelKey: 'nav.reminders', path: '/reminders', icon: Bell },
