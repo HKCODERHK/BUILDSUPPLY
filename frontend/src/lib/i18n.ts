@@ -507,6 +507,34 @@ const STRINGS = {
   'auth.email': { en: 'Email', hi: 'ईमेल', mr: 'ईमेल' },
   'auth.password': { en: 'Password', hi: 'पासवर्ड', mr: 'पासवर्ड' },
   'auth.forgot': { en: 'Forgot password?', hi: 'पासवर्ड भूल गए?', mr: 'पासवर्ड विसरलात?' },
+  // Settings → Change password
+  'set.pwTitle': { en: 'Change password', hi: 'पासवर्ड बदलें', mr: 'पासवर्ड बदला' },
+  'set.pwHint': {
+    en: 'Replace the password you were given with one only you know.',
+    hi: 'आपको दिया गया पासवर्ड बदलकर ऐसा रखें जो सिर्फ़ आपको पता हो।',
+    mr: 'तुम्हाला दिलेला पासवर्ड बदलून फक्त तुम्हालाच माहीत असलेला ठेवा.',
+  },
+  'set.pwCurrent': { en: 'Current password', hi: 'अभी का पासवर्ड', mr: 'सध्याचा पासवर्ड' },
+  'set.pwNew': { en: 'New password', hi: 'नया पासवर्ड', mr: 'नवीन पासवर्ड' },
+  'set.pwConfirm': { en: 'Type the new password again', hi: 'नया पासवर्ड फिर से लिखें', mr: 'नवीन पासवर्ड पुन्हा लिहा' },
+  'set.pwShort': { en: 'At least {min} characters.', hi: 'कम से कम {min} अक्षर।', mr: 'किमान {min} अक्षरे.' },
+  'set.pwMismatch': { en: "The two new passwords don't match.", hi: 'दोनों नए पासवर्ड एक जैसे नहीं हैं।', mr: 'दोन्ही नवीन पासवर्ड जुळत नाहीत.' },
+  'set.pwSame': {
+    en: 'The new password is the same as the current one.',
+    hi: 'नया पासवर्ड अभी वाले जैसा ही है।',
+    mr: 'नवीन पासवर्ड सध्याच्या पासवर्डसारखाच आहे.',
+  },
+  'set.pwWrong': {
+    en: 'Current password is wrong. Nothing was changed.',
+    hi: 'अभी का पासवर्ड गलत है। कुछ नहीं बदला गया।',
+    mr: 'सध्याचा पासवर्ड चुकीचा आहे. काहीही बदलले नाही.',
+  },
+  'set.pwSave': { en: 'Change password', hi: 'पासवर्ड बदलें', mr: 'पासवर्ड बदला' },
+  'set.pwChanged': {
+    en: 'Password changed. Use the new one next time you sign in.',
+    hi: 'पासवर्ड बदल गया। अगली बार नए पासवर्ड से साइन इन करें।',
+    mr: 'पासवर्ड बदलला. पुढच्या वेळी नवीन पासवर्डने साइन इन करा.',
+  },
   // The eye in the password field — read aloud, never shown.
   'auth.showPassword': { en: 'Show password', hi: 'पासवर्ड दिखाएँ', mr: 'पासवर्ड दाखवा' },
   'auth.hidePassword': { en: 'Hide password', hi: 'पासवर्ड छिपाएँ', mr: 'पासवर्ड लपवा' },

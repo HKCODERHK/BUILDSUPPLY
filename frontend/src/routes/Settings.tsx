@@ -12,6 +12,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { LANGUAGES } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { PinSettingsCard } from '@/components/PinSettingsCard'
+import { ChangePasswordCard } from '@/components/ChangePasswordCard'
 
 export default function Settings() {
   const { supplier } = useAuth()
@@ -145,6 +146,8 @@ export default function Settings() {
           </div>
         </form>
       </Card>
+
+      <ChangePasswordCard />
     </div>
   )
 }
