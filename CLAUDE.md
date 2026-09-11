@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `024`, run in order. **023 is the latest applied** (2026-09-08). **`024_money_integrity.sql` is written and tested but NOT applied to live** — see Phase 9. (An unrelated storage-bucket 024 from Phase 8 was applied and removed again on 2026-09-11 and its file deleted.) (There is no `001` file; the base schema is `supabase/schema.sql`, which predates the migration folder.)
+- **Schema migrations**: `supabase/migrations/` — `002` through `024`, run in order. **024 is the latest and is applied** (2026-09-11, pasted by the user — money integrity, see Phase 9). (An unrelated storage-bucket 024 from Phase 8 was applied and removed again on 2026-09-11 and its file deleted.) (There is no `001` file; the base schema is `supabase/schema.sql`, which predates the migration folder.)
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -201,8 +201,8 @@ sent automatically** — each was ruled out explicitly.
   can show that. Whether WhatsApp keeps the message as the document's caption
   or drops it is WhatsApp's choice, not ours.
 
-**Phase 9 — money integrity (migration 024, 2026-09-11). On branch
-`money-integrity`; NOT yet applied to live.** The user's order: double payment
+**Phase 9 — money integrity (migration 024, 2026-09-11). Applied to live and
+merged to `main` the same day.** The user's order: double payment
 → overpayment/advance → atomic saves → duplicate numbers → the 1,000-row cap →
 opening balance. They chose the *simple version*: the complexity lives in the
 database, and the supplier sees two buttons and a few lines.
@@ -260,8 +260,14 @@ database, and the supplier sees two buttons and a few lines.
   repo** (`supabase start --workdir <dir>`, storage enabled), because started
   from the repo the CLI auto-applies `supabase/migrations` without the base
   schema.
-- **To go live**: take a backup, have the user paste 024 into the
-  project-scoped SQL editor, then merge and deploy straight away.
+- **Applied 2026-09-11** by the user in the SQL editor. The full backup is
+  `backups/2026-09-11_1625-live-after-024-found/`. Checked read-only on live
+  afterwards:
+  - All 38 bills and 76 payments are identical to the 03:02 backup.
+  - There are 75 allocations and 0 bills out of step.
+  - The only advance is ₹830, on INV-1024's customer.
+  - All 6 triggers and 10 functions are present, none callable signed out.
+  - RLS is on both new tables, and both views are still `security_invoker`.
 
 ## The admin panel
 
