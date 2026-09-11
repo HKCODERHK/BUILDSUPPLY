@@ -11,7 +11,10 @@ export interface ActionMenuItem {
   disabled?: boolean
 }
 
-type Placement = { x: 'right' | 'left'; y: 'down' | 'up' }
+// 'right' / 'left': which edges line up with the button. A number: neither
+// fits (a very narrow screen), so the menu is slid to that many px from the
+// button's left edge to keep it whole.
+type Placement = { x: 'right' | 'left' | number; y: 'down' | 'up' }
 
 // Kept clear of the screen's edges, in px.
 const GAP = 8
@@ -56,7 +59,12 @@ export function ActionMenu({ items, label = 'More actions' }: { items: ActionMen
     const area = usableArea()
     const button = wrapRef.current.getBoundingClientRect()
     const { width, height } = menuRef.current.getBoundingClientRect()
-    const x = button.right - width < area.left && button.left + width <= area.right ? 'left' : 'right'
+    const x: Placement['x'] =
+      button.right - width >= area.left
+        ? 'right'
+        : button.left + width <= area.right
+          ? 'left'
+          : Math.max(area.left, Math.min(button.left, area.right - width)) - button.left
     const below = area.bottom - button.bottom
     const above = button.top - area.top
     const y = height > below && above > below ? 'up' : 'down'
@@ -98,9 +106,10 @@ export function ActionMenu({ items, label = 'More actions' }: { items: ActionMen
         <div
           ref={menuRef}
           role="menu"
+          style={typeof place.x === 'number' ? { left: place.x } : undefined}
           className={cn(
             'absolute z-40 min-w-48 overflow-hidden rounded-xl border border-border bg-card py-1 shadow-lg',
-            place.x === 'right' ? 'right-0' : 'left-0',
+            place.x === 'right' ? 'right-0' : place.x === 'left' ? 'left-0' : '',
             place.y === 'down' ? 'top-full mt-1' : 'bottom-full mb-1',
           )}
         >
