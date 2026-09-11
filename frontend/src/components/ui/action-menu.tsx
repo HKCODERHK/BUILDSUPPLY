@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { MoreHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -11,16 +11,65 @@ export interface ActionMenuItem {
   disabled?: boolean
 }
 
+// 'right' / 'left': which edges line up with the button. A number: neither
+// fits (a very narrow screen), so the menu is slid to that many px from the
+// button's left edge to keep it whole.
+type Placement = { x: 'right' | 'left' | number; y: 'down' | 'up' }
+
+// Kept clear of the screen's edges, in px.
+const GAP = 8
+
+/**
+ * Where a menu may draw: inside the window, below the phone header and above
+ * the phone tab bar (AppShell marks both; on a desktop they're hidden and
+ * measure nothing, so the whole window counts).
+ */
+function usableArea() {
+  const header = document.querySelector('[data-app-header]')?.getBoundingClientRect()
+  const tabbar = document.querySelector('[data-app-tabbar]')?.getBoundingClientRect()
+  return {
+    top: (header?.height ? header.bottom : 0) + GAP,
+    bottom: (tabbar?.height ? tabbar.top : window.innerHeight) - GAP,
+    left: GAP,
+    right: document.documentElement.clientWidth - GAP,
+  }
+}
+
 /**
  * A "⋯" button holding the actions that matter less than the main one.
  *
  * Used where a screen had grown several equal-weight buttons and only one of
  * them was actually reached for — the rest are still one tap away, they just
  * stop competing for the eye.
+ *
+ * The menu lines up with the button's right edge, as a ⋯ at the end of a row
+ * expects — unless that would run off the left of the screen (Materials, where
+ * ⋯ sits near the left), when it lines up with the left edge instead. It
+ * opens downward unless it would run under the tab bar and there is more room
+ * above. Measured before it is painted, so it never flashes in the wrong place.
  */
 export function ActionMenu({ items, label = 'More actions' }: { items: ActionMenuItem[]; label?: string }) {
   const [open, setOpen] = useState(false)
+  const [place, setPlace] = useState<Placement>({ x: 'right', y: 'down' })
   const wrapRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useLayoutEffect(() => {
+    if (!open || !wrapRef.current || !menuRef.current) return
+    const area = usableArea()
+    const button = wrapRef.current.getBoundingClientRect()
+    const { width, height } = menuRef.current.getBoundingClientRect()
+    const x: Placement['x'] =
+      button.right - width >= area.left
+        ? 'right'
+        : button.left + width <= area.right
+          ? 'left'
+          : Math.max(area.left, Math.min(button.left, area.right - width)) - button.left
+    const below = area.bottom - button.bottom
+    const above = button.top - area.top
+    const y = height > below && above > below ? 'up' : 'down'
+    setPlace((prev) => (prev.x === x && prev.y === y ? prev : { x, y }))
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -55,8 +104,14 @@ export function ActionMenu({ items, label = 'More actions' }: { items: ActionMen
 
       {open && (
         <div
+          ref={menuRef}
           role="menu"
-          className="absolute right-0 z-40 mt-1 min-w-48 overflow-hidden rounded-xl border border-border bg-card py-1 shadow-lg"
+          style={typeof place.x === 'number' ? { left: place.x } : undefined}
+          className={cn(
+            'absolute z-40 min-w-48 overflow-hidden rounded-xl border border-border bg-card py-1 shadow-lg',
+            place.x === 'right' ? 'right-0' : place.x === 'left' ? 'left-0' : '',
+            place.y === 'down' ? 'top-full mt-1' : 'bottom-full mb-1',
+          )}
         >
           {items.map((item) => (
             <button

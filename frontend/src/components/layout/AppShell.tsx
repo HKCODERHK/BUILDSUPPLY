@@ -221,7 +221,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             here, so it moves up alongside the theme toggle. */}
         {/* pt keeps the brand out from under the status bar, which the
             translucent status bar style in index.html puts us beneath. */}
-        <header className="sticky top-0 z-30 flex w-full items-center justify-between bg-shell px-4 py-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white sm:px-6 lg:hidden">
+        {/* data-app-header / data-app-tabbar: what ui/action-menu keeps its
+            menus clear of. */}
+        <header data-app-header className="sticky top-0 z-30 flex w-full items-center justify-between bg-shell px-4 py-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white sm:px-6 lg:hidden">
           <Brand />
           <div className="flex items-center gap-2">
             <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
@@ -250,6 +252,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           gesture bar sits on top of the last few pixels of every tap target. */}
       <nav
         ref={tabBarRef}
+        data-app-tabbar
         className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-card pb-[var(--safe-bottom)] lg:hidden"
       >
         {primaryItems.map((item) => (
