@@ -632,9 +632,9 @@ const STRINGS = {
   'del.driverList': { en: 'Driver’s list', hi: 'ड्राइवर की सूची', mr: 'ड्रायव्हरची यादी' },
   'del.driverTitle': { en: 'Today’s delivery list', hi: 'आज की डिलीवरी सूची', mr: 'आजची डिलिव्हरी यादी' },
   'del.driverHint': {
-    en: 'Tick the bills going out today. The driver gets one PDF with each customer, phone, site and the materials — no amounts. Nothing is marked delivered.',
-    hi: 'आज जाने वाले बिल चुनें। ड्राइवर को एक PDF मिलेगी — हर ग्राहक, फ़ोन, साइट और माल के साथ, बिना रकम के। कुछ भी डिलीवर दर्ज नहीं होता।',
-    mr: 'आज जाणारी बिले निवडा. ड्रायव्हरला एक PDF मिळेल — प्रत्येक ग्राहक, फोन, साइट आणि मालासह, रकमेशिवाय. काहीही डिलिव्हर म्हणून नोंदवले जात नाही.',
+    en: 'Bills from the last two days are ticked — tick any others going out today. The driver gets one PDF with each customer, phone, site and the materials — no amounts. Nothing is marked delivered.',
+    hi: 'पिछले दो दिन के बिल चुने हुए हैं — आज जाने वाले और बिल भी चुनें। ड्राइवर को एक PDF मिलेगी — हर ग्राहक, फ़ोन, साइट और माल के साथ, बिना रकम के। कुछ भी डिलीवर दर्ज नहीं होता।',
+    mr: 'मागच्या दोन दिवसांची बिले निवडलेली आहेत — आज जाणारी इतर बिलेही निवडा. ड्रायव्हरला एक PDF मिळेल — प्रत्येक ग्राहक, फोन, साइट आणि मालासह, रकमेशिवाय. काहीही डिलिव्हर म्हणून नोंदवले जात नाही.',
   },
   'del.picked': { en: '{count} selected', hi: '{count} चुने', mr: '{count} निवडले' },
   'del.selectAll': { en: 'Select all', hi: 'सब चुनें', mr: 'सर्व निवडा' },
