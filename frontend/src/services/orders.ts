@@ -64,6 +64,17 @@ export async function placeOrder(input: PlaceOrderInput): Promise<{ token: strin
   return { token: raw.token, duplicate: !!raw.duplicate }
 }
 
+/** The estimate made from an approved order, as its customer sees it (migration 030). */
+export interface EstimateView {
+  quote_no: string
+  status: Quotation['status']
+  subtotal: number
+  gst_amount: number
+  transport_labour_charge: number
+  total: number
+  items: { description: string; qty: number; rate: number; amount: number }[]
+}
+
 export type OrderStatusView =
   | { found: false }
   | {
@@ -76,10 +87,19 @@ export type OrderStatusView =
       /** Present only once the order is rejected (migration 027). */
       reject_code?: OrderRequest['reject_code']
       reject_reason?: string | null
+      /** Present only once approved: the estimate, and the customer's answer (migration 030). */
+      estimate?: EstimateView
+      response?: OrderRequest['customer_response']
+      responded_at?: string | null
     }
 
 export function getOrderStatus(token: string): Promise<OrderStatusView> {
   return callRpc<OrderStatusView>('order_status', { p_token: token })
+}
+
+/** The customer's answer to the estimate on their status link — nothing is billed by it. */
+export async function respondToEstimate(token: string, response: 'accepted' | 'call_me'): Promise<void> {
+  await callRpc<{ ok?: boolean }>('respond_to_estimate', { p_token: token, p_response: response })
 }
 
 /** Where a supplier's order page lives. */
@@ -187,6 +207,28 @@ export async function approveOrder(input: ApproveOrderInput): Promise<{ quotatio
 export async function rejectOrder(orderId: string, code: NonNullable<OrderRequest['reject_code']>, reason: string): Promise<void> {
   const raw = await callRpc<{ ok?: boolean; already?: boolean }>('reject_order', { p_order_id: orderId, p_reason: reason, p_code: code })
   if (!raw.already) void logActivity('supplier', 'order_rejected', { details: { order_id: orderId } })
+}
+
+/** Estimates a customer has accepted and that are still waiting to be billed — the Dashboard banner. */
+export async function countAcceptedEstimates(): Promise<number> {
+  const { count, error } = await supabase
+    .from('order_requests')
+    .select('id, quotations!inner(status)', { count: 'exact', head: true })
+    .eq('customer_response', 'accepted')
+    .in('quotations.status', ['Draft', 'Sent'])
+  if (error) throw error
+  return count ?? 0
+}
+
+/** The online order an estimate was made from, if any — for the customer's answer on the estimate page. */
+export async function getOrderForQuotation(quotationId: string): Promise<Pick<OrderRequest, 'id' | 'customer_response' | 'responded_at'> | null> {
+  const { data, error } = await supabase
+    .from('order_requests')
+    .select('id, customer_response, responded_at')
+    .eq('quotation_id', quotationId)
+    .maybeSingle()
+  if (error) throw error
+  return data
 }
 
 /**

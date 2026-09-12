@@ -9,6 +9,7 @@ import { Modal } from '@/components/ui/modal'
 import { ActionMenu } from '@/components/ui/action-menu'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { getQuotation, listQuotationItems, markQuotationSent } from '@/services/quotations'
+import { getOrderForQuotation } from '@/services/orders'
 import { newRequestId } from '@/services/db'
 import { getCustomer } from '@/services/customers'
 import { createInvoice, markInvoiceDelivered } from '@/services/invoices'
@@ -18,7 +19,7 @@ import { logActivity } from '@/services/activityLog'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { QUOTATION_STATUS_TONE } from '@/lib/quotationStatus'
-import type { Quotation, QuotationItem, Customer } from '@/lib/database.types'
+import type { Quotation, QuotationItem, Customer, OrderRequest } from '@/lib/database.types'
 import { TruckLoader } from '@/components/TruckLoader'
 
 function formatINR(n: number) {
@@ -39,17 +40,22 @@ export default function QuotationDetail() {
   const [convertError, setConvertError] = useState<string | null>(null)
   const [deliveryPrompt, setDeliveryPrompt] = useState<{ id: string; invoice_no: string } | null>(null)
   const [confirmingDelivery, setConfirmingDelivery] = useState(false)
+  // The customer's answer from their order status link, when this estimate came from an online order (migration 030).
+  const [answer, setAnswer] = useState<Pick<OrderRequest, 'customer_response' | 'responded_at'> | null>(null)
 
   async function refresh() {
     if (!id) return
     const q = await getQuotation(id)
-    const [qItems, cust] = await Promise.all([
+    const [qItems, cust, order] = await Promise.all([
       listQuotationItems(q.id),
       q.customer_id ? getCustomer(q.customer_id) : Promise.resolve(null),
+      // Never allowed to stop the estimate itself from showing.
+      getOrderForQuotation(q.id).catch(() => null),
     ])
     setQuotation(q)
     setItems(qItems)
     setCustomer(cust)
+    setAnswer(order)
   }
 
   useEffect(() => {
@@ -267,7 +273,14 @@ export default function QuotationDetail() {
         </div>
 
         <div className="mt-6 flex items-center justify-between border-t border-border pt-4">
-          <Badge tone={QUOTATION_STATUS_TONE[quotation.status]}>{t(`status.${quotation.status}`)}</Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge tone={QUOTATION_STATUS_TONE[quotation.status]}>{t(`status.${quotation.status}`)}</Badge>
+            {answer?.customer_response && (
+              <Badge tone={answer.customer_response === 'accepted' ? 'success' : 'warning'}>
+                {t(answer.customer_response === 'accepted' ? 'est.customerAccepted' : 'est.customerCallMe')}
+              </Badge>
+            )}
+          </div>
           <p className="text-sm italic text-muted">{t('quo.notTaxInvoice')}</p>
         </div>
       </Card>

@@ -13,6 +13,9 @@ export interface KhataInvoice {
   total: number
   paid: number
   created_at: string
+  /** Marked delivered by the supplier; received_at set by the customer's own tap (migration 030). */
+  delivered?: boolean
+  received_at?: string | null
 }
 
 export interface KhataPayment {
@@ -51,6 +54,11 @@ export function getKhataLink(customerId: string): Promise<string> {
 /** Switches the link off at once; asking for it again makes a new one. */
 export async function stopKhataLink(customerId: string): Promise<void> {
   await callRpc<null>('khata_link', { p_customer_id: customerId, p_stop: true })
+}
+
+/** The customer's "Material received" on one of their delivered bills. Never moves stock. */
+export async function confirmReceived(token: string, invoiceNo: string): Promise<void> {
+  await callRpc<{ ok?: boolean }>('confirm_received', { p_token: token, p_invoice_no: invoiceNo })
 }
 
 export function khataUrl(token: string): string {

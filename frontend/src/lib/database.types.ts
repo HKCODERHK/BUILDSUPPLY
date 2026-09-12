@@ -78,6 +78,9 @@ export interface OrderRequest {
   reject_code: RejectCode | null
   /** Only for "Other" (or orders rejected before 027): the words the supplier wrote. */
   reject_reason: string | null
+  /** The customer's answer to the estimate, from their status link (migration 030). */
+  customer_response: 'accepted' | 'call_me' | null
+  responded_at: string | null
   created_at: string
   decided_at: string | null
 }
@@ -252,6 +255,8 @@ export interface Invoice {
   status: InvoiceStatus
   delivered: boolean
   kind: InvoiceKind
+  /** When the customer tapped "Material received" on their khata link (migration 030). Only they can set it. */
+  received_at: string | null
   created_at: string
 }
 

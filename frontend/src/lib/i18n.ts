@@ -1118,6 +1118,53 @@ const STRINGS = {
     mr: 'काही साहित्य आता उपलब्ध नाही, ते वगळले आहे.',
   },
   'order.againButton': { en: 'Fill in my last order', hi: 'पिछला ऑर्डर भरें', mr: 'मागची ऑर्डर भरा' },
+  // The estimate on the customer's status link (migration 030)…
+  'est.title': { en: 'Your estimate {no}', hi: 'आपका एस्टिमेट {no}', mr: 'तुमचे एस्टिमेट {no}' },
+  'est.subtotal': { en: 'Subtotal', hi: 'उप-योग', mr: 'उप-एकूण' },
+  'est.transport': { en: 'Transport + labour', hi: 'ढुलाई + मज़दूरी', mr: 'वाहतूक + मजुरी' },
+  'est.total': { en: 'Total', hi: 'कुल', mr: 'एकूण' },
+  'est.askHint': {
+    en: 'Happy with it? Tap Accept and {business} will prepare your bill — or ask them to call you.',
+    hi: 'ठीक लगे तो मंज़ूर करें, {business} आपका बिल बनाएँगे — या उन्हें कॉल करने को कहें।',
+    mr: 'पटले तर मंजूर करा, {business} तुमचे बिल बनवतील — किंवा त्यांना कॉल करायला सांगा.',
+  },
+  'est.accept': { en: 'Accept estimate', hi: 'एस्टिमेट मंज़ूर करें', mr: 'एस्टिमेट मंजूर करा' },
+  'est.callMe': { en: 'Please call me', hi: 'मुझे कॉल करें', mr: 'मला कॉल करा' },
+  'est.accepted': {
+    en: 'You accepted this estimate on {date}.',
+    hi: 'आपने {date} को यह एस्टिमेट मंज़ूर किया।',
+    mr: 'तुम्ही {date} रोजी हे एस्टिमेट मंजूर केले.',
+  },
+  'est.calledFor': {
+    en: 'You asked {business} to call you ({date}).',
+    hi: 'आपने {business} से कॉल करने को कहा ({date})।',
+    mr: 'तुम्ही {business} यांना कॉल करायला सांगितले ({date}).',
+  },
+  'est.converted': { en: 'This estimate has been turned into a bill.', hi: 'इस एस्टिमेट का बिल बन चुका है।', mr: 'या एस्टिमेटचे बिल झाले आहे.' },
+  'est.expired': {
+    en: 'This estimate has expired. Please contact {business}.',
+    hi: 'यह एस्टिमेट पुराना हो गया है। कृपया {business} से संपर्क करें।',
+    mr: 'हे एस्टिमेट जुने झाले आहे. कृपया {business} यांच्याशी संपर्क साधा.',
+  },
+  // …and the answer on the supplier's screens.
+  'est.customerAccepted': { en: 'Customer accepted', hi: 'ग्राहक ने मंज़ूर किया', mr: 'ग्राहकाने मंजूर केले' },
+  'est.customerCallMe': { en: 'Customer asked you to call', hi: 'ग्राहक ने कॉल करने को कहा', mr: 'ग्राहकाने कॉल करायला सांगितले' },
+  'dash.acceptedOne': { en: 'A customer accepted an estimate', hi: 'एक ग्राहक ने एस्टिमेट मंज़ूर किया', mr: 'एका ग्राहकाने एस्टिमेट मंजूर केले' },
+  'dash.acceptedMany': {
+    en: '{count} customers accepted estimates',
+    hi: '{count} ग्राहकों ने एस्टिमेट मंज़ूर किए',
+    mr: '{count} ग्राहकांनी एस्टिमेट मंजूर केले',
+  },
+  'dash.convertNow': { en: 'Make the bill →', hi: 'बिल बनाएँ →', mr: 'बिल बनवा →' },
+  // "Material received" on the khata link (migration 030).
+  'khata.receivedAsk': { en: 'Material received?', hi: 'माल मिल गया?', mr: 'माल मिळाला?' },
+  'khata.receivedYes': { en: 'Yes, received', hi: 'हाँ, मिल गया', mr: 'हो, मिळाला' },
+  'khata.receivedOn': { en: 'Received ✓ {date}', hi: 'मिल गया ✓ {date}', mr: 'मिळाला ✓ {date}' },
+  'inv.customerReceived': {
+    en: 'Customer confirmed received on {date}',
+    hi: 'ग्राहक ने {date} को माल मिलने की पुष्टि की',
+    mr: 'ग्राहकाने {date} रोजी माल मिळाल्याची खात्री केली',
+  },
   'order.statusTitle': { en: 'Order status', hi: 'ऑर्डर की स्थिति', mr: 'ऑर्डरची स्थिती' },
   'order.status.pending': { en: 'Waiting for review', hi: 'देखे जाने की प्रतीक्षा', mr: 'तपासणीची प्रतीक्षा' },
   'order.status.pendingBody': {

@@ -11,7 +11,7 @@ import { downloadCustomerLedgerPdf, type LedgerEntry } from '@/lib/customerLedge
 import type { Customer, Supplier } from '@/lib/database.types'
 import type { InvoiceWithCustomer } from '@/services/invoices'
 import type { PaymentWithInvoice } from '@/services/payments'
-import { getKhata, type KhataView } from '@/services/khata'
+import { confirmReceived, getKhata, type KhataView } from '@/services/khata'
 import { QrCode } from '@/components/QrCode'
 import { upiPayUrl } from '@/lib/upi'
 
@@ -39,6 +39,11 @@ export default function KhataPage() {
   const [failed, setFailed] = useState(false)
   const [showOlder, setShowOlder] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  // "Material received" (migration 030): asked, then confirmed — two taps, so a
+  // stray one can't record it.
+  const [asking, setAsking] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState(false)
+  const [confirmFailed, setConfirmFailed] = useState(false)
   // Fixed when the page opens, so a re-render never moves the line.
   const [cutoff] = useState(() => Date.now() - RECENT_MS)
 
@@ -79,6 +84,21 @@ export default function KhataPage() {
       await downloadCustomerLedgerPdf(found.supplier as unknown as Supplier, found.customer as unknown as Customer, ledger)
     } finally {
       setDownloading(false)
+    }
+  }
+
+  async function received(invoiceNo: string) {
+    if (confirming) return
+    setConfirming(true)
+    setConfirmFailed(false)
+    try {
+      await confirmReceived(token, invoiceNo)
+      setAsking(null)
+      setView(await getKhata(token))
+    } catch {
+      setConfirmFailed(true)
+    } finally {
+      setConfirming(false)
     }
   }
 
@@ -158,12 +178,16 @@ export default function KhataPage() {
 
             <Card>
               <div className="mb-2 text-sm font-semibold text-ink">{t('khata.history')}</div>
+              {confirmFailed && (
+                <p className="mb-2 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{t('error.generic')}</p>
+              )}
               {newestFirst.length === 0 ? (
                 <p className="text-sm text-muted">{t('khata.none')}</p>
               ) : (
                 <div className="flex flex-col divide-y divide-border text-sm">
                   {shown.map((e, i) => {
                     const d = describe(e)
+                    const bill = e.type === 'Invoice' ? found.invoices.find((i) => i.kind === 'bill' && i.invoice_no === e.ref) : undefined
                     return (
                       <div key={i} className="flex items-start justify-between gap-3 py-2.5">
                         <div className="min-w-0">
@@ -172,6 +196,24 @@ export default function KhataPage() {
                             {formatDate(e.date)}
                             {d.sub ? ` · ${d.sub}` : ''}
                           </div>
+                          {bill?.received_at ? (
+                            <div className="mt-1 text-xs font-medium text-accent">{t('khata.receivedOn', { date: formatDate(bill.received_at) })}</div>
+                          ) : bill?.delivered ? (
+                            asking === bill.invoice_no ? (
+                              <div className="mt-1.5 flex flex-wrap gap-2">
+                                <Button size="sm" onClick={() => received(bill.invoice_no)} disabled={confirming}>
+                                  {confirming ? t('common.saving') : t('khata.receivedYes')}
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => setAsking(null)} disabled={confirming}>
+                                  {t('ord.cancel')}
+                                </Button>
+                              </div>
+                            ) : (
+                              <button type="button" className="mt-1 text-xs font-semibold text-accent" onClick={() => setAsking(bill.invoice_no)}>
+                                {t('khata.receivedAsk')}
+                              </button>
+                            )
+                          ) : null}
                         </div>
                         <div className="shrink-0 text-right">
                           <div className={e.credit > 0 ? 'font-semibold text-accent' : 'font-semibold text-ink'}>

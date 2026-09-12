@@ -281,6 +281,12 @@ export default function InvoiceDetail() {
           </Badge>
           <p className="text-sm italic text-muted">{t('inv.thankYou')}</p>
         </div>
+        {/* Tapped by the customer on their khata link (migration 030); only they can set it. */}
+        {invoice.received_at && (
+          <p className="mt-3 text-xs font-medium text-accent">
+            ✓ {t('inv.customerReceived', { date: new Date(invoice.received_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) })}
+          </p>
+        )}
       </Card>
 
       {confirmCancel && (
