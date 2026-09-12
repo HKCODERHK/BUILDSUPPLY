@@ -30,6 +30,12 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
   // them something is missing.
   const logo = !logoFailed ? supplier?.logo_url : null
 
+  // Opening the app shows only the BuildSupply name and the story, centred —
+  // the user's call (2026-09-12). The supplier's logo, their name with the
+  // truck driving across it, the loading line and the materials row come with
+  // a real sign-in only, where the wait belongs to their business.
+  const full = phase === 'signin'
+
   return (
     <div
       className="fixed inset-0 z-[100] flex flex-col items-center overflow-hidden bg-shell px-5 pb-5 text-center"
@@ -46,7 +52,10 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
         style={{ background: 'radial-gradient(120% 70% at 50% 8%, #12383B 0%, transparent 60%)' }}
       />
 
-      <div className="relative flex w-full max-w-sm flex-1 flex-col items-center">
+      <div className={`relative flex w-full max-w-sm flex-1 flex-col items-center ${full ? '' : 'justify-center pb-10'}`}>
+        {/* Nothing on the opening screen says "loading" in words any more;
+            this keeps it said for a screen reader. */}
+        {!full && <span className="sr-only">{t('splash.launch')}</span>}
         <div className="flex items-center gap-2.5">
           <svg
             width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#35A85D"
@@ -65,6 +74,7 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
             wordmark. It used to be the loading indicator — an arc that filled
             and kept turning — and the user asked for it to be still: the
             story and the truck already say the app is working. */}
+        {full && (
         <div className="relative mt-7 h-[130px] w-[130px] shrink-0">
           {/* The logo fills the ring right out to the green border, as the
               user asked — no dark band between the picture and the ring. Its
@@ -91,6 +101,7 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
             <circle cx="100" cy="100" r="85" fill="none" strokeWidth="9" stroke="url(#splashRing)" />
           </svg>
         </div>
+        )}
 
         {/* What BuildSupply is for — a building going up, its materials,
             the delivery, the bill and the payment — told in the six
@@ -110,6 +121,8 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
             is about 19px, so at 76px the two shared the same band and the
             truck drove straight through the lettering. This gives the name a
             clear line of its own with roughly 15px between them. */}
+        {full && (
+        <>
         <div className="splash-track relative mt-6 h-[104px] w-full overflow-hidden" aria-hidden>
           {/* The supplier's own name, sitting behind the tipper so the truck
               drives across it. Faint on purpose — it is theirs to recognise,
@@ -138,11 +151,12 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
           </svg>
         </div>
 
-        <p className="mt-3 text-xs text-sidebar-text">
-          {t(phase === 'launch' ? 'splash.launch' : 'splash.signin')}
-        </p>
+        <p className="mt-3 text-xs text-sidebar-text">{t('splash.signin')}</p>
+        </>
+        )}
       </div>
 
+      {full && (
       <div
         className="relative flex w-full max-w-sm items-center pt-4"
         style={{ paddingBottom: 'var(--safe-bottom)' }}
@@ -169,6 +183,7 @@ export function Splash({ phase }: { phase: Exclude<SplashPhase, null> }) {
           </div>
         ))}
       </div>
+      )}
     </div>
   )
 }
