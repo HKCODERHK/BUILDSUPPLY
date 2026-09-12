@@ -47,6 +47,27 @@ function rememberOrder(link: string, token: string): RecentOrder[] {
   return list
 }
 
+// The customer's last order from this supplier, on their phone only: their
+// name, phone and site fill themselves in next time, and "Fill in my last
+// order" puts the quantities back.
+type LastOrder = { items: { material_id: string; qty: number }[]; name: string; phone: string; site: string }
+const lastKey = (link: string) => `buildsupply-last-order:${link}`
+function readLast(link: string): LastOrder | null {
+  try {
+    const value = JSON.parse(localStorage.getItem(lastKey(link)) ?? 'null')
+    return value && Array.isArray(value.items) ? (value as LastOrder) : null
+  } catch {
+    return null
+  }
+}
+function rememberLast(link: string, last: LastOrder) {
+  try {
+    localStorage.setItem(lastKey(link), JSON.stringify(last))
+  } catch {
+    // Storage blocked: they type it again next time, as before.
+  }
+}
+
 // The server writes its refusals in English; show the customer's language.
 function errorKey(message: string): TranslationKey {
   if (/unavailable/i.test(message)) return 'order.unavailable'
@@ -72,7 +93,11 @@ export default function OrderPage() {
   const [loadFailed, setLoadFailed] = useState(false)
   const [qty, setQty] = useState<Record<string, string>>({})
   const [query, setQuery] = useState('')
-  const [form, setForm] = useState({ name: '', phone: '', site: '', date: '', note: '', trap: '' })
+  const [form, setForm] = useState(() => {
+    const previous = readLast(link)
+    return { name: previous?.name ?? '', phone: previous?.phone ?? '', site: previous?.site ?? '', date: '', note: '', trap: '' }
+  })
+  const [last, setLast] = useState<LastOrder | null>(() => readLast(link))
   const [sending, setSending] = useState(false)
   const sendingRef = useRef(false)
   // One id per order: a double tap or a retry returns the same order.
@@ -104,12 +129,22 @@ export default function OrderPage() {
     open?.show_prices && chosen.length > 0 && chosen.every((c) => c.material.price != null)
       ? chosen.reduce((sum, c) => sum + c.qty * (c.material.price ?? 0), 0)
       : null
+  // Only what the supplier still lists can be ordered again.
+  const lastAvailable = last ? last.items.filter((it) => materials.some((m) => m.id === it.material_id)) : []
+  const lastMissing = last ? last.items.length - lastAvailable.length : 0
 
   function step(id: string, delta: number) {
     setQty((prev) => {
       const next = Math.max(0, (Number(prev[id]) || 0) + delta)
       return { ...prev, [id]: next ? String(next) : '' }
     })
+    setError(null)
+  }
+
+  function fillLast() {
+    if (!last) return
+    setQty(Object.fromEntries(lastAvailable.map((it) => [it.material_id, String(it.qty)])))
+    setForm((f) => ({ ...f, name: f.name || last.name, phone: f.phone || last.phone, site: f.site || last.site }))
     setError(null)
   }
 
@@ -134,6 +169,14 @@ export default function OrderPage() {
         items: chosen.map((c) => ({ material_id: c.material.id, qty: c.qty })),
         trap: form.trap,
       })
+      const sent: LastOrder = {
+        items: chosen.map((c) => ({ material_id: c.material.id, qty: c.qty })),
+        name: form.name.trim(),
+        phone: form.phone,
+        site: form.site.trim(),
+      }
+      rememberLast(link, sent)
+      setLast(sent)
       if (result.token) setRecent(rememberOrder(link, result.token))
       setSentToken(result.token)
       window.scrollTo({ top: 0 })
@@ -248,6 +291,21 @@ export default function OrderPage() {
                 {new Date(r.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })} →
               </Link>
             ))}
+          </Card>
+        )}
+
+        {lastAvailable.length > 0 && chosen.length === 0 && (
+          <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-ink">{t('order.againTitle')}</div>
+              <div className="text-xs text-muted">
+                {t('order.againHint', { count: lastAvailable.length })}
+                {lastMissing > 0 ? ` ${t('order.againMissing')}` : ''}
+              </div>
+            </div>
+            <Button size="sm" onClick={fillLast} className="shrink-0">
+              {t('order.againButton')}
+            </Button>
           </Card>
         )}
 

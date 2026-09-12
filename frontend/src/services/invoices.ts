@@ -100,6 +100,25 @@ export async function listInvoiceItems(invoiceId: string): Promise<InvoiceItem[]
   return data
 }
 
+export type DeliveryItemRow = Pick<InvoiceItem, 'invoice_id' | 'description' | 'qty'> & { materials: { unit_label: string | null } | null }
+
+/** The lines of several bills at once, with each material's unit — for the driver's delivery list. */
+export async function listItemsForInvoices(invoiceIds: string[]): Promise<DeliveryItemRow[]> {
+  // A hundred bills per request keeps each request's address well short of
+  // what the server accepts, however many are ticked.
+  const rows: DeliveryItemRow[] = []
+  for (let start = 0; start < invoiceIds.length; start += 100) {
+    const { data, error } = await supabase
+      .from('invoice_items')
+      .select('invoice_id, description, qty, materials(unit_label)')
+      .in('invoice_id', invoiceIds.slice(start, start + 100))
+      .order('id')
+    if (error) throw error
+    rows.push(...(data as unknown as DeliveryItemRow[]))
+  }
+  return rows
+}
+
 export interface InvoiceItemWithInvoice extends InvoiceItem {
   invoices: { created_at: string; customer_id: string | null; site: string | null } | null
 }

@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `029`, run in order. **029 is the latest and is applied** (2026-09-12, pasted by the user — UPI settings, see Phase 12). 024 (money integrity, Phase 9), 025 (supplier row guard), 026 (online orders), 027 (reject reasons) and 028 (khata link) are applied too. (An unrelated storage-bucket 024 from Phase 8 was applied and removed again on 2026-09-11 and its file deleted.) (There is no `001` file; the base schema is `supabase/schema.sql`, which predates the migration folder.)
+- **Schema migrations**: `supabase/migrations/` — `002` through `030`, run in order. **030 is the latest and is applied** (2026-09-12, pasted by the user — estimate answers and material received, see Phase 13). 024 (money integrity, Phase 9), 025 (supplier row guard), 026 (online orders), 027 (reject reasons), 028 (khata link) and 029 (UPI) are applied too. (An unrelated storage-bucket 024 from Phase 8 was applied and removed again on 2026-09-11 and its file deleted.) (There is no `001` file; the base schema is `supabase/schema.sql`, which predates the migration folder.)
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -414,6 +414,47 @@ option for a customer with no cash, and the supplier stays in control.
   khata card in three languages at 360px). **Checked on live** read-only after
   pasting: the fixed rule is the one in place, nobody has UPI switched on, the
   existing khata link untouched, counts unchanged.
+
+**Phase 13 — four small helpers (2026-09-12). Migration 030 applied; merged
+the same day.** The user picked all four from a list of ideas; the rule
+still holds — every existing screen and flow stays exactly as it was.
+
+- **A. Driver's list** (Deliveries → Driver's list;
+  `components/DriverListModal.tsx`, `lib/deliveryListPdf.ts`,
+  `listItemsForInvoices`): one "DELIVERY LIST" PDF — bill, customer, phone,
+  site, materials, a box to tick, **no amounts** — through the share sheet or
+  Download. Nothing is marked delivered. **It ticks only bills from the last
+  two days, at most the 30 newest**: the local copy held 2,722 undelivered
+  bills, ticking them all failed, and a supplier who rarely taps "Mark
+  delivered" would hit the same. Items are read 100 bills per request.
+- **C. Order again** (`routes/OrderPage.tsx`, no database change): the last
+  order is kept on the customer's own phone (localStorage
+  `buildsupply-last-order:<link>`); name, phone and site fill themselves in,
+  and "Fill in my last order" restores the quantities, skipping materials no
+  longer listed.
+- **B. The customer answers the estimate** (030): once an order is approved,
+  `order_status` also returns the estimate (lines, rates, totals, status) and
+  `response`. `respond_to_estimate(code, accepted | call_me)` is public, and
+  only while the estimate is Draft or Sent. The supplier sees a badge on the
+  estimate, a line on the order and its Orders card, and a Dashboard banner
+  (`countAcceptedEstimates`) opening `/orders?tab=approved`. **Nothing is
+  billed by an answer** — the supplier converts the estimate as always.
+- **D. Material received** (030): `customer_khata` returns `delivered` and
+  `received_at` per bill; `confirm_received(khata code, bill no)` works only
+  on that customer's own live, delivered bills. Two taps on the khata page
+  ("Material received?" → "Yes, received"); the bill page then says "Customer
+  confirmed received". Never moves stock.
+- **Only the customer's own link can set B or D.** Triggers
+  `order_answer_guard` and `invoice_received_guard` refuse the app's
+  signed-in users writing `customer_response`, `responded_at` or
+  `received_at`, so neither is a record the supplier could fill in for them.
+- **Tested** on the local Docker copy: 348/348 checks, 27 for 030, and a
+  browser walk of all four (the share sheet simulated, the PDF caught, three
+  languages at 360px). **Checked on live** read-only after pasting: both
+  guards and both functions in place, nothing answered, counts unchanged.
+- **Docker Desktop on this machine sometimes won't start from the command
+  line** — zero processes, and `docker desktop start` hangs. Ask the user to
+  open it from the Start menu; that worked.
 
 ## The admin panel
 

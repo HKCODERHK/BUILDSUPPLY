@@ -115,6 +115,11 @@ export default function OrderDetail() {
             </div>
           </Card>
         )}
+        {order.status === 'approved' && order.customer_response && (
+          <p className={order.customer_response === 'accepted' ? 'text-sm font-medium text-accent' : 'text-sm font-medium text-amber-700 dark:text-amber-400'}>
+            {t(order.customer_response === 'accepted' ? 'est.customerAccepted' : 'est.customerCallMe')}
+          </p>
+        )}
         {order.status === 'approved' && order.quotation_id && (
           <Link to={`/quotations/${order.quotation_id}`}>
             <Button variant="outline">{t('ord.openEstimate')}</Button>

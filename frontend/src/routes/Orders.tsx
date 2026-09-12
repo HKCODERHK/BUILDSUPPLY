@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -26,7 +26,12 @@ export default function Orders() {
   const [orders, setOrders] = useState<OrderRequest[]>([])
   const [byPhone, setByPhone] = useState<Record<string, Customer>>({})
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<OrderStatus>('pending')
+  // The Dashboard's "customer accepted" banner opens straight on Approved.
+  const [searchParams] = useSearchParams()
+  const [tab, setTab] = useState<OrderStatus>(() => {
+    const asked = searchParams.get('tab') as OrderStatus | null
+    return asked && TABS.includes(asked) ? asked : 'pending'
+  })
   const [rejecting, setRejecting] = useState<string | null>(null)
 
   function load() {
@@ -94,6 +99,11 @@ export default function Orders() {
                   {order.note && <div className="line-clamp-2 text-xs italic text-muted">“{order.note}”</div>}
                   {order.status === 'rejected' && rejectReasonText(order, t) && (
                     <div className="text-xs text-muted">{t('ord.rejectedReason', { reason: rejectReasonText(order, t) ?? '' })}</div>
+                  )}
+                  {order.status === 'approved' && order.customer_response && (
+                    <div className={order.customer_response === 'accepted' ? 'text-xs font-semibold text-accent' : 'text-xs font-semibold text-amber-700 dark:text-amber-400'}>
+                      {t(order.customer_response === 'accepted' ? 'est.customerAccepted' : 'est.customerCallMe')}
+                    </div>
                   )}
                 </Link>
                 {order.status === 'pending' && (

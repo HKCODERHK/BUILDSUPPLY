@@ -629,6 +629,23 @@ const STRINGS = {
     hi: 'कुछ बाकी नहीं — सारा बिल किया माल दे दिया गया।',
     mr: 'काहीही बाकी नाही — बिल केलेला सर्व माल दिला आहे.',
   },
+  'del.driverList': { en: 'Driver’s list', hi: 'ड्राइवर की सूची', mr: 'ड्रायव्हरची यादी' },
+  'del.driverTitle': { en: 'Today’s delivery list', hi: 'आज की डिलीवरी सूची', mr: 'आजची डिलिव्हरी यादी' },
+  'del.driverHint': {
+    en: 'Bills from the last two days are ticked — tick any others going out today. The driver gets one PDF with each customer, phone, site and the materials — no amounts. Nothing is marked delivered.',
+    hi: 'पिछले दो दिन के बिल चुने हुए हैं — आज जाने वाले और बिल भी चुनें। ड्राइवर को एक PDF मिलेगी — हर ग्राहक, फ़ोन, साइट और माल के साथ, बिना रकम के। कुछ भी डिलीवर दर्ज नहीं होता।',
+    mr: 'मागच्या दोन दिवसांची बिले निवडलेली आहेत — आज जाणारी इतर बिलेही निवडा. ड्रायव्हरला एक PDF मिळेल — प्रत्येक ग्राहक, फोन, साइट आणि मालासह, रकमेशिवाय. काहीही डिलिव्हर म्हणून नोंदवले जात नाही.',
+  },
+  'del.picked': { en: '{count} selected', hi: '{count} चुने', mr: '{count} निवडले' },
+  'del.selectAll': { en: 'Select all', hi: 'सब चुनें', mr: 'सर्व निवडा' },
+  'del.selectNone': { en: 'Clear', hi: 'हटाएँ', mr: 'काढा' },
+  'del.sendDriver': { en: 'Send on WhatsApp', hi: 'WhatsApp पर भेजें', mr: 'WhatsApp वर पाठवा' },
+  'del.download': { en: 'Download PDF', hi: 'PDF डाउनलोड करें', mr: 'PDF डाउनलोड करा' },
+  'del.driverMessage': {
+    en: 'Today’s deliveries — {count} stops. Please tick each one when the load is off.',
+    hi: 'आज की डिलीवरी — {count} जगह। हर जगह माल उतरने पर टिक करें।',
+    mr: 'आजच्या डिलिव्हरी — {count} ठिकाणे. प्रत्येक ठिकाणी माल उतरल्यावर टिक करा.',
+  },
 
   // ── Estimates / quotations ────────────────────────────────────────────
   'status.Draft': { en: 'Draft', hi: 'ड्राफ्ट', mr: 'ड्राफ्ट' },
@@ -1089,6 +1106,65 @@ const STRINGS = {
   },
   'order.notFound': { en: 'This order link is not valid.', hi: 'यह ऑर्डर लिंक सही नहीं है।', mr: 'ही ऑर्डर लिंक योग्य नाही.' },
   'order.recent': { en: 'Your recent orders', hi: 'आपके हाल के ऑर्डर', mr: 'तुमच्या अलीकडील ऑर्डर' },
+  'order.againTitle': { en: 'Order the same again?', hi: 'वही ऑर्डर फिर से?', mr: 'तीच ऑर्डर पुन्हा?' },
+  'order.againHint': {
+    en: 'The materials and quantities from your last order ({count}).',
+    hi: 'आपके पिछले ऑर्डर का सामान और मात्रा ({count})।',
+    mr: 'तुमच्या मागच्या ऑर्डरचे साहित्य आणि मात्रा ({count}).',
+  },
+  'order.againMissing': {
+    en: 'Some are no longer listed and are left out.',
+    hi: 'कुछ सामान अब नहीं मिलता, वह छोड़ दिया गया है।',
+    mr: 'काही साहित्य आता उपलब्ध नाही, ते वगळले आहे.',
+  },
+  'order.againButton': { en: 'Fill in my last order', hi: 'पिछला ऑर्डर भरें', mr: 'मागची ऑर्डर भरा' },
+  // The estimate on the customer's status link (migration 030)…
+  'est.title': { en: 'Your estimate {no}', hi: 'आपका एस्टिमेट {no}', mr: 'तुमचे एस्टिमेट {no}' },
+  'est.subtotal': { en: 'Subtotal', hi: 'उप-योग', mr: 'उप-एकूण' },
+  'est.transport': { en: 'Transport + labour', hi: 'ढुलाई + मज़दूरी', mr: 'वाहतूक + मजुरी' },
+  'est.total': { en: 'Total', hi: 'कुल', mr: 'एकूण' },
+  'est.askHint': {
+    en: 'Happy with it? Tap Accept and {business} will prepare your bill — or ask them to call you.',
+    hi: 'ठीक लगे तो मंज़ूर करें, {business} आपका बिल बनाएँगे — या उन्हें कॉल करने को कहें।',
+    mr: 'पटले तर मंजूर करा, {business} तुमचे बिल बनवतील — किंवा त्यांना कॉल करायला सांगा.',
+  },
+  'est.accept': { en: 'Accept estimate', hi: 'एस्टिमेट मंज़ूर करें', mr: 'एस्टिमेट मंजूर करा' },
+  'est.callMe': { en: 'Please call me', hi: 'मुझे कॉल करें', mr: 'मला कॉल करा' },
+  'est.accepted': {
+    en: 'You accepted this estimate on {date}.',
+    hi: 'आपने {date} को यह एस्टिमेट मंज़ूर किया।',
+    mr: 'तुम्ही {date} रोजी हे एस्टिमेट मंजूर केले.',
+  },
+  'est.calledFor': {
+    en: 'You asked {business} to call you ({date}).',
+    hi: 'आपने {business} से कॉल करने को कहा ({date})।',
+    mr: 'तुम्ही {business} यांना कॉल करायला सांगितले ({date}).',
+  },
+  'est.converted': { en: 'This estimate has been turned into a bill.', hi: 'इस एस्टिमेट का बिल बन चुका है।', mr: 'या एस्टिमेटचे बिल झाले आहे.' },
+  'est.expired': {
+    en: 'This estimate has expired. Please contact {business}.',
+    hi: 'यह एस्टिमेट पुराना हो गया है। कृपया {business} से संपर्क करें।',
+    mr: 'हे एस्टिमेट जुने झाले आहे. कृपया {business} यांच्याशी संपर्क साधा.',
+  },
+  // …and the answer on the supplier's screens.
+  'est.customerAccepted': { en: 'Customer accepted', hi: 'ग्राहक ने मंज़ूर किया', mr: 'ग्राहकाने मंजूर केले' },
+  'est.customerCallMe': { en: 'Customer asked you to call', hi: 'ग्राहक ने कॉल करने को कहा', mr: 'ग्राहकाने कॉल करायला सांगितले' },
+  'dash.acceptedOne': { en: 'A customer accepted an estimate', hi: 'एक ग्राहक ने एस्टिमेट मंज़ूर किया', mr: 'एका ग्राहकाने एस्टिमेट मंजूर केले' },
+  'dash.acceptedMany': {
+    en: '{count} customers accepted estimates',
+    hi: '{count} ग्राहकों ने एस्टिमेट मंज़ूर किए',
+    mr: '{count} ग्राहकांनी एस्टिमेट मंजूर केले',
+  },
+  'dash.convertNow': { en: 'Make the bill →', hi: 'बिल बनाएँ →', mr: 'बिल बनवा →' },
+  // "Material received" on the khata link (migration 030).
+  'khata.receivedAsk': { en: 'Material received?', hi: 'माल मिल गया?', mr: 'माल मिळाला?' },
+  'khata.receivedYes': { en: 'Yes, received', hi: 'हाँ, मिल गया', mr: 'हो, मिळाला' },
+  'khata.receivedOn': { en: 'Received ✓ {date}', hi: 'मिल गया ✓ {date}', mr: 'मिळाला ✓ {date}' },
+  'inv.customerReceived': {
+    en: 'Customer confirmed received on {date}',
+    hi: 'ग्राहक ने {date} को माल मिलने की पुष्टि की',
+    mr: 'ग्राहकाने {date} रोजी माल मिळाल्याची खात्री केली',
+  },
   'order.statusTitle': { en: 'Order status', hi: 'ऑर्डर की स्थिति', mr: 'ऑर्डरची स्थिती' },
   'order.status.pending': { en: 'Waiting for review', hi: 'देखे जाने की प्रतीक्षा', mr: 'तपासणीची प्रतीक्षा' },
   'order.status.pendingBody': {
