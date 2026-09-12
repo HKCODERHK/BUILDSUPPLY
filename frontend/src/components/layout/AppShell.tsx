@@ -15,7 +15,7 @@ import { countPendingOrders } from '@/services/orders'
 import { NAV_ITEMS, MOBILE_PRIMARY_IDS, ADMIN_NAV_IDS } from './nav-items'
 
 // Shown in the desktop sidebar header and, on mobile, in the top bar.
-function Brand() {
+function Brand({ compact = false }: { compact?: boolean }) {
   const { t } = useLanguage()
   return (
     <div className="flex items-center gap-2">
@@ -32,8 +32,19 @@ function Brand() {
         {/* Wraps rather than truncates: the sidebar is only 230px, and the
             Hindi and Marathi lines are longer than the English one, so an
             ellipsis would eat the tagline exactly where it is tightest. */}
-        <span className="block text-[11px] leading-tight text-sidebar-text">
-          {t('brand.tagline')}
+        {/* compact (the phone's top bar, scrolled): the tagline folds away the
+            way Telegram's search field does, and comes back at the top. A
+            0fr grid row, so it folds smoothly whatever its height — one line
+            in English, two in Hindi and Marathi. */}
+        <span
+          className={cn(
+            'grid transition-[grid-template-rows,opacity] duration-200 motion-reduce:transition-none',
+            compact ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100',
+          )}
+        >
+          <span className="block overflow-hidden text-[11px] leading-tight text-sidebar-text">
+            {t('brand.tagline')}
+          </span>
         </span>
       </div>
     </div>
@@ -86,11 +97,39 @@ function SubscriptionNotice() {
   )
 }
 
+/**
+ * True once the page has scrolled under the top bar. Two thresholds, so a
+ * page resting near the top can't flick the bar between its two looks — and
+ * in Hindi and Marathi folding the two-line tagline makes the bar a few
+ * pixels shorter, which nudges the scroll position itself.
+ */
+function useScrolledPast(on: number, off: number) {
+  const [past, setPast] = useState(false)
+  useEffect(() => {
+    let frame = 0
+    const check = () => {
+      frame = 0
+      setPast((was) => (was ? window.scrollY > off : window.scrollY > on))
+    }
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(check)
+    }
+    frame = requestAnimationFrame(check)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (frame) cancelAnimationFrame(frame)
+    }
+  }, [on, off])
+  return past
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const { supplier, signOut } = useAuth()
   const { t } = useLanguage()
   const navigate = useNavigate()
   const [moreOpen, setMoreOpen] = useState(false)
+  const scrolled = useScrolledPast(24, 4)
   const tabBarRef = useRef<HTMLElement>(null)
 
   // Publishes the tab bar's real height as --tabbar-h, for the things that have
@@ -256,8 +295,18 @@ export function AppShell({ children }: { children: ReactNode }) {
             translucent status bar style in index.html puts us beneath. */}
         {/* data-app-header / data-app-tabbar: what ui/action-menu keeps its
             menus clear of. */}
-        <header data-app-header className="sticky top-0 z-30 flex w-full items-center justify-between bg-shell px-4 py-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white sm:px-6 lg:hidden">
-          <Brand />
+        {/* Telegram-style: solid at the top of a page, so it meets the status
+            bar in one colour; once the page scrolls under it, see-through and
+            frosted so the content shows through, and the tagline folds away.
+            Both come back at the top. */}
+        <header
+          data-app-header
+          className={cn(
+            'sticky top-0 z-30 flex w-full items-center justify-between px-4 py-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white transition-colors duration-200 sm:px-6 lg:hidden',
+            scrolled ? 'bg-shell/80 backdrop-blur-lg backdrop-saturate-150' : 'bg-shell',
+          )}
+        >
+          <Brand compact={scrolled} />
           <div className="flex items-center gap-2">
             <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
             <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
