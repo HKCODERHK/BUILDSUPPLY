@@ -153,6 +153,15 @@ export function AppShell({ children }: { children: ReactNode }) {
     .filter((n) => n !== undefined)
   const overflowItems = navItems.filter((n) => !primaryItems.includes(n))
 
+  // Which tab the bubble sits behind — NavLink's own rule, so the two agree.
+  // A page reached from More (Orders, Settings…) highlights no tab, as
+  // before: the bubble fades out where it was rather than sliding away.
+  const activeTab = primaryItems.findIndex(
+    (item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`),
+  )
+  const [bubbleTab, setBubbleTab] = useState(Math.max(activeTab, 0))
+  if (activeTab >= 0 && activeTab !== bubbleTab) setBubbleTab(activeTab)
+
   return (
     <div className="flex min-h-screen bg-surface text-ink">
       {/* Desktop sidebar. Kept for lg and up only — on a tablet a fixed
@@ -280,16 +289,30 @@ export function AppShell({ children }: { children: ReactNode }) {
       <nav
         ref={tabBarRef}
         data-app-tabbar
-        className="fixed inset-x-3 bottom-[calc(0.5rem_+_var(--safe-bottom))] z-30 mx-auto flex max-w-md rounded-full border border-border bg-card/85 p-1 shadow-lg shadow-black/10 backdrop-blur-md lg:hidden"
+        className="fixed inset-x-3 bottom-[calc(0.5rem_+_var(--safe-bottom))] z-30 mx-auto flex max-w-md rounded-full border border-border bg-card/70 p-1 shadow-lg shadow-black/10 backdrop-blur-lg backdrop-saturate-150 lg:hidden"
       >
+        {/* The bubble behind the current tab: one element that slides to the
+            tab you tap, as Telegram's does, instead of one per tab jumping.
+            Tabs are equal widths, so one tab along is translateX(100%). */}
+        <span
+          aria-hidden="true"
+          className={cn(
+            'absolute inset-y-1 left-1 rounded-full bg-accent-bg transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.34,1.3,0.64,1)] motion-reduce:transition-none',
+            activeTab < 0 && 'opacity-0',
+          )}
+          style={{
+            width: `calc((100% - 0.5rem) / ${primaryItems.length + 1})`,
+            transform: `translateX(${bubbleTab * 100}%)`,
+          }}
+        />
         {primaryItems.map((item) => (
           <NavLink
             key={item.id}
             to={item.path}
             className={({ isActive }) =>
               cn(
-                'flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full px-0.5 py-1.5 text-center text-[11px] font-medium leading-tight text-muted transition-colors',
-                isActive && 'bg-accent-bg text-accent-text',
+                'relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full px-0.5 py-1.5 text-center text-[11px] font-medium leading-tight text-muted transition-colors duration-300',
+                isActive && 'text-accent-text',
               )
             }
           >
