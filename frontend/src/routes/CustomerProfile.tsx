@@ -251,6 +251,24 @@ export default function CustomerProfile() {
     setPayOpen(true)
   }
 
+  // Show UPI QR → "Money received? Record it": the same Receive payment, with
+  // the amount and UPI already filled in. The QR dialog takes its history entry
+  // back a moment after it closes; opening this one before then would have its
+  // own entry popped and shut it at once — so wait for that, or 400ms.
+  function recordUpiPayment(amount: number) {
+    setUpiOpen(false)
+    let done = false
+    const open = () => {
+      if (done) return
+      done = true
+      window.removeEventListener('popstate', open)
+      setPayForm({ amount: String(amount), mode: 'UPI' })
+      openPay('payment')
+    }
+    window.addEventListener('popstate', open)
+    window.setTimeout(open, 400)
+  }
+
   /** A bill number as the supplier reads it; the opening balance by name. */
   function billLabel(no: string) {
     return no === OPENING_REF ? t('cust.openingBalance') : no
@@ -476,7 +494,12 @@ export default function CustomerProfile() {
 
       {khataOpen && <KhataLinkModal customer={customer} onClose={() => setKhataOpen(false)} />}
       {upiOpen && (
-        <UpiQrModal customer={customer} defaultAmount={Math.max(0, Math.round(totalPending))} onClose={() => setUpiOpen(false)} />
+        <UpiQrModal
+          customer={customer}
+          defaultAmount={Math.max(0, Math.round(totalPending))}
+          onClose={() => setUpiOpen(false)}
+          onRecord={recordUpiPayment}
+        />
       )}
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

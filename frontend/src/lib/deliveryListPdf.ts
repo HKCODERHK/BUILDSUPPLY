@@ -13,6 +13,9 @@ export interface DeliveryStop {
   customer: string
   phone: string | null
   site: string | null
+  /** From the customer's online order, when the bill came from one. */
+  note?: string | null
+  wanted?: string | null
   items: { description: string; qty: number; unit: string | null }[]
 }
 
@@ -38,7 +41,7 @@ function buildDeliveryListPdf(supplier: Supplier, stops: DeliveryStop[], logo: L
     body: stops.map((s, i) => [
       String(i + 1),
       [s.invoiceNo, s.customer, s.phone].filter(Boolean).join('\n'),
-      s.site || '—',
+      [s.site || '—', s.wanted ? `Wanted: ${formatDate(s.wanted)}` : '', s.note ? `Note: ${s.note}` : ''].filter(Boolean).join('\n'),
       s.items.map(itemLine).join('\n') || '—',
       '',
     ]),

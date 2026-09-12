@@ -648,6 +648,9 @@ const STRINGS = {
   },
   // Payments → Receive payment: "Who paid?" first, then that customer's own Receive payment.
   'pay.whoPaid': { en: 'Who paid?', hi: 'किसने भुगतान किया?', mr: 'कोणी पेमेंट केले?' },
+  // Orders → Share order link (shareable where the orders arrive).
+  'ord.shareLink': { en: 'Share order link', hi: 'ऑर्डर लिंक भेजें', mr: 'ऑर्डर लिंक पाठवा' },
+  'ord.setupLink': { en: 'Set up order link', hi: 'ऑर्डर लिंक बनाएँ', mr: 'ऑर्डर लिंक तयार करा' },
   'pay.pickCustomer': { en: 'Choose the customer…', hi: 'ग्राहक चुनें…', mr: 'ग्राहक निवडा…' },
   'pay.whoPaidHint': {
     en: 'Their oldest bills are cleared first, and anything extra is kept as advance — the same as on the customer’s page.',
@@ -1212,9 +1215,9 @@ const STRINGS = {
   'ord.tab.approved': { en: 'Approved', hi: 'स्वीकार किए', mr: 'स्वीकारलेल्या' },
   'ord.tab.rejected': { en: 'Rejected', hi: 'नामंज़ूर', mr: 'नाकारलेल्या' },
   'ord.emptyPending': {
-    en: 'No new orders. Share your order link from Settings to start receiving them.',
-    hi: 'कोई नया ऑर्डर नहीं। ऑर्डर पाने के लिए Settings से अपना ऑर्डर लिंक भेजें।',
-    mr: 'नवीन ऑर्डर नाहीत. ऑर्डर मिळवण्यासाठी Settings मधून तुमची ऑर्डर लिंक पाठवा.',
+    en: 'No new orders. Share your order link with customers to start receiving them.',
+    hi: 'कोई नया ऑर्डर नहीं। ऑर्डर पाने के लिए ग्राहकों को अपना ऑर्डर लिंक भेजें।',
+    mr: 'नवीन ऑर्डर नाहीत. ऑर्डर मिळवण्यासाठी ग्राहकांना तुमची ऑर्डर लिंक पाठवा.',
   },
   'ord.emptyOther': { en: 'Nothing here yet.', hi: 'अभी यहाँ कुछ नहीं।', mr: 'अजून इथे काही नाही.' },
   'ord.existingCustomer': { en: 'Existing customer', hi: 'पुराना ग्राहक', mr: 'जुना ग्राहक' },
@@ -1370,10 +1373,11 @@ const STRINGS = {
     mr: 'नमस्कार {name}, {business} यांना {amount} देण्यासाठी हा QR कोणत्याही UPI ॲपने स्कॅन करा.',
   },
   'upi.recordHint': {
-    en: 'When the money reaches your account, record it with Receive payment → UPI. Nothing is recorded by itself.',
-    hi: 'पैसा खाते में आने पर इसे “भुगतान लें → UPI” से दर्ज करें। अपने-आप कुछ दर्ज नहीं होता।',
-    mr: 'पैसे खात्यात आल्यावर “पेमेंट घ्या → UPI” ने नोंदवा. आपोआप काहीही नोंदवले जात नाही.',
+    en: 'Tap it once the money shows in your account — nothing is recorded by itself.',
+    hi: 'पैसा खाते में दिखने पर ही दबाएँ — अपने-आप कुछ दर्ज नहीं होता।',
+    mr: 'पैसे खात्यात दिसल्यावरच दाबा — आपोआप काहीही नोंदवले जात नाही.',
   },
+  'upi.recordNow': { en: 'Money received? Record it', hi: 'पैसा मिल गया? दर्ज करें', mr: 'पैसे मिळाले? नोंदवा' },
   'upi.noId': {
     en: 'Add your UPI ID in Settings to show a QR.',
     hi: 'QR दिखाने के लिए Settings में अपनी UPI ID डालें।',

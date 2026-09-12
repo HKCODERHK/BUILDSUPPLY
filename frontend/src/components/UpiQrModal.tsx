@@ -26,7 +26,18 @@ function formatINR(n: number) {
  * through the share sheet. The money lands in the supplier's own account;
  * nothing is recorded until the supplier uses Receive payment.
  */
-export function UpiQrModal({ customer, defaultAmount, onClose }: { customer: Customer; defaultAmount: number; onClose: () => void }) {
+export function UpiQrModal({
+  customer,
+  defaultAmount,
+  onClose,
+  onRecord,
+}: {
+  customer: Customer
+  defaultAmount: number
+  onClose: () => void
+  /** "Money received? Record it": hands the amount to the page's own Receive payment, set to UPI. */
+  onRecord?: (amount: number) => void
+}) {
   const { supplier } = useAuth()
   const { t } = useLanguage()
   const navigate = useNavigate()
@@ -106,7 +117,14 @@ export function UpiQrModal({ customer, defaultAmount, onClose }: { customer: Cus
               {t('upi.change')}
             </Button>
           </div>
-          <p className="border-t border-border pt-3 text-xs text-muted">{t('upi.recordHint')}</p>
+          {onRecord ? (
+            <div className="flex w-full flex-col gap-2 border-t border-border pt-3">
+              <Button onClick={() => onRecord(shown)}>{t('upi.recordNow')}</Button>
+              <p className="text-xs text-muted">{t('upi.recordHint')}</p>
+            </div>
+          ) : (
+            <p className="border-t border-border pt-3 text-xs text-muted">{t('upi.recordHint')}</p>
+          )}
         </div>
       )}
     </Modal>
