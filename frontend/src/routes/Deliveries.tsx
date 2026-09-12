@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ClipboardList } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { listInvoices, markInvoiceDelivered, type InvoiceWithCustomer } from '@/services/invoices'
 import { useLanguage } from '@/context/LanguageContext'
 import { TruckLoader } from '@/components/TruckLoader'
+import { DriverListModal } from '@/components/DriverListModal'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
@@ -16,6 +18,7 @@ export default function Deliveries() {
   const [invoices, setInvoices] = useState<InvoiceWithCustomer[]>([])
   const [loading, setLoading] = useState(true)
   const [markingId, setMarkingId] = useState<string | null>(null)
+  const [driverOpen, setDriverOpen] = useState(false)
 
   async function refresh() {
     setInvoices(await listInvoices({ billsOnly: true }))
@@ -39,7 +42,18 @@ export default function Deliveries() {
 
   return (
     <div>
-      <PageHeader title={t('del.title')} subtitle={t('del.subtitle')} />
+      <PageHeader
+        title={t('del.title')}
+        subtitle={t('del.subtitle')}
+        action={
+          // One sheet for the driver with the day's stops — nothing is marked delivered by it.
+          pending.length > 0 ? (
+            <Button size="sm" variant="outline" onClick={() => setDriverOpen(true)}>
+              <ClipboardList size={16} /> {t('del.driverList')}
+            </Button>
+          ) : undefined
+        }
+      />
 
       {loading ? (
         <TruckLoader />
@@ -66,6 +80,8 @@ export default function Deliveries() {
           </div>
         </Card>
       )}
+
+      {driverOpen && <DriverListModal invoices={pending} onClose={() => setDriverOpen(false)} />}
     </div>
   )
 }

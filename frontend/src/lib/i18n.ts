@@ -629,6 +629,23 @@ const STRINGS = {
     hi: 'कुछ बाकी नहीं — सारा बिल किया माल दे दिया गया।',
     mr: 'काहीही बाकी नाही — बिल केलेला सर्व माल दिला आहे.',
   },
+  'del.driverList': { en: 'Driver’s list', hi: 'ड्राइवर की सूची', mr: 'ड्रायव्हरची यादी' },
+  'del.driverTitle': { en: 'Today’s delivery list', hi: 'आज की डिलीवरी सूची', mr: 'आजची डिलिव्हरी यादी' },
+  'del.driverHint': {
+    en: 'Tick the bills going out today. The driver gets one PDF with each customer, phone, site and the materials — no amounts. Nothing is marked delivered.',
+    hi: 'आज जाने वाले बिल चुनें। ड्राइवर को एक PDF मिलेगी — हर ग्राहक, फ़ोन, साइट और माल के साथ, बिना रकम के। कुछ भी डिलीवर दर्ज नहीं होता।',
+    mr: 'आज जाणारी बिले निवडा. ड्रायव्हरला एक PDF मिळेल — प्रत्येक ग्राहक, फोन, साइट आणि मालासह, रकमेशिवाय. काहीही डिलिव्हर म्हणून नोंदवले जात नाही.',
+  },
+  'del.picked': { en: '{count} selected', hi: '{count} चुने', mr: '{count} निवडले' },
+  'del.selectAll': { en: 'Select all', hi: 'सब चुनें', mr: 'सर्व निवडा' },
+  'del.selectNone': { en: 'Clear', hi: 'हटाएँ', mr: 'काढा' },
+  'del.sendDriver': { en: 'Send on WhatsApp', hi: 'WhatsApp पर भेजें', mr: 'WhatsApp वर पाठवा' },
+  'del.download': { en: 'Download PDF', hi: 'PDF डाउनलोड करें', mr: 'PDF डाउनलोड करा' },
+  'del.driverMessage': {
+    en: 'Today’s deliveries — {count} stops. Please tick each one when the load is off.',
+    hi: 'आज की डिलीवरी — {count} जगह। हर जगह माल उतरने पर टिक करें।',
+    mr: 'आजच्या डिलिव्हरी — {count} ठिकाणे. प्रत्येक ठिकाणी माल उतरल्यावर टिक करा.',
+  },
 
   // ── Estimates / quotations ────────────────────────────────────────────
   'status.Draft': { en: 'Draft', hi: 'ड्राफ्ट', mr: 'ड्राफ्ट' },
@@ -1089,6 +1106,18 @@ const STRINGS = {
   },
   'order.notFound': { en: 'This order link is not valid.', hi: 'यह ऑर्डर लिंक सही नहीं है।', mr: 'ही ऑर्डर लिंक योग्य नाही.' },
   'order.recent': { en: 'Your recent orders', hi: 'आपके हाल के ऑर्डर', mr: 'तुमच्या अलीकडील ऑर्डर' },
+  'order.againTitle': { en: 'Order the same again?', hi: 'वही ऑर्डर फिर से?', mr: 'तीच ऑर्डर पुन्हा?' },
+  'order.againHint': {
+    en: 'The materials and quantities from your last order ({count}).',
+    hi: 'आपके पिछले ऑर्डर का सामान और मात्रा ({count})।',
+    mr: 'तुमच्या मागच्या ऑर्डरचे साहित्य आणि मात्रा ({count}).',
+  },
+  'order.againMissing': {
+    en: 'Some are no longer listed and are left out.',
+    hi: 'कुछ सामान अब नहीं मिलता, वह छोड़ दिया गया है।',
+    mr: 'काही साहित्य आता उपलब्ध नाही, ते वगळले आहे.',
+  },
+  'order.againButton': { en: 'Fill in my last order', hi: 'पिछला ऑर्डर भरें', mr: 'मागची ऑर्डर भरा' },
   'order.statusTitle': { en: 'Order status', hi: 'ऑर्डर की स्थिति', mr: 'ऑर्डरची स्थिती' },
   'order.status.pending': { en: 'Waiting for review', hi: 'देखे जाने की प्रतीक्षा', mr: 'तपासणीची प्रतीक्षा' },
   'order.status.pendingBody': {
