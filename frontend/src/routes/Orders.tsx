@@ -12,8 +12,8 @@ import type { Customer, OrderRequest, OrderStatus } from '@/lib/database.types'
 import { listCustomers } from '@/services/customers'
 import { listOrders, orderPageUrl } from '@/services/orders'
 import { useAuth } from '@/context/AuthContext'
-import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
-import { shareOrderLinkText } from '@/lib/shareOrderLink'
+import { Share2 } from 'lucide-react'
+import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
 import { formatOrderDate, orderItemsSummary, rejectReasonText } from '@/lib/orderFormat'
 
 const TABS: OrderStatus[] = ['pending', 'approved', 'rejected']
@@ -37,6 +37,7 @@ export default function Orders() {
     return asked && TABS.includes(asked) ? asked : 'pending'
   })
   const [rejecting, setRejecting] = useState<string | null>(null)
+  const [shareOpen, setShareOpen] = useState(false)
 
   function load() {
     return Promise.all([listOrders(), listCustomers()]).then(([o, c]) => {
@@ -55,12 +56,9 @@ export default function Orders() {
   // from Settings. Until ordering is switched on, this points to Settings.
   const liveLink = supplier?.order_link && supplier.ordering_enabled ? orderPageUrl(supplier.order_link) : null
   const shareButton = liveLink ? (
-    <Button
-      size="sm"
-      variant="outline"
-      onClick={() => void shareOrderLinkText(t('ord.shareMessage', { business: supplier?.business_name ?? '', url: liveLink }))}
-    >
-      <WhatsAppIcon size={14} /> {t('ord.shareLink')}
+    // Asks "link or QR?" — see OrderLinkShareModal.
+    <Button size="sm" variant="outline" onClick={() => setShareOpen(true)}>
+      <Share2 size={14} /> {t('ord.shareLink')}
     </Button>
   ) : (
     <Link to="/settings">
@@ -96,10 +94,8 @@ export default function Orders() {
       {loading ? (
         <TruckLoader />
       ) : shown.length === 0 ? (
-        <Card className="flex flex-col items-start gap-3 text-sm text-muted">
-          {t(tab === 'pending' ? 'ord.emptyPending' : 'ord.emptyOther')}
-          {tab === 'pending' && shareButton}
-        </Card>
+        // The header already has Share order link; a second one here was noise.
+        <Card className="text-sm text-muted">{t(tab === 'pending' ? 'ord.emptyPending' : 'ord.emptyOther')}</Card>
       ) : (
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {shown.map((order) => {
@@ -155,6 +151,8 @@ export default function Orders() {
           })}
         </div>
       )}
+
+      {shareOpen && liveLink && <OrderLinkShareModal url={liveLink} onClose={() => setShareOpen(false)} />}
 
       {rejecting && (
         <RejectOrderModal

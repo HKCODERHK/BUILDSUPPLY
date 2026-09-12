@@ -651,6 +651,21 @@ const STRINGS = {
   // Orders → Share order link (shareable where the orders arrive).
   'ord.shareLink': { en: 'Share order link', hi: 'ऑर्डर लिंक भेजें', mr: 'ऑर्डर लिंक पाठवा' },
   'ord.setupLink': { en: 'Set up order link', hi: 'ऑर्डर लिंक बनाएँ', mr: 'ऑर्डर लिंक तयार करा' },
+  // Share order link → "link or QR?"
+  'ordShare.hint': {
+    en: 'Customers open the link or scan the QR to order — no app or sign-in needed.',
+    hi: 'ग्राहक लिंक खोलकर या QR स्कैन करके ऑर्डर कर सकते हैं — कोई ऐप या लॉगिन नहीं।',
+    mr: 'ग्राहक लिंक उघडून किंवा QR स्कॅन करून ऑर्डर करू शकतात — कोणतेही ॲप किंवा लॉगिन नको.',
+  },
+  'ordShare.sendLink': { en: 'Send link', hi: 'लिंक भेजें', mr: 'लिंक पाठवा' },
+  'ordShare.showQr': { en: 'Show QR code', hi: 'QR कोड दिखाएँ', mr: 'QR कोड दाखवा' },
+  'ordShare.qrHint': {
+    en: 'A customer at your counter scans this with their phone camera to open your order page. Share the image to send it, or to print it for your shop.',
+    hi: 'दुकान पर आया ग्राहक फ़ोन के कैमरे से इसे स्कैन करके आपका ऑर्डर पेज खोल सकता है। भेजने के लिए या दुकान पर लगाने को छापने के लिए इमेज शेयर करें।',
+    mr: 'दुकानात आलेला ग्राहक फोनच्या कॅमेऱ्याने हे स्कॅन करून तुमचे ऑर्डर पेज उघडू शकतो. पाठवण्यासाठी किंवा दुकानात लावण्यासाठी छापायला इमेज शेअर करा.',
+  },
+  'ordShare.shareQr': { en: 'Share QR image', hi: 'QR इमेज भेजें', mr: 'QR इमेज पाठवा' },
+  'ordShare.back': { en: 'Back', hi: 'वापस', mr: 'मागे' },
   'pay.pickCustomer': { en: 'Choose the customer…', hi: 'ग्राहक चुनें…', mr: 'ग्राहक निवडा…' },
   'pay.whoPaidHint': {
     en: 'Their oldest bills are cleared first, and anything extra is kept as advance — the same as on the customer’s page.',

@@ -307,8 +307,8 @@ moves stock or changes a balance** — approving makes an ordinary estimate.
 - **Settings → Online orders** (`components/OrderSettingsCard.tsx`, hidden
   for the admin): ordering on/off (**off by default**), show prices, the link
   (suggested from the business name, editable, `^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$`,
-  unique), then Copy link / Share on WhatsApp (share sheet, else `wa.me` text —
-  the supplier sends it) / Open page.
+  unique), then Copy link / Share order link (asks link or QR — see "Order
+  link QR" under Phase 14) / Open page.
 - **Database (026):** `order_requests` — RLS, a supplier reads and updates
   only their own; `anon` has no table privileges at all. Items are stored as
   material id, name, unit and quantity — **never a price**. The public reaches
@@ -501,6 +501,21 @@ removes a real step, retyping or phone call:
 - Checked in the browser on the local copy: the prefilled UPI payment stayed
   open, both "Make the bill" routes land on the estimate, the driver's PDF
   carries the note, and the shared message carries the link.
+
+**Order link QR (2026-09-12). No database change.** The user's ask: a
+customer who walks into the shop can scan a QR and order. **Share order
+link** — on the Orders header and in Settings → Online orders — now opens
+`components/OrderLinkShareModal.tsx`, one dialog with two steps (the modal
+history rule again): **Send link** (`shareOrderLinkText`, unchanged message)
+or **Show QR code** — a large black-on-white QR of the supplier's
+`/order/<link>` with the business name and link under it, for the customer to
+scan at the counter, and **Share QR image**, a PNG (`qrPngFile`, "Scan to
+order" printed on it) through `shareDocumentOnWhatsApp`, to send or print for
+the shop. One QR per supplier: it is just the order link, so every order still
+waits for Approve / Reject. The second Share button in the Orders empty box
+(B4) was removed; the header one is enough. Checked on the local copy in three
+languages at 360px, with the share sheet simulated: the PNG and the message
+both arrive; a real scan needs the user's phone.
 
 ## The admin panel
 

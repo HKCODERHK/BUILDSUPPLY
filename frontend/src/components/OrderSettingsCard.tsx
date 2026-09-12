@@ -3,10 +3,10 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import { Share2 } from 'lucide-react'
+import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
-import { shareOrderLinkText } from '@/lib/shareOrderLink'
 import { isValidOrderLink, orderPageUrl, sanitizeOrderLink, saveOrderSettings, suggestOrderLink } from '@/services/orders'
 
 /**
@@ -24,6 +24,7 @@ export function OrderSettingsCard() {
   const [saved, setSaved] = useState(false)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [shareOpen, setShareOpen] = useState(false)
 
   if (!supplier || supplier.role !== 'supplier') return null
 
@@ -57,10 +58,6 @@ export function OrderSettingsCard() {
     } catch {
       setCopied(false)
     }
-  }
-
-  async function share(url: string) {
-    await shareOrderLinkText(t('ord.shareMessage', { business: supplier?.business_name ?? '', url }))
   }
 
   return (
@@ -113,8 +110,9 @@ export function OrderSettingsCard() {
               <Button size="sm" variant="outline" onClick={() => copy(liveUrl)}>
                 {copied ? t('order.copied') : t('order.copyLink')}
               </Button>
-              <Button size="sm" variant="outline" onClick={() => share(liveUrl)}>
-                <WhatsAppIcon size={14} /> {t('ord.share')}
+              {/* Asks "link or QR?" — the same dialog as on the Orders screen. */}
+              <Button size="sm" variant="outline" onClick={() => setShareOpen(true)}>
+                <Share2 size={14} /> {t('ord.shareLink')}
               </Button>
               <a href={liveUrl} target="_blank" rel="noreferrer">
                 <Button size="sm" variant="outline">{t('ord.openPage')}</Button>
@@ -123,6 +121,7 @@ export function OrderSettingsCard() {
           </div>
         )}
       </div>
+      {shareOpen && liveUrl && <OrderLinkShareModal url={liveUrl} onClose={() => setShareOpen(false)} />}
     </Card>
   )
 }
