@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
@@ -87,6 +87,12 @@ export default function Payments() {
   const [sendingReceipt, setSendingReceipt] = useState(false)
   const [shown, setShown] = useState(PAGE_SIZE)
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
+  // Receive payment starts with "Who paid?" and hands over to that customer's
+  // own Receive payment — oldest bills first, extra kept as advance — so money
+  // is taken one way everywhere. Paying one particular bill stays one tap away.
+  const [step, setStep] = useState<'who' | 'bill'>('who')
+  const [pickId, setPickId] = useState('')
 
   useEffect(() => {
     if (searchParams.get('new') === '1') {
@@ -121,12 +127,29 @@ export default function Payments() {
 
   const totalEntered = splits.reduce((sum, s) => sum + (Number(s.amount) || 0), 0)
 
+  // "Who paid?": everyone who owes something, largest first — from the bills
+  // already loaded, so it costs no extra request.
+  const owing = Array.from(
+    openInvoices
+      .reduce((map, inv) => {
+        if (!inv.customer_id) return map
+        const cur = map.get(inv.customer_id) ?? { id: inv.customer_id, name: inv.customers?.name ?? '—', due: 0 }
+        cur.due += Number(inv.total) - Number(inv.paid)
+        return map.set(inv.customer_id, cur)
+      }, new Map<string, { id: string; name: string; due: number }>())
+      .values(),
+  )
+    .filter((c) => c.due > 0.005)
+    .sort((a, b) => b.due - a.due)
+
   function closeModal() {
     setModalOpen(false)
     setReceipt(null)
     setSaveError(null)
     setInvoiceId('')
     setSplits([{ key: crypto.randomUUID(), amount: '', mode: 'Cash' }])
+    setStep('who')
+    setPickId('')
     requestId.current = newRequestId()
   }
 
@@ -233,7 +256,7 @@ export default function Payments() {
         action={
           payments.length > 0 ? (
             <Button onClick={() => setModalOpen(true)}>
-              <Plus size={16} /> {t('pay.record')}
+              <Plus size={16} /> {t('cust.receivePayment')}
             </Button>
           ) : undefined
         }
@@ -253,7 +276,7 @@ export default function Payments() {
           action={
             openInvoices.length > 0 ? (
               <Button onClick={() => setModalOpen(true)}>
-                <Plus size={16} /> {t('pay.record')}
+                <Plus size={16} /> {t('cust.receivePayment')}
               </Button>
             ) : (
               <Link to="/invoices/new">
@@ -289,7 +312,7 @@ export default function Payments() {
       )}
 
       {modalOpen && (
-        <Modal title={t('pay.record')} onClose={closeModal}>
+        <Modal title={step === 'who' && !receipt ? t('cust.receivePayment') : t('pay.record')} onClose={closeModal}>
           {receipt ? (
             <div className="flex flex-col gap-3">
               {receipt.amount > 0 && (
@@ -315,6 +338,37 @@ export default function Payments() {
                 </Button>
               )}
               <Button onClick={closeModal}>{t('common.done')}</Button>
+            </div>
+          ) : step === 'who' ? (
+            <div className="flex flex-col gap-4">
+              <div>
+                <Label htmlFor="who-paid">{t('pay.whoPaid')}</Label>
+                <select
+                  id="who-paid"
+                  value={pickId}
+                  onChange={(e) => setPickId(e.target.value)}
+                  className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-accent"
+                >
+                  <option value="">{t('pay.pickCustomer')}</option>
+                  {owing.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} — {formatINR(c.due)}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1.5 text-xs text-muted">{t('pay.whoPaidHint')}</p>
+              </div>
+              {/* Opens a new screen from inside a dialog, so `replace` — see modal.tsx. */}
+              <Button disabled={!pickId} onClick={() => navigate(`/customers/${pickId}?pay=1`, { replace: true })}>
+                {t('pay.continue')}
+              </Button>
+              <button
+                type="button"
+                onClick={() => setStep('bill')}
+                className="self-start text-xs font-semibold text-accent-text hover:text-accent"
+              >
+                {t('pay.forOneBill')}
+              </button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">

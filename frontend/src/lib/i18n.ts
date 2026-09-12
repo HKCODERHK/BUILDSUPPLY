@@ -646,6 +646,16 @@ const STRINGS = {
     hi: 'आज की डिलीवरी — {count} जगह। हर जगह माल उतरने पर टिक करें।',
     mr: 'आजच्या डिलिव्हरी — {count} ठिकाणे. प्रत्येक ठिकाणी माल उतरल्यावर टिक करा.',
   },
+  // Payments → Receive payment: "Who paid?" first, then that customer's own Receive payment.
+  'pay.whoPaid': { en: 'Who paid?', hi: 'किसने भुगतान किया?', mr: 'कोणी पेमेंट केले?' },
+  'pay.pickCustomer': { en: 'Choose the customer…', hi: 'ग्राहक चुनें…', mr: 'ग्राहक निवडा…' },
+  'pay.whoPaidHint': {
+    en: 'Their oldest bills are cleared first, and anything extra is kept as advance — the same as on the customer’s page.',
+    hi: 'पहले उनके सबसे पुराने बिल चुकते होंगे, और बाकी पैसा जमा में रहेगा — ग्राहक के पेज की तरह ही।',
+    mr: 'आधी त्यांची सर्वात जुनी बिले भरली जातील, आणि उरलेले पैसे जमा म्हणून राहतील — ग्राहकाच्या पेजप्रमाणेच.',
+  },
+  'pay.continue': { en: 'Continue', hi: 'आगे बढ़ें', mr: 'पुढे जा' },
+  'pay.forOneBill': { en: 'For one particular bill →', hi: 'किसी एक बिल के लिए →', mr: 'एखाद्या विशिष्ट बिलासाठी →' },
 
   // ── Estimates / quotations ────────────────────────────────────────────
   'status.Draft': { en: 'Draft', hi: 'ड्राफ्ट', mr: 'ड्राफ्ट' },
@@ -1172,11 +1182,13 @@ const STRINGS = {
     hi: '{business} के पास आपका ऑर्डर अनुरोध है, वे जल्द पक्का करेंगे।',
     mr: '{business} यांच्याकडे तुमची ऑर्डर विनंती आहे, ते लवकरच निश्चित करतील.',
   },
-  'order.status.approved': { en: 'Accepted', hi: 'स्वीकार', mr: 'स्वीकारली' },
+  // "Estimate ready", not "Accepted": the customer is the one who accepts,
+  // with the button under the estimate — two "accepts" read as a question.
+  'order.status.approved': { en: 'Estimate ready', hi: 'एस्टिमेट तैयार', mr: 'एस्टिमेट तयार' },
   'order.status.approvedBody': {
-    en: '{business} has accepted your order request. They will send you the final estimate.',
-    hi: '{business} ने आपका ऑर्डर अनुरोध स्वीकार कर लिया है। वे आपको अंतिम एस्टिमेट भेजेंगे।',
-    mr: '{business} यांनी तुमची ऑर्डर विनंती स्वीकारली आहे. ते तुम्हाला अंतिम एस्टिमेट पाठवतील.',
+    en: '{business} has prepared an estimate for your order — see it below.',
+    hi: '{business} ने आपके ऑर्डर का एस्टिमेट बना दिया है — नीचे देखें।',
+    mr: '{business} यांनी तुमच्या ऑर्डरचे एस्टिमेट तयार केले आहे — खाली पाहा.',
   },
   'order.status.rejected': { en: 'Not accepted', hi: 'स्वीकार नहीं', mr: 'स्वीकारली नाही' },
   'order.status.rejectedBody': {
