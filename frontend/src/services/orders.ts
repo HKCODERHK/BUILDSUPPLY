@@ -209,15 +209,35 @@ export async function rejectOrder(orderId: string, code: NonNullable<OrderReques
   if (!raw.already) void logActivity('supplier', 'order_rejected', { details: { order_id: orderId } })
 }
 
-/** Estimates a customer has accepted and that are still waiting to be billed — the Dashboard banner. */
-export async function countAcceptedEstimates(): Promise<number> {
-  const { count, error } = await supabase
+/**
+ * Estimates a customer has accepted that are still waiting to be billed — the
+ * Dashboard banner. With just one, its id too, so the banner opens it directly.
+ */
+export async function acceptedEstimates(): Promise<{ count: number; quotationId: string | null }> {
+  const { data, count, error } = await supabase
     .from('order_requests')
-    .select('id, quotations!inner(status)', { count: 'exact', head: true })
+    .select('quotation_id, quotations!inner(status)', { count: 'exact' })
     .eq('customer_response', 'accepted')
     .in('quotations.status', ['Draft', 'Sent'])
+    .limit(1)
   if (error) throw error
-  return count ?? 0
+  return { count: count ?? 0, quotationId: (data?.[0]?.quotation_id as string | null | undefined) ?? null }
+}
+
+/** The customer's note and wanted date, for bills made from online orders — the driver's list. */
+export async function listOrderNotesForQuotations(
+  quotationIds: string[],
+): Promise<{ quotation_id: string; note: string | null; delivery_date: string | null }[]> {
+  const rows: { quotation_id: string; note: string | null; delivery_date: string | null }[] = []
+  for (let start = 0; start < quotationIds.length; start += 100) {
+    const { data, error } = await supabase
+      .from('order_requests')
+      .select('quotation_id, note, delivery_date')
+      .in('quotation_id', quotationIds.slice(start, start + 100))
+    if (error) throw error
+    rows.push(...((data ?? []) as { quotation_id: string; note: string | null; delivery_date: string | null }[]))
+  }
+  return rows
 }
 
 /** The online order an estimate was made from, if any — for the customer's answer on the estimate page. */

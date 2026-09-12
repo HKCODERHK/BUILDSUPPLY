@@ -14,7 +14,7 @@ import {
 import { listRecentCustomers } from '@/services/customers'
 import { listPaymentsSince } from '@/services/payments'
 import { listMaterials } from '@/services/materials'
-import { countAcceptedEstimates, countPendingOrders } from '@/services/orders'
+import { acceptedEstimates, countPendingOrders } from '@/services/orders'
 import type { Customer, DashboardTotals, Invoice, Material, Payment } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -105,14 +105,15 @@ function SupplierDashboardView() {
   // a problem here never holds up the rest of the dashboard.
   const [pendingOrders, setPendingOrders] = useState(0)
   // Estimates a customer accepted from their status link, waiting for a bill (migration 030).
-  const [acceptedEstimates, setAcceptedEstimates] = useState(0)
+  // With just one, the banner opens that estimate straight away.
+  const [accepted, setAccepted] = useState<{ count: number; quotationId: string | null }>({ count: 0, quotationId: null })
   useEffect(() => {
     let active = true
     countPendingOrders()
       .then((n) => active && setPendingOrders(n))
       .catch(() => {})
-    countAcceptedEstimates()
-      .then((n) => active && setAcceptedEstimates(n))
+    acceptedEstimates()
+      .then((a) => active && setAccepted(a))
       .catch(() => {})
     return () => {
       active = false
@@ -252,15 +253,15 @@ function SupplierDashboardView() {
             </Link>
           )}
 
-          {acceptedEstimates > 0 && (
+          {accepted.count > 0 && (
             <Link
-              to="/orders?tab=approved"
+              to={accepted.count === 1 && accepted.quotationId ? `/quotations/${accepted.quotationId}` : '/orders?tab=approved'}
               className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-accent/30 bg-accent-bg px-4 py-3"
             >
               <div className="flex items-center gap-2.5">
                 <BadgeCheck size={18} className="shrink-0 text-accent" />
                 <span className="text-sm font-medium text-accent-text">
-                  {acceptedEstimates === 1 ? t('dash.acceptedOne') : t('dash.acceptedMany', { count: acceptedEstimates })}
+                  {accepted.count === 1 ? t('dash.acceptedOne') : t('dash.acceptedMany', { count: accepted.count })}
                 </span>
               </div>
               <span className="shrink-0 text-xs font-semibold text-accent-text">{t('dash.convertNow')}</span>

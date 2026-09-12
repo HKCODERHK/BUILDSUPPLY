@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
-import { openWhatsAppShare } from '@/lib/whatsapp'
+import { shareOrderLinkText } from '@/lib/shareOrderLink'
 import { isValidOrderLink, orderPageUrl, sanitizeOrderLink, saveOrderSettings, suggestOrderLink } from '@/services/orders'
 
 /**
@@ -60,16 +60,7 @@ export function OrderSettingsCard() {
   }
 
   async function share(url: string) {
-    const message = t('ord.shareMessage', { business: supplier?.business_name ?? '', url })
-    if (typeof navigator.share === 'function') {
-      try {
-        await navigator.share({ text: message })
-        return
-      } catch (err) {
-        if ((err as Error).name === 'AbortError') return
-      }
-    }
-    openWhatsAppShare(null, message)
+    await shareOrderLinkText(t('ord.shareMessage', { business: supplier?.business_name ?? '', url }))
   }
 
   return (

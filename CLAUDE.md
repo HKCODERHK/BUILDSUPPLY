@@ -479,6 +479,29 @@ their own sake — fewer taps, fewer decisions, nothing that feels like an ERP.
   `customers.status` and nothing reads it; the column stays in the database.
 - Checked in the browser on the local copy, in English, Hindi and Marathi.
 
+**Phase 14 — simplify, round B (2026-09-12). No database change.** Each
+removes a real step, retyping or phone call:
+
+- **B1 — "Money received? Record it"** under Show UPI QR hands the amount to
+  the customer page's own Receive payment, set to UPI (2 taps instead of
+  ~5 plus typing). The QR dialog is closed first and Receive payment opened
+  only after its history entry is unwound (`popstate`, or 400ms) — otherwise
+  the unwind pops the new dialog's entry and shuts it at once (see
+  `modal.tsx`).
+- **B2 — the accepted estimate one tap away.** With exactly one waiting, the
+  Dashboard banner opens that estimate (`acceptedEstimates()` returns its id);
+  with more, the Approved tab. An accepted order's card has "Make the bill →".
+- **B3 — the customer's order note and wanted date on the driver's list.** A
+  bill made from an estimate carries `quotation_id` (create_invoice sets it),
+  and `order_requests.quotation_id` leads to the note and date
+  (`listOrderNotesForQuotations`). "Call before coming" now reaches the driver.
+- **B4 — Share order link on the Orders screen** (header and empty state), or
+  "Set up order link" until ordering is on. The share code is one helper,
+  `lib/shareOrderLink.ts`, used by Orders and Settings → Online orders.
+- Checked in the browser on the local copy: the prefilled UPI payment stayed
+  open, both "Make the bill" routes land on the estimate, the driver's PDF
+  carries the note, and the shared message carries the link.
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.

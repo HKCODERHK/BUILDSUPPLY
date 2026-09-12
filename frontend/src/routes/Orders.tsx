@@ -10,7 +10,10 @@ import { useLanguage } from '@/context/LanguageContext'
 import { cn } from '@/lib/utils'
 import type { Customer, OrderRequest, OrderStatus } from '@/lib/database.types'
 import { listCustomers } from '@/services/customers'
-import { listOrders } from '@/services/orders'
+import { listOrders, orderPageUrl } from '@/services/orders'
+import { useAuth } from '@/context/AuthContext'
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import { shareOrderLinkText } from '@/lib/shareOrderLink'
 import { formatOrderDate, orderItemsSummary, rejectReasonText } from '@/lib/orderFormat'
 
 const TABS: OrderStatus[] = ['pending', 'approved', 'rejected']
@@ -22,6 +25,7 @@ const TABS: OrderStatus[] = ['pending', 'approved', 'rejected']
  */
 export default function Orders() {
   const { t } = useLanguage()
+  const { supplier } = useAuth()
   const navigate = useNavigate()
   const [orders, setOrders] = useState<OrderRequest[]>([])
   const [byPhone, setByPhone] = useState<Record<string, Customer>>({})
@@ -47,9 +51,28 @@ export default function Orders() {
 
   const shown = orders.filter((o) => o.status === tab)
 
+  // "Order link bhejo": shareable from here, where the orders arrive — not only
+  // from Settings. Until ordering is switched on, this points to Settings.
+  const liveLink = supplier?.order_link && supplier.ordering_enabled ? orderPageUrl(supplier.order_link) : null
+  const shareButton = liveLink ? (
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={() => void shareOrderLinkText(t('ord.shareMessage', { business: supplier?.business_name ?? '', url: liveLink }))}
+    >
+      <WhatsAppIcon size={14} /> {t('ord.shareLink')}
+    </Button>
+  ) : (
+    <Link to="/settings">
+      <Button size="sm" variant="outline">
+        {t('ord.setupLink')}
+      </Button>
+    </Link>
+  )
+
   return (
     <div>
-      <PageHeader title={t('ord.title')} subtitle={t('ord.subtitle')} />
+      <PageHeader title={t('ord.title')} subtitle={t('ord.subtitle')} action={shareButton} />
 
       <div className="mb-4 flex flex-wrap gap-2">
         {TABS.map((status) => {
@@ -73,7 +96,10 @@ export default function Orders() {
       {loading ? (
         <TruckLoader />
       ) : shown.length === 0 ? (
-        <Card className="text-sm text-muted">{t(tab === 'pending' ? 'ord.emptyPending' : 'ord.emptyOther')}</Card>
+        <Card className="flex flex-col items-start gap-3 text-sm text-muted">
+          {t(tab === 'pending' ? 'ord.emptyPending' : 'ord.emptyOther')}
+          {tab === 'pending' && shareButton}
+        </Card>
       ) : (
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {shown.map((order) => {
@@ -113,6 +139,14 @@ export default function Orders() {
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => setRejecting(order.id)}>
                       {t('ord.reject')}
+                    </Button>
+                  </div>
+                )}
+                {/* Accepted by the customer: straight to the estimate and its Convert to bill. */}
+                {order.status === 'approved' && order.customer_response === 'accepted' && order.quotation_id && (
+                  <div className="mt-1 border-t border-border pt-3">
+                    <Button size="sm" onClick={() => navigate(`/quotations/${order.quotation_id}`)}>
+                      {t('dash.convertNow')}
                     </Button>
                   </div>
                 )}

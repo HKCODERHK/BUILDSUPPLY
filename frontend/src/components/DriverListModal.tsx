@@ -8,6 +8,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { deliveryListPdfFile, downloadDeliveryListPdf, type DeliveryStop } from '@/lib/deliveryListPdf'
 import { shareDocumentOnWhatsApp } from '@/lib/shareDocument'
 import { listItemsForInvoices, type InvoiceWithCustomer } from '@/services/invoices'
+import { listOrderNotesForQuotations } from '@/services/orders'
 
 /**
  * Deliveries → Driver's list: tick the bills going out today and the driver
@@ -45,16 +46,28 @@ export function DriverListModal({ invoices, onClose }: { invoices: InvoiceWithCu
 
   async function buildStops(): Promise<DeliveryStop[]> {
     const chosen = invoices.filter((i) => picked.has(i.id))
-    const items = await listItemsForInvoices(chosen.map((i) => i.id))
-    return chosen.map((inv) => ({
-      invoiceNo: inv.invoice_no,
-      customer: inv.customers?.name ?? '—',
-      phone: inv.customers?.phone ?? null,
-      site: inv.site ?? inv.customers?.site ?? null,
-      items: items
-        .filter((it) => it.invoice_id === inv.id)
-        .map((it) => ({ description: it.description, qty: Number(it.qty), unit: it.materials?.unit_label ?? null })),
-    }))
+    // A bill made from an online order carries the estimate it came from, and
+    // through it the customer's own note and wanted date — "Call before
+    // coming" belongs on the driver's sheet, not in the supplier's memory.
+    const quotationIds = chosen.map((i) => i.quotation_id).filter((q): q is string => !!q)
+    const [items, notes] = await Promise.all([
+      listItemsForInvoices(chosen.map((i) => i.id)),
+      listOrderNotesForQuotations(quotationIds).catch(() => []),
+    ])
+    return chosen.map((inv) => {
+      const fromOrder = inv.quotation_id ? notes.find((n) => n.quotation_id === inv.quotation_id) : undefined
+      return {
+        invoiceNo: inv.invoice_no,
+        customer: inv.customers?.name ?? '—',
+        phone: inv.customers?.phone ?? null,
+        site: inv.site ?? inv.customers?.site ?? null,
+        note: fromOrder?.note ?? null,
+        wanted: fromOrder?.delivery_date ?? null,
+        items: items
+          .filter((it) => it.invoice_id === inv.id)
+          .map((it) => ({ description: it.description, qty: Number(it.qty), unit: it.materials?.unit_label ?? null })),
+      }
+    })
   }
 
   async function run(kind: 'share' | 'download') {
