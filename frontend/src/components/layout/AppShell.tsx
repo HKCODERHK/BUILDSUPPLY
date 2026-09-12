@@ -106,11 +106,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     // getBoundingClientRect, not offsetHeight: the bar measures 60.3px and
     // offsetHeight rounds that to 60, which leaves the last row of a list a
     // third of a pixel underneath it.
-    const publish = () =>
-      document.documentElement.style.setProperty(
-        '--tabbar-h',
-        `${el.getBoundingClientRect().height}px`,
-      )
+    // The bar floats above the bottom edge (Telegram-style), so what the page
+    // must keep clear is the bar plus the gap under it. Hidden (desktop), 0.
+    const publish = () => {
+      const height = el.getBoundingClientRect().height
+      const gap = height > 0 ? parseFloat(getComputedStyle(el).bottom) || 0 : 0
+      document.documentElement.style.setProperty('--tabbar-h', `${height + gap}px`)
+    }
     publish()
     const observer = new ResizeObserver(publish)
     observer.observe(el)
@@ -269,13 +271,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         <ShareDocumentPrompt />
       </div>
 
-      {/* Phone/tablet bottom tab bar */}
-      {/* pb lifts the tab labels clear of the home indicator; without it the
-          gesture bar sits on top of the last few pixels of every tap target. */}
+      {/* Phone/tablet bottom tab bar — floating, Telegram-style: a rounded
+          bar clear of the screen edges, the page showing through it as it
+          scrolls, and a bubble behind the tab you are on. */}
+      {/* The bottom offset lifts it clear of the home indicator; without that
+          the gesture bar sits on top of the last few pixels of every tap
+          target. mx-auto + max-w-md keeps it phone-sized on a tablet. */}
       <nav
         ref={tabBarRef}
         data-app-tabbar
-        className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-card pb-[var(--safe-bottom)] lg:hidden"
+        className="fixed inset-x-3 bottom-[calc(0.5rem_+_var(--safe-bottom))] z-30 mx-auto flex max-w-md rounded-full border border-border bg-card/85 p-1 shadow-lg shadow-black/10 backdrop-blur-md lg:hidden"
       >
         {primaryItems.map((item) => (
           <NavLink
@@ -283,8 +288,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             to={item.path}
             className={({ isActive }) =>
               cn(
-                'flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-muted',
-                isActive && 'text-accent',
+                'flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full px-0.5 py-1.5 text-center text-[11px] font-medium leading-tight text-muted transition-colors',
+                isActive && 'bg-accent-bg text-accent-text',
               )
             }
           >
@@ -294,11 +299,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         ))}
         <button
           onClick={() => setMoreOpen(true)}
-          className="relative flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-muted"
+          className="relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full px-0.5 py-1.5 text-center text-[11px] font-medium leading-tight text-muted"
         >
           <MoreHorizontal size={19} />
           {pendingOrders > 0 && (
-            <span aria-hidden="true" className="absolute right-[calc(50%-16px)] top-2 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-card" />
+            <span aria-hidden="true" className="absolute right-[calc(50%-16px)] top-1 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-card" />
           )}
           {t('nav.more')}
         </button>
