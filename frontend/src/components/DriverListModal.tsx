@@ -18,7 +18,19 @@ import { listItemsForInvoices, type InvoiceWithCustomer } from '@/services/invoi
 export function DriverListModal({ invoices, onClose }: { invoices: InvoiceWithCustomer[]; onClose: () => void }) {
   const { supplier } = useAuth()
   const { t } = useLanguage()
-  const [picked, setPicked] = useState<Set<string>>(() => new Set(invoices.map((i) => i.id)))
+  // Ticked to start with: bills from the last two days, at most the 30 newest.
+  // A supplier who rarely taps "Mark delivered" can have hundreds pending, and
+  // those older ones are listed but left for them to tick.
+  const [picked, setPicked] = useState<Set<string>>(() => {
+    const since = Date.now() - 2 * 24 * 60 * 60 * 1000
+    return new Set(
+      [...invoices]
+        .filter((i) => new Date(i.created_at).getTime() >= since)
+        .sort((a, b) => b.created_at.localeCompare(a.created_at))
+        .slice(0, 30)
+        .map((i) => i.id),
+    )
+  })
   const [busy, setBusy] = useState<'share' | 'download' | null>(null)
   const [failed, setFailed] = useState(false)
 
