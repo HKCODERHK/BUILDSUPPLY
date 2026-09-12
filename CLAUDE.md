@@ -523,9 +523,30 @@ both arrive. The user then scanned it on a phone: fine.
 **Floating tab bar (2026-09-12). No database change.** Asked for from a
 Telegram screenshot. The phone tab bar (`AppShell.tsx`) now floats: rounded,
 12px in from the sides and 8px plus the home indicator above the bottom,
-card colour at 85% with a blur so the page shows through as it scrolls, a
-green bubble behind the tab you are on, and `max-w-md` so a tablet gets a
-phone-sized bar. Same five tabs; the Orders dot on More and the More sheet are
+card colour at 70% with `backdrop-blur-lg` and `backdrop-saturate-150` so the
+list visibly flows under it as it scrolls (the user's Telegram video: frames
+pulled in the browser pane, since there is no ffmpeg here), and `max-w-md` so
+a tablet gets a phone-sized bar. **One green bubble slides to the tab you
+tap** — a single absolutely placed span moved by `translateX(index × 100%)`,
+tabs being equal widths, over 300ms with a slight overshoot
+(`cubic-bezier(0.34,1.3,0.64,1)`), none under reduced motion. On a page
+reached from More it fades out where it was. Measured in a front tab: 0 → 62
+→ 122 → 155 → 183 → 197 → 201 → 196px at 30ms steps, landing exactly on the
+tab. **Background browser-pane tabs pause CSS transitions** — measure motion
+only in a fronted tab (`tabs_select`), or the computed transform sits at its
+start value.
+**The top bar followed (same day, from the same video).** Telegram's is
+solid at the top of the list, then as it scrolls folds its search field away
+and turns frosted while chats pass under it. Ours: solid `bg-shell` at the top
+of a page (so it meets the status bar, which Android paints from
+`theme_color`, in one colour); past 24px of scroll, `bg-shell/80` with a blur,
+and `Brand compact` folds the tagline (a `grid-rows-[0fr]` row, so one line
+or two fold alike); back under 4px, both return. Two thresholds
+(`useScrolledPast(24, 4)`) so a page resting near the top can't flick between
+the two. At 360px the bar stays 60px either way in all three languages (the
+tagline is one line, and the two toggles set the height), so nothing below it
+moves; only a phone narrow enough to wrap the tagline would shrink it a few
+pixels. Still `sticky`, per the note below. Same five tabs; the Orders dot on More and the More sheet are
 unchanged. `--tabbar-h` now includes the gap under the bar, so the page's
 bottom padding, both Save bars, the loaders and the ⋯ menus still clear it.
 Checked on the local copy at 360px: every label fits in English, Hindi and

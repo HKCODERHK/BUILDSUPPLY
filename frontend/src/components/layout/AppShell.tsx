@@ -100,8 +100,8 @@ function SubscriptionNotice() {
 /**
  * True once the page has scrolled under the top bar. Two thresholds, so a
  * page resting near the top can't flick the bar between its two looks — and
- * in Hindi and Marathi folding the two-line tagline makes the bar a few
- * pixels shorter, which nudges the scroll position itself.
+ * on a phone narrow enough for the tagline to wrap to two lines, folding it
+ * makes the bar a few pixels shorter, which nudges the scroll position itself.
  */
 function useScrolledPast(on: number, off: number) {
   const [past, setPast] = useState(false)
