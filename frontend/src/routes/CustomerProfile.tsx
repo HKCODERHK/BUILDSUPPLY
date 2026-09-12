@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { Pencil, IndianRupee, RotateCcw, Plus, HandCoins, BookOpen, Phone, LoaderCircle, Link2, QrCode } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -96,7 +96,7 @@ export default function CustomerProfile() {
     advance: number
     advanceBalance: number
   } | null>(null)
-  const [sharing, setSharing] = useState<'receipt' | 'statement' | 'ledger' | null>(null)
+  const [sharing, setSharing] = useState<'receipt' | 'ledger' | null>(null)
   const [khataOpen, setKhataOpen] = useState(false)
   const [upiOpen, setUpiOpen] = useState(false)
 
@@ -156,6 +156,10 @@ export default function CustomerProfile() {
     payRequestId.current = newRequestId()
   }
 
+  // Payments → Receive payment → "Who paid?" lands here with ?pay=1: the same
+  // dialog, the same oldest-bills-first rule, opened for them.
+  const [searchParams, setSearchParams] = useSearchParams()
+
   useEffect(() => {
     if (!id) return
     let active = true
@@ -165,10 +169,16 @@ export default function CustomerProfile() {
       setInvoices(data.invoices)
       setAdvance(data.advance)
       setLoading(false)
+      if (searchParams.get('pay') === '1') {
+        setPayKind('payment')
+        setPayOpen(true)
+        setSearchParams({}, { replace: true })
+      }
     })
     return () => {
       active = false
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   // The live one — a replaced opening balance stays on record, cancelled.
@@ -306,50 +316,31 @@ export default function CustomerProfile() {
     }
   }
 
-  // ...and its WhatsApp icon: the same PDF, sent as a real attachment.
+  // ...and its WhatsApp icon: the same PDF as a real attachment — the one way
+  // to send a customer their account (it used to be two buttons sending the
+  // same PDF). With money owed the message asks for it, as "Remind" did; with
+  // none, it says where they stand.
   async function shareLedger() {
     if (!supplier || !customer) return
     setSharing('ledger')
     try {
       const ledger = await loadLedger(customer)
-      // The statement's own last line: owed, in credit, or square.
-      const closing = ledger.entries.length ? ledger.entries[ledger.entries.length - 1].balance : ledger.openingBalance
       const outcome = await shareDocumentOnWhatsApp({
         file: await customerLedgerPdfFile(supplier, customer, ledger),
-        message:
-          `Hi ${customer.name}, here is your account statement. ` +
-          (closing > 0
-            ? `Closing balance: ${formatINR(closing)}.`
-            : closing < 0
-              ? `Advance with us: ${formatINR(-closing)}.`
-              : 'Your account is fully settled. Thank you!'),
+        message: hasDues
+          ? `Hi ${customer.name}, your pending balance with us is ${formatINR(totalPending)}. ` +
+            `The attached statement shows every bill and payment. Please clear it at your earliest convenience.`
+          : advance > 0
+            ? `Hi ${customer.name}, here is your account statement. Advance with us: ${formatINR(advance)}.`
+            : `Hi ${customer.name}, here is your account statement. Your account is fully settled. Thank you!`,
         title: `Statement — ${customer.name}`,
       })
       if (outcome === 'shared') {
-        void logActivity('supplier', 'report_shared', { details: { report: 'Customer Ledger', format: 'pdf_share' } })
-      }
-    } finally {
-      setSharing(null)
-    }
-  }
-
-  // The full statement Reminders sends — every bill and every payment — so
-  // the customer is chased with the record, not a number to argue with.
-  async function sendStatement() {
-    if (!supplier || !customer) return
-    setSharing('statement')
-    try {
-      const ledger = await loadLedger(customer)
-      const file = await customerLedgerPdfFile(supplier, customer, ledger)
-      const outcome = await shareDocumentOnWhatsApp({
-        file,
-        message:
-          `Hi ${customer.name}, your pending balance with us is ${formatINR(totalPending)}. ` +
-          `The attached statement shows every bill and payment. Please clear it at your earliest convenience.`,
-        title: `Statement — ${customer.name}`,
-      })
-      if (outcome === 'shared') {
-        void logActivity('supplier', 'reminder_sent', { details: { customer: customer.name, format: 'pdf_share' } })
+        if (hasDues) {
+          void logActivity('supplier', 'reminder_sent', { details: { customer: customer.name, format: 'pdf_share' } })
+        } else {
+          void logActivity('supplier', 'report_shared', { details: { report: 'Customer Ledger', format: 'pdf_share' } })
+        }
       }
     } finally {
       setSharing(null)
@@ -422,12 +413,6 @@ export default function CustomerProfile() {
                     ]
                   : []),
                 { label: t('common.edit'), icon: <Pencil size={15} />, onSelect: openEdit },
-                {
-                  label: sharing === 'statement' ? t('common.preparing') : t('cust.remind'),
-                  icon: <WhatsAppIcon size={15} />,
-                  disabled: !customer.phone || sharing !== null,
-                  onSelect: sendStatement,
-                },
                 // Their own read-only account page (migration 028).
                 { label: t('khata.share'), icon: <Link2 size={15} />, onSelect: () => setKhataOpen(true) },
                 // For when the customer is standing there without cash (migration 029).
@@ -509,7 +494,8 @@ export default function CustomerProfile() {
           <div className="text-xs font-medium text-muted">{t('common.address')}</div>
           <div className="mt-1 text-sm font-semibold">{customer.address ?? '—'}</div>
         </Card>
-        {creditLimit != null ? (
+        {/* No "Status: Active" tile: nothing sets it and nothing uses it. */}
+        {creditLimit != null && (
           <Card>
             <div className="text-xs font-medium text-muted">{t('cust.creditLimitShort')}</div>
             <div
@@ -517,13 +503,6 @@ export default function CustomerProfile() {
             >
               {formatINR(totalPending)} / {formatINR(creditLimit)}
             </div>
-          </Card>
-        ) : (
-          <Card>
-            <div className="text-xs font-medium text-muted">{t('common.status')}</div>
-            <Badge tone={customer.status === 'Active' ? 'success' : 'neutral'} className="mt-1">
-              {t(customer.status === 'Active' ? 'status.Active' : 'status.Inactive')}
-            </Badge>
           </Card>
         )}
         <Card>
