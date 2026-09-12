@@ -456,7 +456,8 @@ still holds — every existing screen and flow stays exactly as it was.
   guards and both functions in place, nothing answered, counts unchanged.
 - **Docker Desktop on this machine sometimes won't start from the command
   line** — zero processes, and `docker desktop start` hangs. Ask the user to
-  open it from the Start menu; that worked.
+  open it from the Start menu; that worked. So did launching the program
+  directly (2026-09-12): `Start-Process "$env:LOCALAPPDATA\Programs\DockerDesktop\Docker Desktop.exe"`.
 
 **Phase 14 — simplify, round A (2026-09-12). No database change.** From a
 UX review taken from the supplier's side. The user's rule: no features for
@@ -518,6 +519,39 @@ waits for Approve / Reject. The second Share button in the Orders empty box
 (B4) was removed; the header one is enough. Checked on the local copy in three
 languages at 360px, with the share sheet simulated: the PNG and the message
 both arrive. The user then scanned it on a phone: fine.
+
+**Floating tab bar (2026-09-12). No database change.** Asked for from a
+Telegram screenshot. The phone tab bar (`AppShell.tsx`) now floats: rounded,
+12px in from the sides and 8px plus the home indicator above the bottom,
+card colour at 70% with `backdrop-blur-lg` and `backdrop-saturate-150` so the
+list visibly flows under it as it scrolls (the user's Telegram video: frames
+pulled in the browser pane, since there is no ffmpeg here), and `max-w-md` so
+a tablet gets a phone-sized bar. **One green bubble slides to the tab you
+tap** — a single absolutely placed span moved by `translateX(index × 100%)`,
+tabs being equal widths, over 300ms with a slight overshoot
+(`cubic-bezier(0.34,1.3,0.64,1)`), none under reduced motion. On a page
+reached from More it fades out where it was. Measured in a front tab: 0 → 62
+→ 122 → 155 → 183 → 197 → 201 → 196px at 30ms steps, landing exactly on the
+tab. **Background browser-pane tabs pause CSS transitions** — measure motion
+only in a fronted tab (`tabs_select`), or the computed transform sits at its
+start value.
+**The top bar followed (same day, from the same video).** Telegram's is
+solid at the top of the list, then as it scrolls folds its search field away
+and turns frosted while chats pass under it. Ours: solid `bg-shell` at the top
+of a page (so it meets the status bar, which Android paints from
+`theme_color`, in one colour); past 24px of scroll, `bg-shell/80` with a blur,
+and `Brand compact` folds the tagline (a `grid-rows-[0fr]` row, so one line
+or two fold alike); back under 4px, both return. Two thresholds
+(`useScrolledPast(24, 4)`) so a page resting near the top can't flick between
+the two. At 360px the bar stays 60px either way in all three languages (the
+tagline is one line, and the two toggles set the height), so nothing below it
+moves; only a phone narrow enough to wrap the tagline would shrink it a few
+pixels. Still `sticky`, per the note below. Same five tabs; the Orders dot on More and the More sheet are
+unchanged. `--tabbar-h` now includes the gap under the bar, so the page's
+bottom padding, both Save bars, the loaders and the ⋯ menus still clear it.
+Checked on the local copy at 360px: every label fits in English, Hindi and
+Marathi (the bar stays 56px), light and dark, and New Invoice's Save bar sits
+flush on the bar at the top, middle and bottom of the page.
 
 ## The admin panel
 
@@ -645,7 +679,7 @@ prove the rollback held.
 - `site` lives on the **invoice/quotation**, not the customer (migration 014). A contractor runs several sites at once; the customer's `site` is only the default that gets pre-filled.
 - The service worker registers **only in a production build** (`import.meta.env.PROD`) — a worker caching Vite's dev modules would fight HMR. To test it: `npm run build`, then the `frontend-preview` launch config.
 - **`public/sw.js` must look things up with `cache.match(req, { ignoreVary: true })`.** Static hosts (Vite preview, Netlify, Vercel, Cloudflare) send `Vary: Origin` on assets, and the Cache API honours Vary — without `ignoreVary` the worker misses entries it stored moments earlier, falls through to the network, and fails offline, which is the one moment the cache existed for. This was a real bug, caught only by inspecting the live cache. Bump `CACHE` (currently `buildsupply-v3`) to force clients to drop old entries; `activate` deletes every cache that isn't the current name, which also clears assets left by previous builds.
-- **The navigation branch of `sw.js` only caches a response when `response.ok && response.type === 'basic'`.** Navigations are network-first so a deploy is picked up immediately, and the response is stored as the offline shell — so without that check a host 404 (from a missing SPA rewrite), a 500, or a cafe wifi sign-in page becomes the shell the app shows every time it opens offline, and keeps being served long after the network returns. Verified end to end: with the preview server **stopped**, a reload of `/dashboard` still boots from cache and renders.- **Safe-area insets.** `index.html` asks for `viewport-fit=cover`, which deliberately opts *into* drawing under the status bar and the home indicator, so anything pinned to a screen edge must keep that strip clear itself. `index.css` defines `--safe-top` / `--safe-bottom` from `env(safe-area-inset-*)` with a `0px` fallback, and four places in `AppShell.tsx` spend them: the mobile header's top padding, the fixed tab bar's bottom padding, **the content wrapper that reserves the tab bar's height** (the bar is taller on a notched phone, so the reservation has to match), and the "more" sheet. Only top and bottom exist — the manifest pins the installed app to `portrait`, so the notch is never on a side. Measured at 375×812: with no insets the padding is unchanged (12px / 64px / 0px); with an iPhone 14 Pro's 59px and 34px it becomes 71px / 98px / 34px and content still clears the bar.
+- **The navigation branch of `sw.js` only caches a response when `response.ok && response.type === 'basic'`.** Navigations are network-first so a deploy is picked up immediately, and the response is stored as the offline shell — so without that check a host 404 (from a missing SPA rewrite), a 500, or a cafe wifi sign-in page becomes the shell the app shows every time it opens offline, and keeps being served long after the network returns. Verified end to end: with the preview server **stopped**, a reload of `/dashboard` still boots from cache and renders.- **Safe-area insets.** `index.html` asks for `viewport-fit=cover`, which deliberately opts *into* drawing under the status bar and the home indicator, so anything pinned to a screen edge must keep that strip clear itself. `index.css` defines `--safe-top` / `--safe-bottom` from `env(safe-area-inset-*)` with a `0px` fallback, and four places in `AppShell.tsx` spend them: the mobile header's top padding, the tab bar's bottom offset (padding until the bar began floating on 2026-09-12), **the content wrapper that reserves the tab bar's height** (the bar is taller on a notched phone, so the reservation has to match), and the "more" sheet. Only top and bottom exist — the manifest pins the installed app to `portrait`, so the notch is never on a side. Measured at 375×812: with no insets the padding is unchanged (12px / 64px / 0px); with an iPhone 14 Pro's 59px and 34px it becomes 71px / 98px / 34px and content still clears the bar.
 - **The Android navigation bar cannot be coloured from this app. Do not try again.** The strip under the tab bar looking dark against a light theme is the single most-reported thing about this app's appearance, and it took four attempts to settle because it can only be answered from a real installed phone. Measured there on 2026-09-09, with a temporary `?debug=insets` probe:
   ```
   inset-bottom 0px   inset-top 0px
@@ -659,7 +693,7 @@ prove the rollback held.
 - **Scrolling closes the keyboard** (`lib/dismissKeyboardOnScroll.ts`, installed once in `main.tsx`). Suppliers asked for it: with the keyboard up, half the screen is gone and most fields have no "done" key. A one-finger drag of more than 10px blurs the focused field — up or down, wherever it starts, including on that field itself, which sits right where the thumb comes back to the screen. A sideways drag along the field (the cursor, or selecting a digit), a tap and two fingers are left alone. **It listens to touch, not `scroll`:** opening the keyboard makes Android scroll the page on its own, so a scroll listener would shut the keyboard the moment it opened. Touch only, so a desktop mouse wheel never takes focus away.
 - **Opening another screen from inside a dialog: navigate with `replace`.** `components/ui/modal.tsx` adds a history entry when a dialog opens, so the back gesture closes it, and takes that entry back off with `history.back()` when the dialog closes any other way — **unless the screen has changed by then**. It used to go back regardless, which undid whatever navigation closed the dialog: answering "Delivered?" after saving a bill opened the bill and at once left it again for a blank New Invoice, on every bill, found 2026-09-10. A dialog that opens a new screen should `navigate(to, { replace: true })`, so the new screen takes the dialog's entry and back works as if the dialog had never been there — `DeliveryPrompt` does. A plain push no longer breaks, it just leaves the dialog's entry under the new screen, costing one extra press of back. **Stacked dialogs (fixed 2026-09-12):** one module-level `popstate` listener hands back to the top dialog only, and a dialog's own unwind is counted (`ownUnwinds`) so no other dialog takes it for the back gesture; Escape likewise closes only the top one. Before, every dialog listened itself: cancelling the PIN prompt shut Receive payment underneath too, and a correct PIN shut it before the payment's tick and Send receipt could show — on every payment at or over the PIN threshold.
 - **The mobile header is `sticky`, not `fixed`, on purpose.** It is already immovable — nothing in its ancestry creates an overflow context that would break sticky — and `fixed` would take it out of flow, needing content padding that matches its height. That height is not constant: the brand tagline wraps to two lines in Hindi and Marathi, so a hard-coded offset would leave a gap or an overlap in those languages.
-- **`--tabbar-h` is the tab bar's measured height, and it is the only place that number should come from.** `AppShell` publishes it from `getBoundingClientRect().height` (not `offsetHeight`, which rounds 60.3 to 60) and keeps it current with a `ResizeObserver`, so it survives a home indicator making the bar taller and Hindi or Marathi labels wrapping. The page's bottom padding and the Save bars on New Invoice and New Quotation all read it. It replaced a hard-coded `4rem` in three files, which was 4px too big on this phone and would have been too *small* on one with a home indicator.
+- **`--tabbar-h` is the room the tab bar takes from the bottom of the screen — its measured height plus the gap under it since the bar floats (2026-09-12) — and it is the only place that number should come from.** `AppShell` publishes it from `getBoundingClientRect().height` (not `offsetHeight`, which rounds 60.3 to 60) and keeps it current with a `ResizeObserver`, so it survives a home indicator making the bar taller and Hindi or Marathi labels wrapping. The page's bottom padding and the Save bars on New Invoice and New Quotation all read it. It replaced a hard-coded `4rem` in three files, which was 4px too big on this phone and would have been too *small* on one with a home indicator.
 - **A `sticky bottom-*` bar needs its container's bottom padding cancelled, or it detaches at the end of the scroll.** Both Save bars carry `-mb-4 sm:-mb-6 lg:mb-0` for exactly this. Sticky only holds its offset while there is page left to scroll; at the bottom it returns to its natural place in flow, and `main`'s padding then sits between it and the tab bar. This cost two rounds because the gap is invisible mid-scroll — **when checking anything sticky, measure at the top, the middle and the bottom**, since the bottom is where the supplier actually is when they reach for Save.
 - **Size mobile layouts against 360px, and measure rather than eyeball.** The user's phone is 360 logical pixels, not the 375 an iPhone-shaped mental model suggests, and the difference is the margin between fitting and not: the estimate action row overflowed by 12px at 375 but 27px at 360. Page padding takes 32px, so a full-width row has **328px**, and a `Card` another 32px inside that. Widths can be measured without signing in — `canvas.measureText` with `getComputedStyle(document.body).fontFamily` at the utility's own size and weight, plus the button's padding, gap and icon. Check all three languages while there; Hindi and Marathi are usually shorter than English, so English is normally the worst case, but that is worth confirming rather than assuming.
 - **The splash (`components/Splash.tsx`) shows on a cold start and a real sign-in, and at no other time.** Not tied to the general `loading` flag: `onAuthStateChange` fires `SIGNED_IN` on every token refresh, so `loading` goes true roughly hourly and a splash on it would drop over a supplier part-way through a bill. It rides `hadSessionRef` instead — the same distinction that stopped refreshes being logged as logins. `MIN_SPLASH_MS` (6s, the user's number) is a floor, not a fixed wait; the splash renders over the router so the app keeps loading underneath.

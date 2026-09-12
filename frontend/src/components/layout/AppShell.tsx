@@ -15,7 +15,7 @@ import { countPendingOrders } from '@/services/orders'
 import { NAV_ITEMS, MOBILE_PRIMARY_IDS, ADMIN_NAV_IDS } from './nav-items'
 
 // Shown in the desktop sidebar header and, on mobile, in the top bar.
-function Brand() {
+function Brand({ compact = false }: { compact?: boolean }) {
   const { t } = useLanguage()
   return (
     <div className="flex items-center gap-2">
@@ -32,8 +32,19 @@ function Brand() {
         {/* Wraps rather than truncates: the sidebar is only 230px, and the
             Hindi and Marathi lines are longer than the English one, so an
             ellipsis would eat the tagline exactly where it is tightest. */}
-        <span className="block text-[11px] leading-tight text-sidebar-text">
-          {t('brand.tagline')}
+        {/* compact (the phone's top bar, scrolled): the tagline folds away the
+            way Telegram's search field does, and comes back at the top. A
+            0fr grid row, so it folds smoothly whatever its height — one line
+            in English, two in Hindi and Marathi. */}
+        <span
+          className={cn(
+            'grid transition-[grid-template-rows,opacity] duration-200 motion-reduce:transition-none',
+            compact ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100',
+          )}
+        >
+          <span className="block overflow-hidden text-[11px] leading-tight text-sidebar-text">
+            {t('brand.tagline')}
+          </span>
         </span>
       </div>
     </div>
@@ -86,11 +97,39 @@ function SubscriptionNotice() {
   )
 }
 
+/**
+ * True once the page has scrolled under the top bar. Two thresholds, so a
+ * page resting near the top can't flick the bar between its two looks — and
+ * on a phone narrow enough for the tagline to wrap to two lines, folding it
+ * makes the bar a few pixels shorter, which nudges the scroll position itself.
+ */
+function useScrolledPast(on: number, off: number) {
+  const [past, setPast] = useState(false)
+  useEffect(() => {
+    let frame = 0
+    const check = () => {
+      frame = 0
+      setPast((was) => (was ? window.scrollY > off : window.scrollY > on))
+    }
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(check)
+    }
+    frame = requestAnimationFrame(check)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (frame) cancelAnimationFrame(frame)
+    }
+  }, [on, off])
+  return past
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const { supplier, signOut } = useAuth()
   const { t } = useLanguage()
   const navigate = useNavigate()
   const [moreOpen, setMoreOpen] = useState(false)
+  const scrolled = useScrolledPast(24, 4)
   const tabBarRef = useRef<HTMLElement>(null)
 
   // Publishes the tab bar's real height as --tabbar-h, for the things that have
@@ -106,11 +145,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     // getBoundingClientRect, not offsetHeight: the bar measures 60.3px and
     // offsetHeight rounds that to 60, which leaves the last row of a list a
     // third of a pixel underneath it.
-    const publish = () =>
-      document.documentElement.style.setProperty(
-        '--tabbar-h',
-        `${el.getBoundingClientRect().height}px`,
-      )
+    // The bar floats above the bottom edge (Telegram-style), so what the page
+    // must keep clear is the bar plus the gap under it. Hidden (desktop), 0.
+    const publish = () => {
+      const height = el.getBoundingClientRect().height
+      const gap = height > 0 ? parseFloat(getComputedStyle(el).bottom) || 0 : 0
+      document.documentElement.style.setProperty('--tabbar-h', `${height + gap}px`)
+    }
     publish()
     const observer = new ResizeObserver(publish)
     observer.observe(el)
@@ -150,6 +191,15 @@ export function AppShell({ children }: { children: ReactNode }) {
     .map((id) => navItems.find((n) => n.id === id))
     .filter((n) => n !== undefined)
   const overflowItems = navItems.filter((n) => !primaryItems.includes(n))
+
+  // Which tab the bubble sits behind — NavLink's own rule, so the two agree.
+  // A page reached from More (Orders, Settings…) highlights no tab, as
+  // before: the bubble fades out where it was rather than sliding away.
+  const activeTab = primaryItems.findIndex(
+    (item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`),
+  )
+  const [bubbleTab, setBubbleTab] = useState(Math.max(activeTab, 0))
+  if (activeTab >= 0 && activeTab !== bubbleTab) setBubbleTab(activeTab)
 
   return (
     <div className="flex min-h-screen bg-surface text-ink">
@@ -245,8 +295,18 @@ export function AppShell({ children }: { children: ReactNode }) {
             translucent status bar style in index.html puts us beneath. */}
         {/* data-app-header / data-app-tabbar: what ui/action-menu keeps its
             menus clear of. */}
-        <header data-app-header className="sticky top-0 z-30 flex w-full items-center justify-between bg-shell px-4 py-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white sm:px-6 lg:hidden">
-          <Brand />
+        {/* Telegram-style: solid at the top of a page, so it meets the status
+            bar in one colour; once the page scrolls under it, see-through and
+            frosted so the content shows through, and the tagline folds away.
+            Both come back at the top. */}
+        <header
+          data-app-header
+          className={cn(
+            'sticky top-0 z-30 flex w-full items-center justify-between px-4 py-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white transition-colors duration-200 sm:px-6 lg:hidden',
+            scrolled ? 'bg-shell/80 backdrop-blur-lg backdrop-saturate-150' : 'bg-shell',
+          )}
+        >
+          <Brand compact={scrolled} />
           <div className="flex items-center gap-2">
             <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
             <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
@@ -269,22 +329,39 @@ export function AppShell({ children }: { children: ReactNode }) {
         <ShareDocumentPrompt />
       </div>
 
-      {/* Phone/tablet bottom tab bar */}
-      {/* pb lifts the tab labels clear of the home indicator; without it the
-          gesture bar sits on top of the last few pixels of every tap target. */}
+      {/* Phone/tablet bottom tab bar — floating, Telegram-style: a rounded
+          bar clear of the screen edges, the page showing through it as it
+          scrolls, and a bubble behind the tab you are on. */}
+      {/* The bottom offset lifts it clear of the home indicator; without that
+          the gesture bar sits on top of the last few pixels of every tap
+          target. mx-auto + max-w-md keeps it phone-sized on a tablet. */}
       <nav
         ref={tabBarRef}
         data-app-tabbar
-        className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-card pb-[var(--safe-bottom)] lg:hidden"
+        className="fixed inset-x-3 bottom-[calc(0.5rem_+_var(--safe-bottom))] z-30 mx-auto flex max-w-md rounded-full border border-border bg-card/70 p-1 shadow-lg shadow-black/10 backdrop-blur-lg backdrop-saturate-150 lg:hidden"
       >
+        {/* The bubble behind the current tab: one element that slides to the
+            tab you tap, as Telegram's does, instead of one per tab jumping.
+            Tabs are equal widths, so one tab along is translateX(100%). */}
+        <span
+          aria-hidden="true"
+          className={cn(
+            'absolute inset-y-1 left-1 rounded-full bg-accent-bg transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.34,1.3,0.64,1)] motion-reduce:transition-none',
+            activeTab < 0 && 'opacity-0',
+          )}
+          style={{
+            width: `calc((100% - 0.5rem) / ${primaryItems.length + 1})`,
+            transform: `translateX(${bubbleTab * 100}%)`,
+          }}
+        />
         {primaryItems.map((item) => (
           <NavLink
             key={item.id}
             to={item.path}
             className={({ isActive }) =>
               cn(
-                'flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-muted',
-                isActive && 'text-accent',
+                'relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full px-0.5 py-1.5 text-center text-[11px] font-medium leading-tight text-muted transition-colors duration-300',
+                isActive && 'text-accent-text',
               )
             }
           >
@@ -294,11 +371,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         ))}
         <button
           onClick={() => setMoreOpen(true)}
-          className="relative flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-muted"
+          className="relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full px-0.5 py-1.5 text-center text-[11px] font-medium leading-tight text-muted"
         >
           <MoreHorizontal size={19} />
           {pendingOrders > 0 && (
-            <span aria-hidden="true" className="absolute right-[calc(50%-16px)] top-2 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-card" />
+            <span aria-hidden="true" className="absolute right-[calc(50%-16px)] top-1 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-card" />
           )}
           {t('nav.more')}
         </button>
