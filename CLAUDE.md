@@ -456,6 +456,29 @@ still holds — every existing screen and flow stays exactly as it was.
   line** — zero processes, and `docker desktop start` hangs. Ask the user to
   open it from the Start menu; that worked.
 
+**Phase 14 — simplify, round A (2026-09-12). No database change.** From a
+UX review taken from the supplier's side. The user's rule: no features for
+their own sake — fewer taps, fewer decisions, nothing that feels like an ERP.
+
+- **A1 — one way to send a customer their account.** The WhatsApp icon beside
+  Ledger on the customer page. "Remind via WhatsApp" is gone from the ⋯ menu:
+  it attached the identical statement PDF. The message asks for the dues when
+  there are any, and otherwise gives the advance or says the account is
+  settled. The Reminders screen is unchanged.
+- **A2 — one way to take money.** Payments → Receive payment (and the
+  Dashboard's "+ Payment", `/payments?new=1`) asks "Who paid?" — customers who
+  owe, largest first, built from the bills already loaded — then opens that
+  customer's own Receive payment (`/customers/<id>?pay=1`, navigated with
+  `replace`, so back returns to Payments): oldest bills first, extra kept as
+  advance. "For one particular bill →" keeps the old per-bill form. It is
+  **one dialog with two steps**, not two dialogs: closing one and opening
+  another in the same moment fight over the back-button history entry.
+- **A3 — "Estimate ready", not "Accepted".** The customer's approved order
+  used to say "Accepted" above an "Accept estimate" button.
+- **A4 — the customer page's "Status: Active" tile is gone.** Nothing sets
+  `customers.status` and nothing reads it; the column stays in the database.
+- Checked in the browser on the local copy, in English, Hindi and Marathi.
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.
