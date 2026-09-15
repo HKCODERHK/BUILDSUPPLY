@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,7 +7,15 @@ import { Share2 } from 'lucide-react'
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
-import { isValidOrderLink, orderPageUrl, sanitizeOrderLink, saveOrderSettings, suggestOrderLink } from '@/services/orders'
+import {
+  isValidOrderLink,
+  listBlockedPhones,
+  orderPageUrl,
+  sanitizeOrderLink,
+  saveOrderSettings,
+  suggestOrderLink,
+  unblockOrderPhone,
+} from '@/services/orders'
 
 /**
  * Settings → Online orders: switch ordering on, choose whether customers see
@@ -25,8 +33,30 @@ export function OrderSettingsCard() {
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [shareOpen, setShareOpen] = useState(false)
+  // Numbers blocked from an order's page (migration 032); null until read, or
+  // before 032 is applied — then the list simply doesn't show.
+  const [blockedList, setBlockedList] = useState<{ phone: string; created_at: string }[] | null>(null)
+  const [unblocking, setUnblocking] = useState<string | null>(null)
+
+  useEffect(() => {
+    listBlockedPhones()
+      .then(setBlockedList)
+      .catch(() => setBlockedList(null))
+  }, [])
 
   if (!supplier || supplier.role !== 'supplier') return null
+
+  async function unblock(phone: string) {
+    setUnblocking(phone)
+    try {
+      await unblockOrderPhone(phone)
+      setBlockedList((list) => list?.filter((b) => b.phone !== phone) ?? null)
+    } catch {
+      setError(t('error.generic'))
+    } finally {
+      setUnblocking(null)
+    }
+  }
 
   const liveUrl = supplier.order_link && supplier.ordering_enabled ? orderPageUrl(supplier.order_link) : null
 
@@ -117,6 +147,23 @@ export function OrderSettingsCard() {
               <a href={liveUrl} target="_blank" rel="noreferrer">
                 <Button size="sm" variant="outline">{t('ord.openPage')}</Button>
               </a>
+            </div>
+          </div>
+        )}
+
+        {blockedList && blockedList.length > 0 && (
+          <div className="border-t border-border pt-4">
+            <div className="text-sm font-semibold text-ink">{t('ord.blockedTitle')}</div>
+            <p className="mb-2 text-xs text-muted">{t('ord.blockedHint')}</p>
+            <div className="flex flex-col divide-y divide-border">
+              {blockedList.map((b) => (
+                <div key={b.phone} className="flex items-center justify-between gap-3 py-2 text-sm">
+                  <span className="text-ink">{b.phone}</span>
+                  <Button size="sm" variant="outline" onClick={() => unblock(b.phone)} disabled={unblocking === b.phone}>
+                    {t('ord.unblock')}
+                  </Button>
+                </div>
+              ))}
             </div>
           </div>
         )}

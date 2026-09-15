@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Phone } from 'lucide-react'
+import { Ban, Phone } from 'lucide-react'
+import { Modal } from '@/components/ui/modal'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -13,7 +14,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { openWhatsAppShare } from '@/lib/whatsapp'
 import type { Customer, OrderRequest } from '@/lib/database.types'
 import { listCustomers } from '@/services/customers'
-import { getOrder } from '@/services/orders'
+import { blockOrderPhone, getOrder, listBlockedPhones, unblockOrderPhone } from '@/services/orders'
 import { formatOrderDate, rejectReasonText } from '@/lib/orderFormat'
 
 /** One online order in full, with the customer match and Approve / Reject. */
@@ -26,12 +27,35 @@ export default function OrderDetail() {
   const [match, setMatch] = useState<Customer | null>(null)
   const [loading, setLoading] = useState(true)
   const [rejecting, setRejecting] = useState(false)
+  // Whether this number is blocked (migration 032); null hides the option —
+  // before 032 is applied, or if the list could not be read.
+  const [blocked, setBlocked] = useState<boolean | null>(null)
+  const [confirmBlock, setConfirmBlock] = useState(false)
+  const [blockBusy, setBlockBusy] = useState(false)
+  const [blockFailed, setBlockFailed] = useState(false)
 
   function load() {
-    return Promise.all([getOrder(id), listCustomers()]).then(([o, customers]) => {
+    return Promise.all([getOrder(id), listCustomers(), listBlockedPhones().catch(() => null)]).then(([o, customers, blockedList]) => {
       setOrder(o)
       setMatch(customers.find((c) => c.phone === o.phone) ?? null)
+      setBlocked(blockedList ? blockedList.some((b) => b.phone === o.phone) : null)
     })
+  }
+
+  async function setBlock(block: boolean) {
+    if (!order || blockBusy) return
+    setBlockBusy(true)
+    setBlockFailed(false)
+    try {
+      if (block) await blockOrderPhone(order.phone)
+      else await unblockOrderPhone(order.phone)
+      setConfirmBlock(false)
+      await load()
+    } catch {
+      setBlockFailed(true)
+    } finally {
+      setBlockBusy(false)
+    }
   }
 
   useEffect(() => {
@@ -128,7 +152,48 @@ export default function OrderDetail() {
         {order.status === 'rejected' && rejectReasonText(order, t) && (
           <p className="text-sm text-muted">{t('ord.rejectedReason', { reason: rejectReasonText(order, t) ?? '' })}</p>
         )}
+
+        {/* Spam: block the number — its orders are refused from then on. */}
+        {blocked === true && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+            <span className="flex items-center gap-2">
+              <Ban size={16} className="shrink-0" /> {t('ord.blocked')}
+            </span>
+            <Button size="sm" variant="outline" onClick={() => setBlock(false)} disabled={blockBusy}>
+              {t('ord.unblock')}
+            </Button>
+          </div>
+        )}
+        {blocked === false && (
+          <button
+            type="button"
+            onClick={() => setConfirmBlock(true)}
+            className="inline-flex items-center gap-1.5 self-start text-sm font-semibold text-red-600 dark:text-red-400"
+          >
+            <Ban size={15} /> {t('ord.block')}
+          </button>
+        )}
+        {blockFailed && !confirmBlock && (
+          <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{t('error.generic')}</p>
+        )}
       </div>
+
+      {confirmBlock && (
+        <Modal title={t('ord.blockTitle', { phone: order.phone })} onClose={() => setConfirmBlock(false)}>
+          <p className="mb-4 text-sm text-ink">{t('ord.blockBody')}</p>
+          {blockFailed && (
+            <p className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{t('error.generic')}</p>
+          )}
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" disabled={blockBusy} onClick={() => setConfirmBlock(false)}>
+              {t('ord.cancel')}
+            </Button>
+            <Button variant="danger" className="flex-1" disabled={blockBusy} onClick={() => setBlock(true)}>
+              {blockBusy ? t('common.saving') : t('ord.blockConfirm')}
+            </Button>
+          </div>
+        </Modal>
+      )}
 
       {rejecting && (
         <RejectOrderModal
