@@ -422,8 +422,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           className={cn(
             floating
               ? 'sticky top-0 z-30 flex w-full items-center gap-2 px-3 py-2 pt-[calc(0.5rem_+_var(--safe-top))] lg:hidden'
-              : 'sticky top-0 z-30 flex w-full items-center justify-between border-b border-border px-4 py-3 pt-[calc(0.75rem_+_var(--safe-top))] text-ink transition-colors duration-200 sm:px-6 lg:hidden dark:border-transparent dark:text-white',
-            // Day: white, like Telegram's; night: the app's dark green.
+              : 'sticky top-0 z-30 flex w-full items-center justify-between px-4 py-3 pt-[calc(0.75rem_+_var(--safe-top))] text-ink transition-colors duration-200 sm:px-6 lg:hidden dark:text-white',
+            // Day: white, like Telegram's — no line under it; the white bar
+            // against the light grey page is edge enough (the user asked for
+            // the line to go). Night: the app's dark green.
             !floating &&
               (scrolled
                 ? 'bg-card/80 backdrop-blur-lg backdrop-saturate-150 dark:bg-shell/80'
