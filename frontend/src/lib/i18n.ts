@@ -1398,6 +1398,8 @@ const STRINGS = {
   'drv.msgNote': { en: 'Customer’s note: {note}', hi: 'ग्राहक का नोट: {note}', mr: 'ग्राहकाची नोंद: {note}' },
   'drv.msgWanted': { en: 'Wanted on: {date}', hi: 'चाहिए: {date}', mr: 'हवे: {date}' },
   'drv.msgMap': { en: 'Map: {url}', hi: 'नक्शा: {url}', mr: 'नकाशा: {url}' },
+  // Profile: the order QR button under the business name.
+  'set.orderQr': { en: 'Order QR', hi: 'ऑर्डर QR', mr: 'ऑर्डर QR' },
   // The customer's links remembered on their phone (lib/customerLinks).
   'order.myKhata': { en: 'My khata', hi: 'मेरा खाता', mr: 'माझे खाते' },
   'order.myKhataHint': {
