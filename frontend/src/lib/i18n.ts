@@ -654,6 +654,8 @@ const STRINGS = {
   'pay.whoPaid': { en: 'Who paid?', hi: 'किसने भुगतान किया?', mr: 'कोणी पेमेंट केले?' },
   // Orders → Share order link (shareable where the orders arrive).
   'ord.shareLink': { en: 'Share order link', hi: 'ऑर्डर लिंक भेजें', mr: 'ऑर्डर लिंक पाठवा' },
+  // The order QR screen, under the business name.
+  'ordShare.scanToOrder': { en: 'Scan to order', hi: 'स्कैन करके ऑर्डर करें', mr: 'स्कॅन करून ऑर्डर करा' },
   'ord.setupLink': { en: 'Set up order link', hi: 'ऑर्डर लिंक बनाएँ', mr: 'ऑर्डर लिंक तयार करा' },
   // Share order link → "link or QR?"
   'ordShare.hint': {
