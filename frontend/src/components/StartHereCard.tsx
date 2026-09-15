@@ -265,7 +265,7 @@ export function StartHereCard({
 
       {missing.length > 0 && (
         <Link
-          to="/settings"
+          to="/settings?s=business"
           className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-4 text-sm"
         >
           <span className="text-muted">{t('start.letterhead', { items: joinList(missing, t('start.and')) })}</span>

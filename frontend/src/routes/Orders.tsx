@@ -61,7 +61,7 @@ export default function Orders() {
       <Share2 size={14} /> {t('ord.shareLink')}
     </Button>
   ) : (
-    <Link to="/settings">
+    <Link to="/settings?s=orders">
       <Button size="sm" variant="outline">
         {t('ord.setupLink')}
       </Button>

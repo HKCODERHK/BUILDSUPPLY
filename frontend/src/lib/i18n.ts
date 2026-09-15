@@ -467,6 +467,10 @@ const STRINGS = {
 
   // ── Settings ──────────────────────────────────────────────────────────
   'set.language': { en: 'Language', hi: 'भाषा', mr: 'भाषा' },
+  // Settings list: the short status beside a row.
+  'set.on': { en: 'On', hi: 'चालू', mr: 'चालू' },
+  'set.off': { en: 'Off', hi: 'बंद', mr: 'बंद' },
+  'set.notSet': { en: 'Not set up', hi: 'सेट नहीं', mr: 'सेट केलेले नाही' },
   'set.languageHint': {
     en: 'Changes the app for you only. Bills and PDFs stay in English so any customer can read them.',
     hi: 'सिर्फ़ आपके लिए बदलेगा। बिल और पीडीएफ अंग्रेज़ी में ही रहेंगे ताकि हर ग्राहक पढ़ सके।',

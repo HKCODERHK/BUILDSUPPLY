@@ -13,6 +13,19 @@ import { ADMIN_WHATSAPP_NUMBER } from '@/lib/adminContact'
 import { daysUntilExpiry, subscriptionState } from '@/lib/subscription'
 import { countPendingOrders } from '@/services/orders'
 import { NAV_ITEMS, MOBILE_PRIMARY_IDS, ADMIN_NAV_IDS } from './nav-items'
+import { IconTile } from '@/components/IconTile'
+
+// The More sheet's coloured tiles, one colour per place (Telegram's settings
+// rows). Settings is the same slate as on its own screen.
+const MORE_COLOURS: Record<string, string> = {
+  quotations: '#D2702A',
+  orders: '#2E9150',
+  payments: '#2F76C0',
+  deliveries: '#1F8C8C',
+  reminders: '#D14D4D',
+  reports: '#7A5BC7',
+  settings: '#5B6B7A',
+}
 
 // Shown in the desktop sidebar header and, on mobile, in the top bar.
 function Brand({ compact = false }: { compact?: boolean }) {
@@ -404,7 +417,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   onClick={() => setMoreOpen(false)}
                   className="relative flex flex-col items-center gap-1.5 rounded-xl border border-border p-3 text-xs font-medium text-ink"
                 >
-                  <item.icon size={18} />
+                  <IconTile icon={item.icon} colour={MORE_COLOURS[item.id] ?? '#5B6B7A'} size={34} />
                   {t(item.labelKey)}
                   {item.id === 'orders' && pendingOrders > 0 && (
                     <span className="absolute right-2 top-2 rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
@@ -420,7 +433,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     onClick={() => setMoreOpen(false)}
                     className="flex flex-col items-center gap-1.5 rounded-xl border border-border p-3 text-xs font-medium text-ink"
                   >
-                    <ShieldCheck size={18} />
+                    <IconTile icon={ShieldCheck} colour="#2F76C0" size={34} />
                     Suppliers
                   </NavLink>
                   <NavLink
@@ -428,7 +441,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     onClick={() => setMoreOpen(false)}
                     className="flex flex-col items-center gap-1.5 rounded-xl border border-border p-3 text-xs font-medium text-ink"
                   >
-                    <Boxes size={18} />
+                    <IconTile icon={Boxes} colour="#C24D8C" size={34} />
                     Catalog
                   </NavLink>
                   <NavLink
@@ -436,7 +449,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     onClick={() => setMoreOpen(false)}
                     className="flex flex-col items-center gap-1.5 rounded-xl border border-border p-3 text-xs font-medium text-ink"
                   >
-                    <SlidersHorizontal size={18} />
+                    <IconTile icon={SlidersHorizontal} colour="#5B6B7A" size={34} />
                     Platform
                   </NavLink>
                 </>

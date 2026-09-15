@@ -79,7 +79,7 @@ export function UpiQrModal({
       {!upiId ? (
         <div className="flex flex-col items-start gap-3">
           <p className="text-sm text-ink">{t('upi.noId')}</p>
-          <Button onClick={() => navigate('/settings', { replace: true })}>{t('upi.goSettings')}</Button>
+          <Button onClick={() => navigate('/settings?s=upi', { replace: true })}>{t('upi.goSettings')}</Button>
         </div>
       ) : shown === null || !qrText ? (
         <form onSubmit={show} className="flex flex-col gap-3">
