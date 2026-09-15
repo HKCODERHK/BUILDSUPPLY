@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { LogOut, MoreHorizontal, X, ShieldCheck, Boxes, SlidersHorizontal, AlertTriangle, Inbox } from 'lucide-react'
+import { LogOut, MoreHorizontal, X, ShieldCheck, Boxes, SlidersHorizontal, AlertTriangle, Inbox, ArrowLeft } from 'lucide-react'
+import { CustomerAvatar } from '@/components/CustomerAvatar'
+import { TopBarContext, type TopBarInfo } from '@/context/TopBarContext'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -166,6 +168,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { t } = useLanguage()
   const navigate = useNavigate()
   const [moreOpen, setMoreOpen] = useState(false)
+  // What the current screen asked the top bar to say — see TopBarContext.
+  const [topBar, setTopBar] = useState<TopBarInfo | null>(null)
   const scrolled = useScrolledPast(24, 4)
   const fabAway = useScrollingDown()
   const tabBarRef = useRef<HTMLElement>(null)
@@ -242,6 +246,28 @@ export function AppShell({ children }: { children: ReactNode }) {
   // The floating Orders button: a supplier's, on the four main tabs only —
   // never over a bill or New Invoice, where Save sits at the bottom.
   const showFab = !isAdmin && primaryItems.some((item) => item.path === location.pathname)
+
+  // The top bar names the screen you are on, as Telegram's does: the
+  // BuildSupply name on the Dashboard only; everywhere else the page's own
+  // title (published by PageHeader), falling back to its section's name while
+  // the page loads — with ← on an inner screen (a customer, a bill, New
+  // invoice, a part of Settings…).
+  const segs = location.pathname.split('/').filter(Boolean)
+  const onDashboard = location.pathname === '/dashboard'
+  const sectionItem = NAV_ITEMS.find((n) => n.path === `/${segs[0]}`)
+  const inner =
+    segs[0] === 'admin'
+      ? segs.length > 2
+      : segs.length > 1 || (segs[0] === 'settings' && new URLSearchParams(location.search).has('s'))
+  const parentPath = segs[0] === 'admin' ? `/admin/${segs[1] ?? ''}` : `/${segs[0] ?? 'dashboard'}`
+  const bar: TopBarInfo = topBar ?? { title: sectionItem ? t(sectionItem.labelKey) : 'BuildSupply' }
+
+  // Back to wherever the supplier came from; opened straight from a link with
+  // nothing behind it, to the section's list instead.
+  function goBack() {
+    if (location.key !== 'default') navigate(-1)
+    else navigate(parentPath, { replace: true })
+  }
 
   return (
     <div className="flex min-h-screen bg-surface text-ink">
@@ -349,8 +375,37 @@ export function AppShell({ children }: { children: ReactNode }) {
             scrolled ? 'bg-shell/80 backdrop-blur-lg backdrop-saturate-150' : 'bg-shell',
           )}
         >
-          <Brand compact={scrolled} />
-          <div className="flex items-center gap-2">
+          {onDashboard ? (
+            <Brand compact={scrolled} />
+          ) : (
+            <div className="flex min-w-0 flex-1 items-center gap-2 pr-2">
+              {inner && (
+                <button
+                  type="button"
+                  onClick={goBack}
+                  aria-label={t('common.back')}
+                  className="-ml-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-white/10"
+                >
+                  <ArrowLeft size={22} />
+                </button>
+              )}
+              {bar.avatar && <CustomerAvatar id={bar.avatar.id} name={bar.avatar.name} size={34} />}
+              <div className="min-w-0">
+                <div className="truncate text-[17px] font-semibold leading-tight">{bar.title}</div>
+                {bar.detail && (
+                  <div
+                    className={cn(
+                      'truncate text-xs font-medium leading-tight',
+                      bar.detailTone === 'due' ? 'text-red-300' : 'text-green-300',
+                    )}
+                  >
+                    {bar.detail}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          <div className="flex shrink-0 items-center gap-2">
             <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
             <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
           </div>
@@ -367,7 +422,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             left the greeting floating away from the bar it belongs under.
             Applies to every screen, not just the dashboard, so the distance
             from the header stays the same wherever the supplier is. */}
-        <main className="flex-1 px-4 pt-2 pb-4 sm:px-6 sm:pt-3 sm:pb-6 lg:p-8 lg:pt-0">{children}</main>
+        <main className="flex-1 px-4 pt-2 pb-4 sm:px-6 sm:pt-3 sm:pb-6 lg:p-8 lg:pt-0">
+          <TopBarContext.Provider value={setTopBar}>{children}</TopBarContext.Provider>
+        </main>
         {/* After main, so it stacks above a page's own dialog. */}
         <ShareDocumentPrompt />
       </div>

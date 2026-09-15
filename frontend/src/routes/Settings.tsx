@@ -13,6 +13,7 @@ import { patternCssUrl } from '@/lib/qrPattern'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { usePin } from '@/context/PinContext'
+import { useTopBar } from '@/context/TopBarContext'
 import { LANGUAGES } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { PinSettingsCard } from '@/components/PinSettingsCard'
@@ -115,7 +116,10 @@ export default function Settings() {
   ]
 
   const asked = searchParams.get('s')
-  const section = groups.flat().find((r) => r.id === asked)?.id ?? null
+  const sectionRow = groups.flat().find((r) => r.id === asked)
+  const section = sectionRow?.id ?? null
+  // No PageHeader here, so name the screen for the phone's top bar directly.
+  useTopBar({ title: sectionRow?.label ?? t('nav.settings') })
 
   function open(id: Section) {
     navigate(`/settings?s=${id}`, { state: { fromList: true } })
@@ -135,7 +139,8 @@ export default function Settings() {
         <button
           type="button"
           onClick={backToList}
-          className="mb-3 inline-flex items-center gap-1.5 py-1 text-sm font-semibold text-accent-text hover:text-accent"
+          // Phones have ← in the top bar instead.
+          className="mb-3 hidden items-center gap-1.5 py-1 text-sm font-semibold text-accent-text hover:text-accent lg:inline-flex"
         >
           <ArrowLeft size={16} /> {t('nav.settings')}
         </button>

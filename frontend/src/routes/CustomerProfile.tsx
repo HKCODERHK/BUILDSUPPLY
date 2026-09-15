@@ -30,7 +30,6 @@ import type { Customer, Invoice, PaymentMode } from '@/lib/database.types'
 import { TruckLoader } from '@/components/TruckLoader'
 import { KhataLinkModal } from '@/components/KhataLinkModal'
 import { UpiQrModal } from '@/components/UpiQrModal'
-import { CustomerAvatar } from '@/components/CustomerAvatar'
 
 const PAYMENT_MODES: PaymentMode[] = ['Cash', 'UPI', 'Bank/Cheque']
 
@@ -101,13 +100,12 @@ export default function CustomerProfile() {
   const [khataOpen, setKhataOpen] = useState(false)
   const [upiOpen, setUpiOpen] = useState(false)
 
-  // Telegram-style: once the name and buttons have scrolled up under the top
-  // bar, a slim bar with the customer's name and balance slides in below it,
-  // so a supplier deep in the khata still sees whose it is and what's due.
-  // Phones only — on desktop there is no top bar to measure (height 0).
+  // Telegram-style: once the buttons have scrolled up under the top bar, the
+  // bar adds what the customer owes under their name, so a supplier deep in
+  // the khata still sees whose it is and what's due. Phones only — on desktop
+  // there is no top bar to measure (height 0).
   const headRef = useRef<HTMLDivElement>(null)
   const [pinned, setPinned] = useState(false)
-  const [pinTop, setPinTop] = useState(0)
   useEffect(() => {
     let frame = 0
     const check = () => {
@@ -118,7 +116,6 @@ export default function CustomerProfile() {
         setPinned(false)
         return
       }
-      setPinTop(bar.bottom)
       setPinned(head.getBoundingClientRect().bottom <= bar.bottom)
     }
     const onChange = () => {
@@ -419,9 +416,21 @@ export default function CustomerProfile() {
     <div>
       <div ref={headRef}>
       <PageHeader
-        leading={<CustomerAvatar id={customer.id} name={customer.name} size={44} />}
+        avatar={{ id: customer.id, name: customer.name }}
         title={customer.name}
         subtitle={t('cust.profileSubtitle')}
+        // Once the buttons have scrolled away, the top bar adds what they owe
+        // under their name (Telegram's "online" line) — see `pinned`.
+        topDetail={
+          pinned
+            ? totalPending > 0.005
+              ? `${t('common.pending')} ${formatINR(totalPending)}`
+              : advance > 0
+                ? t('cust.advanceAmount', { amount: formatINR(advance) })
+                : t('cust.settled')
+            : undefined
+        }
+        topDetailTone={totalPending > 0.005 ? 'due' : 'good'}
         action={
           // Taking money is why this page gets opened, and repeating last
           // week's bill is the other reason. Editing and chasing are rarer.
@@ -528,37 +537,6 @@ export default function CustomerProfile() {
         }
       />
       </div>
-
-      {/* The slim bar that takes over from the header above once it has
-          scrolled away — see `pinned`. Tapping it goes back to the top, where
-          the buttons are. Under the top bar (z-20 against its z-30), so it
-          slides out from beneath it. */}
-      <button
-        type="button"
-        tabIndex={pinned ? 0 : -1}
-        aria-hidden={!pinned}
-        aria-label={t('cust.toTop')}
-        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        style={{ top: pinTop }}
-        className={`fixed inset-x-0 z-20 flex items-center gap-3 border-b border-border bg-card/85 px-4 py-2 text-left backdrop-blur-lg backdrop-saturate-150 transition-[opacity,translate] duration-200 motion-reduce:transition-none sm:px-6 lg:hidden ${
-          pinned ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-2 opacity-0'
-        }`}
-      >
-        <CustomerAvatar id={customer.id} name={customer.name} size={32} />
-        <span className="min-w-0 flex-1 truncate font-semibold text-ink">{customer.name}</span>
-        <span className="shrink-0 text-right leading-tight">
-          {totalPending > 0.005 ? (
-            <>
-              <span className="block text-[10px] text-muted">{t('common.pending')}</span>
-              <span className="text-sm font-semibold text-red-600">{formatINR(totalPending)}</span>
-            </>
-          ) : advance > 0 ? (
-            <span className="text-sm font-semibold text-accent">{t('cust.advanceAmount', { amount: formatINR(advance) })}</span>
-          ) : (
-            <span className="text-sm font-semibold text-accent">{t('cust.settled')}</span>
-          )}
-        </span>
-      </button>
 
       {khataOpen && <KhataLinkModal customer={customer} onClose={() => setKhataOpen(false)} />}
       {upiOpen && (
