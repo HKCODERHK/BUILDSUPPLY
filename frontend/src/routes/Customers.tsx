@@ -192,6 +192,14 @@ export default function Customers() {
             setQuery('')
             void refresh().then(() => setAdded({ id: customer.id }))
           }}
+          // Several picked from the phone's contacts at once: the first is lit.
+          onCreatedMany={(list) => {
+            setModalOpen(false)
+            setQuery('')
+            void refresh().then(() => {
+              if (list[0]) setAdded({ id: list[0].id })
+            })
+          }}
         />
       )}
     </div>

@@ -685,6 +685,13 @@ const STRINGS = {
   'ordShare.back': { en: 'Back', hi: 'वापस', mr: 'मागे' },
   // The phone's top bar: ← on an inner screen.
   'common.back': { en: 'Back', hi: 'वापस', mr: 'मागे' },
+  // Add customer → the phone's contact picker.
+  'cust.pickContacts': { en: 'Pick from phone contacts', hi: 'फ़ोन कॉन्टैक्ट से चुनें', mr: 'फोन कॉन्टॅक्टमधून निवडा' },
+  'cust.pickedTitle': { en: 'Check before adding', hi: 'जोड़ने से पहले देख लें', mr: 'जोडण्यापूर्वी तपासा' },
+  'cust.pickedNoPhone': { en: 'No 10-digit mobile number', hi: '10 अंकों का मोबाइल नंबर नहीं', mr: '10 अंकी मोबाईल नंबर नाही' },
+  'cust.addMany': { en: 'Add {count} customers', hi: '{count} ग्राहक जोड़ें', mr: '{count} ग्राहक जोडा' },
+  'cust.addedMany': { en: 'Added {count}.', hi: '{count} जोड़े गए।', mr: '{count} जोडले.' },
+  'cust.skippedMany': { en: 'Not added:', hi: 'नहीं जोड़े गए:', mr: 'जोडले नाहीत:' },
   'pay.nobodyOwes': {
     en: 'Nobody owes you anything right now.',
     hi: 'अभी किसी पर कुछ बाकी नहीं है।',
