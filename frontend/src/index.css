@@ -544,3 +544,45 @@ select,
     animation: none !important;
   }
 }
+
+/* Switching day and night (ThemeToggle → ThemeContext), Telegram's way: night
+   spreads out from the tapped button as a growing circle; day comes back as
+   night shrinking into it. --flip-x/-y/-r (the button's centre, and the
+   distance to the farthest corner) are set just before. For this one the
+   whole screen is a single layer, so the top bar and the tab bar lose their
+   own view-transition names and go with it (!important beats the inline
+   style that names them). */
+html[data-theme-flip] [data-app-header],
+html[data-theme-flip] [data-app-tabbar] {
+  view-transition-name: none !important;
+}
+/* No space before ::view-transition-…: those layers belong to the html
+   element itself, not to anything inside it. */
+html[data-theme-flip]::view-transition-old(root),
+html[data-theme-flip]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+html[data-theme-flip='to-dark']::view-transition-new(root) {
+  animation: theme-circle-grow 450ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+html[data-theme-flip='to-light']::view-transition-old(root) {
+  z-index: 1;
+  animation: theme-circle-shrink 450ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+@keyframes theme-circle-grow {
+  from {
+    clip-path: circle(0 at var(--flip-x) var(--flip-y));
+  }
+  to {
+    clip-path: circle(var(--flip-r) at var(--flip-x) var(--flip-y));
+  }
+}
+@keyframes theme-circle-shrink {
+  from {
+    clip-path: circle(var(--flip-r) at var(--flip-x) var(--flip-y));
+  }
+  to {
+    clip-path: circle(0 at var(--flip-x) var(--flip-y));
+  }
+}

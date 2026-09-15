@@ -1,10 +1,12 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { flushSync } from 'react-dom'
 
 type Theme = 'light' | 'dark'
 
 interface ThemeContextValue {
   theme: Theme
-  toggleTheme: () => void
+  /** `from`: the centre of the tapped button, where Telegram's circle starts. */
+  toggleTheme: (from?: { x: number; y: number }) => void
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined)
@@ -58,14 +60,44 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // phone stops overriding it. Nothing is written before that point — the
   // previous version stored a theme on first render, which pinned whatever
   // the phone happened to be showing then and never followed it again.
-  function toggleTheme() {
+  //
+  // Given where the tap was, the switch is Telegram's circle (index.css,
+  // `data-theme-flip`): night spreads out from the button, day comes back as
+  // night shrinking into it. The view transition snapshots the old screen,
+  // then runs `apply` — which must change the page before it returns, hence
+  // flushSync and the class set by hand rather than waiting for the effect.
+  // No view transitions, or reduce motion: it simply switches, as it always did.
+  function toggleTheme(from?: { x: number; y: number }) {
     const next: Theme = theme === 'dark' ? 'light' : 'dark'
-    setChoice(next)
     try {
       localStorage.setItem(STORAGE_KEY, next)
     } catch {
       // Preference lost on reload; the app still switches for this session.
     }
+    const apply = () => {
+      flushSync(() => setChoice(next))
+      document.documentElement.classList.toggle('dark', next === 'dark')
+    }
+
+    const root = document.documentElement
+    const canAnimate =
+      from !== undefined &&
+      typeof document.startViewTransition === 'function' &&
+      !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (!canAnimate) {
+      apply()
+      return
+    }
+
+    // Far enough to cover the farthest corner of the screen.
+    const radius = Math.hypot(Math.max(from.x, innerWidth - from.x), Math.max(from.y, innerHeight - from.y))
+    root.style.setProperty('--flip-x', `${from.x}px`)
+    root.style.setProperty('--flip-y', `${from.y}px`)
+    root.style.setProperty('--flip-r', `${radius}px`)
+    root.dataset.themeFlip = next === 'dark' ? 'to-dark' : 'to-light'
+    document.startViewTransition(apply).finished.finally(() => {
+      delete root.dataset.themeFlip
+    })
   }
 
   return <ThemeContext.Provider value={{ theme, toggleTheme }}>{children}</ThemeContext.Provider>

@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { useTheme } from '@/context/ThemeContext'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { ShareDocumentPrompt } from '@/components/ShareDocumentPrompt'
@@ -17,7 +18,10 @@ import { countPendingOrders } from '@/services/orders'
 import { NAV_ITEMS, MOBILE_PRIMARY_IDS, ADMIN_NAV_IDS } from './nav-items'
 
 // Shown in the desktop sidebar header and, on mobile, in the top bar.
-function Brand({ compact = false }: { compact?: boolean }) {
+// onBar: the phone's top bar, which follows the theme — "BuildSupply" in the
+// app's green on a white bar by day (as Telegram writes its name in blue),
+// white on the dark bar at night. The desktop sidebar is always dark.
+function Brand({ compact = false, onBar = false }: { compact?: boolean; onBar?: boolean }) {
   const { t } = useLanguage()
   return (
     <div className="flex items-center gap-2">
@@ -28,7 +32,9 @@ function Brand({ compact = false }: { compact?: boolean }) {
         <path d="M16 21v-4l3 1.5V21" />
       </svg>
       <div className="min-w-0">
-        <span className="block text-[17px] font-bold leading-tight">BuildSupply</span>
+        <span className={cn('block text-[17px] font-bold leading-tight', onBar && 'text-accent-text dark:text-white')}>
+          BuildSupply
+        </span>
         {/* leading-tight above keeps the two lines together as one lockup rather
             than a heading with a caption drifting below it. */}
         {/* Wraps rather than truncates: the sidebar is only 230px, and the
@@ -44,7 +50,12 @@ function Brand({ compact = false }: { compact?: boolean }) {
             compact ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100',
           )}
         >
-          <span className="block overflow-hidden text-[11px] leading-tight text-sidebar-text">
+          <span
+            className={cn(
+              'block overflow-hidden text-[11px] leading-tight',
+              onBar ? 'text-muted dark:text-sidebar-text' : 'text-sidebar-text',
+            )}
+          >
             {t('brand.tagline')}
           </span>
         </span>
@@ -164,8 +175,9 @@ function useScrollingDown() {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { supplier, signOut } = useAuth()
+  const { supplier, signOut, splash } = useAuth()
   const { t } = useLanguage()
+  const { theme } = useTheme()
   const navigate = useNavigate()
   const [moreOpen, setMoreOpen] = useState(false)
   // What the current screen asked the top bar to say — see TopBarContext.
@@ -268,25 +280,26 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pill =
     'flex items-center rounded-full border border-border/60 bg-card/85 text-ink shadow-md shadow-black/5 backdrop-blur-lg backdrop-saturate-150'
 
-  // With the page running up under the floating bar, the status bar takes the
-  // page's own colour instead of the dark app green (index.html's
-  // theme-color), and gets it back on leaving. Turned into plain hex through
-  // a one-pixel canvas: the page colour may be an oklch() a status bar can't read.
+  // The status bar (index.html's theme-color) matches whatever is under it:
+  // the top bar — white by day, the app green at night — or, under the
+  // floating bar, the page itself; and the app green while the always-dark
+  // splash is up. The values are index.css's --color-card / --color-shell /
+  // --color-surface, written out: read from the page they would lag a theme
+  // switch, since the .dark class changes in ThemeProvider's effect, after this one.
   useEffect(() => {
-    if (!floating) return
     const meta = document.querySelector('meta[name="theme-color"]')
-    const root = document.querySelector('[data-app-root]')
-    const ctx = document.createElement('canvas').getContext('2d')
-    if (!meta || !root || !ctx) return
-    const before = meta.getAttribute('content')
-    ctx.fillStyle = getComputedStyle(root).backgroundColor
-    ctx.fillRect(0, 0, 1, 1)
-    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data
-    meta.setAttribute('content', `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`)
-    return () => {
-      if (before) meta.setAttribute('content', before)
-    }
-  }, [floating])
+    if (!meta) return
+    const colour = splash
+      ? '#0a2427'
+      : floating
+        ? theme === 'dark'
+          ? '#0c1719'
+          : '#f5f7f8'
+        : theme === 'dark'
+          ? '#0a2427'
+          : '#ffffff'
+    meta.setAttribute('content', colour)
+  }, [splash, floating, theme])
 
   // Back to wherever the supplier came from; opened straight from a link with
   // nothing behind it, to the section's list instead.
@@ -399,8 +412,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           className={cn(
             floating
               ? 'sticky top-0 z-30 flex w-full items-center gap-2 px-3 py-2 pt-[calc(0.5rem_+_var(--safe-top))] lg:hidden'
-              : 'sticky top-0 z-30 flex w-full items-center justify-between px-4 py-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white transition-colors duration-200 sm:px-6 lg:hidden',
-            !floating && (scrolled ? 'bg-shell/80 backdrop-blur-lg backdrop-saturate-150' : 'bg-shell'),
+              : 'sticky top-0 z-30 flex w-full items-center justify-between border-b border-border px-4 py-3 pt-[calc(0.75rem_+_var(--safe-top))] text-ink transition-colors duration-200 sm:px-6 lg:hidden dark:border-transparent dark:text-white',
+            // Day: white, like Telegram's; night: the app's dark green.
+            !floating &&
+              (scrolled
+                ? 'bg-card/80 backdrop-blur-lg backdrop-saturate-150 dark:bg-shell/80'
+                : 'bg-card dark:bg-shell'),
           )}
         >
           {floating ? (
@@ -434,7 +451,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               {bar.actions && <div className={cn(pill, 'h-11 shrink-0 px-0.5')}>{bar.actions}</div>}
             </>
           ) : onDashboard ? (
-            <Brand compact={scrolled} />
+            <Brand compact={scrolled} onBar />
           ) : (
             <div className="flex min-w-0 flex-1 items-center gap-2 pr-2">
               {inner && (
@@ -442,7 +459,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   type="button"
                   onClick={goBack}
                   aria-label={t('common.back')}
-                  className="-ml-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-white/10"
+                  className="-ml-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-black/5 dark:hover:bg-white/10"
                 >
                   <ArrowLeft size={22} />
                 </button>
@@ -454,7 +471,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <div
                     className={cn(
                       'truncate text-xs font-medium leading-tight',
-                      bar.detailTone === 'due' ? 'text-red-300' : 'text-green-300',
+                      bar.detailTone === 'due' ? 'text-red-600 dark:text-red-300' : 'text-accent dark:text-green-300',
                     )}
                   >
                     {bar.detail}
@@ -465,8 +482,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
           {/* EN and theme step aside on the floating bar, as in Telegram's chat. */}
           <div className={cn('flex shrink-0 items-center gap-2', floating && 'hidden')}>
-            <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
-            <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
+            <LanguageToggle className="dark:border-white/20 dark:text-white dark:hover:bg-white/10 dark:hover:text-white" />
+            <ThemeToggle className="dark:border-white/20 dark:text-white dark:hover:bg-white/10 dark:hover:text-white" />
           </div>
         </header>
 
