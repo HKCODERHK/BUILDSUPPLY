@@ -15,6 +15,7 @@ import type { Customer, Invoice, InvoiceItem, Quotation, QuotationItem, Supplier
 import type { InvoiceWithCustomer } from '@/services/invoices'
 import type { PaymentWithInvoice } from '@/services/payments'
 import { confirmReceived, getKhata, getKhataDocument, type KhataView } from '@/services/khata'
+import { forgetKhataCode, rememberKhataCode } from '@/lib/customerLinks'
 import { QrCode } from '@/components/QrCode'
 import { upiPayUrl } from '@/lib/upi'
 
@@ -58,7 +59,13 @@ export default function KhataPage() {
 
   useEffect(() => {
     getKhata(token)
-      .then(setView)
+      .then((v) => {
+        setView(v)
+        // Kept on the customer's phone so the supplier's order page can offer
+        // "My khata"; a link the supplier has stopped is forgotten.
+        if (v.found && v.order_link) rememberKhataCode(v.order_link, token)
+        if (!v.found) forgetKhataCode(token)
+      })
       .catch(() => setFailed(true))
   }, [token])
 
@@ -206,6 +213,14 @@ export default function KhataPage() {
                   </a>
                 )}
               </div>
+              {/* Only while the supplier takes online orders (migration 031). */}
+              {found.order_link && (
+                <Link to={`/order/${found.order_link}`}>
+                  <Button size="sm" className="w-full">
+                    {t('khata.orderMaterials')}
+                  </Button>
+                </Link>
+              )}
             </Card>
 
             {docFailed && (

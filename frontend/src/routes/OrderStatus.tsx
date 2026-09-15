@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { Check } from 'lucide-react'
+import { rememberOrder } from '@/lib/customerLinks'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -37,7 +38,12 @@ export default function OrderStatus() {
 
   useEffect(() => {
     getOrderStatus(token)
-      .then(setView)
+      .then((v) => {
+        setView(v)
+        // Opened from WhatsApp, say: the supplier's order page lists it under
+        // this customer's recent orders from now on (on this phone only).
+        if (v.found && v.order_link) rememberOrder(v.order_link, token, v.created_at)
+      })
       .catch(() => setFailed(true))
   }, [token])
 
@@ -251,6 +257,15 @@ export default function OrderStatus() {
                   </>
                 )}
               </Card>
+            )}
+
+            {/* Only while the supplier takes orders (migration 031). */}
+            {found.order_link && (
+              <Link to={`/order/${found.order_link}`}>
+                <Button variant="outline" className="w-full">
+                  {t('order.orderMore')}
+                </Button>
+              </Link>
             )}
           </>
         )}

@@ -1398,6 +1398,15 @@ const STRINGS = {
   'drv.msgNote': { en: 'Customer’s note: {note}', hi: 'ग्राहक का नोट: {note}', mr: 'ग्राहकाची नोंद: {note}' },
   'drv.msgWanted': { en: 'Wanted on: {date}', hi: 'चाहिए: {date}', mr: 'हवे: {date}' },
   'drv.msgMap': { en: 'Map: {url}', hi: 'नक्शा: {url}', mr: 'नकाशा: {url}' },
+  // The customer's links remembered on their phone (lib/customerLinks).
+  'order.myKhata': { en: 'My khata', hi: 'मेरा खाता', mr: 'माझे खाते' },
+  'order.myKhataHint': {
+    en: 'Your bills, payments and balance with {business}',
+    hi: '{business} के साथ आपके बिल, भुगतान और बकाया',
+    mr: '{business} सोबतची तुमची बिले, पेमेंट आणि बाकी',
+  },
+  'order.orderMore': { en: 'Order more materials', hi: 'और माल मँगाएँ', mr: 'अजून माल मागवा' },
+  'khata.orderMaterials': { en: 'Order materials', hi: 'माल मँगाएँ', mr: 'माल मागवा' },
   // The order page's Get directions (migration 031).
   'order.directions': { en: 'Get directions', hi: 'रास्ता देखें', mr: 'रस्ता पाहा' },
   // The order status link's progress timeline (migration 031).
