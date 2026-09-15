@@ -182,6 +182,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [moreOpen, setMoreOpen] = useState(false)
   // What the current screen asked the top bar to say — see TopBarContext.
   const [topBar, setTopBar] = useState<TopBarInfo | null>(null)
+  // The Profile tab shows the business's logo; its initials if it won't load.
+  const [profileLogoFailed, setProfileLogoFailed] = useState(false)
+  const profileLogo = !profileLogoFailed ? supplier?.logo_url : null
   const scrolled = useScrolledPast(24, 4)
   const fabAway = useScrollingDown()
   const tabBarRef = useRef<HTMLElement>(null)
@@ -244,20 +247,24 @@ export function AppShell({ children }: { children: ReactNode }) {
   const primaryItems = (isAdmin ? ADMIN_NAV_IDS : MOBILE_PRIMARY_IDS)
     .map((id) => navItems.find((n) => n.id === id))
     .filter((n) => n !== undefined)
-  const overflowItems = navItems.filter((n) => !primaryItems.includes(n))
+  // Settings is the Profile tab now — the business's logo, last in the bar —
+  // so it leaves the tabs before it and the More sheet.
+  const tabItems = primaryItems.filter((n) => n.id !== 'settings')
+  const overflowItems = navItems.filter((n) => !primaryItems.includes(n) && n.id !== 'settings')
+  const tabPaths = [...tabItems.map((n) => n.path), '/settings']
 
   // Which tab the bubble sits behind — NavLink's own rule, so the two agree.
-  // A page reached from More (Orders, Settings…) highlights no tab, as
+  // A page reached from More (Orders, Payments…) highlights no tab, as
   // before: the bubble fades out where it was rather than sliding away.
-  const activeTab = primaryItems.findIndex(
-    (item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`),
+  const activeTab = tabPaths.findIndex(
+    (path) => location.pathname === path || location.pathname.startsWith(`${path}/`),
   )
   const [bubbleTab, setBubbleTab] = useState(Math.max(activeTab, 0))
   if (activeTab >= 0 && activeTab !== bubbleTab) setBubbleTab(activeTab)
 
   // The floating Orders button: a supplier's, on the four main tabs only —
   // never over a bill or New Invoice, where Save sits at the bottom.
-  const showFab = !isAdmin && primaryItems.some((item) => item.path === location.pathname)
+  const showFab = !isAdmin && tabItems.some((item) => item.path === location.pathname)
 
   // The top bar names the screen you are on, as Telegram's does: the
   // BuildSupply name on the Dashboard only; everywhere else the page's own
@@ -550,11 +557,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             activeTab < 0 && 'opacity-0',
           )}
           style={{
-            width: `calc((100% - 0.5rem) / ${primaryItems.length + 1})`,
+            width: `calc((100% - 0.5rem) / ${tabPaths.length})`,
             transform: `translateX(${bubbleTab * 100}%)`,
           }}
         />
-        {primaryItems.map((item) => (
+        {tabItems.map((item) => (
           <NavLink
             key={item.id}
             to={item.path}
@@ -577,28 +584,42 @@ export function AppShell({ children }: { children: ReactNode }) {
             )}
           </NavLink>
         ))}
-        <button
-          onClick={() => setMoreOpen(true)}
-          aria-label={
-            pendingOrders > 0
-              ? `${t('nav.more')}, ${pendingOrders === 1 ? t('dash.newOrdersOne') : t('dash.newOrdersMany', { count: pendingOrders })}`
-              : undefined
+        {/* Profile, last: the business's own logo (or its initials), opening
+            its profile and settings — as Telegram ends its bar with the
+            user's photo. More became a floating button (below). */}
+        <NavLink
+          to="/settings"
+          viewTransition
+          className={({ isActive }) =>
+            cn(
+              'relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full px-0.5 py-1.5 text-center text-[11px] font-medium leading-tight text-muted transition-colors duration-300',
+              isActive && 'text-accent-text',
+            )
           }
-          className="relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full px-0.5 py-1.5 text-center text-[11px] font-medium leading-tight text-muted"
         >
-          <MoreHorizontal size={20} strokeWidth={1.75} />
-          {pendingOrders > 0 && (
-            // How many new orders, not just that there are some — a number on
-            // the corner of the icon, as Telegram counts unread chats.
-            <span
-              aria-hidden="true"
-              className="absolute left-1/2 top-0.5 ml-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold leading-none text-white ring-2 ring-card"
-            >
-              {pendingOrders > 99 ? '99+' : pendingOrders}
-            </span>
+          {({ isActive }) => (
+            <>
+              <span
+                className={cn(
+                  'flex h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-white',
+                  isActive ? 'ring-2 ring-accent' : 'ring-1 ring-border',
+                )}
+              >
+                {profileLogo ? (
+                  <img
+                    src={profileLogo}
+                    alt=""
+                    onError={() => setProfileLogoFailed(true)}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <CustomerAvatar id={supplier?.id ?? ''} name={supplier?.business_name ?? ''} size={20} />
+                )}
+              </span>
+              {t('nav.profile')}
+            </>
           )}
-          {t('nav.more')}
-        </button>
+        </NavLink>
       </nav>
 
       {/* The floating Orders button, Telegram-style, just above the tab bar
@@ -632,6 +653,38 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
           )}
         </Link>
+      )}
+
+      {/* More, as a small white button floating just above the Orders button
+          — Telegram's small button over its big one — or in its place where
+          there is none, carrying the new-order count then. On every main
+          screen; not on an inner one (a bill, New invoice, a customer…). It
+          slips away with the Orders button while a list scrolls down. */}
+      {!inner && (
+        <button
+          type="button"
+          onClick={() => setMoreOpen(true)}
+          aria-label={
+            !showFab && pendingOrders > 0
+              ? `${t('nav.more')}, ${pendingOrders === 1 ? t('dash.newOrdersOne') : t('dash.newOrdersMany', { count: pendingOrders })}`
+              : t('nav.more')
+          }
+          style={{ bottom: showFab ? 'calc(var(--tabbar-h) + 5rem)' : 'calc(var(--tabbar-h) + 0.75rem)' }}
+          className={cn(
+            'fixed right-5 z-30 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card text-ink shadow-lg shadow-black/15 transition-[translate,scale,opacity] duration-200 active:scale-95 motion-reduce:transition-none lg:hidden',
+            fabAway ? 'pointer-events-none translate-y-4 opacity-0' : 'translate-y-0 opacity-100',
+          )}
+        >
+          <MoreHorizontal size={22} strokeWidth={1.9} />
+          {!showFab && pendingOrders > 0 && (
+            <span
+              aria-hidden="true"
+              className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[11px] font-bold leading-none text-white ring-2 ring-card"
+            >
+              {pendingOrders > 99 ? '99+' : pendingOrders}
+            </span>
+          )}
+        </button>
       )}
 
       {/* Mobile "more" sheet */}

@@ -36,6 +36,8 @@ const STRINGS = {
   'nav.reports': { en: 'Reports', hi: 'रिपोर्ट', mr: 'रिपोर्ट' },
   'nav.settings': { en: 'Settings', hi: 'सेटिंग', mr: 'सेटिंग' },
   'nav.more': { en: 'More', hi: 'और', mr: 'आणखी' },
+  // The last tab: the business's logo, opening its profile and settings.
+  'nav.profile': { en: 'Profile', hi: 'प्रोफ़ाइल', mr: 'प्रोफाइल' },
   'nav.signOut': { en: 'Sign out', hi: 'लॉग आउट', mr: 'लॉग आउट' },
 
   // ── Common words ──────────────────────────────────────────────────────

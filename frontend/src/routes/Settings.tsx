@@ -1,6 +1,6 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Inbox, Languages, Lock, Pencil, QrCode, ShieldCheck, Store, type LucideIcon } from 'lucide-react'
+import { ArrowLeft, Inbox, Languages, Lock, LogOut, Pencil, QrCode, ShieldCheck, Store, type LucideIcon } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -42,7 +42,7 @@ interface Row {
  * `?s=business`.
  */
 export default function Settings() {
-  const { supplier } = useAuth()
+  const { supplier, signOut } = useAuth()
   const { lang, setLang, t } = useLanguage()
   const { hasPin } = usePin()
   const navigate = useNavigate()
@@ -119,7 +119,13 @@ export default function Settings() {
   const sectionRow = groups.flat().find((r) => r.id === asked)
   const section = sectionRow?.id ?? null
   // No PageHeader here, so name the screen for the phone's top bar directly.
-  useTopBar({ title: sectionRow?.label ?? t('nav.settings') })
+  // The Profile tab (its logo in the tab bar) opens this page.
+  useTopBar({ title: sectionRow?.label ?? t('nav.profile') })
+
+  async function handleSignOut() {
+    await signOut()
+    navigate('/login', { replace: true })
+  }
 
   function open(id: Section) {
     navigate(`/settings?s=${id}`, { state: { fromList: true } })
@@ -142,7 +148,7 @@ export default function Settings() {
           // Phones have ← in the top bar instead.
           className="mb-3 hidden items-center gap-1.5 py-1 text-sm font-semibold text-accent-text hover:text-accent lg:inline-flex"
         >
-          <ArrowLeft size={16} /> {t('nav.settings')}
+          <ArrowLeft size={16} /> {t('nav.profile')}
         </button>
 
         {section === 'business' && (
@@ -304,6 +310,18 @@ export default function Settings() {
             ))}
           </div>
         ))}
+      </div>
+
+      {/* Sign out, at the foot of the profile, where WhatsApp and Telegram put it. */}
+      <div className="mt-2 border-t border-border pt-2">
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="flex w-full items-center gap-5 rounded-xl px-2 py-3.5 text-left text-red-600 transition-colors hover:bg-card active:bg-card"
+        >
+          <LogOut size={24} strokeWidth={1.75} className="shrink-0" />
+          <span className="text-[15px]">{t('nav.signOut')}</span>
+        </button>
       </div>
     </div>
   )
