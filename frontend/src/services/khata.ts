@@ -1,4 +1,4 @@
-import type { InvoiceKind, InvoiceStatus, PaymentMode } from '@/lib/database.types'
+import type { InvoiceKind, InvoiceStatus, OrderStatus, PaymentMode, QuotationStatus } from '@/lib/database.types'
 import { callRpc } from './db'
 
 // The customer's khata link (migration 028). The supplier makes or stops a
@@ -26,6 +26,24 @@ export interface KhataPayment {
   payment_allocations: { amount: number; released_at: null; invoices: { invoice_no: string; kind: InvoiceKind; site: string | null } }[]
 }
 
+/** One of the customer's estimates, newest 20 (migration 031). */
+export interface KhataEstimate {
+  quote_no: string
+  status: QuotationStatus
+  site: string | null
+  total: number
+  created_at: string
+}
+
+/** One of the customer's online orders, newest 10 (migration 031). `code` opens its status link. */
+export interface KhataOrder {
+  code: string
+  status: OrderStatus
+  created_at: string
+  delivery_date: string | null
+  item_count: number
+}
+
 export type KhataView =
   | { found: false }
   | {
@@ -39,11 +57,44 @@ export type KhataView =
       payments: KhataPayment[]
       /** Only when the supplier has switched "Pay by UPI" on (migration 029). */
       upi_id?: string
+      /** Migration 031 — absent until it is applied, so the page works either way. */
+      estimates?: KhataEstimate[]
+      orders?: KhataOrder[]
+      /** Only while the supplier takes online orders. */
+      order_link?: string
     }
+
+export interface KhataDocumentLine {
+  description: string
+  qty: number
+  rate: number
+  amount: number
+}
+
+interface KhataDocumentTotals {
+  created_at: string
+  site: string | null
+  subtotal: number
+  gst_amount: number
+  transport_labour_charge: number
+  total: number
+  items: KhataDocumentLine[]
+}
+
+/** One of the customer's own bills or estimates, with its lines — for its PDF (khata_document, migration 031). */
+export type KhataDocument =
+  | { found: false }
+  | (KhataDocumentTotals & { found: true; kind: 'bill'; invoice_no: string; paid: number; status: InvoiceStatus })
+  | (KhataDocumentTotals & { found: true; kind: 'estimate'; quote_no: string; status: QuotationStatus })
 
 /** The public page (no sign-in). */
 export function getKhata(token: string): Promise<KhataView> {
   return callRpc<KhataView>('customer_khata', { p_token: token })
+}
+
+/** One bill ('bill', its number) or estimate ('estimate', its number) of the link's own customer. */
+export function getKhataDocument(token: string, kind: 'bill' | 'estimate', no: string): Promise<KhataDocument> {
+  return callRpc<KhataDocument>('khata_document', { p_token: token, p_kind: kind, p_no: no })
 }
 
 /** The customer's link code — made the first time it is asked for. */

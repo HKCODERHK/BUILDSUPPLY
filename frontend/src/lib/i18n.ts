@@ -1362,6 +1362,14 @@ const STRINGS = {
   'khata.advanceReceived': { en: 'kept as advance', hi: 'जमा के रूप में रखा', mr: 'जमा म्हणून ठेवले' },
   'khata.runningDue': { en: 'Due {amount}', hi: 'बकाया {amount}', mr: 'बाकी {amount}' },
   'khata.runningAdvance': { en: 'Advance {amount}', hi: 'जमा {amount}', mr: 'जमा {amount}' },
+  // The khata link's bill and estimate PDFs, estimates and orders (migration 031).
+  'khata.billPdf': { en: 'Bill PDF', hi: 'बिल PDF', mr: 'बिल PDF' },
+  'khata.estimates': { en: 'Estimates', hi: 'एस्टिमेट', mr: 'एस्टिमेट' },
+  'khata.estimate': { en: 'Estimate {no}', hi: 'एस्टिमेट {no}', mr: 'एस्टिमेट {no}' },
+  'khata.estimatePdf': { en: 'Estimate PDF', hi: 'एस्टिमेट PDF', mr: 'एस्टिमेट PDF' },
+  'khata.estBilled': { en: 'Billed', hi: 'बिल बन गया', mr: 'बिल झाले' },
+  'khata.orders': { en: 'Your orders', hi: 'आपके ऑर्डर', mr: 'तुमच्या ऑर्डर' },
+  'khata.orderItems': { en: 'Materials: {count}', hi: 'सामान: {count}', mr: 'साहित्य: {count}' },
   'khata.notFound': {
     en: 'This khata link is not valid, or it has been stopped. Please ask your supplier for a new one.',
     hi: 'यह खाता लिंक सही नहीं है या बंद कर दिया गया है। कृपया अपने सप्लायर से नया लिंक माँगें।',

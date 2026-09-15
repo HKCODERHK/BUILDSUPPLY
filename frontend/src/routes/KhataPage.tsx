@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { Download, LoaderCircle, Phone } from 'lucide-react'
+import { Link, useParams } from 'react-router-dom'
+import { ChevronRight, Download, LoaderCircle, Phone } from 'lucide-react'
 import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { TruckLoader } from '@/components/TruckLoader'
 import { useLanguage } from '@/context/LanguageContext'
 import { buildCustomerLedger } from '@/lib/customerLedger'
 import { downloadCustomerLedgerPdf, type LedgerEntry } from '@/lib/customerLedgerPdf'
-import type { Customer, Supplier } from '@/lib/database.types'
+import { downloadInvoicePdf } from '@/lib/invoicePdf'
+import { downloadQuotationPdf } from '@/lib/quotationPdf'
+import type { Customer, Invoice, InvoiceItem, Quotation, QuotationItem, Supplier } from '@/lib/database.types'
 import type { InvoiceWithCustomer } from '@/services/invoices'
 import type { PaymentWithInvoice } from '@/services/payments'
-import { confirmReceived, getKhata, type KhataView } from '@/services/khata'
+import { confirmReceived, getKhata, getKhataDocument, type KhataView } from '@/services/khata'
 import { QrCode } from '@/components/QrCode'
 import { upiPayUrl } from '@/lib/upi'
 
@@ -31,6 +34,9 @@ const RECENT_MS = 90 * 24 * 60 * 60 * 1000
  * shared (migration 028). Read-only: every live bill and payment, newest
  * first, the balance the supplier sees, and the same ledger PDF the supplier
  * sends. Built by the supplier's own buildCustomerLedger, so the two agree.
+ * Since 031 also each bill's own PDF, their estimates (with PDFs) and their
+ * online orders — shown only once the database has 031, so the page works
+ * either way.
  */
 export default function KhataPage() {
   const { token = '' } = useParams()
@@ -39,6 +45,9 @@ export default function KhataPage() {
   const [failed, setFailed] = useState(false)
   const [showOlder, setShowOlder] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  // One bill's or estimate's PDF being made: "bill:INV-1024" or "estimate:QT-1003".
+  const [docBusy, setDocBusy] = useState<string | null>(null)
+  const [docFailed, setDocFailed] = useState(false)
   // "Material received" (migration 030): asked, then confirmed — two taps, so a
   // stray one can't record it.
   const [asking, setAsking] = useState<string | null>(null)
@@ -54,6 +63,8 @@ export default function KhataPage() {
   }, [token])
 
   const found = view && view.found ? view : null
+  // The per-document PDFs need khata_document, which came with the estimates list.
+  const hasDocuments = Array.isArray(found?.estimates)
 
   // The statement exactly as the supplier's Ledger builds it: one customer's
   // rows, so every row is "this customer".
@@ -87,6 +98,29 @@ export default function KhataPage() {
     }
   }
 
+  // One bill or estimate, as the very PDF the supplier sends — the same
+  // builder, from that document's own lines (khata_document).
+  async function downloadDocument(kind: 'bill' | 'estimate', no: string) {
+    if (!found || docBusy) return
+    setDocBusy(`${kind}:${no}`)
+    setDocFailed(false)
+    try {
+      const doc = await getKhataDocument(token, kind, no)
+      if (!doc.found) throw new Error('not found')
+      const supplier = found.supplier as unknown as Supplier
+      const customer = found.customer as unknown as Customer
+      if (doc.kind === 'bill') {
+        await downloadInvoicePdf(supplier, customer, doc as unknown as Invoice, doc.items as unknown as InvoiceItem[])
+      } else {
+        await downloadQuotationPdf(supplier, customer, doc as unknown as Quotation, doc.items as unknown as QuotationItem[])
+      }
+    } catch {
+      setDocFailed(true)
+    } finally {
+      setDocBusy(null)
+    }
+  }
+
   async function received(invoiceNo: string) {
     if (confirming) return
     setConfirming(true)
@@ -110,6 +144,19 @@ export default function KhataPage() {
       title: e.mode ? t('khata.payment', { mode: t(`mode.${e.mode}`) }) : t('khata.payment', { mode: '' }),
       sub: refs ? t('khata.paidFor', { refs }) : t('khata.advanceReceived'),
     }
+  }
+
+  function pdfButton(kind: 'bill' | 'estimate', no: string, label: string) {
+    return (
+      <button
+        type="button"
+        onClick={() => downloadDocument(kind, no)}
+        disabled={docBusy !== null}
+        className="inline-flex items-center gap-1 text-xs font-semibold text-accent disabled:opacity-60"
+      >
+        {docBusy === `${kind}:${no}` ? <LoaderCircle size={12} className="animate-spin" /> : <Download size={12} />} {label}
+      </button>
+    )
   }
 
   return (
@@ -161,6 +208,10 @@ export default function KhataPage() {
               </div>
             </Card>
 
+            {docFailed && (
+              <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{t('error.generic')}</p>
+            )}
+
             {upiUrl && found.upi_id && (
               <Card className="flex flex-col items-center gap-3 text-center">
                 <div className="self-start text-sm font-semibold text-ink">{t('upi.payTitle')}</div>
@@ -196,23 +247,26 @@ export default function KhataPage() {
                             {formatDate(e.date)}
                             {d.sub ? ` · ${d.sub}` : ''}
                           </div>
-                          {bill?.received_at ? (
-                            <div className="mt-1 text-xs font-medium text-accent">{t('khata.receivedOn', { date: formatDate(bill.received_at) })}</div>
-                          ) : bill?.delivered ? (
-                            asking === bill.invoice_no ? (
-                              <div className="mt-1.5 flex flex-wrap gap-2">
-                                <Button size="sm" onClick={() => received(bill.invoice_no)} disabled={confirming}>
-                                  {confirming ? t('common.saving') : t('khata.receivedYes')}
-                                </Button>
-                                <Button size="sm" variant="outline" onClick={() => setAsking(null)} disabled={confirming}>
-                                  {t('ord.cancel')}
-                                </Button>
-                              </div>
-                            ) : (
-                              <button type="button" className="mt-1 text-xs font-semibold text-accent" onClick={() => setAsking(bill.invoice_no)}>
-                                {t('khata.receivedAsk')}
-                              </button>
-                            )
+                          {bill && asking === bill.invoice_no ? (
+                            <div className="mt-1.5 flex flex-wrap gap-2">
+                              <Button size="sm" onClick={() => received(bill.invoice_no)} disabled={confirming}>
+                                {confirming ? t('common.saving') : t('khata.receivedYes')}
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => setAsking(null)} disabled={confirming}>
+                                {t('ord.cancel')}
+                              </Button>
+                            </div>
+                          ) : bill && (bill.received_at || bill.delivered || hasDocuments) ? (
+                            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                              {bill.received_at ? (
+                                <span className="font-medium text-accent">{t('khata.receivedOn', { date: formatDate(bill.received_at) })}</span>
+                              ) : bill.delivered ? (
+                                <button type="button" className="font-semibold text-accent" onClick={() => setAsking(bill.invoice_no)}>
+                                  {t('khata.receivedAsk')}
+                                </button>
+                              ) : null}
+                              {hasDocuments && pdfButton('bill', bill.invoice_no, t('khata.billPdf'))}
+                            </div>
                           ) : null}
                         </div>
                         <div className="shrink-0 text-right">
@@ -236,6 +290,61 @@ export default function KhataPage() {
                 </Button>
               )}
             </Card>
+
+            {/* Their online orders — each opens its own status link. */}
+            {found.orders && found.orders.length > 0 && (
+              <Card>
+                <div className="mb-1 text-sm font-semibold text-ink">{t('khata.orders')}</div>
+                <div className="flex flex-col divide-y divide-border text-sm">
+                  {found.orders.map((o) => (
+                    <Link key={o.code} to={`/order-status/${o.code}`} className="flex items-center justify-between gap-3 py-2.5">
+                      <div className="min-w-0">
+                        <div className="font-medium text-ink">{formatDate(o.created_at)}</div>
+                        <div className="text-xs text-muted">
+                          {t('khata.orderItems', { count: o.item_count })}
+                          {o.delivery_date ? ` · ${t('order.deliveryOn', { date: formatDate(o.delivery_date) })}` : ''}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Badge tone={o.status === 'approved' ? 'success' : o.status === 'rejected' ? 'neutral' : 'warning'}>
+                          {t(`order.status.${o.status}`)}
+                        </Badge>
+                        <ChevronRight size={16} className="text-muted" />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </Card>
+            )}
+
+            {/* Their estimates, each with its PDF. */}
+            {found.estimates && found.estimates.length > 0 && (
+              <Card>
+                <div className="mb-1 text-sm font-semibold text-ink">{t('khata.estimates')}</div>
+                <div className="flex flex-col divide-y divide-border text-sm">
+                  {found.estimates.map((q) => (
+                    <div key={q.quote_no} className="flex items-start justify-between gap-3 py-2.5">
+                      <div className="min-w-0">
+                        <div className="font-medium text-ink">{t('khata.estimate', { no: q.quote_no })}</div>
+                        <div className="text-xs text-muted">
+                          {formatDate(q.created_at)}
+                          {q.site ? ` · ${q.site}` : ''}
+                        </div>
+                        <div className="mt-1">{pdfButton('estimate', q.quote_no, t('khata.estimatePdf'))}</div>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <div className="font-semibold text-ink">{formatINR(Number(q.total))}</div>
+                        {q.status === 'Converted' ? (
+                          <div className="text-[11px] font-medium text-accent">{t('khata.estBilled')}</div>
+                        ) : q.status === 'Expired' ? (
+                          <div className="text-[11px] text-muted">{t('status.Expired')}</div>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
 
             <p className="px-1 text-center text-xs text-muted">{t('khata.readOnly', { business: found.supplier.business_name })}</p>
           </>
