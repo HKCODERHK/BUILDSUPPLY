@@ -666,6 +666,8 @@ const STRINGS = {
   },
   'ordShare.shareQr': { en: 'Share QR image', hi: 'QR इमेज भेजें', mr: 'QR इमेज पाठवा' },
   'ordShare.back': { en: 'Back', hi: 'वापस', mr: 'मागे' },
+  // Customer page: the slim name-and-balance bar, tapped to go back up.
+  'cust.toTop': { en: 'Back to the top', hi: 'ऊपर जाएँ', mr: 'वर जा' },
   'pay.nobodyOwes': {
     en: 'Nobody owes you anything right now.',
     hi: 'अभी किसी पर कुछ बाकी नहीं है।',
