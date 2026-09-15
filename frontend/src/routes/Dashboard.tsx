@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, AlertTriangle, Inbox, BadgeCheck } from 'lucide-react'
+import { Plus, AlertTriangle, Inbox, BadgeCheck, Tags } from 'lucide-react'
+import { localDateKey } from '@/lib/localDate'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -117,6 +118,65 @@ function WelcomeLogo() {
   )
 }
 
+/**
+ * Once a day: "Update today's rates?" Sand, gitti and cement rates move
+ * often, and bills, estimates, the rate list and (if shown) the order page
+ * all start from them. Either answer puts it away until tomorrow — Update
+ * rates also opens Stock, where the rates are. Remembered on this phone
+ * (localStorage, per business); a phone that won't store it just shows the
+ * card again, which does no harm. A card among the Dashboard's other notices,
+ * not a popup in the way.
+ */
+function RatesReminder({ supplierId }: { supplierId: string }) {
+  const { t } = useLanguage()
+  const navigate = useNavigate()
+  const storageKey = `buildsupply-rates-checked:${supplierId}`
+  const today = localDateKey(new Date().toISOString())
+  const [answered, setAnswered] = useState(() => {
+    try {
+      return localStorage.getItem(storageKey) === today
+    } catch {
+      return false
+    }
+  })
+  if (answered) return null
+
+  function answer() {
+    try {
+      localStorage.setItem(storageKey, today)
+    } catch {
+      // Not remembered on this phone; the card comes back next visit.
+    }
+    setAnswered(true)
+  }
+
+  return (
+    <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950">
+      <div className="flex items-start gap-2.5">
+        <Tags size={18} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+        <div>
+          <div className="text-sm font-semibold text-amber-800 dark:text-amber-200">{t('rates.title')}</div>
+          <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300">{t('rates.hint')}</p>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2 pl-7">
+        <Button
+          size="sm"
+          onClick={() => {
+            answer()
+            navigate('/materials')
+          }}
+        >
+          {t('rates.update')}
+        </Button>
+        <Button size="sm" variant="outline" onClick={answer}>
+          {t('rates.same')}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 function QuickActions() {
   const { t } = useLanguage()
   return (
@@ -184,6 +244,9 @@ function SupplierDashboardView() {
   const [recentCustomers, setRecentCustomers] = useState<Customer[]>([])
   const [today, setToday] = useState({ bills: 0, sold: 0, collected: 0 })
   const [lowStock, setLowStock] = useState<Material[]>([])
+  // Any material with a rate — the daily "update today's rates?" card only
+  // makes sense once there are rates to update.
+  const [hasRates, setHasRates] = useState(false)
   // Online orders waiting to be reviewed (migration 026). Read on its own, so
   // a problem here never holds up the rest of the dashboard.
   const [pendingOrders, setPendingOrders] = useState(0)
@@ -254,6 +317,7 @@ function SupplierDashboardView() {
         setRecentCustomers(customers)
         setToday(summariseToday(todaysBills, todaysPayments))
         setLowStock(materials.filter((m) => m.stock_qty <= (m.low_stock_threshold ?? 5)))
+        setHasRates(materials.some((m) => Number(m.rate) > 0))
         setSetup({ materials: materials.length > 0, customers: customers.length > 0, invoices: anyBill })
       })
       .finally(() => active && setLoading(false))
@@ -362,6 +426,8 @@ function SupplierDashboardView() {
               <span className="shrink-0 text-xs font-semibold text-red-700 dark:text-red-300">{t('dash.topUp')}</span>
             </Link>
           )}
+
+          {hasRates && supplier && <RatesReminder supplierId={supplier.id} />}
 
           <Card className="mb-4">
             <div className="mb-2 text-xs font-semibold tracking-wide text-muted">{t('dash.today')}</div>

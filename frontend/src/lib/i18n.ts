@@ -1492,6 +1492,15 @@ const STRINGS = {
   'dash.newOrdersOne': { en: '1 new order waiting', hi: '1 नया ऑर्डर आया है', mr: '1 नवीन ऑर्डर आली आहे' },
   'dash.newOrdersMany': { en: '{count} new orders waiting', hi: '{count} नए ऑर्डर आए हैं', mr: '{count} नवीन ऑर्डर आल्या आहेत' },
   'dash.reviewOrders': { en: 'Review →', hi: 'देखें →', mr: 'पहा →' },
+  // The Dashboard's once-a-day rates card.
+  'rates.title': { en: 'Update today’s rates?', hi: 'आज के रेट अपडेट करें?', mr: 'आजचे दर अपडेट करायचे?' },
+  'rates.hint': {
+    en: 'Rates not checked yet today. Bills and estimates start from them.',
+    hi: 'आज रेट अभी जाँचे नहीं गए। बिल और अनुमान इन्हीं से बनते हैं।',
+    mr: 'आज दर अजून तपासले नाहीत. बिल आणि अंदाज यांवरूनच होतात.',
+  },
+  'rates.update': { en: 'Update rates', hi: 'रेट अपडेट करें', mr: 'दर अपडेट करा' },
+  'rates.same': { en: 'Same as yesterday', hi: 'कल जैसे ही', mr: 'कालसारखेच' },
   // The welcome card's logo (a hover hint on a computer).
   'dash.logoHint': {
     en: 'Tap for your profile. Hold to show your order QR.',
