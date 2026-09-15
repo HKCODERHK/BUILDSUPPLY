@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { LogOut, MoreHorizontal, X, ShieldCheck, Boxes, SlidersHorizontal, AlertTriangle, Inbox, ArrowLeft, Sun, Moon } from 'lucide-react'
+import { LogOut, MoreHorizontal, X, ShieldCheck, Boxes, SlidersHorizontal, AlertTriangle, Inbox, ArrowLeft, Sun, Moon, Smartphone } from 'lucide-react'
 import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { TopBarContext, type TopBarInfo } from '@/context/TopBarContext'
 import { cn } from '@/lib/utils'
@@ -11,6 +11,8 @@ import { useTheme } from '@/context/ThemeContext'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { ShareDocumentPrompt } from '@/components/ShareDocumentPrompt'
+import { InstallIosModal } from '@/components/InstallIosModal'
+import { promptInstall, useInstallState } from '@/lib/installPrompt'
 import { openWhatsAppShare } from '@/lib/whatsapp'
 import { ADMIN_WHATSAPP_NUMBER } from '@/lib/adminContact'
 import { daysUntilExpiry, subscriptionState } from '@/lib/subscription'
@@ -180,6 +182,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const [moreOpen, setMoreOpen] = useState(false)
+  // "Install app": Chrome's own dialog where it offers one, the steps on an iPhone.
+  const installState = useInstallState()
+  const [iosSteps, setIosSteps] = useState(false)
   // What the current screen asked the top bar to say — see TopBarContext.
   const [topBar, setTopBar] = useState<TopBarInfo | null>(null)
   // The Profile tab shows the business's logo; its initials if it won't load.
@@ -699,6 +704,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         </button>
       )}
 
+      {iosSteps && <InstallIosModal onClose={() => setIosSteps(false)} />}
+
       {/* Mobile "more" sheet */}
       {moreOpen && (
         <div
@@ -767,6 +774,21 @@ export function AppShell({ children }: { children: ReactNode }) {
                     Platform
                   </NavLink>
                 </>
+              )}
+              {/* Only while the app isn't installed yet — gone once it is. */}
+              {installState !== 'none' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMoreOpen(false)
+                    if (installState === 'prompt') void promptInstall()
+                    else setIosSteps(true)
+                  }}
+                  className="flex flex-col items-center gap-2 rounded-2xl p-3 text-xs font-medium text-ink transition-colors hover:bg-surface active:bg-surface"
+                >
+                  <Smartphone size={26} strokeWidth={1.75} />
+                  {t('install.tile')}
+                </button>
               )}
               {/* Day / night, moved here from the top bar. The sheet closes and
                   Telegram's circle spreads from where this tile was. */}

@@ -1362,6 +1362,16 @@ const STRINGS = {
   'khata.advanceReceived': { en: 'kept as advance', hi: 'जमा के रूप में रखा', mr: 'जमा म्हणून ठेवले' },
   'khata.runningDue': { en: 'Due {amount}', hi: 'बकाया {amount}', mr: 'बाकी {amount}' },
   'khata.runningAdvance': { en: 'Advance {amount}', hi: 'जमा {amount}', mr: 'जमा {amount}' },
+  // Install app — the More sheet's tile, and the iPhone steps.
+  'install.tile': { en: 'Install app', hi: 'ऐप इंस्टॉल', mr: 'ॲप इंस्टॉल' },
+  'install.title': { en: 'Put BuildSupply on your home screen', hi: 'BuildSupply को होम स्क्रीन पर रखें', mr: 'BuildSupply होम स्क्रीनवर ठेवा' },
+  'install.ios1': { en: 'In Safari, tap the Share button', hi: 'Safari में Share बटन दबाएँ', mr: 'Safari मध्ये Share बटण दाबा' },
+  'install.ios2': { en: 'Choose “Add to Home Screen”', hi: '“Add to Home Screen” चुनें', mr: '“Add to Home Screen” निवडा' },
+  'install.ios3': {
+    en: 'Tap Add — BuildSupply then opens from its own icon, like an app.',
+    hi: 'Add दबाएँ — फिर BuildSupply अपने आइकन से ऐप की तरह खुलेगा।',
+    mr: 'Add दाबा — मग BuildSupply स्वतःच्या आयकॉनवरून ॲपसारखे उघडेल.',
+  },
   // Send to driver — the driver's WhatsApp chat with one delivery (migration 031).
   'drv.menu': { en: 'Send to driver', hi: 'ड्राइवर को भेजें', mr: 'ड्रायव्हरला पाठवा' },
   'drv.title': { en: 'Send to driver', hi: 'ड्राइवर को भेजें', mr: 'ड्रायव्हरला पाठवा' },
