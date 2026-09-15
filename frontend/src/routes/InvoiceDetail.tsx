@@ -192,7 +192,7 @@ export default function InvoiceDetail() {
             <div className="text-xs font-semibold tracking-wide text-muted">TO</div>
             <div className="mt-1 font-bold text-ink">
               {customer ? (
-                <Link to={`/customers/${customer.id}`} className="hover:text-accent">
+                <Link to={`/customers/${customer.id}`} state={{ customerName: customer.name }} className="hover:text-accent">
                   {customer.name}
                 </Link>
               ) : (

@@ -467,6 +467,19 @@ const STRINGS = {
 
   // ── Settings ──────────────────────────────────────────────────────────
   'set.language': { en: 'Language', hi: 'भाषा', mr: 'भाषा' },
+  // Settings list: the short status beside a row.
+  'set.on': { en: 'On', hi: 'चालू', mr: 'चालू' },
+  'set.off': { en: 'Off', hi: 'बंद', mr: 'बंद' },
+  'set.notSet': { en: 'Not set up', hi: 'सेट नहीं', mr: 'सेट केलेले नाही' },
+  // Settings list: the grey line under each row's title.
+  'set.rowBusinessSub': { en: 'Name, phone, address, GST, logo', hi: 'नाम, फ़ोन, पता, GST, लोगो', mr: 'नाव, फोन, पत्ता, GST, लोगो' },
+  'set.ordersSub': { en: 'Customers order from your link', hi: 'ग्राहक आपकी लिंक से ऑर्डर करते हैं', mr: 'ग्राहक तुमच्या लिंकवरून ऑर्डर करतात' },
+  'set.pinSub': {
+    en: 'Asked before cancelling a bill or a big payment',
+    hi: 'बिल रद्द करने या बड़े भुगतान से पहले पूछा जाता है',
+    mr: 'बिल रद्द करण्यापूर्वी किंवा मोठ्या पेमेंटआधी विचारला जातो',
+  },
+  'set.pwSub': { en: 'The password you sign in with', hi: 'जिस पासवर्ड से आप साइन इन करते हैं', mr: 'ज्या पासवर्डने तुम्ही साइन इन करता' },
   'set.languageHint': {
     en: 'Changes the app for you only. Bills and PDFs stay in English so any customer can read them.',
     hi: 'सिर्फ़ आपके लिए बदलेगा। बिल और पीडीएफ अंग्रेज़ी में ही रहेंगे ताकि हर ग्राहक पढ़ सके।',
@@ -650,6 +663,8 @@ const STRINGS = {
   'pay.whoPaid': { en: 'Who paid?', hi: 'किसने भुगतान किया?', mr: 'कोणी पेमेंट केले?' },
   // Orders → Share order link (shareable where the orders arrive).
   'ord.shareLink': { en: 'Share order link', hi: 'ऑर्डर लिंक भेजें', mr: 'ऑर्डर लिंक पाठवा' },
+  // The order QR screen, under the business name.
+  'ordShare.scanToOrder': { en: 'Scan to order', hi: 'स्कैन करके ऑर्डर करें', mr: 'स्कॅन करून ऑर्डर करा' },
   'ord.setupLink': { en: 'Set up order link', hi: 'ऑर्डर लिंक बनाएँ', mr: 'ऑर्डर लिंक तयार करा' },
   // Share order link → "link or QR?"
   'ordShare.hint': {
@@ -666,13 +681,18 @@ const STRINGS = {
   },
   'ordShare.shareQr': { en: 'Share QR image', hi: 'QR इमेज भेजें', mr: 'QR इमेज पाठवा' },
   'ordShare.back': { en: 'Back', hi: 'वापस', mr: 'मागे' },
-  'pay.pickCustomer': { en: 'Choose the customer…', hi: 'ग्राहक चुनें…', mr: 'ग्राहक निवडा…' },
+  // The phone's top bar: ← on an inner screen.
+  'common.back': { en: 'Back', hi: 'वापस', mr: 'मागे' },
+  'pay.nobodyOwes': {
+    en: 'Nobody owes you anything right now.',
+    hi: 'अभी किसी पर कुछ बाकी नहीं है।',
+    mr: 'सध्या कोणाकडेही काही बाकी नाही.',
+  },
   'pay.whoPaidHint': {
     en: 'Their oldest bills are cleared first, and anything extra is kept as advance — the same as on the customer’s page.',
     hi: 'पहले उनके सबसे पुराने बिल चुकते होंगे, और बाकी पैसा जमा में रहेगा — ग्राहक के पेज की तरह ही।',
     mr: 'आधी त्यांची सर्वात जुनी बिले भरली जातील, आणि उरलेले पैसे जमा म्हणून राहतील — ग्राहकाच्या पेजप्रमाणेच.',
   },
-  'pay.continue': { en: 'Continue', hi: 'आगे बढ़ें', mr: 'पुढे जा' },
   'pay.forOneBill': { en: 'For one particular bill →', hi: 'किसी एक बिल के लिए →', mr: 'एखाद्या विशिष्ट बिलासाठी →' },
 
   // ── Estimates / quotations ────────────────────────────────────────────

@@ -8,7 +8,11 @@ export function ThemeToggle({ className }: { className?: string }) {
   const { t } = useLanguage()
   return (
     <button
-      onClick={toggleTheme}
+      // From the button's centre — where Telegram's day/night circle starts.
+      onClick={(e) => {
+        const r = e.currentTarget.getBoundingClientRect()
+        toggleTheme({ x: r.left + r.width / 2, y: r.top + r.height / 2 })
+      }}
       aria-label={t(theme === 'dark' ? 'theme.toLight' : 'theme.toDark')}
       className={cn(
         'flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted hover:bg-surface hover:text-ink',

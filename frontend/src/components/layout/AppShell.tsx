@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { LogOut, MoreHorizontal, X, ShieldCheck, Boxes, SlidersHorizontal, AlertTriangle } from 'lucide-react'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { LogOut, MoreHorizontal, X, ShieldCheck, Boxes, SlidersHorizontal, AlertTriangle, Inbox, ArrowLeft } from 'lucide-react'
+import { CustomerAvatar } from '@/components/CustomerAvatar'
+import { TopBarContext, type TopBarInfo } from '@/context/TopBarContext'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { useTheme } from '@/context/ThemeContext'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { ShareDocumentPrompt } from '@/components/ShareDocumentPrompt'
@@ -15,7 +18,10 @@ import { countPendingOrders } from '@/services/orders'
 import { NAV_ITEMS, MOBILE_PRIMARY_IDS, ADMIN_NAV_IDS } from './nav-items'
 
 // Shown in the desktop sidebar header and, on mobile, in the top bar.
-function Brand({ compact = false }: { compact?: boolean }) {
+// onBar: the phone's top bar, which follows the theme — "BuildSupply" in the
+// app's green on a white bar by day (as Telegram writes its name in blue),
+// white on the dark bar at night. The desktop sidebar is always dark.
+function Brand({ compact = false, onBar = false }: { compact?: boolean; onBar?: boolean }) {
   const { t } = useLanguage()
   return (
     <div className="flex items-center gap-2">
@@ -26,7 +32,9 @@ function Brand({ compact = false }: { compact?: boolean }) {
         <path d="M16 21v-4l3 1.5V21" />
       </svg>
       <div className="min-w-0">
-        <span className="block text-[17px] font-bold leading-tight">BuildSupply</span>
+        <span className={cn('block text-[17px] font-bold leading-tight', onBar && 'text-accent-text dark:text-white')}>
+          BuildSupply
+        </span>
         {/* leading-tight above keeps the two lines together as one lockup rather
             than a heading with a caption drifting below it. */}
         {/* Wraps rather than truncates: the sidebar is only 230px, and the
@@ -42,7 +50,12 @@ function Brand({ compact = false }: { compact?: boolean }) {
             compact ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100',
           )}
         >
-          <span className="block overflow-hidden text-[11px] leading-tight text-sidebar-text">
+          <span
+            className={cn(
+              'block overflow-hidden text-[11px] leading-tight',
+              onBar ? 'text-muted dark:text-sidebar-text' : 'text-sidebar-text',
+            )}
+          >
             {t('brand.tagline')}
           </span>
         </span>
@@ -124,12 +137,53 @@ function useScrolledPast(on: number, off: number) {
   return past
 }
 
+/**
+ * True while the page is being scrolled down — Telegram's cue to slip the
+ * floating button out of the way; scrolling back up, or reaching the top,
+ * brings it back. Measured from the last change of direction, so a slow
+ * scroll still counts once it has gone far enough.
+ */
+function useScrollingDown() {
+  const [down, setDown] = useState(false)
+  useEffect(() => {
+    let last = window.scrollY
+    let frame = 0
+    const check = () => {
+      frame = 0
+      const y = window.scrollY
+      if (y < 40) {
+        setDown(false)
+        last = y
+      } else if (y > last + 8) {
+        setDown(true)
+        last = y
+      } else if (y < last - 8) {
+        setDown(false)
+        last = y
+      }
+    }
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(check)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (frame) cancelAnimationFrame(frame)
+    }
+  }, [])
+  return down
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
-  const { supplier, signOut } = useAuth()
+  const { supplier, signOut, splash } = useAuth()
   const { t } = useLanguage()
+  const { theme } = useTheme()
   const navigate = useNavigate()
   const [moreOpen, setMoreOpen] = useState(false)
+  // What the current screen asked the top bar to say — see TopBarContext.
+  const [topBar, setTopBar] = useState<TopBarInfo | null>(null)
   const scrolled = useScrolledPast(24, 4)
+  const fabAway = useScrollingDown()
   const tabBarRef = useRef<HTMLElement>(null)
 
   // Publishes the tab bar's real height as --tabbar-h, for the things that have
@@ -201,8 +255,71 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [bubbleTab, setBubbleTab] = useState(Math.max(activeTab, 0))
   if (activeTab >= 0 && activeTab !== bubbleTab) setBubbleTab(activeTab)
 
+  // The floating Orders button: a supplier's, on the four main tabs only —
+  // never over a bill or New Invoice, where Save sits at the bottom.
+  const showFab = !isAdmin && primaryItems.some((item) => item.path === location.pathname)
+
+  // The top bar names the screen you are on, as Telegram's does: the
+  // BuildSupply name on the Dashboard only; everywhere else the page's own
+  // title (published by PageHeader), falling back to its section's name while
+  // the page loads — with ← on an inner screen (a customer, a bill, New
+  // invoice, a part of Settings…).
+  const segs = location.pathname.split('/').filter(Boolean)
+  const onDashboard = location.pathname === '/dashboard'
+  const sectionItem = NAV_ITEMS.find((n) => n.path === `/${segs[0]}`)
+  const inner =
+    segs[0] === 'admin'
+      ? segs.length > 2
+      : segs.length > 1 || (segs[0] === 'settings' && new URLSearchParams(location.search).has('s'))
+  const parentPath = segs[0] === 'admin' ? `/admin/${segs[1] ?? ''}` : `/${segs[0] ?? 'dashboard'}`
+  // While a customer's page loads it has no heading yet, so the bar would say
+  // "Customers" until the data lands. The screen that opened it passes the
+  // name along (router state `customerName`), so the pill shows it at once;
+  // opened any other way, a soft placeholder instead of the section's name.
+  const onCustomerPage = segs[0] === 'customers' && segs.length === 2
+  const passedName = (location.state as { customerName?: string } | null)?.customerName
+  const bar: TopBarInfo =
+    topBar ??
+    (onCustomerPage
+      ? { title: passedName ?? '', avatar: passedName ? { id: segs[1], name: passedName } : undefined }
+      : { title: sectionItem ? t(sectionItem.labelKey) : 'BuildSupply' })
+  // Telegram's chat bar (a customer's page): pills floating over the page.
+  // A customer's page floats from its first frame — while it loads too — so
+  // the bar doesn't jump from the dark style to the pills when the name lands.
+  const floating = !onDashboard && (bar.floating ?? (segs[0] === 'customers' && segs.length === 2))
+  const pill =
+    'flex items-center rounded-full border border-border/60 bg-card/85 text-ink shadow-md shadow-black/5 backdrop-blur-lg backdrop-saturate-150'
+
+  // The status bar (index.html's theme-color) matches whatever is under it:
+  // the top bar — white by day, the app green at night — or, under the
+  // floating bar, the page itself; and the app green while the always-dark
+  // splash is up. The values are index.css's --color-card / --color-shell /
+  // --color-surface, written out: read from the page they would lag a theme
+  // switch, since the .dark class changes in ThemeProvider's effect, after this one.
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if (!meta) return
+    const colour = splash
+      ? '#0a2427'
+      : floating
+        ? theme === 'dark'
+          ? '#0c1719'
+          : '#f5f7f8'
+        : theme === 'dark'
+          ? '#0a2427'
+          : '#ffffff'
+    meta.setAttribute('content', colour)
+  }, [splash, floating, theme])
+
+  // Back to wherever the supplier came from; opened straight from a link with
+  // nothing behind it, to the section's list instead.
+  function goBack() {
+    if (location.key !== 'default') navigate(-1)
+    else navigate(parentPath, { replace: true })
+  }
+
   return (
-    <div className="flex min-h-screen bg-surface text-ink">
+    <div data-app-root className="flex min-h-screen bg-surface text-ink">
       {/* Desktop sidebar. Kept for lg and up only — on a tablet a fixed
           230px rail eats ~30% of the screen and squeezes the content, so
           tablets get the same top-bar + bottom-nav chrome as phones. */}
@@ -301,15 +418,91 @@ export function AppShell({ children }: { children: ReactNode }) {
             Both come back at the top. */}
         <header
           data-app-header
+          style={{ viewTransitionName: 'app-header' }}
           className={cn(
-            'sticky top-0 z-30 flex w-full items-center justify-between px-4 py-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white transition-colors duration-200 sm:px-6 lg:hidden',
-            scrolled ? 'bg-shell/80 backdrop-blur-lg backdrop-saturate-150' : 'bg-shell',
+            floating
+              ? 'sticky top-0 z-30 flex w-full items-center gap-2 px-3 py-2 pt-[calc(0.5rem_+_var(--safe-top))] lg:hidden'
+              : 'sticky top-0 z-30 flex w-full items-center justify-between border-b border-border px-4 py-3 pt-[calc(0.75rem_+_var(--safe-top))] text-ink transition-colors duration-200 sm:px-6 lg:hidden dark:border-transparent dark:text-white',
+            // Day: white, like Telegram's; night: the app's dark green.
+            !floating &&
+              (scrolled
+                ? 'bg-card/80 backdrop-blur-lg backdrop-saturate-150 dark:bg-shell/80'
+                : 'bg-card dark:bg-shell'),
           )}
         >
-          <Brand compact={scrolled} />
-          <div className="flex items-center gap-2">
-            <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
-            <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
+          {floating ? (
+            // Telegram's chat bar: ←, the name, and the screen's own buttons,
+            // each a frosted pill over the page.
+            <>
+              <button
+                type="button"
+                onClick={goBack}
+                aria-label={t('common.back')}
+                className={cn(pill, 'h-11 w-11 shrink-0 justify-center')}
+              >
+                <ArrowLeft size={22} />
+              </button>
+              <div className={cn(pill, 'h-11 min-w-0 flex-1 gap-2.5 pl-1 pr-4')}>
+                {bar.avatar ? (
+                  <CustomerAvatar id={bar.avatar.id} name={bar.avatar.name} size={36} />
+                ) : (
+                  !bar.title && <span className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-border" />
+                )}
+                <div className="min-w-0">
+                  {bar.title ? (
+                    <div className="truncate text-[15px] font-semibold leading-tight">{bar.title}</div>
+                  ) : (
+                    // Still loading, and no name was passed along.
+                    <span className="block h-3.5 w-28 animate-pulse rounded-full bg-border" />
+                  )}
+                  {bar.detail && (
+                    <div
+                      className={cn(
+                        'truncate text-xs font-medium leading-tight',
+                        bar.detailTone === 'due' ? 'text-red-600 dark:text-red-400' : 'text-accent',
+                      )}
+                    >
+                      {bar.detail}
+                    </div>
+                  )}
+                </div>
+              </div>
+              {bar.actions && <div className={cn(pill, 'h-11 shrink-0 px-0.5')}>{bar.actions}</div>}
+            </>
+          ) : onDashboard ? (
+            <Brand compact={scrolled} onBar />
+          ) : (
+            <div className="flex min-w-0 flex-1 items-center gap-2 pr-2">
+              {inner && (
+                <button
+                  type="button"
+                  onClick={goBack}
+                  aria-label={t('common.back')}
+                  className="-ml-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                >
+                  <ArrowLeft size={22} />
+                </button>
+              )}
+              {bar.avatar && <CustomerAvatar id={bar.avatar.id} name={bar.avatar.name} size={34} />}
+              <div className="min-w-0">
+                <div className="truncate text-[17px] font-semibold leading-tight">{bar.title}</div>
+                {bar.detail && (
+                  <div
+                    className={cn(
+                      'truncate text-xs font-medium leading-tight',
+                      bar.detailTone === 'due' ? 'text-red-600 dark:text-red-300' : 'text-accent dark:text-green-300',
+                    )}
+                  >
+                    {bar.detail}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          {/* EN and theme step aside on the floating bar, as in Telegram's chat. */}
+          <div className={cn('flex shrink-0 items-center gap-2', floating && 'hidden')}>
+            <LanguageToggle className="dark:border-white/20 dark:text-white dark:hover:bg-white/10 dark:hover:text-white" />
+            <ThemeToggle className="dark:border-white/20 dark:text-white dark:hover:bg-white/10 dark:hover:text-white" />
           </div>
         </header>
 
@@ -324,7 +517,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             left the greeting floating away from the bar it belongs under.
             Applies to every screen, not just the dashboard, so the distance
             from the header stays the same wherever the supplier is. */}
-        <main className="flex-1 px-4 pt-2 pb-4 sm:px-6 sm:pt-3 sm:pb-6 lg:p-8 lg:pt-0">{children}</main>
+        <main className="flex-1 px-4 pt-2 pb-4 sm:px-6 sm:pt-3 sm:pb-6 lg:p-8 lg:pt-0">
+          <TopBarContext.Provider value={setTopBar}>{children}</TopBarContext.Provider>
+        </main>
         {/* After main, so it stacks above a page's own dialog. */}
         <ShareDocumentPrompt />
       </div>
@@ -338,6 +533,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <nav
         ref={tabBarRef}
         data-app-tabbar
+        // Its own layer in a screen change, shown as it is now rather than
+        // faded — otherwise the bubble's slide is doubled by a fading copy.
+        style={{ viewTransitionName: 'app-tabbar' }}
         className="fixed inset-x-3 bottom-[calc(0.5rem_+_var(--safe-bottom))] z-30 mx-auto flex max-w-md rounded-full border border-border bg-card/70 p-1 shadow-lg shadow-black/10 backdrop-blur-lg backdrop-saturate-150 lg:hidden"
       >
         {/* The bubble behind the current tab: one element that slides to the
@@ -358,6 +556,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           <NavLink
             key={item.id}
             to={item.path}
+            // A quick cross-fade into the new screen — see index.css.
+            viewTransition
             className={({ isActive }) =>
               cn(
                 'relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full px-0.5 py-1.5 text-center text-[11px] font-medium leading-tight text-muted transition-colors duration-300',
@@ -365,21 +565,72 @@ export function AppShell({ children }: { children: ReactNode }) {
               )
             }
           >
-            <item.icon size={19} />
-            {t(item.labelKey)}
+            {/* Finer lines on the other tabs, a bolder icon on the one you
+                are on — how Telegram and the phone's own apps mark it. */}
+            {({ isActive }) => (
+              <>
+                <item.icon size={20} strokeWidth={isActive ? 2.3 : 1.75} />
+                {t(item.labelKey)}
+              </>
+            )}
           </NavLink>
         ))}
         <button
           onClick={() => setMoreOpen(true)}
+          aria-label={
+            pendingOrders > 0
+              ? `${t('nav.more')}, ${pendingOrders === 1 ? t('dash.newOrdersOne') : t('dash.newOrdersMany', { count: pendingOrders })}`
+              : undefined
+          }
           className="relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full px-0.5 py-1.5 text-center text-[11px] font-medium leading-tight text-muted"
         >
-          <MoreHorizontal size={19} />
+          <MoreHorizontal size={20} strokeWidth={1.75} />
           {pendingOrders > 0 && (
-            <span aria-hidden="true" className="absolute right-[calc(50%-16px)] top-1 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-card" />
+            // How many new orders, not just that there are some — a number on
+            // the corner of the icon, as Telegram counts unread chats.
+            <span
+              aria-hidden="true"
+              className="absolute left-1/2 top-0.5 ml-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold leading-none text-white ring-2 ring-card"
+            >
+              {pendingOrders > 99 ? '99+' : pendingOrders}
+            </span>
           )}
           {t('nav.more')}
         </button>
       </nav>
+
+      {/* The floating Orders button, Telegram-style, just above the tab bar
+          (--tabbar-h already includes the gap under the bar). It slips away
+          while a list is scrolled down, so it never covers the last rows, and
+          comes back on the way up. Opens Orders with the tabs' quick fade.
+          Tailwind 4 moves and scales with the `translate` and `scale`
+          properties, not `transform` — hence what is transitioned. */}
+      {showFab && (
+        <Link
+          to="/orders"
+          viewTransition
+          aria-label={
+            pendingOrders > 0
+              ? `${t('nav.orders')}, ${pendingOrders === 1 ? t('dash.newOrdersOne') : t('dash.newOrdersMany', { count: pendingOrders })}`
+              : t('nav.orders')
+          }
+          style={{ bottom: 'calc(var(--tabbar-h) + 0.75rem)' }}
+          className={cn(
+            'fixed right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-lg shadow-black/25 transition-[translate,scale,opacity] duration-200 active:scale-95 motion-reduce:transition-none lg:hidden',
+            fabAway ? 'pointer-events-none translate-y-4 opacity-0' : 'translate-y-0 opacity-100',
+          )}
+        >
+          <Inbox size={24} strokeWidth={1.9} />
+          {pendingOrders > 0 && (
+            <span
+              aria-hidden="true"
+              className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-[11px] font-bold leading-none text-accent-text ring-2 ring-accent"
+            >
+              {pendingOrders > 99 ? '99+' : pendingOrders}
+            </span>
+          )}
+        </Link>
+      )}
 
       {/* Mobile "more" sheet */}
       {moreOpen && (
@@ -401,10 +652,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <NavLink
                   key={item.id}
                   to={item.path}
+                  viewTransition
                   onClick={() => setMoreOpen(false)}
-                  className="relative flex flex-col items-center gap-1.5 rounded-xl border border-border p-3 text-xs font-medium text-ink"
+                  className="relative flex flex-col items-center gap-2 rounded-2xl p-3 text-xs font-medium transition-colors hover:bg-surface active:bg-surface text-ink"
                 >
-                  <item.icon size={18} />
+                  {/* Plain outline icons, as WhatsApp draws its own — no box. */}
+                  <item.icon size={26} strokeWidth={1.75} />
                   {t(item.labelKey)}
                   {item.id === 'orders' && pendingOrders > 0 && (
                     <span className="absolute right-2 top-2 rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
@@ -417,35 +670,38 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <>
                   <NavLink
                     to="/admin/suppliers"
+                    viewTransition
                     onClick={() => setMoreOpen(false)}
-                    className="flex flex-col items-center gap-1.5 rounded-xl border border-border p-3 text-xs font-medium text-ink"
+                    className="flex flex-col items-center gap-2 rounded-2xl p-3 text-xs font-medium transition-colors hover:bg-surface active:bg-surface text-ink"
                   >
-                    <ShieldCheck size={18} />
+                    <ShieldCheck size={26} strokeWidth={1.75} />
                     Suppliers
                   </NavLink>
                   <NavLink
                     to="/admin/materials"
+                    viewTransition
                     onClick={() => setMoreOpen(false)}
-                    className="flex flex-col items-center gap-1.5 rounded-xl border border-border p-3 text-xs font-medium text-ink"
+                    className="flex flex-col items-center gap-2 rounded-2xl p-3 text-xs font-medium transition-colors hover:bg-surface active:bg-surface text-ink"
                   >
-                    <Boxes size={18} />
+                    <Boxes size={26} strokeWidth={1.75} />
                     Catalog
                   </NavLink>
                   <NavLink
                     to="/admin/settings"
+                    viewTransition
                     onClick={() => setMoreOpen(false)}
-                    className="flex flex-col items-center gap-1.5 rounded-xl border border-border p-3 text-xs font-medium text-ink"
+                    className="flex flex-col items-center gap-2 rounded-2xl p-3 text-xs font-medium transition-colors hover:bg-surface active:bg-surface text-ink"
                   >
-                    <SlidersHorizontal size={18} />
+                    <SlidersHorizontal size={26} strokeWidth={1.75} />
                     Platform
                   </NavLink>
                 </>
               )}
               <button
                 onClick={handleSignOut}
-                className="flex flex-col items-center gap-1.5 rounded-xl border border-border p-3 text-xs font-medium text-red-600"
+                className="flex flex-col items-center gap-2 rounded-2xl p-3 text-xs font-medium transition-colors hover:bg-surface active:bg-surface text-red-600"
               >
-                <LogOut size={18} />
+                <LogOut size={26} strokeWidth={1.75} />
                 {t('nav.signOut')}
               </button>
             </div>

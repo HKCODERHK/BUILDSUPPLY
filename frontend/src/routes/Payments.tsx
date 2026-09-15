@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { EmptyState } from '@/components/EmptyState'
+import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { SuccessHeader } from '@/components/SuccessTick'
 import {
   activeAllocations,
@@ -92,7 +93,6 @@ export default function Payments() {
   // own Receive payment — oldest bills first, extra kept as advance — so money
   // is taken one way everywhere. Paying one particular bill stays one tap away.
   const [step, setStep] = useState<'who' | 'bill'>('who')
-  const [pickId, setPickId] = useState('')
 
   useEffect(() => {
     if (searchParams.get('new') === '1') {
@@ -149,7 +149,6 @@ export default function Payments() {
     setInvoiceId('')
     setSplits([{ key: crypto.randomUUID(), amount: '', mode: 'Cash' }])
     setStep('who')
-    setPickId('')
     requestId.current = newRequestId()
   }
 
@@ -340,28 +339,33 @@ export default function Payments() {
               <Button onClick={closeModal}>{t('common.done')}</Button>
             </div>
           ) : step === 'who' ? (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3">
               <div>
-                <Label htmlFor="who-paid">{t('pay.whoPaid')}</Label>
-                <select
-                  id="who-paid"
-                  value={pickId}
-                  onChange={(e) => setPickId(e.target.value)}
-                  className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-accent"
-                >
-                  <option value="">{t('pay.pickCustomer')}</option>
-                  {owing.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} — {formatINR(c.due)}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1.5 text-xs text-muted">{t('pay.whoPaidHint')}</p>
+                <div className="text-sm font-medium text-ink">{t('pay.whoPaid')}</div>
+                <p className="mt-0.5 text-xs text-muted">{t('pay.whoPaidHint')}</p>
               </div>
-              {/* Opens a new screen from inside a dialog, so `replace` — see modal.tsx. */}
-              <Button disabled={!pickId} onClick={() => navigate(`/customers/${pickId}?pay=1`, { replace: true })}>
-                {t('pay.continue')}
-              </Button>
+              {/* A tappable list with each customer's initials, not a dropdown:
+                  one tap on the customer opens their own Receive payment. It
+                  opens a new screen from inside a dialog, so `replace` — see
+                  modal.tsx. */}
+              {owing.length === 0 ? (
+                <p className="text-sm text-muted">{t('pay.nobodyOwes')}</p>
+              ) : (
+                <div className="-mx-2 max-h-[50vh] overflow-y-auto">
+                  {owing.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => navigate(`/customers/${c.id}?pay=1`, { replace: true, state: { customerName: c.name } })}
+                      className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-surface active:bg-surface"
+                    >
+                      <CustomerAvatar id={c.id} name={c.name} size={36} />
+                      <span className="min-w-0 flex-1 text-sm font-medium text-ink">{c.name}</span>
+                      <span className="shrink-0 text-sm font-semibold text-red-600">{formatINR(c.due)}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => setStep('bill')}

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { AddCustomerModal } from '@/components/AddCustomerModal'
+import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { EmptyState } from '@/components/EmptyState'
 import { listCustomers, listCustomerBalances } from '@/services/customers'
 import { listInvoices } from '@/services/invoices'
@@ -122,22 +123,32 @@ export default function Customers() {
             const bal = balances[c.id]
             const pendingDays = oldestPendingDays(invoicesByCustomer[c.id] ?? [])
             return (
-              <Link key={c.id} to={`/customers/${c.id}`}>
+              // The name rides along, so the customer page's top bar shows it
+              // while the rest loads (AppShell).
+              <Link key={c.id} to={`/customers/${c.id}`} state={{ customerName: c.name }}>
                 <Card
                   id={flashId(c.id)}
                   className={`h-full transition-shadow hover:shadow-sm ${added?.id === c.id ? 'flash-success' : ''}`}
                 >
-                  <div className="mb-2 flex items-start justify-between">
-                    <div className="font-semibold text-ink">{c.name}</div>
-                    <Badge tone={c.status === 'Active' ? 'success' : 'neutral'}>
-                      {t(c.status === 'Active' ? 'status.Active' : 'status.Inactive')}
-                    </Badge>
+                  {/* Initials in a coloured circle beside the name, Telegram-
+                      style: a regular is spotted by colour before the name is
+                      read. */}
+                  <div className="flex items-start gap-3">
+                    <CustomerAvatar id={c.id} name={c.name} />
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 flex items-start justify-between gap-2">
+                        <div className="font-semibold text-ink">{c.name}</div>
+                        <Badge tone={c.status === 'Active' ? 'success' : 'neutral'}>
+                          {t(c.status === 'Active' ? 'status.Active' : 'status.Inactive')}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-muted">{c.site ?? '—'}</div>
+                      {/* Plain text here on purpose: the whole card is already a
+                          link to the profile, and an <a> inside an <a> is invalid
+                          HTML. The number is tappable on the profile itself. */}
+                      <div className="text-xs text-muted">{c.phone ?? '—'}</div>
+                    </div>
                   </div>
-                  <div className="text-xs text-muted">{c.site ?? '—'}</div>
-                  {/* Plain text here on purpose: the whole card is already a
-                      link to the profile, and an <a> inside an <a> is invalid
-                      HTML. The number is tappable on the profile itself. */}
-                  <div className="text-xs text-muted">{c.phone ?? '—'}</div>
                   <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-sm">
                     <div>
                       <span className="text-muted">{t('common.pending')}</span>

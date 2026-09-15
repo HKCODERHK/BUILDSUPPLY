@@ -512,3 +512,88 @@ select,
     animation: none;
   }
 }
+
+/* Switching screens from the tab bar or the More sheet (NavLink
+   `viewTransition`, AppShell): the browser cross-fades the old screen into the
+   new one in 0.15s — quick enough to hold nothing up, and it touches no
+   element's layout, so dialogs and pinned bars behave exactly as before. The
+   top bar and the tab bar are their own layers and simply show their new
+   state, so the tab bubble's own slide isn't doubled by a fading copy of the
+   old one. A browser without view transitions just switches, as it always
+   did; so does a phone set to reduce motion. */
+::view-transition-group(*) {
+  animation-duration: 150ms;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 150ms;
+  animation-timing-function: ease-out;
+}
+::view-transition-old(app-tabbar),
+::view-transition-old(app-header) {
+  display: none;
+}
+::view-transition-new(app-tabbar),
+::view-transition-new(app-header) {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* Switching day and night (ThemeToggle → ThemeContext), Telegram's way: night
+   spreads out from the tapped button as a growing circle; day comes back as
+   night shrinking into it. --flip-x/-y/-r (the button's centre, and the
+   distance to the farthest corner) are set just before. For this one the
+   whole screen is a single layer, so the top bar and the tab bar lose their
+   own view-transition names and go with it (!important beats the inline
+   style that names them). */
+html[data-theme-flip] [data-app-header],
+html[data-theme-flip] [data-app-tabbar] {
+  view-transition-name: none !important;
+}
+/* For the half-second of the switch: no colour fades (every button with
+   transition-colors would otherwise keep easing to its new colour after the
+   circle, which reads as lag), and no frosted blur (the tab bar, top bar and
+   pills would be re-blurred every frame of the circle — heavy on a budget
+   phone). Both return the moment the switch ends. */
+html[data-theme-flip] *,
+html[data-theme-flip] *::before,
+html[data-theme-flip] *::after {
+  transition: none !important;
+  backdrop-filter: none !important;
+}
+/* No space before ::view-transition-…: those layers belong to the html
+   element itself, not to anything inside it. */
+html[data-theme-flip]::view-transition-old(root),
+html[data-theme-flip]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+html[data-theme-flip='to-dark']::view-transition-new(root) {
+  animation: theme-circle-grow 400ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+html[data-theme-flip='to-light']::view-transition-old(root) {
+  z-index: 1;
+  animation: theme-circle-shrink 400ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+@keyframes theme-circle-grow {
+  from {
+    clip-path: circle(0 at var(--flip-x) var(--flip-y));
+  }
+  to {
+    clip-path: circle(var(--flip-r) at var(--flip-x) var(--flip-y));
+  }
+}
+@keyframes theme-circle-shrink {
+  from {
+    clip-path: circle(var(--flip-r) at var(--flip-x) var(--flip-y));
+  }
+  to {
+    clip-path: circle(0 at var(--flip-x) var(--flip-y));
+  }
+}
