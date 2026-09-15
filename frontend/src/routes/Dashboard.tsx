@@ -65,7 +65,10 @@ function WelcomeLogo() {
 
   function onLongPress() {
     longPressed.current = true
-    navigator.vibrate?.(15)
+    // A phone allows a buzz only once the page has had a real tap; a hold
+    // that is the very first touch doesn't count until the finger lifts.
+    // Asking anyway just logs a warning, so ask only when it's allowed.
+    if (navigator.userActivation?.hasBeenActive) navigator.vibrate?.(15)
     if (orderUrl) setQrOpen(true)
     else navigate('/settings?s=orders')
   }
