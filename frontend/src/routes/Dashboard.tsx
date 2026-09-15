@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Plus, AlertTriangle, Inbox, BadgeCheck, Tags } from 'lucide-react'
 import { localDateKey } from '@/lib/localDate'
+import { UpdateRatesModal } from '@/components/UpdateRatesModal'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -121,15 +122,15 @@ function WelcomeLogo() {
 /**
  * Once a day: "Update today's rates?" Sand, gitti and cement rates move
  * often, and bills, estimates, the rate list and (if shown) the order page
- * all start from them. Either answer puts it away until tomorrow — Update
- * rates also opens Stock, where the rates are. Remembered on this phone
- * (localStorage, per business); a phone that won't store it just shows the
- * card again, which does no harm. A card among the Dashboard's other notices,
- * not a popup in the way.
+ * all start from them. Same as yesterday puts it away until tomorrow; Update
+ * rates opens every material's rate in a popup right here (UpdateRatesModal),
+ * and saving puts it away too — closing the popup without saving leaves the
+ * card. Remembered on this phone (localStorage, per business); a phone that
+ * won't store it just shows the card again, which does no harm. A card among
+ * the Dashboard's other notices — the popup opens only when asked for.
  */
 function RatesReminder({ supplierId }: { supplierId: string }) {
   const { t } = useLanguage()
-  const navigate = useNavigate()
   const storageKey = `buildsupply-rates-checked:${supplierId}`
   const today = localDateKey(new Date().toISOString())
   const [answered, setAnswered] = useState(() => {
@@ -139,7 +140,14 @@ function RatesReminder({ supplierId }: { supplierId: string }) {
       return false
     }
   })
-  if (answered) return null
+  const [editing, setEditing] = useState(false)
+  // "12 rates updated", for a moment where the card was.
+  const [savedCount, setSavedCount] = useState<number | null>(null)
+  useEffect(() => {
+    if (savedCount === null) return
+    const timer = setTimeout(() => setSavedCount(null), 2400)
+    return () => clearTimeout(timer)
+  }, [savedCount])
 
   function answer() {
     try {
@@ -149,6 +157,15 @@ function RatesReminder({ supplierId }: { supplierId: string }) {
     }
     setAnswered(true)
   }
+
+  if (savedCount !== null) {
+    return (
+      <div className="mb-4 flex items-center gap-2.5 rounded-xl bg-accent-bg px-4 py-3 text-sm font-semibold text-accent-text">
+        <BadgeCheck size={18} className="shrink-0" /> {t('rates.saved', { count: savedCount })}
+      </div>
+    )
+  }
+  if (answered) return null
 
   return (
     <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950">
@@ -160,19 +177,23 @@ function RatesReminder({ supplierId }: { supplierId: string }) {
         </div>
       </div>
       <div className="mt-3 flex flex-wrap gap-2 pl-7">
-        <Button
-          size="sm"
-          onClick={() => {
-            answer()
-            navigate('/materials')
-          }}
-        >
+        <Button size="sm" onClick={() => setEditing(true)}>
           {t('rates.update')}
         </Button>
         <Button size="sm" variant="outline" onClick={answer}>
           {t('rates.same')}
         </Button>
       </div>
+      {editing && (
+        <UpdateRatesModal
+          onClose={() => setEditing(false)}
+          onSaved={(count) => {
+            setEditing(false)
+            answer()
+            setSavedCount(count)
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -20,6 +20,8 @@ import { PinSettingsCard } from '@/components/PinSettingsCard'
 import { ChangePasswordCard } from '@/components/ChangePasswordCard'
 import { OrderSettingsCard } from '@/components/OrderSettingsCard'
 import { UpiSettingsCard } from '@/components/UpiSettingsCard'
+import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
+import { orderPageUrl } from '@/services/orders'
 
 type Section = 'business' | 'orders' | 'upi' | 'language' | 'pin' | 'password'
 
@@ -146,6 +148,11 @@ export default function Settings() {
     }
   }, [])
   const businessName = supplier?.business_name ?? ''
+  // "Order QR" under the name: the full-screen QR a walk-in customer scans —
+  // the same one the Dashboard logo opens on a long press. Until ordering is
+  // set up it opens Online orders instead.
+  const orderUrl = supplier?.order_link && supplier.ordering_enabled ? orderPageUrl(supplier.order_link) : null
+  const [qrOpen, setQrOpen] = useState(false)
   const barLogo = supplier?.logo_url && !logoFailed ? supplier.logo_url : undefined
   const showBusiness = !sectionRow && nameGone && !!businessName
   useTopBar({
@@ -319,8 +326,19 @@ export default function Settings() {
             <span className="block break-words text-2xl font-semibold leading-tight text-ink">{supplier?.business_name}</span>
             <span className="mt-1 block text-sm text-muted">{supplier?.phone || supplier?.email}</span>
           </button>
+          {supplier?.role !== 'admin' && (
+            <button
+              type="button"
+              onClick={() => (orderUrl ? setQrOpen(true) : open('orders'))}
+              className="mt-3 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-accent-text shadow-sm transition-colors hover:bg-accent-bg active:bg-accent-bg"
+            >
+              <QrCode size={18} strokeWidth={1.75} /> {t('set.orderQr')}
+            </button>
+          )}
         </div>
       </div>
+
+      {qrOpen && orderUrl && <OrderLinkShareModal url={orderUrl} initialStep="qr" onClose={() => setQrOpen(false)} />}
 
       {/* Plain rows: a grey outline icon, the title, and a line under it. */}
       <div className="mt-4">

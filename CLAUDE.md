@@ -631,6 +631,10 @@ The top bar and navigation (no database change):
   Online orders if ordering isn't set up). It buzzes only when
   `navigator.userActivation.hasBeenActive` — Chrome blocks and warns about
   `vibrate` before the page has had a tap.
+- **Order QR on Profile** (2026-09-16): a rounded button under the business
+  name opens the same full-screen order QR (`OrderLinkShareModal`,
+  `initialStep="qr"`), or Settings → Online orders until ordering is on.
+  Hidden for the admin.
 
 Supplier helpers — the eight free ideas the user picked from a 17-idea list,
 in their order:
@@ -641,10 +645,15 @@ in their order:
    anyone without a 10-digit mobile left out) and added one at a time, with
    any refused (a number already in use) listed with the reason.
 2. **Today's rates card** (Dashboard `RatesReminder`): once a day, "Update
-   today's rates?" — Update rates (opens Stock) or Same as yesterday; either
-   puts it away until tomorrow (localStorage
-   `buildsupply-rates-checked:<supplierId>`, the phone's own date). Only once a
-   material has a rate. A card among the notices, never a popup.
+   today's rates?". Same as yesterday puts it away until tomorrow
+   (localStorage `buildsupply-rates-checked:<supplierId>`, the phone's own
+   date). **Update rates opens `components/UpdateRatesModal.tsx` on the
+   Dashboard itself** (asked for 2026-09-16; it used to jump to Stock): every
+   material's rate in a box, "was ₹…" under the changed ones, and one Save
+   that writes only the rates that moved (`updateMaterial(id, { rate })`, as
+   Stock's edit form does). Saving puts the card away; closing without saving
+   leaves it. Only once a material has a rate. The card itself is a notice
+   among the others — the popup opens only when tapped.
 3. **Khata link**: each bill's PDF, the customer's estimates (newest 20, each
    with its PDF) and online orders (newest 10: made into this customer, or
    placed from their phone and not yet decided), through `customer_khata` and
