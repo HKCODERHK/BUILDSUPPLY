@@ -365,6 +365,7 @@ function SupplierDashboardView() {
                   <Link
                     key={c.id}
                     to={`/customers/${c.id}`}
+                    state={{ customerName: c.name }}
                     className="flex items-center justify-between py-2.5 text-sm hover:text-accent"
                   >
                     <div>

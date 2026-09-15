@@ -272,7 +272,17 @@ export function AppShell({ children }: { children: ReactNode }) {
       ? segs.length > 2
       : segs.length > 1 || (segs[0] === 'settings' && new URLSearchParams(location.search).has('s'))
   const parentPath = segs[0] === 'admin' ? `/admin/${segs[1] ?? ''}` : `/${segs[0] ?? 'dashboard'}`
-  const bar: TopBarInfo = topBar ?? { title: sectionItem ? t(sectionItem.labelKey) : 'BuildSupply' }
+  // While a customer's page loads it has no heading yet, so the bar would say
+  // "Customers" until the data lands. The screen that opened it passes the
+  // name along (router state `customerName`), so the pill shows it at once;
+  // opened any other way, a soft placeholder instead of the section's name.
+  const onCustomerPage = segs[0] === 'customers' && segs.length === 2
+  const passedName = (location.state as { customerName?: string } | null)?.customerName
+  const bar: TopBarInfo =
+    topBar ??
+    (onCustomerPage
+      ? { title: passedName ?? '', avatar: passedName ? { id: segs[1], name: passedName } : undefined }
+      : { title: sectionItem ? t(sectionItem.labelKey) : 'BuildSupply' })
   // Telegram's chat bar (a customer's page): pills floating over the page.
   // A customer's page floats from its first frame — while it loads too — so
   // the bar doesn't jump from the dark style to the pills when the name lands.
@@ -433,9 +443,18 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <ArrowLeft size={22} />
               </button>
               <div className={cn(pill, 'h-11 min-w-0 flex-1 gap-2.5 pl-1 pr-4')}>
-                {bar.avatar && <CustomerAvatar id={bar.avatar.id} name={bar.avatar.name} size={36} />}
+                {bar.avatar ? (
+                  <CustomerAvatar id={bar.avatar.id} name={bar.avatar.name} size={36} />
+                ) : (
+                  !bar.title && <span className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-border" />
+                )}
                 <div className="min-w-0">
-                  <div className="truncate text-[15px] font-semibold leading-tight">{bar.title}</div>
+                  {bar.title ? (
+                    <div className="truncate text-[15px] font-semibold leading-tight">{bar.title}</div>
+                  ) : (
+                    // Still loading, and no name was passed along.
+                    <span className="block h-3.5 w-28 animate-pulse rounded-full bg-border" />
+                  )}
                   {bar.detail && (
                     <div
                       className={cn(

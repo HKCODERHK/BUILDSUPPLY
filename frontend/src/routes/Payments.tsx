@@ -356,7 +356,7 @@ export default function Payments() {
                     <button
                       key={c.id}
                       type="button"
-                      onClick={() => navigate(`/customers/${c.id}?pay=1`, { replace: true })}
+                      onClick={() => navigate(`/customers/${c.id}?pay=1`, { replace: true, state: { customerName: c.name } })}
                       className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-surface active:bg-surface"
                     >
                       <CustomerAvatar id={c.id} name={c.name} size={36} />

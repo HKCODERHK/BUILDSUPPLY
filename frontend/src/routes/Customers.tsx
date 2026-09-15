@@ -123,7 +123,9 @@ export default function Customers() {
             const bal = balances[c.id]
             const pendingDays = oldestPendingDays(invoicesByCustomer[c.id] ?? [])
             return (
-              <Link key={c.id} to={`/customers/${c.id}`}>
+              // The name rides along, so the customer page's top bar shows it
+              // while the rest loads (AppShell).
+              <Link key={c.id} to={`/customers/${c.id}`} state={{ customerName: c.name }}>
                 <Card
                   id={flashId(c.id)}
                   className={`h-full transition-shadow hover:shadow-sm ${added?.id === c.id ? 'flash-success' : ''}`}

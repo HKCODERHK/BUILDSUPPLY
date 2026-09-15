@@ -556,6 +556,17 @@ html[data-theme-flip] [data-app-header],
 html[data-theme-flip] [data-app-tabbar] {
   view-transition-name: none !important;
 }
+/* For the half-second of the switch: no colour fades (every button with
+   transition-colors would otherwise keep easing to its new colour after the
+   circle, which reads as lag), and no frosted blur (the tab bar, top bar and
+   pills would be re-blurred every frame of the circle — heavy on a budget
+   phone). Both return the moment the switch ends. */
+html[data-theme-flip] *,
+html[data-theme-flip] *::before,
+html[data-theme-flip] *::after {
+  transition: none !important;
+  backdrop-filter: none !important;
+}
 /* No space before ::view-transition-…: those layers belong to the html
    element itself, not to anything inside it. */
 html[data-theme-flip]::view-transition-old(root),
@@ -564,11 +575,11 @@ html[data-theme-flip]::view-transition-new(root) {
   mix-blend-mode: normal;
 }
 html[data-theme-flip='to-dark']::view-transition-new(root) {
-  animation: theme-circle-grow 450ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation: theme-circle-grow 400ms cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 html[data-theme-flip='to-light']::view-transition-old(root) {
   z-index: 1;
-  animation: theme-circle-shrink 450ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation: theme-circle-shrink 400ms cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 @keyframes theme-circle-grow {
   from {
