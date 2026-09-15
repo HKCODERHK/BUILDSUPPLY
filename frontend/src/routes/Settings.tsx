@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Inbox, Languages, Lock, LogOut, Pencil, QrCode, ShieldCheck, Store, type LucideIcon } from 'lucide-react'
 import { Card } from '@/components/ui/card'
@@ -119,8 +119,40 @@ export default function Settings() {
   const sectionRow = groups.flat().find((r) => r.id === asked)
   const section = sectionRow?.id ?? null
   // No PageHeader here, so name the screen for the phone's top bar directly.
-  // The Profile tab (its logo in the tab bar) opens this page.
-  useTopBar({ title: sectionRow?.label ?? t('nav.profile') })
+  // The Profile tab (its logo in the tab bar) opens this page. Once the
+  // business's own name has scrolled up under the top bar, the bar shows its
+  // logo and name instead of "Profile" — as Telegram's profile does — and
+  // "Profile" again back at the top.
+  const nameRef = useRef<HTMLButtonElement>(null)
+  const [nameGone, setNameGone] = useState(false)
+  useEffect(() => {
+    let frame = 0
+    const check = () => {
+      frame = 0
+      const name = nameRef.current?.getBoundingClientRect()
+      const bar = document.querySelector('[data-app-header]')?.getBoundingClientRect()
+      setNameGone(!!name && !!bar && bar.height > 0 && name.bottom <= bar.bottom)
+    }
+    const onChange = () => {
+      if (!frame) frame = requestAnimationFrame(check)
+    }
+    frame = requestAnimationFrame(check)
+    window.addEventListener('scroll', onChange, { passive: true })
+    window.addEventListener('resize', onChange)
+    return () => {
+      window.removeEventListener('scroll', onChange)
+      window.removeEventListener('resize', onChange)
+      if (frame) cancelAnimationFrame(frame)
+    }
+  }, [])
+  const businessName = supplier?.business_name ?? ''
+  const barLogo = supplier?.logo_url && !logoFailed ? supplier.logo_url : undefined
+  const showBusiness = !sectionRow && nameGone && !!businessName
+  useTopBar({
+    title: sectionRow?.label ?? (showBusiness ? businessName : t('nav.profile')),
+    image: showBusiness ? barLogo : undefined,
+    avatar: showBusiness && !barLogo ? { id: supplier?.id ?? '', name: businessName } : undefined,
+  })
 
   async function handleSignOut() {
     await signOut()
@@ -283,7 +315,7 @@ export default function Settings() {
               <CustomerAvatar id={supplier?.id ?? ''} name={supplier?.business_name ?? ''} size={112} />
             )}
           </button>
-          <button type="button" onClick={() => open('business')} className="w-full">
+          <button ref={nameRef} type="button" onClick={() => open('business')} className="w-full">
             <span className="block break-words text-2xl font-semibold leading-tight text-ink">{supplier?.business_name}</span>
             <span className="mt-1 block text-sm text-muted">{supplier?.phone || supplier?.email}</span>
           </button>

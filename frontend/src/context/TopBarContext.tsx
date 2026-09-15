@@ -11,6 +11,8 @@ export interface TopBarInfo {
   title: string
   /** An initials circle before the title — the customer's own page. */
   avatar?: { id: string; name: string }
+  /** A picture in that circle instead — the business's logo on Profile. */
+  image?: string
   /** A small line under the title, e.g. what the customer owes. */
   detail?: string
   detailTone?: 'due' | 'good'
@@ -30,6 +32,7 @@ export function useTopBar(info: TopBarInfo | null) {
   const title = info?.title
   const avatarId = info?.avatar?.id
   const avatarName = info?.avatar?.name
+  const image = info?.image
   const detail = info?.detail
   const tone = info?.detailTone
   const floating = info?.floating
@@ -46,13 +49,14 @@ export function useTopBar(info: TopBarInfo | null) {
         : {
             title,
             avatar: avatarId ? { id: avatarId, name: avatarName ?? '' } : undefined,
+            image,
             detail,
             detailTone: tone,
             floating,
             actions,
           },
     )
-  }, [set, title, avatarId, avatarName, detail, tone, floating, actions])
+  }, [set, title, avatarId, avatarName, image, detail, tone, floating, actions])
 
   useEffect(() => {
     if (!set) return

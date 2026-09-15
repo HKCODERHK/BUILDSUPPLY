@@ -492,8 +492,20 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <ArrowLeft size={22} />
                 </button>
               )}
-              {bar.avatar && <CustomerAvatar id={bar.avatar.id} name={bar.avatar.name} size={34} />}
-              <div className="min-w-0">
+              {bar.image ? (
+                <img
+                  key={bar.image}
+                  src={bar.image}
+                  alt=""
+                  className="bar-title-in h-[34px] w-[34px] shrink-0 rounded-full bg-white object-cover ring-1 ring-border"
+                />
+              ) : (
+                bar.avatar && <CustomerAvatar id={bar.avatar.id} name={bar.avatar.name} size={34} />
+              )}
+              {/* Keyed by the title, so a new title eases in rather than
+                  snapping — Profile turning into the business's name as its
+                  page scrolls, say. */}
+              <div key={bar.title} className="bar-title-in min-w-0">
                 <div className="truncate text-[17px] font-semibold leading-tight">{bar.title}</div>
                 {bar.detail && (
                   <div
