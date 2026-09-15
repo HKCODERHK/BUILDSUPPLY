@@ -1362,6 +1362,16 @@ const STRINGS = {
   'khata.advanceReceived': { en: 'kept as advance', hi: 'जमा के रूप में रखा', mr: 'जमा म्हणून ठेवले' },
   'khata.runningDue': { en: 'Due {amount}', hi: 'बकाया {amount}', mr: 'बाकी {amount}' },
   'khata.runningAdvance': { en: 'Advance {amount}', hi: 'जमा {amount}', mr: 'जमा {amount}' },
+  // The order status link's progress timeline (migration 031).
+  'tl.title': { en: 'Progress', hi: 'प्रगति', mr: 'प्रगती' },
+  'tl.sent': { en: 'Order sent', hi: 'ऑर्डर भेजा', mr: 'ऑर्डर पाठवली' },
+  'tl.estimate': { en: 'Estimate ready', hi: 'एस्टिमेट तैयार', mr: 'एस्टिमेट तयार' },
+  'tl.accepted': { en: 'Estimate accepted', hi: 'एस्टिमेट स्वीकार', mr: 'एस्टिमेट स्वीकारले' },
+  'tl.callAsked': { en: 'You asked for a call', hi: 'आपने कॉल के लिए कहा', mr: 'तुम्ही कॉलसाठी सांगितले' },
+  'tl.bill': { en: 'Bill made', hi: 'बिल बना', mr: 'बिल झाले' },
+  'tl.billDetail': { en: 'Bill {no} · {date}', hi: 'बिल {no} · {date}', mr: 'बिल {no} · {date}' },
+  'tl.delivered': { en: 'Delivered', hi: 'डिलीवर हुआ', mr: 'डिलिव्हर झाले' },
+  'tl.received': { en: 'Material received', hi: 'माल मिल गया', mr: 'माल मिळाला' },
   // The khata link's bill and estimate PDFs, estimates and orders (migration 031).
   'khata.billPdf': { en: 'Bill PDF', hi: 'बिल PDF', mr: 'बिल PDF' },
   'khata.estimates': { en: 'Estimates', hi: 'एस्टिमेट', mr: 'एस्टिमेट' },
