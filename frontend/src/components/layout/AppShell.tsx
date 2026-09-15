@@ -383,11 +383,23 @@ export function AppShell({ children }: { children: ReactNode }) {
         ))}
         <button
           onClick={() => setMoreOpen(true)}
+          aria-label={
+            pendingOrders > 0
+              ? `${t('nav.more')}, ${pendingOrders === 1 ? t('dash.newOrdersOne') : t('dash.newOrdersMany', { count: pendingOrders })}`
+              : undefined
+          }
           className="relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full px-0.5 py-1.5 text-center text-[11px] font-medium leading-tight text-muted"
         >
           <MoreHorizontal size={20} strokeWidth={1.75} />
           {pendingOrders > 0 && (
-            <span aria-hidden="true" className="absolute right-[calc(50%-16px)] top-1 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-card" />
+            // How many new orders, not just that there are some — a number on
+            // the corner of the icon, as Telegram counts unread chats.
+            <span
+              aria-hidden="true"
+              className="absolute left-1/2 top-0.5 ml-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold leading-none text-white ring-2 ring-card"
+            >
+              {pendingOrders > 99 ? '99+' : pendingOrders}
+            </span>
           )}
           {t('nav.more')}
         </button>
