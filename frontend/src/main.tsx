@@ -3,6 +3,10 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { dismissKeyboardOnScroll } from './lib/dismissKeyboardOnScroll'
+import { listenForInstall } from './lib/installPrompt'
+
+// Before the first render: Chrome's "can be installed" arrives early, once.
+listenForInstall()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

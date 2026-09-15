@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
+import { Check } from 'lucide-react'
+import { rememberOrder } from '@/lib/customerLinks'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -8,6 +10,7 @@ import { TruckLoader } from '@/components/TruckLoader'
 import { useLanguage } from '@/context/LanguageContext'
 import { getOrderStatus, respondToEstimate, type OrderStatusView } from '@/services/orders'
 import { rejectReasonText } from '@/lib/orderFormat'
+import { cn } from '@/lib/utils'
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -35,13 +38,61 @@ export default function OrderStatus() {
 
   useEffect(() => {
     getOrderStatus(token)
-      .then(setView)
+      .then((v) => {
+        setView(v)
+        // Opened from WhatsApp, say: the supplier's order page lists it under
+        // this customer's recent orders from now on (on this phone only).
+        if (v.found && v.order_link) rememberOrder(v.order_link, token, v.created_at)
+      })
       .catch(() => setFailed(true))
   }, [token])
 
   const found = view && view.found ? view : null
   const tone = found?.status === 'approved' ? 'success' : found?.status === 'rejected' ? 'neutral' : 'warning'
   const estimate = found?.status === 'approved' ? (found.estimate ?? null) : null
+
+  // The order's progress, ticked as it happens (migration 031): sent →
+  // estimate ready → accepted → bill made → delivered → received. Nothing to
+  // track once an order is rejected — the reason above says it all. A bill
+  // made straight from the estimate counts as accepted.
+  const bill = found?.bill ?? null
+  const billed = estimate?.status === 'Converted' || !!bill
+  const steps =
+    found && found.status !== 'rejected'
+      ? [
+          { key: 'sent', label: t('tl.sent'), detail: formatDate(found.created_at), done: true },
+          {
+            key: 'estimate',
+            label: t('tl.estimate'),
+            detail: found.status === 'approved' && found.decided_at ? formatDate(found.decided_at) : null,
+            done: found.status === 'approved',
+          },
+          {
+            key: 'accepted',
+            label: t('tl.accepted'),
+            detail:
+              found.response === 'accepted' && found.responded_at
+                ? formatDate(found.responded_at)
+                : found.response === 'call_me' && !billed
+                  ? t('tl.callAsked')
+                  : null,
+            done: found.response === 'accepted' || billed,
+          },
+          {
+            key: 'bill',
+            label: t('tl.bill'),
+            detail: bill ? t('tl.billDetail', { no: bill.invoice_no, date: formatDate(bill.created_at) }) : null,
+            done: billed,
+          },
+          { key: 'delivered', label: t('tl.delivered'), detail: null, done: !!bill && (bill.delivered || !!bill.received_at) },
+          {
+            key: 'received',
+            label: t('tl.received'),
+            detail: bill?.received_at ? formatDate(bill.received_at) : null,
+            done: !!bill?.received_at,
+          },
+        ]
+      : null
 
   async function answer(response: 'accepted' | 'call_me') {
     if (answering) return
@@ -100,6 +151,37 @@ export default function OrderStatus() {
                 {found.delivery_date && <span>{t('order.deliveryOn', { date: formatDate(found.delivery_date) })}</span>}
               </div>
             </Card>
+
+            {steps && (
+              <Card>
+                <div className="mb-3 text-sm font-semibold text-ink">{t('tl.title')}</div>
+                <ol className="flex flex-col">
+                  {steps.map((s, i) => {
+                    const current = !s.done && (i === 0 || steps[i - 1].done)
+                    const next = steps[i + 1]
+                    return (
+                      <li key={s.key} className="flex gap-3">
+                        <div className="flex flex-col items-center">
+                          <span
+                            className={cn(
+                              'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2',
+                              s.done ? 'border-accent bg-accent text-white' : current ? 'border-accent bg-card' : 'border-border bg-card',
+                            )}
+                          >
+                            {s.done ? <Check size={14} strokeWidth={3} /> : current ? <span className="h-2 w-2 rounded-full bg-accent" /> : null}
+                          </span>
+                          {next && <span className={cn('min-h-4 w-0.5 flex-1', next.done ? 'bg-accent' : 'bg-border')} />}
+                        </div>
+                        <div className={cn('min-w-0', next && 'pb-4')}>
+                          <div className={cn('text-sm leading-6', s.done || current ? 'font-semibold text-ink' : 'text-muted')}>{s.label}</div>
+                          {s.detail && <div className="text-xs text-muted">{s.detail}</div>}
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ol>
+              </Card>
+            )}
 
             {estimate && (
               <Card className="flex flex-col gap-3">
@@ -175,6 +257,15 @@ export default function OrderStatus() {
                   </>
                 )}
               </Card>
+            )}
+
+            {/* Only while the supplier takes orders (migration 031). */}
+            {found.order_link && (
+              <Link to={`/order/${found.order_link}`}>
+                <Button variant="outline" className="w-full">
+                  {t('order.orderMore')}
+                </Button>
+              </Link>
             )}
           </>
         )}

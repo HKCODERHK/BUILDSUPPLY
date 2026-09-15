@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Minus, Plus, Search } from 'lucide-react'
+import { ChevronRight, MapPin, Minus, Navigation, Phone, Plus, Search } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,6 +14,7 @@ import type { TranslationKey } from '@/lib/i18n'
 import { sanitizeDecimal } from '@/lib/numberInput'
 import { newRequestId } from '@/services/db'
 import { getOrderPage, orderStatusUrl, placeOrder, type OrderPage as OrderPageData } from '@/services/orders'
+import { readKhataCode, readRecentOrders, rememberOrder, type RecentOrder } from '@/lib/customerLinks'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
@@ -23,28 +24,6 @@ function localIsoDate(offsetDays: number) {
   const d = new Date()
   d.setDate(d.getDate() + offsetDays)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-// The customer's own recent orders from this supplier, kept on their phone
-// only, so the status link is never lost after they close the page.
-type RecentOrder = { token: string; at: string }
-const recentKey = (link: string) => `buildsupply-orders:${link}`
-function readRecent(link: string): RecentOrder[] {
-  try {
-    const list = JSON.parse(localStorage.getItem(recentKey(link)) ?? '[]')
-    return Array.isArray(list) ? list.slice(0, 5) : []
-  } catch {
-    return []
-  }
-}
-function rememberOrder(link: string, token: string): RecentOrder[] {
-  const list = [{ token, at: new Date().toISOString() }, ...readRecent(link).filter((r) => r.token !== token)].slice(0, 5)
-  try {
-    localStorage.setItem(recentKey(link), JSON.stringify(list))
-  } catch {
-    // Storage blocked: the status link is still on screen to copy.
-  }
-  return list
 }
 
 // The customer's last order from this supplier, on their phone only: their
@@ -106,7 +85,11 @@ export default function OrderPage() {
   // undefined: not sent yet. A string: the status code. null: nothing to show.
   const [sentToken, setSentToken] = useState<string | null | undefined>(undefined)
   const [copied, setCopied] = useState(false)
-  const [recent, setRecent] = useState<RecentOrder[]>(() => readRecent(link))
+  // The customer's own recent orders and khata link from this supplier, kept
+  // on their phone only (lib/customerLinks), so neither is lost after they
+  // close the page.
+  const [recent, setRecent] = useState<RecentOrder[]>(() => readRecentOrders(link))
+  const [khataCode] = useState(() => readKhataCode(link))
 
   useEffect(() => {
     getOrderPage(link)
@@ -277,10 +260,55 @@ export default function OrderPage() {
       {header}
       <main className="mx-auto flex max-w-lg flex-col gap-4 p-4 pb-10">
         <p className="text-sm text-muted">{t('order.intro', { business: page.business_name })}</p>
+
+        {/* The shop's address, with directions in the phone's maps app, and a
+            call — for a customer who would rather come by or ask first. */}
+        {(page.address || page.phone) && (
+          <Card className="flex flex-col gap-3">
+            {page.address && (
+              <div className="flex items-start gap-2 text-sm text-ink">
+                <MapPin size={16} className="mt-0.5 shrink-0 text-muted" />
+                <span className="min-w-0">{page.address}</span>
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {page.address && (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${page.business_name}, ${page.address}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button size="sm" variant="outline">
+                    <Navigation size={14} /> {t('order.directions')}
+                  </Button>
+                </a>
+              )}
+              {page.phone && (
+                <a href={`tel:${page.phone}`}>
+                  <Button size="sm" variant="outline">
+                    <Phone size={14} /> {t('khata.call')}
+                  </Button>
+                </a>
+              )}
+            </div>
+          </Card>
+        )}
         {page.show_prices && (
           <p className="rounded-lg bg-amber-50 p-3 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-200">
             {t('order.pricesNote')}
           </p>
+        )}
+
+        {khataCode && (
+          <Link to={`/khata/${khataCode}`}>
+            <Card className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-ink">{t('order.myKhata')}</div>
+                <div className="text-xs text-muted">{t('order.myKhataHint', { business: page.business_name })}</div>
+              </div>
+              <ChevronRight size={18} className="shrink-0 text-muted" />
+            </Card>
+          </Link>
         )}
 
         {recent.length > 0 && (

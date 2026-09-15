@@ -286,6 +286,15 @@ export interface Payment {
   created_at: string
 }
 
+/** One of a supplier's own drivers, for "Send to driver" on WhatsApp (migration 031). Only they can read it. */
+export interface Driver {
+  id: string
+  supplier_id: string
+  name: string
+  phone: string
+  created_at: string
+}
+
 export interface CustomerBalance {
   customer_id: string
   supplier_id: string

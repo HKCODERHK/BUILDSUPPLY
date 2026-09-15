@@ -36,6 +36,8 @@ const STRINGS = {
   'nav.reports': { en: 'Reports', hi: 'रिपोर्ट', mr: 'रिपोर्ट' },
   'nav.settings': { en: 'Settings', hi: 'सेटिंग', mr: 'सेटिंग' },
   'nav.more': { en: 'More', hi: 'और', mr: 'आणखी' },
+  // The last tab: the business's logo, opening its profile and settings.
+  'nav.profile': { en: 'Profile', hi: 'प्रोफ़ाइल', mr: 'प्रोफाइल' },
   'nav.signOut': { en: 'Sign out', hi: 'लॉग आउट', mr: 'लॉग आउट' },
 
   // ── Common words ──────────────────────────────────────────────────────
@@ -683,6 +685,13 @@ const STRINGS = {
   'ordShare.back': { en: 'Back', hi: 'वापस', mr: 'मागे' },
   // The phone's top bar: ← on an inner screen.
   'common.back': { en: 'Back', hi: 'वापस', mr: 'मागे' },
+  // Add customer → the phone's contact picker.
+  'cust.pickContacts': { en: 'Pick from phone contacts', hi: 'फ़ोन कॉन्टैक्ट से चुनें', mr: 'फोन कॉन्टॅक्टमधून निवडा' },
+  'cust.pickedTitle': { en: 'Check before adding', hi: 'जोड़ने से पहले देख लें', mr: 'जोडण्यापूर्वी तपासा' },
+  'cust.pickedNoPhone': { en: 'No 10-digit mobile number', hi: '10 अंकों का मोबाइल नंबर नहीं', mr: '10 अंकी मोबाईल नंबर नाही' },
+  'cust.addMany': { en: 'Add {count} customers', hi: '{count} ग्राहक जोड़ें', mr: '{count} ग्राहक जोडा' },
+  'cust.addedMany': { en: 'Added {count}.', hi: '{count} जोड़े गए।', mr: '{count} जोडले.' },
+  'cust.skippedMany': { en: 'Not added:', hi: 'नहीं जोड़े गए:', mr: 'जोडले नाहीत:' },
   'pay.nobodyOwes': {
     en: 'Nobody owes you anything right now.',
     hi: 'अभी किसी पर कुछ बाकी नहीं है।',
@@ -859,6 +868,9 @@ const STRINGS = {
   // ── Theme toggle ──────────────────────────────────────────────────────
   'theme.toLight': { en: 'Switch to light mode', hi: 'उजला मोड करें', mr: 'उजळ मोड करा' },
   'theme.toDark': { en: 'Switch to dark mode', hi: 'गहरा मोड करें', mr: 'गडद मोड करा' },
+  // The More sheet's tile — short, under its icon.
+  'theme.dark': { en: 'Dark mode', hi: 'गहरा मोड', mr: 'गडद मोड' },
+  'theme.light': { en: 'Light mode', hi: 'उजला मोड', mr: 'उजळ मोड' },
   // ── Subscription notice shown to the supplier ─────────────────────────
   'sub.expired': {
     en: 'Your BuildSupply subscription has ended.',
@@ -1350,6 +1362,71 @@ const STRINGS = {
   'khata.advanceReceived': { en: 'kept as advance', hi: 'जमा के रूप में रखा', mr: 'जमा म्हणून ठेवले' },
   'khata.runningDue': { en: 'Due {amount}', hi: 'बकाया {amount}', mr: 'बाकी {amount}' },
   'khata.runningAdvance': { en: 'Advance {amount}', hi: 'जमा {amount}', mr: 'जमा {amount}' },
+  // Install app — the More sheet's tile, and the iPhone steps.
+  'install.tile': { en: 'Install app', hi: 'ऐप इंस्टॉल', mr: 'ॲप इंस्टॉल' },
+  'install.title': { en: 'Put BuildSupply on your home screen', hi: 'BuildSupply को होम स्क्रीन पर रखें', mr: 'BuildSupply होम स्क्रीनवर ठेवा' },
+  'install.ios1': { en: 'In Safari, tap the Share button', hi: 'Safari में Share बटन दबाएँ', mr: 'Safari मध्ये Share बटण दाबा' },
+  'install.ios2': { en: 'Choose “Add to Home Screen”', hi: '“Add to Home Screen” चुनें', mr: '“Add to Home Screen” निवडा' },
+  'install.ios3': {
+    en: 'Tap Add — BuildSupply then opens from its own icon, like an app.',
+    hi: 'Add दबाएँ — फिर BuildSupply अपने आइकन से ऐप की तरह खुलेगा।',
+    mr: 'Add दाबा — मग BuildSupply स्वतःच्या आयकॉनवरून ॲपसारखे उघडेल.',
+  },
+  // Send to driver — the driver's WhatsApp chat with one delivery (migration 031).
+  'drv.menu': { en: 'Send to driver', hi: 'ड्राइवर को भेजें', mr: 'ड्रायव्हरला पाठवा' },
+  'drv.title': { en: 'Send to driver', hi: 'ड्राइवर को भेजें', mr: 'ड्रायव्हरला पाठवा' },
+  'drv.hint': {
+    en: 'Tap a driver: WhatsApp opens their chat with {no} written out — customer, site, materials and a map link. You press Send.',
+    hi: 'ड्राइवर चुनें: WhatsApp में उनकी चैट खुलेगी, {no} लिखा हुआ — ग्राहक, साइट, माल और नक्शे का लिंक। भेजें आप दबाएँ।',
+    mr: 'ड्रायव्हर निवडा: WhatsApp मध्ये त्यांची चॅट उघडेल, {no} लिहिलेले — ग्राहक, साइट, माल आणि नकाशाची लिंक. पाठवा तुम्ही दाबा.',
+  },
+  'drv.none': { en: 'No drivers saved yet.', hi: 'अभी कोई ड्राइवर सेव नहीं।', mr: 'अजून कोणताही ड्रायव्हर सेव्ह नाही.' },
+  'drv.add': { en: '+ Add a driver', hi: '+ ड्राइवर जोड़ें', mr: '+ ड्रायव्हर जोडा' },
+  'drv.name': { en: 'Driver’s name', hi: 'ड्राइवर का नाम', mr: 'ड्रायव्हरचे नाव' },
+  'drv.phone': { en: 'WhatsApp number', hi: 'WhatsApp नंबर', mr: 'WhatsApp नंबर' },
+  'drv.save': { en: 'Save driver', hi: 'ड्राइवर सेव करें', mr: 'ड्रायव्हर सेव्ह करा' },
+  'drv.remove': { en: 'Remove {name}', hi: '{name} हटाएँ', mr: '{name} काढा' },
+  'drv.exists': { en: 'This number is already in your drivers.', hi: 'यह नंबर पहले से आपके ड्राइवरों में है।', mr: 'हा नंबर आधीच तुमच्या ड्रायव्हरमध्ये आहे.' },
+  'drv.invalid': { en: 'Enter a name and a 10-digit number.', hi: 'नाम और 10 अंकों का नंबर डालें।', mr: 'नाव आणि 10 अंकी नंबर टाका.' },
+  'drv.other': { en: 'Pick someone else in WhatsApp', hi: 'WhatsApp में किसी और को चुनें', mr: 'WhatsApp मध्ये दुसरे कोणी निवडा' },
+  'drv.msgTitle': { en: 'Delivery from {business} — bill {no}', hi: '{business} से डिलीवरी — बिल {no}', mr: '{business} कडून डिलिव्हरी — बिल {no}' },
+  'drv.msgCustomer': { en: 'Customer: {name}', hi: 'ग्राहक: {name}', mr: 'ग्राहक: {name}' },
+  'drv.msgPhone': { en: 'Phone: {phone}', hi: 'फ़ोन: {phone}', mr: 'फोन: {phone}' },
+  'drv.msgSite': { en: 'Site: {site}', hi: 'साइट: {site}', mr: 'साइट: {site}' },
+  'drv.msgAddress': { en: 'Address: {address}', hi: 'पता: {address}', mr: 'पत्ता: {address}' },
+  'drv.msgMaterials': { en: 'Materials:', hi: 'माल:', mr: 'माल:' },
+  'drv.msgNote': { en: 'Customer’s note: {note}', hi: 'ग्राहक का नोट: {note}', mr: 'ग्राहकाची नोंद: {note}' },
+  'drv.msgWanted': { en: 'Wanted on: {date}', hi: 'चाहिए: {date}', mr: 'हवे: {date}' },
+  'drv.msgMap': { en: 'Map: {url}', hi: 'नक्शा: {url}', mr: 'नकाशा: {url}' },
+  // The customer's links remembered on their phone (lib/customerLinks).
+  'order.myKhata': { en: 'My khata', hi: 'मेरा खाता', mr: 'माझे खाते' },
+  'order.myKhataHint': {
+    en: 'Your bills, payments and balance with {business}',
+    hi: '{business} के साथ आपके बिल, भुगतान और बकाया',
+    mr: '{business} सोबतची तुमची बिले, पेमेंट आणि बाकी',
+  },
+  'order.orderMore': { en: 'Order more materials', hi: 'और माल मँगाएँ', mr: 'अजून माल मागवा' },
+  'khata.orderMaterials': { en: 'Order materials', hi: 'माल मँगाएँ', mr: 'माल मागवा' },
+  // The order page's Get directions (migration 031).
+  'order.directions': { en: 'Get directions', hi: 'रास्ता देखें', mr: 'रस्ता पाहा' },
+  // The order status link's progress timeline (migration 031).
+  'tl.title': { en: 'Progress', hi: 'प्रगति', mr: 'प्रगती' },
+  'tl.sent': { en: 'Order sent', hi: 'ऑर्डर भेजा', mr: 'ऑर्डर पाठवली' },
+  'tl.estimate': { en: 'Estimate ready', hi: 'एस्टिमेट तैयार', mr: 'एस्टिमेट तयार' },
+  'tl.accepted': { en: 'Estimate accepted', hi: 'एस्टिमेट स्वीकार', mr: 'एस्टिमेट स्वीकारले' },
+  'tl.callAsked': { en: 'You asked for a call', hi: 'आपने कॉल के लिए कहा', mr: 'तुम्ही कॉलसाठी सांगितले' },
+  'tl.bill': { en: 'Bill made', hi: 'बिल बना', mr: 'बिल झाले' },
+  'tl.billDetail': { en: 'Bill {no} · {date}', hi: 'बिल {no} · {date}', mr: 'बिल {no} · {date}' },
+  'tl.delivered': { en: 'Delivered', hi: 'डिलीवर हुआ', mr: 'डिलिव्हर झाले' },
+  'tl.received': { en: 'Material received', hi: 'माल मिल गया', mr: 'माल मिळाला' },
+  // The khata link's bill and estimate PDFs, estimates and orders (migration 031).
+  'khata.billPdf': { en: 'Bill PDF', hi: 'बिल PDF', mr: 'बिल PDF' },
+  'khata.estimates': { en: 'Estimates', hi: 'एस्टिमेट', mr: 'एस्टिमेट' },
+  'khata.estimate': { en: 'Estimate {no}', hi: 'एस्टिमेट {no}', mr: 'एस्टिमेट {no}' },
+  'khata.estimatePdf': { en: 'Estimate PDF', hi: 'एस्टिमेट PDF', mr: 'एस्टिमेट PDF' },
+  'khata.estBilled': { en: 'Billed', hi: 'बिल बन गया', mr: 'बिल झाले' },
+  'khata.orders': { en: 'Your orders', hi: 'आपके ऑर्डर', mr: 'तुमच्या ऑर्डर' },
+  'khata.orderItems': { en: 'Materials: {count}', hi: 'सामान: {count}', mr: 'साहित्य: {count}' },
   'khata.notFound': {
     en: 'This khata link is not valid, or it has been stopped. Please ask your supplier for a new one.',
     hi: 'यह खाता लिंक सही नहीं है या बंद कर दिया गया है। कृपया अपने सप्लायर से नया लिंक माँगें।',
@@ -1480,6 +1557,21 @@ const STRINGS = {
   'dash.newOrdersOne': { en: '1 new order waiting', hi: '1 नया ऑर्डर आया है', mr: '1 नवीन ऑर्डर आली आहे' },
   'dash.newOrdersMany': { en: '{count} new orders waiting', hi: '{count} नए ऑर्डर आए हैं', mr: '{count} नवीन ऑर्डर आल्या आहेत' },
   'dash.reviewOrders': { en: 'Review →', hi: 'देखें →', mr: 'पहा →' },
+  // The Dashboard's once-a-day rates card.
+  'rates.title': { en: 'Update today’s rates?', hi: 'आज के रेट अपडेट करें?', mr: 'आजचे दर अपडेट करायचे?' },
+  'rates.hint': {
+    en: 'Rates not checked yet today. Bills and estimates start from them.',
+    hi: 'आज रेट अभी जाँचे नहीं गए। बिल और अनुमान इन्हीं से बनते हैं।',
+    mr: 'आज दर अजून तपासले नाहीत. बिल आणि अंदाज यांवरूनच होतात.',
+  },
+  'rates.update': { en: 'Update rates', hi: 'रेट अपडेट करें', mr: 'दर अपडेट करा' },
+  'rates.same': { en: 'Same as yesterday', hi: 'कल जैसे ही', mr: 'कालसारखेच' },
+  // The welcome card's logo (a hover hint on a computer).
+  'dash.logoHint': {
+    en: 'Tap for your profile. Hold to show your order QR.',
+    hi: 'प्रोफ़ाइल के लिए टैप करें। ऑर्डर QR के लिए दबाकर रखें।',
+    mr: 'प्रोफाइलसाठी टॅप करा. ऑर्डर QR साठी दाबून धरा.',
+  },
 } satisfies Record<string, Entry>
 
 export type TranslationKey = keyof typeof STRINGS

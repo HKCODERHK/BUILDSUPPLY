@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `030`, run in order. **030 is the latest and is applied** (2026-09-12, pasted by the user — estimate answers and material received, see Phase 13). 024 (money integrity, Phase 9), 025 (supplier row guard), 026 (online orders), 027 (reject reasons), 028 (khata link) and 029 (UPI) are applied too. (An unrelated storage-bucket 024 from Phase 8 was applied and removed again on 2026-09-11 and its file deleted.) (There is no `001` file; the base schema is `supabase/schema.sql`, which predates the migration folder.)
+- **Schema migrations**: `supabase/migrations/` — `002` through `031`, run in order. **031 is the latest and is applied** (2026-09-15, pasted by the user — links and drivers, see Phase 16). 030 (estimate answers and material received, Phase 13), 024 (money integrity, Phase 9), 025 (supplier row guard), 026 (online orders), 027 (reject reasons), 028 (khata link) and 029 (UPI) are applied too. (An unrelated storage-bucket 024 from Phase 8 was applied and removed again on 2026-09-11 and its file deleted.) (There is no `001` file; the base schema is `supabase/schema.sql`, which predates the migration folder.)
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -614,6 +614,106 @@ git-ignored, and load it through `/@fs/`). Built one item at a time on
 - **Not yet judged on a real phone**: the theme switch's smoothness, the
   status-bar colours, and scanning the new QR image.
 
+**Phase 16 — Profile tab, and supplier helpers round 2 (2026-09-15/16).
+Migration 031 applied; merged together.** Built on `no-header-line`, then
+`supplier-helpers` on top of it, one item at a time, each previewed.
+
+The top bar and navigation (no database change):
+- The line under the phone top bar is gone, in both themes.
+- **A Profile tab** (the supplier's logo, initials if it fails to load)
+  replaces More in the tab bar and opens `/settings`. **More** is a white
+  floating button (48px) above the Orders button, or in its place, carrying
+  the new-order count; hidden on inner routes.
+- The day/night switch is a tile in the More sheet (the circle spreads from
+  it), and the sheet is a floating `rounded-3xl` card clear of every edge.
+- Scrolling Profile brings the logo and business name up into the top bar.
+- The Dashboard logo: tap → Profile; hold 500ms → the order QR (Settings →
+  Online orders if ordering isn't set up). It buzzes only when
+  `navigator.userActivation.hasBeenActive` — Chrome blocks and warns about
+  `vibrate` before the page has had a tap.
+
+Supplier helpers — the eight free ideas the user picked from a 17-idea list,
+in their order:
+1. **Customers from the phone's contacts** (`lib/contacts.ts`,
+   `AddCustomerModal`): the Contact Picker API, Android Chrome only — the
+   button is hidden elsewhere, and it is read-only. One contact fills the
+   form; on Customers several can be picked, checked over (names editable,
+   anyone without a 10-digit mobile left out) and added one at a time, with
+   any refused (a number already in use) listed with the reason.
+2. **Today's rates card** (Dashboard `RatesReminder`): once a day, "Update
+   today's rates?" — Update rates (opens Stock) or Same as yesterday; either
+   puts it away until tomorrow (localStorage
+   `buildsupply-rates-checked:<supplierId>`, the phone's own date). Only once a
+   material has a rate. A card among the notices, never a popup.
+3. **Khata link**: each bill's PDF, the customer's estimates (newest 20, each
+   with its PDF) and online orders (newest 10: made into this customer, or
+   placed from their phone and not yet decided), through `customer_khata` and
+   the new `khata_document(code, kind, number)`. The same PDF builders as the
+   supplier's. The page shows these only when `estimates` comes back, so it
+   kept working before 031 was pasted.
+4. **Order status timeline**: Order sent → Estimate ready → Estimate accepted
+   → Bill made → Delivered → Material received, from `order_status`'s new
+   `decided_at` and `bill`. A bill made straight from the estimate counts as
+   accepted; a rejected order shows no timeline, only its reason.
+5. **Order page**: the business address, **Get directions** (a Google Maps
+   search for name + address) and **Call**. `order_page` returns the address
+   and phone only while ordering is open.
+6. **Send to driver** (`components/SendToDriverModal.tsx`; the bill page's ⋯
+   and a truck button per bill in Deliveries): the supplier's saved drivers
+   (`drivers`, `services/drivers.ts`). One tap opens that driver's own chat
+   through `openWhatsAppShare` — wa.me, text only — with the bill, customer,
+   phone, site, address, materials with their units (no amounts, like the
+   driver's list), the customer's order note and wanted date, and a map link.
+   "Pick someone else in WhatsApp" opens wa.me with no number. The message is
+   in the app's language.
+7. **Install app** (a tile in More; `lib/installPrompt.ts`,
+   `components/InstallIosModal.tsx`): `beforeinstallprompt` is caught in
+   `main.tsx` before React renders, with `preventDefault`, so Chrome's own
+   mini-bar never pops up mid-bill; the tile opens Chrome's dialog. An iPhone
+   gets the Share → Add to Home Screen steps. Hidden once installed or when
+   running as the installed app. Checked only with a simulated event — Chrome
+   may not offer installing on preview URLs at all.
+8. **The customer's links, remembered on their phone** (`lib/customerLinks.ts`,
+   localStorage `buildsupply-khata:<order_link>` and
+   `buildsupply-orders:<order_link>`): the khata page keeps its code (and
+   forgets a stopped one) and has **Order materials**; a status page adds
+   itself to the order page's recent orders and has **Order more materials**;
+   the order page shows **My khata**. Only while ordering is on. Nothing is
+   stored on the server.
+
+**Migration 031** (`031_links_and_drivers.sql`):
+- `drivers`: RLS, each supplier their own rows only — no admin access, and
+  `anon` has no privileges; a phone once per supplier.
+- `order_page` + address and phone; `order_status` + `decided_at`, `bill`
+  and `order_link`; `customer_khata` + `estimates`, `orders` (`code` is the
+  order's status code) and `order_link`; `khata_document`, SECURITY DEFINER
+  for `anon`, only the link's own customer's live bills and estimates.
+- Its lines are ordered by `ctid` — the order they were saved in, which is
+  what the bill page's unordered select shows. The ids are random uuids, so
+  ordering by id shuffles them.
+- Tested on the local Docker copy: 376/376 checks from a clean reset, 28 of
+  them new.
+- **Test gotcha:** cancelling a bill and un-cancelling it does not undo the
+  cancel. `invoices_release_on_cancel` releases its payment allocations, and
+  they stay released. A test that borrows a bill to cancel must pick an
+  unpaid one.
+- Applied by the user on 2026-09-15, after a backup
+  (`buildsupply-backup-2026-09-15-2257.zip`, 4,697 rows).
+- Checked on live read-only:
+  - one version of each function;
+  - `drivers` has RLS on, 4 policies and no `anon` access, confirmed by a
+    real `anon` REST call as well;
+  - counts unchanged (52 bills / 99 payments / 91 allocations / 17
+    estimates / 10 orders / 20 customers) and 0 bills out of step;
+  - both `security_invoker` views and all three guards intact.
+
+**Testing notes:**
+- The user sometimes uses the browser pane during a test, which changes the
+  page, the language and the theme underneath it. Run whole flows in a
+  background tab (`tabs_create`).
+- Find buttons by their icon class, not by translated words. A Marathi label
+  was once missed because the test typed ॅ (U+0945) for ॲ (U+0972).
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.
@@ -678,7 +778,7 @@ A 4-digit PIN asked before irreversible actions, for both roles. **It is a confi
 > "each supplier should see his data only and as an admin i should not get any data from any suppliers into my account, just what is required for managing the subscription and the catalog"
 
 - **Admin CAN reach**: `suppliers` (subscription/plan/status/contact), the catalog tables (`material_categories`, `material_types`, `brands`, `master_material_variants`), `platform_settings`, and the `admin_list_suppliers` / `admin_dashboard_stats` / `admin_supplier_activity` SECURITY DEFINER RPCs.
-- **Admin CANNOT reach**: `customers`, `invoices`, `invoice_items`, `payments`, `materials`, `quotations`, `quotation_items`, or `activity_log` rows belonging to a supplier.
+- **Admin CANNOT reach**: `customers`, `invoices`, `invoice_items`, `payments`, `materials`, `quotations`, `quotation_items`, `drivers` (031), or `activity_log` rows belonging to a supplier.
 - `activity_log.details` holds customer names and invoice amounts. The admin reads activity **only** through `admin_supplier_activity(uuid)`, which returns `id, action, actor_role, created_at` and deliberately omits `details`. Never point an admin screen back at `select * from activity_log`.
 - **A supplier can edit only their own business details on `suppliers` (migration 025).** The `suppliers_update` policy lets an account update its own row, and `authenticated` holds UPDATE on every column — so until 025 a supplier could set their own `role` to `admin`, and both `is_admin()` and the admin Edge Function trust that column (then: reset other suppliers' passwords, delete accounts, change subscriptions). The `suppliers_guard_update` trigger now refuses, for the app's signed-in users: any change to `role` (even by the admin — only the Edge Function/SQL editor may), and for non-admins any change to status, suspension reason, plan, billing cycle, subscription fields, last-contacted stamp, email, id or created_at. A new column a supplier should NOT control must be added to that trigger's list. Found and fixed 2026-09-11; live had exactly one admin, so it had not been used.
 - **Do not add `OR is_admin()` to a business table policy.** If an admin feature seems to need supplier data, it almost certainly doesn't — build it as a SECURITY DEFINER RPC that returns only aggregates or non-commercial fields, the way the two dashboard RPCs do.

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { LogOut, MoreHorizontal, X, ShieldCheck, Boxes, SlidersHorizontal, AlertTriangle, Inbox, ArrowLeft } from 'lucide-react'
+import { LogOut, MoreHorizontal, X, ShieldCheck, Boxes, SlidersHorizontal, AlertTriangle, Inbox, ArrowLeft, Sun, Moon, Smartphone } from 'lucide-react'
 import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { TopBarContext, type TopBarInfo } from '@/context/TopBarContext'
 import { cn } from '@/lib/utils'
@@ -11,6 +11,8 @@ import { useTheme } from '@/context/ThemeContext'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { ShareDocumentPrompt } from '@/components/ShareDocumentPrompt'
+import { InstallIosModal } from '@/components/InstallIosModal'
+import { promptInstall, useInstallState } from '@/lib/installPrompt'
 import { openWhatsAppShare } from '@/lib/whatsapp'
 import { ADMIN_WHATSAPP_NUMBER } from '@/lib/adminContact'
 import { daysUntilExpiry, subscriptionState } from '@/lib/subscription'
@@ -177,11 +179,17 @@ function useScrollingDown() {
 export function AppShell({ children }: { children: ReactNode }) {
   const { supplier, signOut, splash } = useAuth()
   const { t } = useLanguage()
-  const { theme } = useTheme()
+  const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const [moreOpen, setMoreOpen] = useState(false)
+  // "Install app": Chrome's own dialog where it offers one, the steps on an iPhone.
+  const installState = useInstallState()
+  const [iosSteps, setIosSteps] = useState(false)
   // What the current screen asked the top bar to say — see TopBarContext.
   const [topBar, setTopBar] = useState<TopBarInfo | null>(null)
+  // The Profile tab shows the business's logo; its initials if it won't load.
+  const [profileLogoFailed, setProfileLogoFailed] = useState(false)
+  const profileLogo = !profileLogoFailed ? supplier?.logo_url : null
   const scrolled = useScrolledPast(24, 4)
   const fabAway = useScrollingDown()
   const tabBarRef = useRef<HTMLElement>(null)
@@ -244,20 +252,24 @@ export function AppShell({ children }: { children: ReactNode }) {
   const primaryItems = (isAdmin ? ADMIN_NAV_IDS : MOBILE_PRIMARY_IDS)
     .map((id) => navItems.find((n) => n.id === id))
     .filter((n) => n !== undefined)
-  const overflowItems = navItems.filter((n) => !primaryItems.includes(n))
+  // Settings is the Profile tab now — the business's logo, last in the bar —
+  // so it leaves the tabs before it and the More sheet.
+  const tabItems = primaryItems.filter((n) => n.id !== 'settings')
+  const overflowItems = navItems.filter((n) => !primaryItems.includes(n) && n.id !== 'settings')
+  const tabPaths = [...tabItems.map((n) => n.path), '/settings']
 
   // Which tab the bubble sits behind — NavLink's own rule, so the two agree.
-  // A page reached from More (Orders, Settings…) highlights no tab, as
+  // A page reached from More (Orders, Payments…) highlights no tab, as
   // before: the bubble fades out where it was rather than sliding away.
-  const activeTab = primaryItems.findIndex(
-    (item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`),
+  const activeTab = tabPaths.findIndex(
+    (path) => location.pathname === path || location.pathname.startsWith(`${path}/`),
   )
   const [bubbleTab, setBubbleTab] = useState(Math.max(activeTab, 0))
   if (activeTab >= 0 && activeTab !== bubbleTab) setBubbleTab(activeTab)
 
   // The floating Orders button: a supplier's, on the four main tabs only —
   // never over a bill or New Invoice, where Save sits at the bottom.
-  const showFab = !isAdmin && primaryItems.some((item) => item.path === location.pathname)
+  const showFab = !isAdmin && tabItems.some((item) => item.path === location.pathname)
 
   // The top bar names the screen you are on, as Telegram's does: the
   // BuildSupply name on the Dashboard only; everywhere else the page's own
@@ -422,8 +434,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           className={cn(
             floating
               ? 'sticky top-0 z-30 flex w-full items-center gap-2 px-3 py-2 pt-[calc(0.5rem_+_var(--safe-top))] lg:hidden'
-              : 'sticky top-0 z-30 flex w-full items-center justify-between border-b border-border px-4 py-3 pt-[calc(0.75rem_+_var(--safe-top))] text-ink transition-colors duration-200 sm:px-6 lg:hidden dark:border-transparent dark:text-white',
-            // Day: white, like Telegram's; night: the app's dark green.
+              : 'sticky top-0 z-30 flex w-full items-center justify-between px-4 py-3 pt-[calc(0.75rem_+_var(--safe-top))] text-ink transition-colors duration-200 sm:px-6 lg:hidden dark:text-white',
+            // Day: white, like Telegram's — no line under it; the white bar
+            // against the light grey page is edge enough (the user asked for
+            // the line to go). Night: the app's dark green.
             !floating &&
               (scrolled
                 ? 'bg-card/80 backdrop-blur-lg backdrop-saturate-150 dark:bg-shell/80'
@@ -483,8 +497,20 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <ArrowLeft size={22} />
                 </button>
               )}
-              {bar.avatar && <CustomerAvatar id={bar.avatar.id} name={bar.avatar.name} size={34} />}
-              <div className="min-w-0">
+              {bar.image ? (
+                <img
+                  key={bar.image}
+                  src={bar.image}
+                  alt=""
+                  className="bar-title-in h-[34px] w-[34px] shrink-0 rounded-full bg-white object-cover ring-1 ring-border"
+                />
+              ) : (
+                bar.avatar && <CustomerAvatar id={bar.avatar.id} name={bar.avatar.name} size={34} />
+              )}
+              {/* Keyed by the title, so a new title eases in rather than
+                  snapping — Profile turning into the business's name as its
+                  page scrolls, say. */}
+              <div key={bar.title} className="bar-title-in min-w-0">
                 <div className="truncate text-[17px] font-semibold leading-tight">{bar.title}</div>
                 {bar.detail && (
                   <div
@@ -502,7 +528,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {/* EN and theme step aside on the floating bar, as in Telegram's chat. */}
           <div className={cn('flex shrink-0 items-center gap-2', floating && 'hidden')}>
             <LanguageToggle className="dark:border-white/20 dark:text-white dark:hover:bg-white/10 dark:hover:text-white" />
-            <ThemeToggle className="dark:border-white/20 dark:text-white dark:hover:bg-white/10 dark:hover:text-white" />
+            {/* Day / night lives in the More sheet on a phone (the user's call). */}
           </div>
         </header>
 
@@ -548,11 +574,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             activeTab < 0 && 'opacity-0',
           )}
           style={{
-            width: `calc((100% - 0.5rem) / ${primaryItems.length + 1})`,
+            width: `calc((100% - 0.5rem) / ${tabPaths.length})`,
             transform: `translateX(${bubbleTab * 100}%)`,
           }}
         />
-        {primaryItems.map((item) => (
+        {tabItems.map((item) => (
           <NavLink
             key={item.id}
             to={item.path}
@@ -575,28 +601,42 @@ export function AppShell({ children }: { children: ReactNode }) {
             )}
           </NavLink>
         ))}
-        <button
-          onClick={() => setMoreOpen(true)}
-          aria-label={
-            pendingOrders > 0
-              ? `${t('nav.more')}, ${pendingOrders === 1 ? t('dash.newOrdersOne') : t('dash.newOrdersMany', { count: pendingOrders })}`
-              : undefined
+        {/* Profile, last: the business's own logo (or its initials), opening
+            its profile and settings — as Telegram ends its bar with the
+            user's photo. More became a floating button (below). */}
+        <NavLink
+          to="/settings"
+          viewTransition
+          className={({ isActive }) =>
+            cn(
+              'relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full px-0.5 py-1.5 text-center text-[11px] font-medium leading-tight text-muted transition-colors duration-300',
+              isActive && 'text-accent-text',
+            )
           }
-          className="relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full px-0.5 py-1.5 text-center text-[11px] font-medium leading-tight text-muted"
         >
-          <MoreHorizontal size={20} strokeWidth={1.75} />
-          {pendingOrders > 0 && (
-            // How many new orders, not just that there are some — a number on
-            // the corner of the icon, as Telegram counts unread chats.
-            <span
-              aria-hidden="true"
-              className="absolute left-1/2 top-0.5 ml-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold leading-none text-white ring-2 ring-card"
-            >
-              {pendingOrders > 99 ? '99+' : pendingOrders}
-            </span>
+          {({ isActive }) => (
+            <>
+              <span
+                className={cn(
+                  'flex h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-white',
+                  isActive ? 'ring-2 ring-accent' : 'ring-1 ring-border',
+                )}
+              >
+                {profileLogo ? (
+                  <img
+                    src={profileLogo}
+                    alt=""
+                    onError={() => setProfileLogoFailed(true)}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <CustomerAvatar id={supplier?.id ?? ''} name={supplier?.business_name ?? ''} size={20} />
+                )}
+              </span>
+              {t('nav.profile')}
+            </>
           )}
-          {t('nav.more')}
-        </button>
+        </NavLink>
       </nav>
 
       {/* The floating Orders button, Telegram-style, just above the tab bar
@@ -632,13 +672,51 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Link>
       )}
 
+      {/* More, as a small white button floating just above the Orders button
+          — Telegram's small button over its big one — or in its place where
+          there is none, carrying the new-order count then. On every main
+          screen; not on an inner one (a bill, New invoice, a customer…). It
+          slips away with the Orders button while a list scrolls down. */}
+      {!inner && (
+        <button
+          type="button"
+          onClick={() => setMoreOpen(true)}
+          aria-label={
+            !showFab && pendingOrders > 0
+              ? `${t('nav.more')}, ${pendingOrders === 1 ? t('dash.newOrdersOne') : t('dash.newOrdersMany', { count: pendingOrders })}`
+              : t('nav.more')
+          }
+          style={{ bottom: showFab ? 'calc(var(--tabbar-h) + 5rem)' : 'calc(var(--tabbar-h) + 0.75rem)' }}
+          className={cn(
+            'fixed right-5 z-30 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card text-ink shadow-lg shadow-black/15 transition-[translate,scale,opacity] duration-200 active:scale-95 motion-reduce:transition-none lg:hidden',
+            fabAway ? 'pointer-events-none translate-y-4 opacity-0' : 'translate-y-0 opacity-100',
+          )}
+        >
+          <MoreHorizontal size={22} strokeWidth={1.9} />
+          {!showFab && pendingOrders > 0 && (
+            <span
+              aria-hidden="true"
+              className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[11px] font-bold leading-none text-white ring-2 ring-card"
+            >
+              {pendingOrders > 99 ? '99+' : pendingOrders}
+            </span>
+          )}
+        </button>
+      )}
+
+      {iosSteps && <InstallIosModal onClose={() => setIosSteps(false)} />}
+
       {/* Mobile "more" sheet */}
       {moreOpen && (
-        <div className="fixed inset-0 z-40 flex items-end bg-black/40 lg:hidden" onClick={() => setMoreOpen(false)}>
-          {/* Sits on the bottom edge like the tab bar, so its last row of
-              links needs the same clearance from the home indicator. */}
+        <div
+          className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 px-3 pb-[calc(0.75rem_+_var(--safe-bottom))] lg:hidden"
+          onClick={() => setMoreOpen(false)}
+        >
+          {/* A floating card, rounded all round and clear of every edge of the
+              screen — like the tab bar — rising gently into place. The
+              bottom padding keeps it off the home indicator. */}
           <div
-            className="w-full rounded-t-2xl bg-card p-4 pb-[calc(2rem_+_var(--safe-bottom))]"
+            className="more-sheet-in w-full max-w-md rounded-3xl border border-border bg-card p-4 shadow-2xl shadow-black/25"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
@@ -697,6 +775,36 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </NavLink>
                 </>
               )}
+              {/* Only while the app isn't installed yet — gone once it is. */}
+              {installState !== 'none' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMoreOpen(false)
+                    if (installState === 'prompt') void promptInstall()
+                    else setIosSteps(true)
+                  }}
+                  className="flex flex-col items-center gap-2 rounded-2xl p-3 text-xs font-medium text-ink transition-colors hover:bg-surface active:bg-surface"
+                >
+                  <Smartphone size={26} strokeWidth={1.75} />
+                  {t('install.tile')}
+                </button>
+              )}
+              {/* Day / night, moved here from the top bar. The sheet closes and
+                  Telegram's circle spreads from where this tile was. */}
+              <button
+                type="button"
+                aria-label={t(theme === 'dark' ? 'theme.toLight' : 'theme.toDark')}
+                onClick={(e) => {
+                  const r = e.currentTarget.getBoundingClientRect()
+                  setMoreOpen(false)
+                  toggleTheme({ x: r.left + r.width / 2, y: r.top + r.height / 2 })
+                }}
+                className="flex flex-col items-center gap-2 rounded-2xl p-3 text-xs font-medium text-ink transition-colors hover:bg-surface active:bg-surface"
+              >
+                {theme === 'dark' ? <Sun size={26} strokeWidth={1.75} /> : <Moon size={26} strokeWidth={1.75} />}
+                {t(theme === 'dark' ? 'theme.light' : 'theme.dark')}
+              </button>
               <button
                 onClick={handleSignOut}
                 className="flex flex-col items-center gap-2 rounded-2xl p-3 text-xs font-medium transition-colors hover:bg-surface active:bg-surface text-red-600"

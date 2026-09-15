@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Plus, AlertTriangle, Inbox, BadgeCheck } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Plus, AlertTriangle, Inbox, BadgeCheck, Tags } from 'lucide-react'
+import { localDateKey } from '@/lib/localDate'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -14,7 +15,7 @@ import {
 import { listRecentCustomers } from '@/services/customers'
 import { listPaymentsSince } from '@/services/payments'
 import { listMaterials } from '@/services/materials'
-import { acceptedEstimates, countPendingOrders } from '@/services/orders'
+import { acceptedEstimates, countPendingOrders, orderPageUrl } from '@/services/orders'
 import type { Customer, DashboardTotals, Invoice, Material, Payment } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -23,6 +24,8 @@ import { AdminDashboardView } from '@/routes/admin/AdminDashboardView'
 import { StartHereCard } from '@/components/StartHereCard'
 import { DraftBanners } from '@/components/Drafts'
 import { TruckLoader } from '@/components/TruckLoader'
+import { CustomerAvatar } from '@/components/CustomerAvatar'
+import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
 
 // Jump straight into the create flow for each — no extra click on the
 // destination page. Customers/Payments/Stock read `?new=1` to auto-open
@@ -33,6 +36,146 @@ const QUICK_ACTIONS: { labelKey: TranslationKey; to: string }[] = [
   { labelKey: 'dash.quickPayment', to: '/payments?new=1' },
   { labelKey: 'dash.quickStock', to: '/materials?stock=1' },
 ]
+
+/**
+ * The logo on the welcome card: a tap opens Profile; a long press (half a
+ * second, a small buzz) brings up the order QR at once, for a customer at the
+ * counter — or Settings → Online orders while there is no link to show. No
+ * logo: the business's initials, so every supplier has the same shortcut.
+ * Moving the finger (a scroll) cancels the press, the release after a long
+ * press is not also a tap, and the phone's own long-press menu (save image
+ * and so on) is kept away — the picture doesn't take the press at all.
+ */
+function WelcomeLogo() {
+  const { supplier } = useAuth()
+  const { t } = useLanguage()
+  const navigate = useNavigate()
+  const [qrOpen, setQrOpen] = useState(false)
+  const timer = useRef<number | undefined>(undefined)
+  const pressedAt = useRef<{ x: number; y: number } | null>(null)
+  const longPressed = useRef(false)
+
+  if (!supplier) return null
+  const orderUrl = supplier.order_link && supplier.ordering_enabled ? orderPageUrl(supplier.order_link) : null
+
+  function cancelPress() {
+    window.clearTimeout(timer.current)
+    timer.current = undefined
+    pressedAt.current = null
+  }
+
+  function onLongPress() {
+    longPressed.current = true
+    // A phone allows a buzz only once the page has had a real tap; a hold
+    // that is the very first touch doesn't count until the finger lifts.
+    // Asking anyway just logs a warning, so ask only when it's allowed.
+    if (navigator.userActivation?.hasBeenActive) navigator.vibrate?.(15)
+    if (orderUrl) setQrOpen(true)
+    else navigate('/settings?s=orders')
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={t('nav.profile')}
+        title={t('dash.logoHint')}
+        onPointerDown={(e) => {
+          longPressed.current = false
+          pressedAt.current = { x: e.clientX, y: e.clientY }
+          timer.current = window.setTimeout(onLongPress, 500)
+        }}
+        onPointerMove={(e) => {
+          const from = pressedAt.current
+          if (from && Math.hypot(e.clientX - from.x, e.clientY - from.y) > 10) cancelPress()
+        }}
+        onPointerUp={cancelPress}
+        onPointerLeave={cancelPress}
+        onPointerCancel={cancelPress}
+        onContextMenu={(e) => e.preventDefault()}
+        onClick={() => {
+          if (longPressed.current) {
+            longPressed.current = false
+            return
+          }
+          navigate('/settings')
+        }}
+        className="shrink-0 select-none rounded-lg transition-transform [-webkit-touch-callout:none] active:scale-95"
+      >
+        {supplier.logo_url ? (
+          <img
+            src={supplier.logo_url}
+            alt=""
+            draggable={false}
+            className="pointer-events-none h-14 w-14 rounded-lg border border-border object-cover"
+          />
+        ) : (
+          <CustomerAvatar id={supplier.id} name={supplier.business_name} size={56} />
+        )}
+      </button>
+      {qrOpen && orderUrl && <OrderLinkShareModal url={orderUrl} initialStep="qr" onClose={() => setQrOpen(false)} />}
+    </>
+  )
+}
+
+/**
+ * Once a day: "Update today's rates?" Sand, gitti and cement rates move
+ * often, and bills, estimates, the rate list and (if shown) the order page
+ * all start from them. Either answer puts it away until tomorrow — Update
+ * rates also opens Stock, where the rates are. Remembered on this phone
+ * (localStorage, per business); a phone that won't store it just shows the
+ * card again, which does no harm. A card among the Dashboard's other notices,
+ * not a popup in the way.
+ */
+function RatesReminder({ supplierId }: { supplierId: string }) {
+  const { t } = useLanguage()
+  const navigate = useNavigate()
+  const storageKey = `buildsupply-rates-checked:${supplierId}`
+  const today = localDateKey(new Date().toISOString())
+  const [answered, setAnswered] = useState(() => {
+    try {
+      return localStorage.getItem(storageKey) === today
+    } catch {
+      return false
+    }
+  })
+  if (answered) return null
+
+  function answer() {
+    try {
+      localStorage.setItem(storageKey, today)
+    } catch {
+      // Not remembered on this phone; the card comes back next visit.
+    }
+    setAnswered(true)
+  }
+
+  return (
+    <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950">
+      <div className="flex items-start gap-2.5">
+        <Tags size={18} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+        <div>
+          <div className="text-sm font-semibold text-amber-800 dark:text-amber-200">{t('rates.title')}</div>
+          <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300">{t('rates.hint')}</p>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2 pl-7">
+        <Button
+          size="sm"
+          onClick={() => {
+            answer()
+            navigate('/materials')
+          }}
+        >
+          {t('rates.update')}
+        </Button>
+        <Button size="sm" variant="outline" onClick={answer}>
+          {t('rates.same')}
+        </Button>
+      </div>
+    </div>
+  )
+}
 
 function QuickActions() {
   const { t } = useLanguage()
@@ -101,6 +244,9 @@ function SupplierDashboardView() {
   const [recentCustomers, setRecentCustomers] = useState<Customer[]>([])
   const [today, setToday] = useState({ bills: 0, sold: 0, collected: 0 })
   const [lowStock, setLowStock] = useState<Material[]>([])
+  // Any material with a rate — the daily "update today's rates?" card only
+  // makes sense once there are rates to update.
+  const [hasRates, setHasRates] = useState(false)
   // Online orders waiting to be reviewed (migration 026). Read on its own, so
   // a problem here never holds up the rest of the dashboard.
   const [pendingOrders, setPendingOrders] = useState(0)
@@ -171,6 +317,7 @@ function SupplierDashboardView() {
         setRecentCustomers(customers)
         setToday(summariseToday(todaysBills, todaysPayments))
         setLowStock(materials.filter((m) => m.stock_qty <= (m.low_stock_threshold ?? 5)))
+        setHasRates(materials.some((m) => Number(m.rate) > 0))
         setSetup({ materials: materials.length > 0, customers: customers.length > 0, invoices: anyBill })
       })
       .finally(() => active && setLoading(false))
@@ -197,13 +344,8 @@ function SupplierDashboardView() {
           uses for every other soft-green surface, and it already has a dark
           counterpart, so this stays readable when the theme flips. */}
       <div className="mb-6 flex items-center gap-4 rounded-xl bg-accent-bg p-4">
-        {supplier?.logo_url && (
-          <img
-            src={supplier.logo_url}
-            alt={`${supplier.business_name} logo`}
-            className="h-14 w-14 shrink-0 rounded-lg border border-border object-cover"
-          />
-        )}
+        {/* Tap: Profile. Hold: the order QR. */}
+        <WelcomeLogo />
         <div className="min-w-0">
           <h1 className="text-xl font-bold text-ink sm:text-2xl">
             {t(firstRun ? 'dash.welcomeNew' : 'dash.welcome', { name: supplier?.business_name ?? '' })}
@@ -284,6 +426,8 @@ function SupplierDashboardView() {
               <span className="shrink-0 text-xs font-semibold text-red-700 dark:text-red-300">{t('dash.topUp')}</span>
             </Link>
           )}
+
+          {hasRates && supplier && <RatesReminder supplierId={supplier.id} />}
 
           <Card className="mb-4">
             <div className="mb-2 text-xs font-semibold tracking-wide text-muted">{t('dash.today')}</div>
