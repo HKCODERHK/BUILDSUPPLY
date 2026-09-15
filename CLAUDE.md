@@ -129,7 +129,8 @@ did. Everything verified live against Shree Balaji and on a production build.
 **Deliberately not animated**, agreed with the user against a 20-item wish
 list — the rule is *fast first, animated second*: "bill shared" (the share
 sheet resolves when a target is picked, not when WhatsApp sends, so it would
-sometimes be untrue), page transitions, counting-up dashboard numbers, report charts (Reports is
+sometimes be untrue), page transitions (superseded 2026-09-15 at the user's
+request: a 0.15s cross-fade on tab switches — Phase 15), counting-up dashboard numbers, report charts (Reports is
 PDF-only), and delete animations (bills are cancelled, which is already
 confirmed and PIN-gated). Feedback belongs only where it confirms something
 that just happened, on a screen that was appearing anyway.
@@ -552,6 +553,66 @@ bottom padding, both Save bars, the loaders and the ⋯ menus still clear it.
 Checked on the local copy at 360px: every label fits in English, Hindi and
 Marathi (the bar stays 56px), light and dark, and New Invoice's Save bar sits
 flush on the bar at the top, middle and bottom of the page.
+
+**Phase 15 — a Telegram-style round (2026-09-15). No database change.** From
+the user's Telegram and WhatsApp videos and screenshots (frames pulled in the
+browser pane — no ffmpeg here; copy the video into `frontend/node_modules/.review/`,
+git-ignored, and load it through `/@fs/`). Built one item at a time on
+`telegram-style`, each previewed, merged together.
+
+- **Coloured initials** (`components/CustomerAvatar.tsx`, rules in
+  `lib/initials.ts`: colour from the customer's id, first + last letters,
+  shaded like a modern icon). On Customers cards, the customer page, and
+  Receive payment's "Who paid?", which is now a tappable list (largest owed
+  first) — one tap opens `/customers/<id>?pay=1`.
+- **The top bar names the screen** (`context/TopBarContext.tsx`). PageHeader
+  publishes its title and hides its own h1 below `lg`; Settings calls
+  `useTopBar` itself; AppShell falls back to the section's name. ← on inner
+  routes goes back (`location.key !== 'default'`), else to the section's list.
+  The Dashboard keeps the brand, whose tagline folds on scroll.
+- **A customer's page is Telegram's chat bar** (`topFloating`): three frosted
+  pills — ←; initials, name and, once the buttons have scrolled away
+  (`pinned`), what they owe; Call + `ActionMenu plain` (⋮). The page's own Call
+  and ⋮ hide below `lg`; EN/theme step aside there. **Every link to a customer
+  passes router state `customerName`** (Customers, Who paid?, Dashboard recent,
+  bill and estimate pages), so the pill names them while the page loads;
+  otherwise a pulse placeholder — never "Customers".
+- **Day and night.** By day the top bar is white with BuildSupply in
+  `--color-accent-text` and a `border-b`; at night the dark green, as before.
+  AppShell sets `meta[name=theme-color]`: #0a2427 under the splash, the page
+  colour under the floating bar, else #ffffff / #0a2427 — hard-coded, because
+  the `.dark` class flips in ThemeProvider's effect, after AppShell's. The
+  toggle is **Telegram's circle** (`toggleTheme(from)` + `html[data-theme-flip]`
+  in index.css): night grows from the button, day is night shrinking into it,
+  400ms, with transitions and backdrop blur off for its duration (they made it
+  lag on a phone). **Gotcha: view-transition pseudo-elements belong to the
+  html element — `html[x]::view-transition-new(root)`, no space.** With a
+  space the rule matches nothing and only the browser's default fade runs.
+- **Switching screens** from the tab bar or More: NavLink `viewTransition`, a
+  0.15s cross-fade. The header and tab bar are their own layers
+  (`app-header`, `app-tabbar`) shown without fading, so the bubble slides once.
+- **Settings, WhatsApp-style**: the doodled band (`lib/qrPattern.ts`), the logo
+  large, the name; plain grey outline-icon rows with a line under each title;
+  each opens `?s=<section>` (back returns to the list; Orders, the UPI QR and
+  the Start-here card link to their section). The More sheet uses plain outline
+  icons too. A coloured-tile version was built and removed at the user's
+  request — **don't bring boxed icons back**.
+- **Order QR**: Show QR code fills the screen — green doodles, a white card, the
+  logo (or initials) over its top edge. `orderQrPngFile` (lib/qr.ts) draws the
+  same 1080×1350 image for sharing and printing, the logo through `loadLogo`.
+  The UPI QR is unchanged.
+- **More** shows the new-order count (99+) instead of a dot, and a **floating
+  Orders button** sits above the tab bar on the four main tabs (a supplier's,
+  phones only), slipping away while a list scrolls down (`useScrollingDown`).
+- **Tailwind 4 gotcha**: `translate-*` and `scale-*` use the `translate` and
+  `scale` CSS properties — transition those, not `transform`.
+- **Testing notes**: background browser-pane tabs pause CSS transitions and
+  requestAnimationFrame — front the tab to measure motion. The user sometimes
+  uses the pane at the same time, which moves pages and flips themes under a
+  test; do logic checks in a background tab (swap rAF for setTimeout) and read
+  animations within milliseconds of your own tap.
+- **Not yet judged on a real phone**: the theme switch's smoothness, the
+  status-bar colours, and scanning the new QR image.
 
 ## The admin panel
 
