@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Minus, Plus, Search } from 'lucide-react'
+import { MapPin, Minus, Navigation, Phone, Plus, Search } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -277,6 +277,39 @@ export default function OrderPage() {
       {header}
       <main className="mx-auto flex max-w-lg flex-col gap-4 p-4 pb-10">
         <p className="text-sm text-muted">{t('order.intro', { business: page.business_name })}</p>
+
+        {/* The shop's address, with directions in the phone's maps app, and a
+            call — for a customer who would rather come by or ask first. */}
+        {(page.address || page.phone) && (
+          <Card className="flex flex-col gap-3">
+            {page.address && (
+              <div className="flex items-start gap-2 text-sm text-ink">
+                <MapPin size={16} className="mt-0.5 shrink-0 text-muted" />
+                <span className="min-w-0">{page.address}</span>
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {page.address && (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${page.business_name}, ${page.address}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button size="sm" variant="outline">
+                    <Navigation size={14} /> {t('order.directions')}
+                  </Button>
+                </a>
+              )}
+              {page.phone && (
+                <a href={`tel:${page.phone}`}>
+                  <Button size="sm" variant="outline">
+                    <Phone size={14} /> {t('khata.call')}
+                  </Button>
+                </a>
+              )}
+            </div>
+          </Card>
+        )}
         {page.show_prices && (
           <p className="rounded-lg bg-amber-50 p-3 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-200">
             {t('order.pricesNote')}

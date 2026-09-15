@@ -27,6 +27,9 @@ export type OrderPage =
       open: true
       business_name: string
       logo_url: string | null
+      /** The business address and phone, for Get directions and Call (migration 031 — absent before it). */
+      address?: string | null
+      phone?: string | null
       show_prices: boolean
       materials: OrderPageMaterial[]
     }

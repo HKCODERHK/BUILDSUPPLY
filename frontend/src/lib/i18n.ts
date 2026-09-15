@@ -1362,6 +1362,8 @@ const STRINGS = {
   'khata.advanceReceived': { en: 'kept as advance', hi: 'जमा के रूप में रखा', mr: 'जमा म्हणून ठेवले' },
   'khata.runningDue': { en: 'Due {amount}', hi: 'बकाया {amount}', mr: 'बाकी {amount}' },
   'khata.runningAdvance': { en: 'Advance {amount}', hi: 'जमा {amount}', mr: 'जमा {amount}' },
+  // The order page's Get directions (migration 031).
+  'order.directions': { en: 'Get directions', hi: 'रास्ता देखें', mr: 'रस्ता पाहा' },
   // The order status link's progress timeline (migration 031).
   'tl.title': { en: 'Progress', hi: 'प्रगति', mr: 'प्रगती' },
   'tl.sent': { en: 'Order sent', hi: 'ऑर्डर भेजा', mr: 'ऑर्डर पाठवली' },
