@@ -24,10 +24,19 @@ import { shareOrderLinkText } from '@/lib/shareOrderLink'
  * tiled with faint building-trade doodles. The shared image is drawn the same
  * way (orderQrPngFile), so what gets printed for the counter matches.
  */
-export function OrderLinkShareModal({ url, onClose }: { url: string; onClose: () => void }) {
+export function OrderLinkShareModal({
+  url,
+  onClose,
+  initialStep = 'choose',
+}: {
+  url: string
+  onClose: () => void
+  /** 'qr': open straight on the QR — a long-press on the Dashboard's logo. */
+  initialStep?: 'choose' | 'qr'
+}) {
   const { supplier } = useAuth()
   const { t } = useLanguage()
-  const [step, setStep] = useState<'choose' | 'qr'>('choose')
+  const [step, setStep] = useState<'choose' | 'qr'>(initialStep)
   const [sharing, setSharing] = useState(false)
   const [logoFailed, setLogoFailed] = useState(false)
   const business = supplier?.business_name ?? ''

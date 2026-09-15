@@ -1485,6 +1485,12 @@ const STRINGS = {
   'dash.newOrdersOne': { en: '1 new order waiting', hi: '1 नया ऑर्डर आया है', mr: '1 नवीन ऑर्डर आली आहे' },
   'dash.newOrdersMany': { en: '{count} new orders waiting', hi: '{count} नए ऑर्डर आए हैं', mr: '{count} नवीन ऑर्डर आल्या आहेत' },
   'dash.reviewOrders': { en: 'Review →', hi: 'देखें →', mr: 'पहा →' },
+  // The welcome card's logo (a hover hint on a computer).
+  'dash.logoHint': {
+    en: 'Tap for your profile. Hold to show your order QR.',
+    hi: 'प्रोफ़ाइल के लिए टैप करें। ऑर्डर QR के लिए दबाकर रखें।',
+    mr: 'प्रोफाइलसाठी टॅप करा. ऑर्डर QR साठी दाबून धरा.',
+  },
 } satisfies Record<string, Entry>
 
 export type TranslationKey = keyof typeof STRINGS
