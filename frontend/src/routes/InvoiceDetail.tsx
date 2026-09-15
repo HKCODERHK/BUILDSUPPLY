@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link, Navigate } from 'react-router-dom'
-import { Download, Printer, Ban, Pencil } from 'lucide-react'
+import { Download, Printer, Ban, Pencil, Truck } from 'lucide-react'
+import { SendToDriverModal } from '@/components/SendToDriverModal'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -36,6 +37,7 @@ export default function InvoiceDetail() {
   const [sharing, setSharing] = useState(false)
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [cancelling, setCancelling] = useState(false)
+  const [driverOpen, setDriverOpen] = useState(false)
 
   async function refresh() {
     if (!id) return
@@ -142,6 +144,8 @@ export default function InvoiceDetail() {
                 { label: t('inv.print'), icon: <Printer size={15} />, onSelect: handlePrint },
                 ...(invoice.status !== 'Cancelled'
                   ? [
+                      // The driver's WhatsApp chat with this delivery written out.
+                      { label: t('drv.menu'), icon: <Truck size={15} />, onSelect: () => setDriverOpen(true) },
                       // Fixing a bill beats cancelling and retyping it: the
                       // number, the date and any payment already taken survive.
                       {
@@ -288,6 +292,8 @@ export default function InvoiceDetail() {
           </p>
         )}
       </Card>
+
+      {driverOpen && <SendToDriverModal invoice={invoice} customer={customer} onClose={() => setDriverOpen(false)} />}
 
       {confirmCancel && (
         <Modal title={t('inv.cancelTitle')} onClose={() => setConfirmCancel(false)}>

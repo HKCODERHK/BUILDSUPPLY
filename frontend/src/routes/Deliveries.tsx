@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ClipboardList } from 'lucide-react'
+import { ClipboardList, Truck } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -8,6 +8,7 @@ import { listInvoices, markInvoiceDelivered, type InvoiceWithCustomer } from '@/
 import { useLanguage } from '@/context/LanguageContext'
 import { TruckLoader } from '@/components/TruckLoader'
 import { DriverListModal } from '@/components/DriverListModal'
+import { SendToDriverModal } from '@/components/SendToDriverModal'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
@@ -19,6 +20,8 @@ export default function Deliveries() {
   const [loading, setLoading] = useState(true)
   const [markingId, setMarkingId] = useState<string | null>(null)
   const [driverOpen, setDriverOpen] = useState(false)
+  // One bill for one driver: their WhatsApp chat with it written out.
+  const [sendingBill, setSendingBill] = useState<InvoiceWithCustomer | null>(null)
 
   async function refresh() {
     setInvoices(await listInvoices({ billsOnly: true }))
@@ -72,9 +75,14 @@ export default function Deliveries() {
                     {inv.site ? ` · ${inv.site}` : ''} · {formatINR(inv.total)}
                   </div>
                 </div>
-                <Button size="sm" onClick={() => handleMarkDelivered(inv.id)} disabled={markingId === inv.id}>
-                  {markingId === inv.id ? t('inv.marking') : t('inv.markDelivered')}
-                </Button>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Button size="sm" variant="outline" aria-label={t('drv.menu')} title={t('drv.menu')} onClick={() => setSendingBill(inv)}>
+                    <Truck size={15} />
+                  </Button>
+                  <Button size="sm" onClick={() => handleMarkDelivered(inv.id)} disabled={markingId === inv.id}>
+                    {markingId === inv.id ? t('inv.marking') : t('inv.markDelivered')}
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -82,6 +90,9 @@ export default function Deliveries() {
       )}
 
       {driverOpen && <DriverListModal invoices={pending} onClose={() => setDriverOpen(false)} />}
+      {sendingBill && (
+        <SendToDriverModal invoice={sendingBill} customer={sendingBill.customers} onClose={() => setSendingBill(null)} />
+      )}
     </div>
   )
 }
