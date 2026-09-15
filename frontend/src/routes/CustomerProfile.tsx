@@ -540,7 +540,7 @@ export default function CustomerProfile() {
         aria-label={t('cust.toTop')}
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         style={{ top: pinTop }}
-        className={`fixed inset-x-0 z-20 flex items-center gap-3 border-b border-border bg-card/85 px-4 py-2 text-left backdrop-blur-lg backdrop-saturate-150 transition-[opacity,transform] duration-200 motion-reduce:transition-none sm:px-6 lg:hidden ${
+        className={`fixed inset-x-0 z-20 flex items-center gap-3 border-b border-border bg-card/85 px-4 py-2 text-left backdrop-blur-lg backdrop-saturate-150 transition-[opacity,translate] duration-200 motion-reduce:transition-none sm:px-6 lg:hidden ${
           pinned ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-2 opacity-0'
         }`}
       >

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { LogOut, MoreHorizontal, X, ShieldCheck, Boxes, SlidersHorizontal, AlertTriangle } from 'lucide-react'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { LogOut, MoreHorizontal, X, ShieldCheck, Boxes, SlidersHorizontal, AlertTriangle, Inbox } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -124,12 +124,50 @@ function useScrolledPast(on: number, off: number) {
   return past
 }
 
+/**
+ * True while the page is being scrolled down — Telegram's cue to slip the
+ * floating button out of the way; scrolling back up, or reaching the top,
+ * brings it back. Measured from the last change of direction, so a slow
+ * scroll still counts once it has gone far enough.
+ */
+function useScrollingDown() {
+  const [down, setDown] = useState(false)
+  useEffect(() => {
+    let last = window.scrollY
+    let frame = 0
+    const check = () => {
+      frame = 0
+      const y = window.scrollY
+      if (y < 40) {
+        setDown(false)
+        last = y
+      } else if (y > last + 8) {
+        setDown(true)
+        last = y
+      } else if (y < last - 8) {
+        setDown(false)
+        last = y
+      }
+    }
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(check)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (frame) cancelAnimationFrame(frame)
+    }
+  }, [])
+  return down
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const { supplier, signOut } = useAuth()
   const { t } = useLanguage()
   const navigate = useNavigate()
   const [moreOpen, setMoreOpen] = useState(false)
   const scrolled = useScrolledPast(24, 4)
+  const fabAway = useScrollingDown()
   const tabBarRef = useRef<HTMLElement>(null)
 
   // Publishes the tab bar's real height as --tabbar-h, for the things that have
@@ -200,6 +238,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   )
   const [bubbleTab, setBubbleTab] = useState(Math.max(activeTab, 0))
   if (activeTab >= 0 && activeTab !== bubbleTab) setBubbleTab(activeTab)
+
+  // The floating Orders button: a supplier's, on the four main tabs only —
+  // never over a bill or New Invoice, where Save sits at the bottom.
+  const showFab = !isAdmin && primaryItems.some((item) => item.path === location.pathname)
 
   return (
     <div className="flex min-h-screen bg-surface text-ink">
@@ -404,6 +446,39 @@ export function AppShell({ children }: { children: ReactNode }) {
           {t('nav.more')}
         </button>
       </nav>
+
+      {/* The floating Orders button, Telegram-style, just above the tab bar
+          (--tabbar-h already includes the gap under the bar). It slips away
+          while a list is scrolled down, so it never covers the last rows, and
+          comes back on the way up. Opens Orders with the tabs' quick fade.
+          Tailwind 4 moves and scales with the `translate` and `scale`
+          properties, not `transform` — hence what is transitioned. */}
+      {showFab && (
+        <Link
+          to="/orders"
+          viewTransition
+          aria-label={
+            pendingOrders > 0
+              ? `${t('nav.orders')}, ${pendingOrders === 1 ? t('dash.newOrdersOne') : t('dash.newOrdersMany', { count: pendingOrders })}`
+              : t('nav.orders')
+          }
+          style={{ bottom: 'calc(var(--tabbar-h) + 0.75rem)' }}
+          className={cn(
+            'fixed right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-lg shadow-black/25 transition-[translate,scale,opacity] duration-200 active:scale-95 motion-reduce:transition-none lg:hidden',
+            fabAway ? 'pointer-events-none translate-y-4 opacity-0' : 'translate-y-0 opacity-100',
+          )}
+        >
+          <Inbox size={24} strokeWidth={1.9} />
+          {pendingOrders > 0 && (
+            <span
+              aria-hidden="true"
+              className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-[11px] font-bold leading-none text-accent-text ring-2 ring-accent"
+            >
+              {pendingOrders > 99 ? '99+' : pendingOrders}
+            </span>
+          )}
+        </Link>
+      )}
 
       {/* Mobile "more" sheet */}
       {moreOpen && (
