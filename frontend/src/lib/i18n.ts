@@ -1568,6 +1568,18 @@ const STRINGS = {
   },
   'rates.update': { en: 'Update rates', hi: 'रेट अपडेट करें', mr: 'दर अपडेट करा' },
   'rates.same': { en: 'Same as yesterday', hi: 'कल जैसे ही', mr: 'कालसारखेच' },
+  // The Update rates popup on the Dashboard.
+  'rates.popupTitle': { en: 'Today’s rates', hi: 'आज के रेट', mr: 'आजचे दर' },
+  'rates.popupHint': {
+    en: 'Change only the rates that moved today — the rest stay as they are.',
+    hi: 'सिर्फ़ वही रेट बदलें जो आज बदले — बाकी वैसे ही रहेंगे।',
+    mr: 'आज बदललेले दरच बदला — बाकी तसेच राहतील.',
+  },
+  'rates.was': { en: 'was {amount}', hi: 'पहले {amount}', mr: 'आधी {amount}' },
+  'rates.rateOf': { en: 'Rate of {name}', hi: '{name} का रेट', mr: '{name} चा दर' },
+  'rates.save': { en: 'Save rates ({count})', hi: 'रेट सेव करें ({count})', mr: 'दर सेव्ह करा ({count})' },
+  'rates.saveNone': { en: 'Change a rate to save', hi: 'सेव करने के लिए कोई रेट बदलें', mr: 'सेव्ह करण्यासाठी एखादा दर बदला' },
+  'rates.saved': { en: '{count} rates updated', hi: '{count} रेट अपडेट हुए', mr: '{count} दर अपडेट झाले' },
   // The welcome card's logo (a hover hint on a computer).
   'dash.logoHint': {
     en: 'Tap for your profile. Hold to show your order QR.',
