@@ -1,16 +1,15 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, ChevronRight, Inbox, Languages, Lock, QrCode, ShieldCheck, Store, type LucideIcon } from 'lucide-react'
-import { PageHeader } from '@/components/layout/PageHeader'
+import { ArrowLeft, Inbox, Languages, Lock, Pencil, QrCode, ShieldCheck, Store, type LucideIcon } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { Label } from '@/components/ui/label'
-import { IconTile } from '@/components/IconTile'
 import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { updateSupplierProfile, uploadLogo } from '@/services/suppliers'
 import { sanitizePhone } from '@/lib/numberInput'
+import { patternCssUrl } from '@/lib/qrPattern'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { usePin } from '@/context/PinContext'
@@ -26,19 +25,20 @@ type Section = 'business' | 'orders' | 'upi' | 'language' | 'pin' | 'password'
 interface Row {
   id: Section
   icon: LucideIcon
-  colour: string
   label: string
-  /** The short status on the right — "On", "English", the UPI ID. */
+  /** The grey line under the title — what it is, or its state. */
   detail?: string
 }
 
 /**
- * Settings, Telegram-style: the business on a card at the top, then short
- * rows with coloured icons, each opening its own section (`?s=<section>`, so
- * the phone's back gesture returns to the list). Every card inside a section
- * is the one this page always had — nothing was removed, only sorted. Other
- * screens link straight to a section: Orders → `?s=orders`, the UPI QR →
- * `?s=upi`, the Start-here card → `?s=business`.
+ * Settings, the way WhatsApp lays out its own: the business on a doodled band
+ * at the top — the logo large, the name under it — then plain rows, each a
+ * grey outline icon, a title and a line saying what it is or its state, each
+ * opening its own section (`?s=<section>`, so the phone's back gesture returns
+ * to the list). Every card inside a section is the one this page always had —
+ * nothing was removed, only sorted. Other screens link straight to a section:
+ * Orders → `?s=orders`, the UPI QR → `?s=upi`, the Start-here card →
+ * `?s=business`.
  */
 export default function Settings() {
   const { supplier } = useAuth()
@@ -58,6 +58,7 @@ export default function Settings() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [logoFailed, setLogoFailed] = useState(false)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -88,20 +89,18 @@ export default function Settings() {
   const isSupplier = supplier?.role === 'supplier'
   const groups: Row[][] = [
     [
-      { id: 'business', icon: Store, colour: '#2F76C0', label: t('set.title') },
+      { id: 'business', icon: Store, label: t('set.title'), detail: t('set.rowBusinessSub') },
       ...(isSupplier
         ? [
             {
               id: 'orders' as const,
               icon: Inbox,
-              colour: '#2E9150',
               label: t('ord.settingsTitle'),
-              detail: t(supplier?.ordering_enabled ? 'set.on' : 'set.off'),
+              detail: `${t(supplier?.ordering_enabled ? 'set.on' : 'set.off')} · ${t('set.ordersSub')}`,
             },
             {
               id: 'upi' as const,
               icon: QrCode,
-              colour: '#7A5BC7',
               label: t('upi.settingsTitle'),
               detail: supplier?.upi_id || t('set.notSet'),
             },
@@ -109,15 +108,9 @@ export default function Settings() {
         : []),
     ],
     [
-      {
-        id: 'language',
-        icon: Languages,
-        colour: '#D2702A',
-        label: t('set.language'),
-        detail: LANGUAGES.find((l) => l.code === lang)?.label,
-      },
-      { id: 'pin', icon: ShieldCheck, colour: '#D14D4D', label: t('pin.title'), detail: t(hasPin ? 'set.on' : 'set.off') },
-      { id: 'password', icon: Lock, colour: '#5B6B7A', label: t('set.pwTitle') },
+      { id: 'language', icon: Languages, label: t('set.language'), detail: LANGUAGES.find((l) => l.code === lang)?.label },
+      { id: 'pin', icon: ShieldCheck, label: t('pin.title'), detail: `${t(hasPin ? 'set.on' : 'set.off')} · ${t('set.pinSub')}` },
+      { id: 'password', icon: Lock, label: t('set.pwTitle'), detail: t('set.pwSub') },
     ],
   ]
 
@@ -248,48 +241,65 @@ export default function Settings() {
     )
   }
 
+  const logo = !logoFailed ? supplier?.logo_url : null
+
   return (
-    <div>
-      <PageHeader title={t('nav.settings')} />
+    <div className="max-w-lg">
+      {/* The doodled band — the app's own building-trade doodles, soft green
+          in light, barely there in dark — running edge to edge on a phone. */}
+      <div className="relative -mx-4 -mt-2 sm:-mx-6 lg:mx-0 lg:mt-0 lg:overflow-hidden lg:rounded-t-3xl">
+        <div className="h-32 dark:hidden" style={{ backgroundColor: '#E4F1E8', backgroundImage: patternCssUrl('rgba(31, 122, 69, 0.16)') }} />
+        <div className="hidden h-32 dark:block" style={{ backgroundColor: '#15261F', backgroundImage: patternCssUrl('rgba(255, 255, 255, 0.07)') }} />
+        <button
+          type="button"
+          onClick={() => open('business')}
+          aria-label={t('common.edit')}
+          className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full text-ink/70 transition-colors hover:bg-black/5 dark:text-white/80 dark:hover:bg-white/10"
+        >
+          <Pencil size={20} strokeWidth={1.75} />
+        </button>
 
-      {/* The business itself, as Telegram puts the account on top. */}
-      <button
-        type="button"
-        onClick={() => open('business')}
-        className="mb-4 flex w-full max-w-lg items-center gap-4 rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:bg-surface"
-      >
-        {supplier?.logo_url ? (
-          <img src={supplier.logo_url} alt="" className="h-14 w-14 shrink-0 rounded-full border border-border object-cover" />
-        ) : (
-          <CustomerAvatar id={supplier?.id ?? ''} name={supplier?.business_name ?? ''} size={56} />
-        )}
-        <span className="min-w-0 flex-1">
-          <span className="block break-words text-base font-bold text-ink">{supplier?.business_name}</span>
-          <span className="block text-sm text-muted">{supplier?.phone || supplier?.email}</span>
-        </span>
-        <ChevronRight size={18} className="shrink-0 text-muted-2" />
-      </button>
+        {/* The page itself, rising over the band with a rounded top edge. */}
+        <div className="relative -mt-7 rounded-t-3xl bg-surface px-4 pb-1 pt-16 text-center sm:px-6">
+          <button
+            type="button"
+            onClick={() => open('business')}
+            className="absolute -top-14 left-1/2 flex h-28 w-28 -translate-x-1/2 items-center justify-center overflow-hidden rounded-full bg-white ring-4 ring-surface"
+          >
+            {logo ? (
+              <img src={logo} alt="" onError={() => setLogoFailed(true)} className="h-full w-full object-cover" />
+            ) : (
+              <CustomerAvatar id={supplier?.id ?? ''} name={supplier?.business_name ?? ''} size={112} />
+            )}
+          </button>
+          <button type="button" onClick={() => open('business')} className="w-full">
+            <span className="block break-words text-2xl font-semibold leading-tight text-ink">{supplier?.business_name}</span>
+            <span className="mt-1 block text-sm text-muted">{supplier?.phone || supplier?.email}</span>
+          </button>
+        </div>
+      </div>
 
-      {groups.map((group) => (
-        <Card key={group[0].id} className="mb-4 max-w-lg overflow-hidden p-0 sm:p-0">
-          {group.map((row, i) => (
-            <button
-              key={row.id}
-              type="button"
-              onClick={() => open(row.id)}
-              className={cn(
-                'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface',
-                i > 0 && 'border-t border-border',
-              )}
-            >
-              <IconTile icon={row.icon} colour={row.colour} />
-              <span className="min-w-0 flex-1 text-sm font-medium text-ink">{row.label}</span>
-              {row.detail && <span className="max-w-[45%] truncate text-xs text-muted">{row.detail}</span>}
-              <ChevronRight size={16} className="shrink-0 text-muted-2" />
-            </button>
-          ))}
-        </Card>
-      ))}
+      {/* Plain rows: a grey outline icon, the title, and a line under it. */}
+      <div className="mt-4">
+        {groups.map((group, gi) => (
+          <div key={group[0].id} className={cn(gi > 0 && 'mt-2 border-t border-border pt-2')}>
+            {group.map((row) => (
+              <button
+                key={row.id}
+                type="button"
+                onClick={() => open(row.id)}
+                className="flex w-full items-start gap-5 rounded-xl px-2 py-3.5 text-left transition-colors hover:bg-card active:bg-card"
+              >
+                <row.icon size={24} strokeWidth={1.75} className="mt-0.5 shrink-0 text-muted" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[15px] text-ink">{row.label}</span>
+                  {row.detail && <span className="mt-0.5 block break-words text-sm text-muted">{row.detail}</span>}
+                </span>
+              </button>
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

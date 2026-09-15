@@ -13,19 +13,6 @@ import { ADMIN_WHATSAPP_NUMBER } from '@/lib/adminContact'
 import { daysUntilExpiry, subscriptionState } from '@/lib/subscription'
 import { countPendingOrders } from '@/services/orders'
 import { NAV_ITEMS, MOBILE_PRIMARY_IDS, ADMIN_NAV_IDS } from './nav-items'
-import { IconTile } from '@/components/IconTile'
-
-// The More sheet's coloured tiles, one colour per place (Telegram's settings
-// rows). Settings is the same slate as on its own screen.
-const MORE_COLOURS: Record<string, string> = {
-  quotations: '#D2702A',
-  orders: '#2E9150',
-  payments: '#2F76C0',
-  deliveries: '#1F8C8C',
-  reminders: '#D14D4D',
-  reports: '#7A5BC7',
-  settings: '#5B6B7A',
-}
 
 // Shown in the desktop sidebar header and, on mobile, in the top bar.
 function Brand({ compact = false }: { compact?: boolean }) {
@@ -421,9 +408,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                   key={item.id}
                   to={item.path}
                   onClick={() => setMoreOpen(false)}
-                  className="relative flex flex-col items-center gap-2 rounded-2xl bg-surface p-3.5 text-xs font-medium text-ink"
+                  className="relative flex flex-col items-center gap-2 rounded-2xl p-3 text-xs font-medium transition-colors hover:bg-surface active:bg-surface text-ink"
                 >
-                  <IconTile icon={item.icon} colour={MORE_COLOURS[item.id] ?? '#5B6B7A'} size={40} />
+                  {/* Plain outline icons, as WhatsApp draws its own — no box. */}
+                  <item.icon size={26} strokeWidth={1.75} />
                   {t(item.labelKey)}
                   {item.id === 'orders' && pendingOrders > 0 && (
                     <span className="absolute right-2 top-2 rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
@@ -437,34 +425,34 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <NavLink
                     to="/admin/suppliers"
                     onClick={() => setMoreOpen(false)}
-                    className="flex flex-col items-center gap-2 rounded-2xl bg-surface p-3.5 text-xs font-medium text-ink"
+                    className="flex flex-col items-center gap-2 rounded-2xl p-3 text-xs font-medium transition-colors hover:bg-surface active:bg-surface text-ink"
                   >
-                    <IconTile icon={ShieldCheck} colour="#2F76C0" size={40} />
+                    <ShieldCheck size={26} strokeWidth={1.75} />
                     Suppliers
                   </NavLink>
                   <NavLink
                     to="/admin/materials"
                     onClick={() => setMoreOpen(false)}
-                    className="flex flex-col items-center gap-2 rounded-2xl bg-surface p-3.5 text-xs font-medium text-ink"
+                    className="flex flex-col items-center gap-2 rounded-2xl p-3 text-xs font-medium transition-colors hover:bg-surface active:bg-surface text-ink"
                   >
-                    <IconTile icon={Boxes} colour="#C24D8C" size={40} />
+                    <Boxes size={26} strokeWidth={1.75} />
                     Catalog
                   </NavLink>
                   <NavLink
                     to="/admin/settings"
                     onClick={() => setMoreOpen(false)}
-                    className="flex flex-col items-center gap-2 rounded-2xl bg-surface p-3.5 text-xs font-medium text-ink"
+                    className="flex flex-col items-center gap-2 rounded-2xl p-3 text-xs font-medium transition-colors hover:bg-surface active:bg-surface text-ink"
                   >
-                    <IconTile icon={SlidersHorizontal} colour="#5B6B7A" size={40} />
+                    <SlidersHorizontal size={26} strokeWidth={1.75} />
                     Platform
                   </NavLink>
                 </>
               )}
               <button
                 onClick={handleSignOut}
-                className="flex flex-col items-center gap-2 rounded-2xl bg-surface p-3.5 text-xs font-medium text-red-600"
+                className="flex flex-col items-center gap-2 rounded-2xl p-3 text-xs font-medium transition-colors hover:bg-surface active:bg-surface text-red-600"
               >
-                <IconTile icon={LogOut} colour="#D14D4D" size={40} />
+                <LogOut size={26} strokeWidth={1.75} />
                 {t('nav.signOut')}
               </button>
             </div>

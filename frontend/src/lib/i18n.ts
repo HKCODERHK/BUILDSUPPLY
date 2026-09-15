@@ -471,6 +471,15 @@ const STRINGS = {
   'set.on': { en: 'On', hi: 'चालू', mr: 'चालू' },
   'set.off': { en: 'Off', hi: 'बंद', mr: 'बंद' },
   'set.notSet': { en: 'Not set up', hi: 'सेट नहीं', mr: 'सेट केलेले नाही' },
+  // Settings list: the grey line under each row's title.
+  'set.rowBusinessSub': { en: 'Name, phone, address, GST, logo', hi: 'नाम, फ़ोन, पता, GST, लोगो', mr: 'नाव, फोन, पत्ता, GST, लोगो' },
+  'set.ordersSub': { en: 'Customers order from your link', hi: 'ग्राहक आपकी लिंक से ऑर्डर करते हैं', mr: 'ग्राहक तुमच्या लिंकवरून ऑर्डर करतात' },
+  'set.pinSub': {
+    en: 'Asked before cancelling a bill or a big payment',
+    hi: 'बिल रद्द करने या बड़े भुगतान से पहले पूछा जाता है',
+    mr: 'बिल रद्द करण्यापूर्वी किंवा मोठ्या पेमेंटआधी विचारला जातो',
+  },
+  'set.pwSub': { en: 'The password you sign in with', hi: 'जिस पासवर्ड से आप साइन इन करते हैं', mr: 'ज्या पासवर्डने तुम्ही साइन इन करता' },
   'set.languageHint': {
     en: 'Changes the app for you only. Bills and PDFs stay in English so any customer can read them.',
     hi: 'सिर्फ़ आपके लिए बदलेगा। बिल और पीडीएफ अंग्रेज़ी में ही रहेंगे ताकि हर ग्राहक पढ़ सके।',
