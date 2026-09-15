@@ -261,6 +261,32 @@ export function AppShell({ children }: { children: ReactNode }) {
       : segs.length > 1 || (segs[0] === 'settings' && new URLSearchParams(location.search).has('s'))
   const parentPath = segs[0] === 'admin' ? `/admin/${segs[1] ?? ''}` : `/${segs[0] ?? 'dashboard'}`
   const bar: TopBarInfo = topBar ?? { title: sectionItem ? t(sectionItem.labelKey) : 'BuildSupply' }
+  // Telegram's chat bar (a customer's page): pills floating over the page.
+  // A customer's page floats from its first frame — while it loads too — so
+  // the bar doesn't jump from the dark style to the pills when the name lands.
+  const floating = !onDashboard && (bar.floating ?? (segs[0] === 'customers' && segs.length === 2))
+  const pill =
+    'flex items-center rounded-full border border-border/60 bg-card/85 text-ink shadow-md shadow-black/5 backdrop-blur-lg backdrop-saturate-150'
+
+  // With the page running up under the floating bar, the status bar takes the
+  // page's own colour instead of the dark app green (index.html's
+  // theme-color), and gets it back on leaving. Turned into plain hex through
+  // a one-pixel canvas: the page colour may be an oklch() a status bar can't read.
+  useEffect(() => {
+    if (!floating) return
+    const meta = document.querySelector('meta[name="theme-color"]')
+    const root = document.querySelector('[data-app-root]')
+    const ctx = document.createElement('canvas').getContext('2d')
+    if (!meta || !root || !ctx) return
+    const before = meta.getAttribute('content')
+    ctx.fillStyle = getComputedStyle(root).backgroundColor
+    ctx.fillRect(0, 0, 1, 1)
+    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data
+    meta.setAttribute('content', `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`)
+    return () => {
+      if (before) meta.setAttribute('content', before)
+    }
+  }, [floating])
 
   // Back to wherever the supplier came from; opened straight from a link with
   // nothing behind it, to the section's list instead.
@@ -270,7 +296,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen bg-surface text-ink">
+    <div data-app-root className="flex min-h-screen bg-surface text-ink">
       {/* Desktop sidebar. Kept for lg and up only — on a tablet a fixed
           230px rail eats ~30% of the screen and squeezes the content, so
           tablets get the same top-bar + bottom-nav chrome as phones. */}
@@ -371,11 +397,43 @@ export function AppShell({ children }: { children: ReactNode }) {
           data-app-header
           style={{ viewTransitionName: 'app-header' }}
           className={cn(
-            'sticky top-0 z-30 flex w-full items-center justify-between px-4 py-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white transition-colors duration-200 sm:px-6 lg:hidden',
-            scrolled ? 'bg-shell/80 backdrop-blur-lg backdrop-saturate-150' : 'bg-shell',
+            floating
+              ? 'sticky top-0 z-30 flex w-full items-center gap-2 px-3 py-2 pt-[calc(0.5rem_+_var(--safe-top))] lg:hidden'
+              : 'sticky top-0 z-30 flex w-full items-center justify-between px-4 py-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white transition-colors duration-200 sm:px-6 lg:hidden',
+            !floating && (scrolled ? 'bg-shell/80 backdrop-blur-lg backdrop-saturate-150' : 'bg-shell'),
           )}
         >
-          {onDashboard ? (
+          {floating ? (
+            // Telegram's chat bar: ←, the name, and the screen's own buttons,
+            // each a frosted pill over the page.
+            <>
+              <button
+                type="button"
+                onClick={goBack}
+                aria-label={t('common.back')}
+                className={cn(pill, 'h-11 w-11 shrink-0 justify-center')}
+              >
+                <ArrowLeft size={22} />
+              </button>
+              <div className={cn(pill, 'h-11 min-w-0 flex-1 gap-2.5 pl-1 pr-4')}>
+                {bar.avatar && <CustomerAvatar id={bar.avatar.id} name={bar.avatar.name} size={36} />}
+                <div className="min-w-0">
+                  <div className="truncate text-[15px] font-semibold leading-tight">{bar.title}</div>
+                  {bar.detail && (
+                    <div
+                      className={cn(
+                        'truncate text-xs font-medium leading-tight',
+                        bar.detailTone === 'due' ? 'text-red-600 dark:text-red-400' : 'text-accent',
+                      )}
+                    >
+                      {bar.detail}
+                    </div>
+                  )}
+                </div>
+              </div>
+              {bar.actions && <div className={cn(pill, 'h-11 shrink-0 px-0.5')}>{bar.actions}</div>}
+            </>
+          ) : onDashboard ? (
             <Brand compact={scrolled} />
           ) : (
             <div className="flex min-w-0 flex-1 items-center gap-2 pr-2">
@@ -405,7 +463,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             </div>
           )}
-          <div className="flex shrink-0 items-center gap-2">
+          {/* EN and theme step aside on the floating bar, as in Telegram's chat. */}
+          <div className={cn('flex shrink-0 items-center gap-2', floating && 'hidden')}>
             <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
             <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
           </div>

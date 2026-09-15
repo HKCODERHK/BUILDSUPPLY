@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { Label } from '@/components/ui/label'
 import { Modal } from '@/components/ui/modal'
-import { ActionMenu } from '@/components/ui/action-menu'
+import { ActionMenu, type ActionMenuItem } from '@/components/ui/action-menu'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { SuccessHeader } from '@/components/SuccessTick'
 import { getCustomer, getCustomerBalance, setOpeningBalance, updateCustomer } from '@/services/customers'
@@ -412,6 +412,27 @@ export default function CustomerProfile() {
       .entries(),
   ).sort((a, b) => b[1].pending - a[1].pending)
 
+  // The customer's less-used actions: under ⋮ on the page (desktop), and in the
+  // top bar's right pill on a phone.
+  const menuItems: ActionMenuItem[] = [
+    // Repeating last week's bill is a shortcut for New invoice, so it comes
+    // first.
+    ...(liveBills.length > 0
+      ? [
+          {
+            label: t('cust.repeatBill'),
+            icon: <RotateCcw size={15} />,
+            onSelect: () => navigate(`/invoices/new?customer=${customer.id}&repeat=1`),
+          },
+        ]
+      : []),
+    { label: t('common.edit'), icon: <Pencil size={15} />, onSelect: openEdit },
+    // Their own read-only account page (migration 028).
+    { label: t('khata.share'), icon: <Link2 size={15} />, onSelect: () => setKhataOpen(true) },
+    // For when the customer is standing there without cash (migration 029).
+    { label: t('upi.showQr'), icon: <QrCode size={15} />, onSelect: () => setUpiOpen(true) },
+  ]
+
   return (
     <div>
       <div ref={headRef}>
@@ -431,6 +452,22 @@ export default function CustomerProfile() {
             : undefined
         }
         topDetailTone={totalPending > 0.005 ? 'due' : 'good'}
+        // Telegram's chat bar on a phone: ←, the name pill, and Call + ⋮.
+        topFloating
+        topActions={
+          <>
+            {customer.phone && (
+              <a
+                href={`tel:${customer.phone}`}
+                aria-label={t('cust.callName', { name: customer.name })}
+                className="flex h-10 w-10 items-center justify-center rounded-full text-ink transition-colors hover:bg-surface"
+              >
+                <Phone size={20} strokeWidth={1.9} />
+              </a>
+            )}
+            <ActionMenu items={menuItems} plain />
+          </>
+        }
         action={
           // Taking money is why this page gets opened, and repeating last
           // week's bill is the other reason. Editing and chasing are rarer.
@@ -461,27 +498,9 @@ export default function CustomerProfile() {
             >
               <Plus size={16} /> {t('inv.new')}
             </Button>
-            <div className="ml-auto">
-            <ActionMenu
-              items={[
-                // Repeating last week's bill is a shortcut for the button
-                // above, so it sits directly under it rather than beside it.
-                ...(liveBills.length > 0
-                  ? [
-                      {
-                        label: t('cust.repeatBill'),
-                        icon: <RotateCcw size={15} />,
-                        onSelect: () => navigate(`/invoices/new?customer=${customer.id}&repeat=1`),
-                      },
-                    ]
-                  : []),
-                { label: t('common.edit'), icon: <Pencil size={15} />, onSelect: openEdit },
-                // Their own read-only account page (migration 028).
-                { label: t('khata.share'), icon: <Link2 size={15} />, onSelect: () => setKhataOpen(true) },
-                // For when the customer is standing there without cash (migration 029).
-                { label: t('upi.showQr'), icon: <QrCode size={15} />, onSelect: () => setUpiOpen(true) },
-              ]}
-            />
+            {/* On a phone ⋮ and Call sit in the top bar's right pill instead. */}
+            <div className="ml-auto hidden lg:block">
+            <ActionMenu items={menuItems} />
             </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -527,7 +546,7 @@ export default function CustomerProfile() {
                   href={`tel:${customer.phone}`}
                   aria-label={t('cust.callName', { name: customer.name })}
                   title={t('cust.call')}
-                  className="ml-auto inline-flex h-9 w-10 items-center justify-center rounded-lg border border-border bg-card text-accent transition-colors hover:bg-surface"
+                  className="ml-auto hidden h-9 w-10 items-center justify-center rounded-lg border border-border bg-card text-accent transition-colors hover:bg-surface lg:inline-flex"
                 >
                   <Phone size={16} />
                 </a>

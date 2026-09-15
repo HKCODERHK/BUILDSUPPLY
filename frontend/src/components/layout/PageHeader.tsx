@@ -9,6 +9,8 @@ export function PageHeader({
   avatar,
   topDetail,
   topDetailTone,
+  topFloating,
+  topActions,
 }: {
   title: string
   subtitle?: string
@@ -18,11 +20,15 @@ export function PageHeader({
   /** A small line under the title in the phone's top bar (the customer's balance). */
   topDetail?: string
   topDetailTone?: 'due' | 'good'
+  /** The phone's top bar as Telegram's chat bar — floating pills (TopBarContext). */
+  topFloating?: boolean
+  /** Buttons for the top bar's right pill, when floating. */
+  topActions?: ReactNode
 }) {
   // On a phone the top bar names the screen (Telegram-style), so the big
   // heading here would only repeat it — it shows from lg up, where there is no
   // top bar. The grey line and the buttons stay everywhere.
-  useTopBar({ title, avatar, detail: topDetail, detailTone: topDetailTone })
+  useTopBar({ title, avatar, detail: topDetail, detailTone: topDetailTone, floating: topFloating, actions: topActions })
 
   return (
     // min-w-0 and break-words because the title is often a name the supplier

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect } from 'react'
+import { createContext, useContext, useEffect, type ReactNode } from 'react'
 
 /**
  * What the phone's top bar shows for the screen you are on — Telegram-style,
@@ -14,6 +14,12 @@ export interface TopBarInfo {
   /** A small line under the title, e.g. what the customer owes. */
   detail?: string
   detailTone?: 'due' | 'good'
+  /**
+   * Telegram's chat bar: the page runs up under the bar, which floats as
+   * three pills — ←, the name, and `actions` (the customer's Call and ⋮).
+   */
+  floating?: boolean
+  actions?: ReactNode
 }
 
 export const TopBarContext = createContext<((info: TopBarInfo | null) => void) | null>(null)
@@ -26,15 +32,27 @@ export function useTopBar(info: TopBarInfo | null) {
   const avatarName = info?.avatar?.name
   const detail = info?.detail
   const tone = info?.detailTone
+  const floating = info?.floating
+  // A new element every render of the screen that sent it, so this effect
+  // runs each time that screen renders — which only re-renders AppShell's
+  // header, never the screen itself (its element is the same `children`).
+  const actions = info?.actions
 
   useEffect(() => {
     if (!set) return
     set(
       title === undefined
         ? null
-        : { title, avatar: avatarId ? { id: avatarId, name: avatarName ?? '' } : undefined, detail, detailTone: tone },
+        : {
+            title,
+            avatar: avatarId ? { id: avatarId, name: avatarName ?? '' } : undefined,
+            detail,
+            detailTone: tone,
+            floating,
+            actions,
+          },
     )
-  }, [set, title, avatarId, avatarName, detail, tone])
+  }, [set, title, avatarId, avatarName, detail, tone, floating, actions])
 
   useEffect(() => {
     if (!set) return

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { MoreHorizontal } from 'lucide-react'
+import { MoreHorizontal, MoreVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface ActionMenuItem {
@@ -48,7 +48,16 @@ function usableArea() {
  * opens downward unless it would run under the tab bar and there is more room
  * above. Measured before it is painted, so it never flashes in the wrong place.
  */
-export function ActionMenu({ items, label = 'More actions' }: { items: ActionMenuItem[]; label?: string }) {
+export function ActionMenu({
+  items,
+  label = 'More actions',
+  plain = false,
+}: {
+  items: ActionMenuItem[]
+  label?: string
+  /** Round and borderless with a vertical ⋮ — for a pill in the phone's top bar. */
+  plain?: boolean
+}) {
   const [open, setOpen] = useState(false)
   const [place, setPlace] = useState<Placement>({ x: 'right', y: 'down' })
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -97,9 +106,13 @@ export function ActionMenu({ items, label = 'More actions' }: { items: ActionMen
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
-        className="inline-flex h-9 w-10 cursor-pointer items-center justify-center rounded-lg border border-border bg-card text-ink transition-colors hover:bg-surface"
+        className={
+          plain
+            ? 'inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-ink transition-colors hover:bg-surface'
+            : 'inline-flex h-9 w-10 cursor-pointer items-center justify-center rounded-lg border border-border bg-card text-ink transition-colors hover:bg-surface'
+        }
       >
-        <MoreHorizontal size={16} />
+        {plain ? <MoreVertical size={20} strokeWidth={1.9} /> : <MoreHorizontal size={16} />}
       </button>
 
       {open && (
