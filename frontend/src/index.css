@@ -512,3 +512,35 @@ select,
     animation: none;
   }
 }
+
+/* Switching screens from the tab bar or the More sheet (NavLink
+   `viewTransition`, AppShell): the browser cross-fades the old screen into the
+   new one in 0.15s — quick enough to hold nothing up, and it touches no
+   element's layout, so dialogs and pinned bars behave exactly as before. The
+   top bar and the tab bar are their own layers and simply show their new
+   state, so the tab bubble's own slide isn't doubled by a fading copy of the
+   old one. A browser without view transitions just switches, as it always
+   did; so does a phone set to reduce motion. */
+::view-transition-group(*) {
+  animation-duration: 150ms;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 150ms;
+  animation-timing-function: ease-out;
+}
+::view-transition-old(app-tabbar),
+::view-transition-old(app-header) {
+  display: none;
+}
+::view-transition-new(app-tabbar),
+::view-transition-new(app-header) {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}

@@ -301,6 +301,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             Both come back at the top. */}
         <header
           data-app-header
+          style={{ viewTransitionName: 'app-header' }}
           className={cn(
             'sticky top-0 z-30 flex w-full items-center justify-between px-4 py-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white transition-colors duration-200 sm:px-6 lg:hidden',
             scrolled ? 'bg-shell/80 backdrop-blur-lg backdrop-saturate-150' : 'bg-shell',
@@ -338,6 +339,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <nav
         ref={tabBarRef}
         data-app-tabbar
+        // Its own layer in a screen change, shown as it is now rather than
+        // faded — otherwise the bubble's slide is doubled by a fading copy.
+        style={{ viewTransitionName: 'app-tabbar' }}
         className="fixed inset-x-3 bottom-[calc(0.5rem_+_var(--safe-bottom))] z-30 mx-auto flex max-w-md rounded-full border border-border bg-card/70 p-1 shadow-lg shadow-black/10 backdrop-blur-lg backdrop-saturate-150 lg:hidden"
       >
         {/* The bubble behind the current tab: one element that slides to the
@@ -358,6 +362,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           <NavLink
             key={item.id}
             to={item.path}
+            // A quick cross-fade into the new screen — see index.css.
+            viewTransition
             className={({ isActive }) =>
               cn(
                 'relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full px-0.5 py-1.5 text-center text-[11px] font-medium leading-tight text-muted transition-colors duration-300',
@@ -407,6 +413,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <NavLink
                   key={item.id}
                   to={item.path}
+                  viewTransition
                   onClick={() => setMoreOpen(false)}
                   className="relative flex flex-col items-center gap-2 rounded-2xl p-3 text-xs font-medium transition-colors hover:bg-surface active:bg-surface text-ink"
                 >
@@ -424,6 +431,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <>
                   <NavLink
                     to="/admin/suppliers"
+                    viewTransition
                     onClick={() => setMoreOpen(false)}
                     className="flex flex-col items-center gap-2 rounded-2xl p-3 text-xs font-medium transition-colors hover:bg-surface active:bg-surface text-ink"
                   >
@@ -432,6 +440,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </NavLink>
                   <NavLink
                     to="/admin/materials"
+                    viewTransition
                     onClick={() => setMoreOpen(false)}
                     className="flex flex-col items-center gap-2 rounded-2xl p-3 text-xs font-medium transition-colors hover:bg-surface active:bg-surface text-ink"
                   >
@@ -440,6 +449,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </NavLink>
                   <NavLink
                     to="/admin/settings"
+                    viewTransition
                     onClick={() => setMoreOpen(false)}
                     className="flex flex-col items-center gap-2 rounded-2xl p-3 text-xs font-medium transition-colors hover:bg-surface active:bg-surface text-ink"
                   >
