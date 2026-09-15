@@ -378,15 +378,21 @@ export function AppShell({ children }: { children: ReactNode }) {
               )
             }
           >
-            <item.icon size={19} />
-            {t(item.labelKey)}
+            {/* Finer lines on the other tabs, a bolder icon on the one you
+                are on — how Telegram and the phone's own apps mark it. */}
+            {({ isActive }) => (
+              <>
+                <item.icon size={20} strokeWidth={isActive ? 2.3 : 1.75} />
+                {t(item.labelKey)}
+              </>
+            )}
           </NavLink>
         ))}
         <button
           onClick={() => setMoreOpen(true)}
           className="relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full px-0.5 py-1.5 text-center text-[11px] font-medium leading-tight text-muted"
         >
-          <MoreHorizontal size={19} />
+          <MoreHorizontal size={20} strokeWidth={1.75} />
           {pendingOrders > 0 && (
             <span aria-hidden="true" className="absolute right-[calc(50%-16px)] top-1 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-card" />
           )}
@@ -415,9 +421,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                   key={item.id}
                   to={item.path}
                   onClick={() => setMoreOpen(false)}
-                  className="relative flex flex-col items-center gap-1.5 rounded-xl border border-border p-3 text-xs font-medium text-ink"
+                  className="relative flex flex-col items-center gap-2 rounded-2xl bg-surface p-3.5 text-xs font-medium text-ink"
                 >
-                  <IconTile icon={item.icon} colour={MORE_COLOURS[item.id] ?? '#5B6B7A'} size={34} />
+                  <IconTile icon={item.icon} colour={MORE_COLOURS[item.id] ?? '#5B6B7A'} size={40} />
                   {t(item.labelKey)}
                   {item.id === 'orders' && pendingOrders > 0 && (
                     <span className="absolute right-2 top-2 rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
@@ -431,34 +437,34 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <NavLink
                     to="/admin/suppliers"
                     onClick={() => setMoreOpen(false)}
-                    className="flex flex-col items-center gap-1.5 rounded-xl border border-border p-3 text-xs font-medium text-ink"
+                    className="flex flex-col items-center gap-2 rounded-2xl bg-surface p-3.5 text-xs font-medium text-ink"
                   >
-                    <IconTile icon={ShieldCheck} colour="#2F76C0" size={34} />
+                    <IconTile icon={ShieldCheck} colour="#2F76C0" size={40} />
                     Suppliers
                   </NavLink>
                   <NavLink
                     to="/admin/materials"
                     onClick={() => setMoreOpen(false)}
-                    className="flex flex-col items-center gap-1.5 rounded-xl border border-border p-3 text-xs font-medium text-ink"
+                    className="flex flex-col items-center gap-2 rounded-2xl bg-surface p-3.5 text-xs font-medium text-ink"
                   >
-                    <IconTile icon={Boxes} colour="#C24D8C" size={34} />
+                    <IconTile icon={Boxes} colour="#C24D8C" size={40} />
                     Catalog
                   </NavLink>
                   <NavLink
                     to="/admin/settings"
                     onClick={() => setMoreOpen(false)}
-                    className="flex flex-col items-center gap-1.5 rounded-xl border border-border p-3 text-xs font-medium text-ink"
+                    className="flex flex-col items-center gap-2 rounded-2xl bg-surface p-3.5 text-xs font-medium text-ink"
                   >
-                    <IconTile icon={SlidersHorizontal} colour="#5B6B7A" size={34} />
+                    <IconTile icon={SlidersHorizontal} colour="#5B6B7A" size={40} />
                     Platform
                   </NavLink>
                 </>
               )}
               <button
                 onClick={handleSignOut}
-                className="flex flex-col items-center gap-1.5 rounded-xl border border-border p-3 text-xs font-medium text-red-600"
+                className="flex flex-col items-center gap-2 rounded-2xl bg-surface p-3.5 text-xs font-medium text-red-600"
               >
-                <LogOut size={18} />
+                <IconTile icon={LogOut} colour="#D14D4D" size={40} />
                 {t('nav.signOut')}
               </button>
             </div>
