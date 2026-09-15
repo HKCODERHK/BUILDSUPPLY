@@ -513,6 +513,26 @@ select,
   }
 }
 
+/* The More sheet (AppShell) floats in: up a little and out of nothing. */
+.more-sheet-in {
+  animation: more-sheet-in 220ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+@keyframes more-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .more-sheet-in {
+    animation: none;
+  }
+}
+
 /* Switching screens from the tab bar or the More sheet (NavLink
    `viewTransition`, AppShell): the browser cross-fades the old screen into the
    new one in 0.15s — quick enough to hold nothing up, and it touches no

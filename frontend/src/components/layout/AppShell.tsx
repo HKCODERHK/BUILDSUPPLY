@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { LogOut, MoreHorizontal, X, ShieldCheck, Boxes, SlidersHorizontal, AlertTriangle, Inbox, ArrowLeft } from 'lucide-react'
+import { LogOut, MoreHorizontal, X, ShieldCheck, Boxes, SlidersHorizontal, AlertTriangle, Inbox, ArrowLeft, Sun, Moon } from 'lucide-react'
 import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { TopBarContext, type TopBarInfo } from '@/context/TopBarContext'
 import { cn } from '@/lib/utils'
@@ -177,7 +177,7 @@ function useScrollingDown() {
 export function AppShell({ children }: { children: ReactNode }) {
   const { supplier, signOut, splash } = useAuth()
   const { t } = useLanguage()
-  const { theme } = useTheme()
+  const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const [moreOpen, setMoreOpen] = useState(false)
   // What the current screen asked the top bar to say — see TopBarContext.
@@ -511,7 +511,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {/* EN and theme step aside on the floating bar, as in Telegram's chat. */}
           <div className={cn('flex shrink-0 items-center gap-2', floating && 'hidden')}>
             <LanguageToggle className="dark:border-white/20 dark:text-white dark:hover:bg-white/10 dark:hover:text-white" />
-            <ThemeToggle className="dark:border-white/20 dark:text-white dark:hover:bg-white/10 dark:hover:text-white" />
+            {/* Day / night lives in the More sheet on a phone (the user's call). */}
           </div>
         </header>
 
@@ -689,11 +689,15 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Mobile "more" sheet */}
       {moreOpen && (
-        <div className="fixed inset-0 z-40 flex items-end bg-black/40 lg:hidden" onClick={() => setMoreOpen(false)}>
-          {/* Sits on the bottom edge like the tab bar, so its last row of
-              links needs the same clearance from the home indicator. */}
+        <div
+          className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 px-3 pb-[calc(0.75rem_+_var(--safe-bottom))] lg:hidden"
+          onClick={() => setMoreOpen(false)}
+        >
+          {/* A floating card, rounded all round and clear of every edge of the
+              screen — like the tab bar — rising gently into place. The
+              bottom padding keeps it off the home indicator. */}
           <div
-            className="w-full rounded-t-2xl bg-card p-4 pb-[calc(2rem_+_var(--safe-bottom))]"
+            className="more-sheet-in w-full max-w-md rounded-3xl border border-border bg-card p-4 shadow-2xl shadow-black/25"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
@@ -752,6 +756,21 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </NavLink>
                 </>
               )}
+              {/* Day / night, moved here from the top bar. The sheet closes and
+                  Telegram's circle spreads from where this tile was. */}
+              <button
+                type="button"
+                aria-label={t(theme === 'dark' ? 'theme.toLight' : 'theme.toDark')}
+                onClick={(e) => {
+                  const r = e.currentTarget.getBoundingClientRect()
+                  setMoreOpen(false)
+                  toggleTheme({ x: r.left + r.width / 2, y: r.top + r.height / 2 })
+                }}
+                className="flex flex-col items-center gap-2 rounded-2xl p-3 text-xs font-medium text-ink transition-colors hover:bg-surface active:bg-surface"
+              >
+                {theme === 'dark' ? <Sun size={26} strokeWidth={1.75} /> : <Moon size={26} strokeWidth={1.75} />}
+                {t(theme === 'dark' ? 'theme.light' : 'theme.dark')}
+              </button>
               <button
                 onClick={handleSignOut}
                 className="flex flex-col items-center gap-2 rounded-2xl p-3 text-xs font-medium transition-colors hover:bg-surface active:bg-surface text-red-600"

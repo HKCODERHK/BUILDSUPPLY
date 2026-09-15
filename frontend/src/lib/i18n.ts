@@ -861,6 +861,9 @@ const STRINGS = {
   // ── Theme toggle ──────────────────────────────────────────────────────
   'theme.toLight': { en: 'Switch to light mode', hi: 'उजला मोड करें', mr: 'उजळ मोड करा' },
   'theme.toDark': { en: 'Switch to dark mode', hi: 'गहरा मोड करें', mr: 'गडद मोड करा' },
+  // The More sheet's tile — short, under its icon.
+  'theme.dark': { en: 'Dark mode', hi: 'गहरा मोड', mr: 'गडद मोड' },
+  'theme.light': { en: 'Light mode', hi: 'उजला मोड', mr: 'उजळ मोड' },
   // ── Subscription notice shown to the supplier ─────────────────────────
   'sub.expired': {
     en: 'Your BuildSupply subscription has ended.',
