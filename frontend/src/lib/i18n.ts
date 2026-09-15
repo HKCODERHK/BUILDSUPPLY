@@ -666,13 +666,16 @@ const STRINGS = {
   },
   'ordShare.shareQr': { en: 'Share QR image', hi: 'QR इमेज भेजें', mr: 'QR इमेज पाठवा' },
   'ordShare.back': { en: 'Back', hi: 'वापस', mr: 'मागे' },
-  'pay.pickCustomer': { en: 'Choose the customer…', hi: 'ग्राहक चुनें…', mr: 'ग्राहक निवडा…' },
+  'pay.nobodyOwes': {
+    en: 'Nobody owes you anything right now.',
+    hi: 'अभी किसी पर कुछ बाकी नहीं है।',
+    mr: 'सध्या कोणाकडेही काही बाकी नाही.',
+  },
   'pay.whoPaidHint': {
     en: 'Their oldest bills are cleared first, and anything extra is kept as advance — the same as on the customer’s page.',
     hi: 'पहले उनके सबसे पुराने बिल चुकते होंगे, और बाकी पैसा जमा में रहेगा — ग्राहक के पेज की तरह ही।',
     mr: 'आधी त्यांची सर्वात जुनी बिले भरली जातील, आणि उरलेले पैसे जमा म्हणून राहतील — ग्राहकाच्या पेजप्रमाणेच.',
   },
-  'pay.continue': { en: 'Continue', hi: 'आगे बढ़ें', mr: 'पुढे जा' },
   'pay.forOneBill': { en: 'For one particular bill →', hi: 'किसी एक बिल के लिए →', mr: 'एखाद्या विशिष्ट बिलासाठी →' },
 
   // ── Estimates / quotations ────────────────────────────────────────────
