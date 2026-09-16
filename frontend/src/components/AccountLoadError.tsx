@@ -22,7 +22,7 @@ export function AccountLoadError() {
   }, [refreshSupplier])
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-shell p-4 text-center">
+    <div className="flex min-h-app flex-col items-center justify-center gap-4 bg-shell p-4 text-center">
       <p className="text-lg font-semibold text-white">{t('account.loadFailed')}</p>
       <p className="max-w-sm text-sm text-sidebar-text">{t('account.loadFailedHint')}</p>
       <div className="flex flex-wrap justify-center gap-2">

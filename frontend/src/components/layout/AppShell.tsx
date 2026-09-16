@@ -568,7 +568,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         // Its own layer in a screen change, shown as it is now rather than
         // faded — otherwise the bubble's slide is doubled by a fading copy.
         style={{ viewTransitionName: 'app-tabbar' }}
-        className="fixed inset-x-3 bottom-[calc(0.5rem_+_var(--safe-bottom))] z-30 mx-auto flex max-w-md rounded-full border border-border bg-card/70 p-1 shadow-lg shadow-black/10 backdrop-blur-lg backdrop-saturate-150 lg:hidden"
+        className="fixed right-[calc(0.75rem_+_var(--safe-right))] bottom-[calc(0.5rem_+_var(--safe-bottom))] left-[calc(0.75rem_+_var(--safe-left))] z-30 mx-auto flex max-w-md rounded-full border border-border bg-card/70 p-1 shadow-lg shadow-black/10 backdrop-blur-lg backdrop-saturate-150 lg:hidden"
       >
         {/* The bubble behind the current tab: one element that slides to the
             tab you tap, as Telegram's does, instead of one per tab jumping.
@@ -592,7 +592,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             viewTransition
             className={({ isActive }) =>
               cn(
-                'relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full px-0.5 py-1.5 text-center text-[11px] font-medium leading-tight text-muted transition-colors duration-300',
+                'relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full px-0.5 py-1.5 text-center text-[11px] font-medium leading-tight max-[359px]:text-[10px] text-muted transition-colors duration-300',
                 isActive && 'text-accent-text',
               )
             }
@@ -615,7 +615,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           viewTransition
           className={({ isActive }) =>
             cn(
-              'relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full px-0.5 py-1.5 text-center text-[11px] font-medium leading-tight text-muted transition-colors duration-300',
+              'relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full px-0.5 py-1.5 text-center text-[11px] font-medium leading-tight max-[359px]:text-[10px] text-muted transition-colors duration-300',
               isActive && 'text-accent-text',
             )
           }
@@ -662,7 +662,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           }
           style={{ bottom: 'calc(var(--tabbar-h) + 0.75rem)' }}
           className={cn(
-            'fixed right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-lg shadow-black/25 transition-[translate,scale,opacity] duration-200 active:scale-95 motion-reduce:transition-none lg:hidden',
+            'fixed right-[calc(1rem_+_var(--safe-right))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-lg shadow-black/25 transition-[translate,scale,opacity] duration-200 active:scale-95 motion-reduce:transition-none lg:hidden',
             fabAway ? 'pointer-events-none translate-y-4 opacity-0' : 'translate-y-0 opacity-100',
           )}
         >
@@ -694,7 +694,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           }
           style={{ bottom: showFab ? 'calc(var(--tabbar-h) + 5rem)' : 'calc(var(--tabbar-h) + 0.75rem)' }}
           className={cn(
-            'fixed right-5 z-30 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card text-ink shadow-lg shadow-black/15 transition-[translate,scale,opacity] duration-200 active:scale-95 motion-reduce:transition-none lg:hidden',
+            'fixed right-[calc(1.25rem_+_var(--safe-right))] z-30 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card text-ink shadow-lg shadow-black/15 transition-[translate,scale,opacity] duration-200 active:scale-95 motion-reduce:transition-none lg:hidden',
             fabAway ? 'pointer-events-none translate-y-4 opacity-0' : 'translate-y-0 opacity-100',
           )}
         >
@@ -715,7 +715,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Mobile "more" sheet */}
       {moreOpen && (
         <div
-          className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 px-3 pb-[calc(0.75rem_+_var(--safe-bottom))] lg:hidden"
+          className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 pr-[calc(0.75rem_+_var(--safe-right))] pb-[calc(0.75rem_+_var(--safe-bottom))] pl-[calc(0.75rem_+_var(--safe-left))] lg:hidden"
           onClick={() => setMoreOpen(false)}
         >
           {/* A floating card, rounded all round and clear of every edge of the

@@ -188,7 +188,7 @@ export default function QuotationDetail() {
       )}
 
       <Card>
-        <div className="mb-6 flex items-start justify-between gap-4 border-b border-border pb-6">
+        <div className="mb-6 flex flex-col gap-4 border-b border-border pb-6 min-[420px]:flex-row min-[420px]:items-start min-[420px]:justify-between">
           <div className="flex items-center gap-3">
             {supplier?.logo_url && (
               <img
@@ -205,7 +205,7 @@ export default function QuotationDetail() {
               {supplier?.phone && <div className="text-sm text-muted">{supplier.phone}</div>}
             </div>
           </div>
-          <div className="text-right">
+          <div className="min-[420px]:text-right">
             <div className="text-xs font-semibold tracking-wide text-muted">TO</div>
             <div className="mt-1 font-bold text-ink">
               {customer ? (
