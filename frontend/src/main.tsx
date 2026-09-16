@@ -4,6 +4,7 @@ import './index.css'
 import App from './App.tsx'
 import { dismissKeyboardOnScroll } from './lib/dismissKeyboardOnScroll'
 import { listenForInstall } from './lib/installPrompt'
+import { showScrollbarsWhileScrolling } from './lib/scrollbars'
 
 // Before the first render: Chrome's "can be installed" arrives early, once.
 listenForInstall()
@@ -31,6 +32,9 @@ window.addEventListener('vite:preloadError', () => {
 
 // Scrolling puts the phone's keyboard away, on every screen.
 dismissKeyboardOnScroll()
+
+// Scrollbars stay out of sight until something scrolls, as in Telegram.
+showScrollbarsWhileScrolling()
 
 // Registers the service worker that makes BuildSupply installable and lets it
 // open on a weak shop connection (see public/sw.js). Only in a real build —

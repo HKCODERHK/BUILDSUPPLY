@@ -155,34 +155,42 @@ body {
   }
 }
 
-/* Scrollbars: thin, rounded and grey rather than the browser's thick default
-   — which is a desktop and laptop thing; Android draws its own thin bar that
-   fades. The track is left transparent, so no light strip runs down beside
-   the dark header or the tab bar. It stays the whole page's bar on purpose:
-   the page scrolling (not an inner box) is what keeps the header pinned and
-   pull-to-refresh off, above. Chrome, Edge and Safari read the ::-webkit-
-   rules; Firefox reads the standard pair — kept out of Chrome's way, since
-   there it would override the ::-webkit- ones. */
+/* Scrollbars, the way Telegram draws them: small (4px), rounded, and out of
+   sight until something scrolls — shown while it moves and gone about a second
+   after it stops. lib/scrollbars.ts marks whatever is scrolling (the page, or a
+   list inside a dialog) with data-scrolling; hovering the bar with a mouse
+   shows it too. Scrollbars can't be animated, so it appears and goes rather
+   than fading. Phones mostly draw their own thin bar that already fades;
+   this is what a computer or tablet shows. The track stays transparent, so no
+   strip runs beside the dark header or the tab bar. It stays the whole page's
+   bar on purpose: the page scrolling (not an inner box) is what keeps the
+   header pinned and pull-to-refresh off, above. Chrome, Edge and Safari read
+   the ::-webkit- rules; Firefox reads the standard pair — kept out of Chrome's
+   way, since there it would override the ::-webkit- ones. */
 @supports not selector(::-webkit-scrollbar) {
   * {
     scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+  [data-scrolling] {
     scrollbar-color: var(--color-muted-2) transparent;
   }
 }
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track,
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--color-muted-2) 65%, transparent);
+  background: transparent;
   border-radius: 9999px;
 }
+[data-scrolling]::-webkit-scrollbar-thumb,
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-muted-2);
+  background: color-mix(in srgb, var(--color-muted-2) 80%, transparent);
 }
 
 /* Splash (components/Splash.tsx). The ring round the supplier's logo is a
