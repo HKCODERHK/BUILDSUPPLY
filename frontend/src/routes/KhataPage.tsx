@@ -16,6 +16,7 @@ import type { InvoiceWithCustomer } from '@/services/invoices'
 import type { PaymentWithInvoice } from '@/services/payments'
 import { confirmReceived, getKhata, getKhataDocument, type KhataView } from '@/services/khata'
 import { forgetKhataCode, rememberKhataCode } from '@/lib/customerLinks'
+import { warmPdfKit } from '@/lib/pdfKit'
 import { QrCode } from '@/components/QrCode'
 import { upiPayUrl } from '@/lib/upi'
 
@@ -65,6 +66,8 @@ export default function KhataPage() {
         // "My khata"; a link the supplier has stopped is forgotten.
         if (v.found && v.order_link) rememberKhataCode(v.order_link, token)
         if (!v.found) forgetKhataCode(token)
+        // Every button on this page makes a PDF: have the PDF tools ready.
+        if (v.found) void warmPdfKit()
       })
       .catch(() => setFailed(true))
   }, [token])

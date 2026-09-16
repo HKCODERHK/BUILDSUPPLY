@@ -1,5 +1,5 @@
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import type jsPDF from 'jspdf'
+import { loadPdfKit, type PdfKit } from './pdfKit'
 import type { Quotation, QuotationItem, Customer, Supplier } from './database.types'
 import { loadLogo, type LogoImage } from './pdfLogo'
 import {
@@ -24,8 +24,10 @@ function buildQuotationPdf(
   quotation: Quotation,
   items: QuotationItem[],
   logo: LogoImage | null,
+  kit: PdfKit,
 ): jsPDF {
-  const doc = new jsPDF()
+  const { JsPDF, autoTable } = kit
+  const doc = new JsPDF()
   const pageWidth = doc.internal.pageSize.getWidth()
 
   let y = drawDocumentHeader(doc, {
@@ -89,13 +91,13 @@ function buildQuotationPdf(
 }
 
 export async function downloadQuotationPdf(supplier: Supplier, customer: Customer | null, quotation: Quotation, items: QuotationItem[]) {
-  const logo = await loadLogo(supplier.logo_url)
-  buildQuotationPdf(supplier, customer, quotation, items, logo).save(`${quotation.quote_no}.pdf`)
+  const [kit, logo] = await Promise.all([loadPdfKit(), loadLogo(supplier.logo_url)])
+  buildQuotationPdf(supplier, customer, quotation, items, logo, kit).save(`${quotation.quote_no}.pdf`)
 }
 
 export async function printQuotationPdf(supplier: Supplier, customer: Customer | null, quotation: Quotation, items: QuotationItem[]) {
-  const logo = await loadLogo(supplier.logo_url)
-  const doc = buildQuotationPdf(supplier, customer, quotation, items, logo)
+  const [kit, logo] = await Promise.all([loadPdfKit(), loadLogo(supplier.logo_url)])
+  const doc = buildQuotationPdf(supplier, customer, quotation, items, logo, kit)
   const url = doc.output('bloburl')
   window.open(url, '_blank', 'noopener,noreferrer')
 }
@@ -106,7 +108,7 @@ export async function quotationPdfFile(
   quotation: Quotation,
   items: QuotationItem[],
 ): Promise<File> {
-  const logo = await loadLogo(supplier.logo_url)
-  const blob = buildQuotationPdf(supplier, customer, quotation, items, logo).output('blob')
+  const [kit, logo] = await Promise.all([loadPdfKit(), loadLogo(supplier.logo_url)])
+  const blob = buildQuotationPdf(supplier, customer, quotation, items, logo, kit).output('blob')
   return new File([blob], `${quotation.quote_no}.pdf`, { type: 'application/pdf' })
 }

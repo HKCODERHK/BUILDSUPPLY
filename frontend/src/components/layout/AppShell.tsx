@@ -13,6 +13,7 @@ import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { ShareDocumentPrompt } from '@/components/ShareDocumentPrompt'
 import { InstallIosModal } from '@/components/InstallIosModal'
 import { promptInstall, useInstallState } from '@/lib/installPrompt'
+import { prefetchScreens } from '@/lib/screens'
 import { openWhatsAppShare } from '@/lib/whatsapp'
 import { ADMIN_WHATSAPP_NUMBER } from '@/lib/adminContact'
 import { daysUntilExpiry, subscriptionState } from '@/lib/subscription'
@@ -185,6 +186,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   // "Install app": Chrome's own dialog where it offers one, the steps on an iPhone.
   const installState = useInstallState()
   const [iosSteps, setIosSteps] = useState(false)
+  // Soon after the app opens, the other screens and the PDF tools are fetched
+  // in the background, so moving around never waits (lib/screens).
+  useEffect(() => {
+    if (supplier) prefetchScreens(supplier.role === 'admin' ? 'admin' : 'supplier')
+  }, [supplier])
   // What the current screen asked the top bar to say — see TopBarContext.
   const [topBar, setTopBar] = useState<TopBarInfo | null>(null)
   // The Profile tab shows the business's logo; its initials if it won't load.

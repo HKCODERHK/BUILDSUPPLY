@@ -1,5 +1,5 @@
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import type jsPDF from 'jspdf'
+import { loadPdfKit } from './pdfKit'
 import type { Supplier } from './database.types'
 import { loadLogo } from './pdfLogo'
 import {
@@ -40,8 +40,8 @@ function formatDayInput(d: string) {
 // across the whole app. Reports carry no FROM/TO block: they're the
 // supplier's own records, not something addressed to a customer.
 async function buildReportPdf(spec: ReportSpec): Promise<jsPDF> {
-  const doc = new jsPDF()
-  const logo = await loadLogo(spec.supplier.logo_url)
+  const [{ JsPDF, autoTable }, logo] = await Promise.all([loadPdfKit(), loadLogo(spec.supplier.logo_url)])
+  const doc = new JsPDF()
   const money = new Set(spec.moneyColumns ?? [])
 
   const period =

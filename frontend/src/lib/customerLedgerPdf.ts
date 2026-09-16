@@ -1,5 +1,5 @@
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import type jsPDF from 'jspdf'
+import { loadPdfKit, type PdfKit } from './pdfKit'
 import type { Customer, Supplier, PaymentMode } from './database.types'
 import { loadLogo, type LogoImage } from './pdfLogo'
 import { amountInWords } from './amountInWords'
@@ -55,8 +55,10 @@ function buildCustomerLedgerPdf(
   customer: Customer,
   input: LedgerInput,
   logo: LogoImage | null,
+  kit: PdfKit,
 ): jsPDF {
-  const doc = new jsPDF()
+  const { JsPDF, autoTable } = kit
+  const doc = new JsPDF()
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
 
@@ -254,14 +256,14 @@ function ledgerFileName(customer: Customer) {
 }
 
 export async function downloadCustomerLedgerPdf(supplier: Supplier, customer: Customer, input: LedgerInput) {
-  const logo = await loadLogo(supplier.logo_url)
-  buildCustomerLedgerPdf(supplier, customer, input, logo).save(ledgerFileName(customer))
+  const [kit, logo] = await Promise.all([loadPdfKit(), loadLogo(supplier.logo_url)])
+  buildCustomerLedgerPdf(supplier, customer, input, logo, kit).save(ledgerFileName(customer))
 }
 
 // Used when sending a payment reminder over WhatsApp, so the customer gets
 // the full record rather than just a number in a message.
 export async function customerLedgerPdfFile(supplier: Supplier, customer: Customer, input: LedgerInput): Promise<File> {
-  const logo = await loadLogo(supplier.logo_url)
-  const blob = buildCustomerLedgerPdf(supplier, customer, input, logo).output('blob')
+  const [kit, logo] = await Promise.all([loadPdfKit(), loadLogo(supplier.logo_url)])
+  const blob = buildCustomerLedgerPdf(supplier, customer, input, logo, kit).output('blob')
   return new File([blob], ledgerFileName(customer), { type: 'application/pdf' })
 }

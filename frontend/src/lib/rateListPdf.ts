@@ -1,5 +1,5 @@
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import type jsPDF from 'jspdf'
+import { loadPdfKit, type PdfKit } from './pdfKit'
 import type { Material, Supplier } from './database.types'
 import { loadLogo, type LogoImage } from './pdfLogo'
 import {
@@ -18,8 +18,9 @@ import {
 //
 // Deliberately shows no stock quantities — this sheet goes to customers, and
 // how much a supplier is holding is nobody else's business.
-function buildRateListPdf(supplier: Supplier, materials: Material[], logo: LogoImage | null): jsPDF {
-  const doc = new jsPDF()
+function buildRateListPdf(supplier: Supplier, materials: Material[], logo: LogoImage | null, kit: PdfKit): jsPDF {
+  const { JsPDF, autoTable } = kit
+  const doc = new JsPDF()
   const today = new Date().toISOString()
 
   const y = drawDocumentHeader(doc, {
@@ -68,12 +69,12 @@ function fileName(supplier: Supplier) {
 }
 
 export async function downloadRateListPdf(supplier: Supplier, materials: Material[]) {
-  const logo = await loadLogo(supplier.logo_url)
-  buildRateListPdf(supplier, materials, logo).save(fileName(supplier))
+  const [kit, logo] = await Promise.all([loadPdfKit(), loadLogo(supplier.logo_url)])
+  buildRateListPdf(supplier, materials, logo, kit).save(fileName(supplier))
 }
 
 export async function rateListPdfFile(supplier: Supplier, materials: Material[]): Promise<File> {
-  const logo = await loadLogo(supplier.logo_url)
-  const blob = buildRateListPdf(supplier, materials, logo).output('blob')
+  const [kit, logo] = await Promise.all([loadPdfKit(), loadLogo(supplier.logo_url)])
+  const blob = buildRateListPdf(supplier, materials, logo, kit).output('blob')
   return new File([blob], fileName(supplier), { type: 'application/pdf' })
 }

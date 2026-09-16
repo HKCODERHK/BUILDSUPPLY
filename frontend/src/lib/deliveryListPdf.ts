@@ -1,5 +1,5 @@
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import type jsPDF from 'jspdf'
+import { loadPdfKit, type PdfKit } from './pdfKit'
 import type { Supplier } from './database.types'
 import { loadLogo, type LogoImage } from './pdfLogo'
 import { PDF_MARGIN_X, GREY, formatDate, tableStyles, drawDocumentHeader, drawPageFooter } from './pdfTheme'
@@ -23,8 +23,9 @@ function itemLine(item: DeliveryStop['items'][number]) {
   return `${Number(item.qty).toLocaleString('en-IN')} ${item.unit ?? ''} ${item.description}`.replace(/\s+/g, ' ').trim()
 }
 
-function buildDeliveryListPdf(supplier: Supplier, stops: DeliveryStop[], logo: LogoImage | null): jsPDF {
-  const doc = new jsPDF()
+function buildDeliveryListPdf(supplier: Supplier, stops: DeliveryStop[], logo: LogoImage | null, kit: PdfKit): jsPDF {
+  const { JsPDF, autoTable } = kit
+  const doc = new JsPDF()
   const today = new Date().toISOString()
 
   const y = drawDocumentHeader(doc, {
@@ -78,12 +79,12 @@ function fileName() {
 }
 
 export async function downloadDeliveryListPdf(supplier: Supplier, stops: DeliveryStop[]) {
-  const logo = await loadLogo(supplier.logo_url)
-  buildDeliveryListPdf(supplier, stops, logo).save(fileName())
+  const [kit, logo] = await Promise.all([loadPdfKit(), loadLogo(supplier.logo_url)])
+  buildDeliveryListPdf(supplier, stops, logo, kit).save(fileName())
 }
 
 export async function deliveryListPdfFile(supplier: Supplier, stops: DeliveryStop[]): Promise<File> {
-  const logo = await loadLogo(supplier.logo_url)
-  const blob = buildDeliveryListPdf(supplier, stops, logo).output('blob')
+  const [kit, logo] = await Promise.all([loadPdfKit(), loadLogo(supplier.logo_url)])
+  const blob = buildDeliveryListPdf(supplier, stops, logo, kit).output('blob')
   return new File([blob], fileName(), { type: 'application/pdf' })
 }

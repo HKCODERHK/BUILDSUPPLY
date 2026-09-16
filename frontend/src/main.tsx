@@ -14,6 +14,21 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 )
 
+// Screens are fetched when needed (App.tsx). If a new version was deployed
+// while the app stayed open, an old screen's file is gone: reload once to pick
+// up the new version. An unfinished bill survives it (lib/drafts); the guard
+// stops a broken connection from reloading over and over.
+window.addEventListener('vite:preloadError', () => {
+  try {
+    const last = Number(sessionStorage.getItem('buildsupply-reloaded-at') || 0)
+    if (Date.now() - last < 30_000) return
+    sessionStorage.setItem('buildsupply-reloaded-at', String(Date.now()))
+  } catch {
+    // Storage blocked: reload anyway.
+  }
+  window.location.reload()
+})
+
 // Scrolling puts the phone's keyboard away, on every screen.
 dismissKeyboardOnScroll()
 
