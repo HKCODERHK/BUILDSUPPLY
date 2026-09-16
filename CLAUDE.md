@@ -837,6 +837,22 @@ only goes wrong on an iPhone:
   Not verifiable here: a real iPhone's address bar — covered by the code and
   the computed values.
 
+**Phase 20 — Telegram-style scrollbars (2026-09-16). No database change.**
+The user asked for a small scrollbar that moves like Telegram's. `index.css`:
+4px, rounded, the thumb transparent by default and grey (`--color-muted-2` at
+80%) only on an element marked `data-scrolling`, or while hovered; Firefox
+gets the same through `scrollbar-color` under
+`@supports not selector(::-webkit-scrollbar)`. `lib/scrollbars.ts`
+(`showScrollbarsWhileScrolling`, installed in `main.tsx`) is one capture-phase
+`scroll` listener for the whole app — the page (`document` → `html`) and every
+inner scroller alike — that sets the attribute when a scroll starts and removes
+it 900ms after the last scroll event. Scrollbars can't be animated, so it
+appears and goes rather than fading. **Phones ignore all of this**: Android and
+iOS draw their own overlay bar that already fades — and so does the browser
+pane under 768px wide, which emulates a phone — so it only shows on a computer
+or tablet. Verified by computed style on `::-webkit-scrollbar-thumb` at 800px
+wide: transparent at rest, grey 60ms into a scroll, transparent 1.2s after.
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.
