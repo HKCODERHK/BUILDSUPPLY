@@ -799,6 +799,44 @@ opening an order QR or khata link.
   shell stayed on screen moving to Customers, and a bill's Download PDF and a
   khata link's Bill PDF both produced real PDFs.
 
+**Phase 19 — every phone size, iPhone and Android (2026-09-16). No database
+change.** The user asked for the app to be responsive on all iPhones and
+Androids. Measured first, not assumed: 22 screens (all supplier screens and the
+customer order / status / khata pages) at 320×568, 360×640, 375×667, 390×844,
+412×915 and 430×932, plus 768×1024 and Android's larger text (root font at
+115% and 130%). **No screen scrolled sideways and nothing crossed the edge at
+any size** — the 360px discipline held. The fixes were for what was cramped or
+only goes wrong on an iPhone:
+
+- **Tab bar labels** drop to 10px under 360px (`max-[359px]:text-[10px]`) —
+  "Dashboard" and "Customers" touched at 320.
+- **FROM / TO on a bill and an estimate** stack under 420px
+  (`flex-col … min-[420px]:flex-row`, TO `min-[420px]:text-right`); at 360
+  the business name wrapped into three lines beside a narrow TO column.
+- **iPhone Safari measures `vh` with its address bar hidden**, so `max-h-[90vh]`
+  could put a dialog's Save under the bar. Two utilities in `index.css`:
+  `vh-cap-<n>` (max-height n dvh, n vh without dvh) — the modal (90), the
+  contacts and rates lists (55), Who paid? (50) — and `min-h-app` (100dvh) for
+  the centred sign-in, forgot/reset password, account-error and
+  ProtectedRoute screens. **Written with `@supports (height: 1dvh)`, not two
+  declarations**, so the build's CSS minifier can't merge the fallback away.
+  Use them for any new screen-height cap instead of `vh`.
+- **A sideways iPhone in Safari**: `--safe-left` / `--safe-right`; `body` pads
+  by them, and the tab bar, both floating buttons and the More sheet add them
+  to their side offsets. 0px on any phone held upright.
+- **Left as designed**: the floating ⋯ and Orders buttons can cover the right
+  end of a Dashboard notice until the list scrolls and they slide away.
+- **Test-tooling gotcha**: after many `resize_window` changes in one tab,
+  `documentElement.scrollWidth` reported ~797px of overflow on some screens
+  with no element past the edge; a fresh reload at the same size read 0. Reload
+  before trusting an overflow number. A single `javascript_exec` must finish in
+  45s — audit about six screens per call.
+- Verified: at 320 all 22 screens clean after a reload, tab labels 10px, tab bar
+  and floating buttons unmoved; bill and estimate stacked at 360 and side by
+  side at 430; Receive payment's dialog capped at 576px on a 640px screen (90%).
+  Not verifiable here: a real iPhone's address bar — covered by the code and
+  the computed values.
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.
@@ -925,7 +963,7 @@ prove the rollback held.
 - `site` lives on the **invoice/quotation**, not the customer (migration 014). A contractor runs several sites at once; the customer's `site` is only the default that gets pre-filled.
 - The service worker registers **only in a production build** (`import.meta.env.PROD`) — a worker caching Vite's dev modules would fight HMR. To test it: `npm run build`, then the `frontend-preview` launch config.
 - **`public/sw.js` must look things up with `cache.match(req, { ignoreVary: true })`.** Static hosts (Vite preview, Netlify, Vercel, Cloudflare) send `Vary: Origin` on assets, and the Cache API honours Vary — without `ignoreVary` the worker misses entries it stored moments earlier, falls through to the network, and fails offline, which is the one moment the cache existed for. This was a real bug, caught only by inspecting the live cache. Bump `CACHE` (currently `buildsupply-v3`) to force clients to drop old entries; `activate` deletes every cache that isn't the current name, which also clears assets left by previous builds.
-- **The navigation branch of `sw.js` only caches a response when `response.ok && response.type === 'basic'`.** Navigations are network-first so a deploy is picked up immediately, and the response is stored as the offline shell — so without that check a host 404 (from a missing SPA rewrite), a 500, or a cafe wifi sign-in page becomes the shell the app shows every time it opens offline, and keeps being served long after the network returns. Verified end to end: with the preview server **stopped**, a reload of `/dashboard` still boots from cache and renders.- **Safe-area insets.** `index.html` asks for `viewport-fit=cover`, which deliberately opts *into* drawing under the status bar and the home indicator, so anything pinned to a screen edge must keep that strip clear itself. `index.css` defines `--safe-top` / `--safe-bottom` from `env(safe-area-inset-*)` with a `0px` fallback, and four places in `AppShell.tsx` spend them: the mobile header's top padding, the tab bar's bottom offset (padding until the bar began floating on 2026-09-12), **the content wrapper that reserves the tab bar's height** (the bar is taller on a notched phone, so the reservation has to match), and the "more" sheet. Only top and bottom exist — the manifest pins the installed app to `portrait`, so the notch is never on a side. Measured at 375×812: with no insets the padding is unchanged (12px / 64px / 0px); with an iPhone 14 Pro's 59px and 34px it becomes 71px / 98px / 34px and content still clears the bar.
+- **The navigation branch of `sw.js` only caches a response when `response.ok && response.type === 'basic'`.** Navigations are network-first so a deploy is picked up immediately, and the response is stored as the offline shell — so without that check a host 404 (from a missing SPA rewrite), a 500, or a cafe wifi sign-in page becomes the shell the app shows every time it opens offline, and keeps being served long after the network returns. Verified end to end: with the preview server **stopped**, a reload of `/dashboard` still boots from cache and renders.- **Safe-area insets.** `index.html` asks for `viewport-fit=cover`, which deliberately opts *into* drawing under the status bar and the home indicator, so anything pinned to a screen edge must keep that strip clear itself. `index.css` defines `--safe-top` / `--safe-bottom` from `env(safe-area-inset-*)` with a `0px` fallback, and four places in `AppShell.tsx` spend them: the mobile header's top padding, the tab bar's bottom offset (padding until the bar began floating on 2026-09-12), **the content wrapper that reserves the tab bar's height** (the bar is taller on a notched phone, so the reservation has to match), and the "more" sheet. Top and bottom matter everywhere; `--safe-left` / `--safe-right` (Phase 19) only matter in a Safari tab turned sideways — the manifest pins the installed app to `portrait`, so there the notch is never on a side. Measured at 375×812: with no insets the padding is unchanged (12px / 64px / 0px); with an iPhone 14 Pro's 59px and 34px it becomes 71px / 98px / 34px and content still clears the bar.
 - **The Android navigation bar cannot be coloured from this app. Do not try again.** The strip under the tab bar looking dark against a light theme is the single most-reported thing about this app's appearance, and it took four attempts to settle because it can only be answered from a real installed phone. Measured there on 2026-09-09, with a temporary `?debug=insets` probe:
   ```
   inset-bottom 0px   inset-top 0px
