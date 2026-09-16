@@ -1139,6 +1139,29 @@ const STRINGS = {
     hi: 'इस सप्लायर के पास आपके ऑर्डर पहले से रुके हैं। कृपया उन्हें फ़ोन करें।',
     mr: 'या सप्लायरकडे तुमच्या ऑर्डर आधीच प्रलंबित आहेत. कृपया त्यांना फोन करा.',
   },
+  // One phone or computer over its hourly limit (migration 032).
+  'order.deviceBusy': {
+    en: 'Too many orders from this phone just now. Please try again later, or call the shop.',
+    hi: 'इस फ़ोन से अभी बहुत ऑर्डर आए हैं। थोड़ी देर बाद कोशिश करें, या दुकान पर फ़ोन करें।',
+    mr: 'या फोनवरून आत्ता खूप ऑर्डर आल्या आहेत. थोड्या वेळाने प्रयत्न करा, किंवा दुकानात फोन करा.',
+  },
+  // Blocking a number from an order's page (migration 032).
+  'ord.block': { en: 'Block this number', hi: 'यह नंबर ब्लॉक करें', mr: 'हा नंबर ब्लॉक करा' },
+  'ord.blockTitle': { en: 'Block {phone}?', hi: '{phone} ब्लॉक करें?', mr: '{phone} ब्लॉक करायचा?' },
+  'ord.blockBody': {
+    en: 'Orders from this number will be refused — the sender isn’t told. Its orders still waiting are rejected. You can unblock it any time in Settings → Online orders.',
+    hi: 'इस नंबर से आने वाले ऑर्डर अपने-आप नामंज़ूर होंगे — भेजने वाले को पता नहीं चलेगा। इसके रुके हुए ऑर्डर भी नामंज़ूर हो जाएँगे। सेटिंग → ऑनलाइन ऑर्डर में कभी भी अनब्लॉक कर सकते हैं।',
+    mr: 'या नंबरवरून येणाऱ्या ऑर्डर आपोआप नाकारल्या जातील — पाठवणाऱ्याला कळणार नाही. त्याच्या प्रलंबित ऑर्डरही नाकारल्या जातील. सेटिंग → ऑनलाइन ऑर्डरमध्ये कधीही अनब्लॉक करू शकता.',
+  },
+  'ord.blockConfirm': { en: 'Block number', hi: 'नंबर ब्लॉक करें', mr: 'नंबर ब्लॉक करा' },
+  'ord.blocked': { en: 'This number is blocked — its orders are refused.', hi: 'यह नंबर ब्लॉक है — इसके ऑर्डर नामंज़ूर होते हैं।', mr: 'हा नंबर ब्लॉक आहे — त्याच्या ऑर्डर नाकारल्या जातात.' },
+  'ord.unblock': { en: 'Unblock', hi: 'अनब्लॉक', mr: 'अनब्लॉक' },
+  'ord.blockedTitle': { en: 'Blocked numbers', hi: 'ब्लॉक किए नंबर', mr: 'ब्लॉक केलेले नंबर' },
+  'ord.blockedHint': {
+    en: 'Orders from these numbers are refused. Unblock one to take its orders again.',
+    hi: 'इन नंबरों के ऑर्डर नामंज़ूर होते हैं। अनब्लॉक करने पर फिर से ऑर्डर आएँगे।',
+    mr: 'या नंबरच्या ऑर्डर नाकारल्या जातात. अनब्लॉक केल्यावर पुन्हा ऑर्डर येतील.',
+  },
   'order.busy': {
     en: 'Too many orders right now. Please try again in a while.',
     hi: 'अभी बहुत ऑर्डर आ रहे हैं। थोड़ी देर बाद कोशिश करें।',

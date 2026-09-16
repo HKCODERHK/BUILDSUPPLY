@@ -55,6 +55,7 @@ function errorKey(message: string): TranslationKey {
   if (/delivery date/i.test(message)) return 'order.dateInvalid'
   if (/at least one material/i.test(message)) return 'order.pickSomething'
   if (/already have orders waiting/i.test(message)) return 'order.tooManyWaiting'
+  if (/from this phone/i.test(message)) return 'order.deviceBusy'
   if (/too many orders/i.test(message)) return 'order.busy'
   return 'error.generic'
 }

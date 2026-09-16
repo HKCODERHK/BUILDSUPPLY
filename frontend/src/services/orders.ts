@@ -260,6 +260,31 @@ export async function getOrderForQuotation(quotationId: string): Promise<Pick<Or
   return data
 }
 
+// ── Blocked numbers (migration 032) ───────────────────────────────────
+
+/** The supplier's blocked numbers, newest first. Throws until 032 is applied — callers treat that as "not available". */
+export async function listBlockedPhones(): Promise<{ phone: string; created_at: string }[]> {
+  const { data, error } = await supabase
+    .from('order_blocked_phones')
+    .select('phone, created_at')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []) as { phone: string; created_at: string }[]
+}
+
+/**
+ * Blocks a number: its orders are refused from now on — the sender is told it
+ * worked and nothing is kept — and its orders still waiting are rejected.
+ */
+export async function blockOrderPhone(phone: string): Promise<{ rejected: number }> {
+  const raw = await callRpc<{ rejected?: number }>('block_order_phone', { p_phone: phone, p_block: true })
+  return { rejected: raw.rejected ?? 0 }
+}
+
+export async function unblockOrderPhone(phone: string): Promise<void> {
+  await callRpc<{ ok?: boolean }>('block_order_phone', { p_phone: phone, p_block: false })
+}
+
 /**
  * Settings → Online orders. A taken link or one in the wrong shape comes back
  * as a plain sentence rather than a Postgres code.

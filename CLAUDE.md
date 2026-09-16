@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `031`, run in order. **031 is the latest and is applied** (2026-09-15, pasted by the user — links and drivers, see Phase 16). 030 (estimate answers and material received, Phase 13), 024 (money integrity, Phase 9), 025 (supplier row guard), 026 (online orders), 027 (reject reasons), 028 (khata link) and 029 (UPI) are applied too. (An unrelated storage-bucket 024 from Phase 8 was applied and removed again on 2026-09-11 and its file deleted.) (There is no `001` file; the base schema is `supabase/schema.sql`, which predates the migration folder.)
+- **Schema migrations**: `supabase/migrations/` — `002` through `032`, run in order. **032 is the latest and is applied** (2026-09-16, pasted by the user — the order spam guard, see Phase 17). 031 (links and drivers, Phase 16), 030 (estimate answers and material received, Phase 13), 024 (money integrity, Phase 9), 025 (supplier row guard), 026 (online orders), 027 (reject reasons), 028 (khata link) and 029 (UPI) are applied too. (An unrelated storage-bucket 024 from Phase 8 was applied and removed again on 2026-09-11 and its file deleted.) (There is no `001` file; the base schema is `supabase/schema.sql`, which predates the migration folder.)
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -317,7 +317,8 @@ moves stock or changes a balance** — approving makes an ordinary estimate.
   `order_page(link)`, `place_order(...)` and `order_status(token)`.
   `approve_order` and `reject_order` are INVOKER, so RLS applies. Phones are
   matched with `_normalize_phone`. Spam: a hidden honeypot field, 3 pending
-  per phone per 24h, 60 per supplier per hour, the same phone and items
+  per phone per 24h, 60 per supplier per hour (20 since 032, plus a
+  per-device limit and blocked numbers — Phase 17), the same phone and items
   within 10 minutes kept once, and a request id per form.
 - **Tested** on the local Docker copy (Phase 9 setup): 276/276 checks,
   including 16 for orders, and a browser walk of every screen in English,
@@ -723,6 +724,51 @@ in their order:
 - Find buttons by their icon class, not by translated words. A Marathi label
   was once missed because the test typed ॅ (U+0945) for ॲ (U+0972).
 
+**Phase 17 — the order spam guard (migration 032, 2026-09-16). Applied and
+merged the same night.** The user asked what stops someone spamming a
+supplier's order QR. 026's per-phone limit didn't hold against a spammer typing
+a new made-up number each time. The user picked 1 + 2 + 3 of the offered list;
+"only my customers can order" (4) was left as an option if spam continues.
+
+1. **Per device: 5 orders an hour** (`place_order`, `_order_client`). The
+   device is its internet address, stored only as an HMAC keyed with
+   `order_guard_secret` and mixed with the supplier's id — never the address,
+   and not linkable across suppliers. `order_request_clients` (RLS on, no
+   policies, no grants) keeps the hash and which header it came from
+   (`source`: `cf`, `xff` or `real`). Cloudflare's `cf-connecting-ip` is
+   preferred; otherwise the first `X-Forwarded-For` entry, as Supabase's
+   "Securing your API" docs read it.
+   **Caveat, proven locally:** through the local Kong gateway a client-sent
+   `X-Forwarded-For` is taken as-is, so a spammer faking that header gets a
+   new "device". On live, whether `cf-connecting-ip` arrives is unconfirmed —
+   no order had come in after the paste. Check with
+   `select source, count(*) from order_request_clients group by 1` once one
+   has; if it says `xff`, the per-device limit is soft, and Block plus the
+   shop cap are what hold.
+2. **Block this number** (order page, bottom; `block_order_phone(phone,
+   block)`, INVOKER; `order_blocked_phones`, RLS own rows). An order from a
+   blocked number is answered like the bot trap — `{ok, token: null}`, so the
+   customer page says sent — and nothing is kept. Blocking also rejects that
+   number's pending orders (`reject_code 'other'`, no reason shown). Settings
+   → Online orders lists blocked numbers with Unblock. Both screens hide the
+   option if the list can't be read (before 032).
+3. **The shop: 20 orders an hour** (was 60). Holds whatever the headers say.
+
+The customer page maps the device refusal to its own message
+(`order.deviceBusy`). Tested on the local Docker copy: 396/396 from a clean
+reset (20 new, in `97_spam.sql`: the run's own recent orders are aged two
+hours during it so the cap can be tested exactly, then restored), the device
+limit over the real REST API, and Block / Unblock / the blocked list in the
+browser at 360px. Backup before pasting: `buildsupply-backup-2026-09-16-0239.zip`
+(4,717 rows; the first attempt hit a Supabase 520 and was retried). The first
+paste coincided with Supabase's scheduled Management API maintenance
+(21:15–21:45 UTC) — the dashboard said "Failed to fetch permissions" and
+nothing ran; pasted again after. Checked on live read-only: one version of each
+function, `_order_client` callable by no app role, the cap at 20, both hidden
+tables and the blocked list locked (also by real anon REST calls: 42501),
+guards and `security_invoker` views intact, counts unchanged
+(53 / 99 / 91 / 18 / 11 / 21 / 1 driver), 0 bills out of step.
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.
@@ -787,7 +833,7 @@ A 4-digit PIN asked before irreversible actions, for both roles. **It is a confi
 > "each supplier should see his data only and as an admin i should not get any data from any suppliers into my account, just what is required for managing the subscription and the catalog"
 
 - **Admin CAN reach**: `suppliers` (subscription/plan/status/contact), the catalog tables (`material_categories`, `material_types`, `brands`, `master_material_variants`), `platform_settings`, and the `admin_list_suppliers` / `admin_dashboard_stats` / `admin_supplier_activity` SECURITY DEFINER RPCs.
-- **Admin CANNOT reach**: `customers`, `invoices`, `invoice_items`, `payments`, `materials`, `quotations`, `quotation_items`, `drivers` (031), or `activity_log` rows belonging to a supplier.
+- **Admin CANNOT reach**: `customers`, `invoices`, `invoice_items`, `payments`, `materials`, `quotations`, `quotation_items`, `drivers` (031), `order_blocked_phones` (032), or `activity_log` rows belonging to a supplier.
 - `activity_log.details` holds customer names and invoice amounts. The admin reads activity **only** through `admin_supplier_activity(uuid)`, which returns `id, action, actor_role, created_at` and deliberately omits `details`. Never point an admin screen back at `select * from activity_log`.
 - **A supplier can edit only their own business details on `suppliers` (migration 025).** The `suppliers_update` policy lets an account update its own row, and `authenticated` holds UPDATE on every column — so until 025 a supplier could set their own `role` to `admin`, and both `is_admin()` and the admin Edge Function trust that column (then: reset other suppliers' passwords, delete accounts, change subscriptions). The `suppliers_guard_update` trigger now refuses, for the app's signed-in users: any change to `role` (even by the admin — only the Edge Function/SQL editor may), and for non-admins any change to status, suspension reason, plan, billing cycle, subscription fields, last-contacted stamp, email, id or created_at. A new column a supplier should NOT control must be added to that trigger's list. Found and fixed 2026-09-11; live had exactly one admin, so it had not been used.
 - **Do not add `OR is_admin()` to a business table policy.** If an admin feature seems to need supplier data, it almost certainly doesn't — build it as a SECURITY DEFINER RPC that returns only aggregates or non-commercial fields, the way the two dashboard RPCs do.
