@@ -591,7 +591,8 @@ git-ignored, and load it through `/@fs/`). Built one item at a time on
   space the rule matches nothing and only the browser's default fade runs.
 - **Switching screens** from the tab bar or More: NavLink `viewTransition`, a
   0.15s cross-fade. The header and tab bar are their own layers
-  (`app-header`, `app-tabbar`) shown without fading, so the bubble slides once.
+  (`app-header`, `app-tabbar`) shown without fading, so the bubble slides once —
+  named only while a switch runs (Phase 21).
 - **Settings, WhatsApp-style**: the doodled band (`lib/qrPattern.ts`), the logo
   large, the name; plain grey outline-icon rows with a line under each title;
   each opens `?s=<section>` (back returns to the list; Orders, the UPI QR and
@@ -852,6 +853,28 @@ iOS draw their own overlay bar that already fades — and so does the browser
 pane under 768px wide, which emulates a phone — so it only shows on a computer
 or tablet. Verified by computed style on `::-webkit-scrollbar-thumb` at 800px
 wide: transparent at rest, grey 60ms into a scroll, transparent 1.2s after.
+
+**Phase 21 — no thin line above the top bar (2026-09-16). No database
+change.** The installed Android app showed a thin grey line between the status
+bar and the top bar, in both themes; the user said it had not been there
+before. Checked in the page first: the top bar starts at exactly 0 with no
+border or shadow, nothing else sits in the top 3px (`elementsFromPoint` and a
+scan for borders / shadows / 1–3px elements, light and dark), and the status
+bar's `theme-color` equals the bar's colour in both themes — so the page draws
+no line. The change that altered how Chrome paints that edge was **4bb8666
+(2026-09-15 19:44)**: permanent inline `viewTransitionName: 'app-header'` /
+`'app-tabbar'`, which keep both bars as their own layers at all times. The
+earlier fix that evening (d74b936) only removed a `border-b` *under* the bar.
+Now the names come only from `html:active-view-transition [data-app-header]`
+/ `[data-app-tabbar]` in `index.css`: at rest both bars are ordinary page
+content. Verified locally: names `none` at rest and after, `app-header` /
+`app-tabbar` during `document.startViewTransition`, with separate
+`::view-transition-group(app-header)` and `(app-tabbar)` animations (the
+bubble still slides once); dark mode unchanged (`theme-color` #0a2427). **The
+line itself can only be judged on the phone** — the browser pane never showed
+it. If it survives, undo this commit and look at Chrome's installed-app frame
+rather than the page. **Don't put a `view-transition-name` back on the bars
+as an inline style.**
 
 ## The admin panel
 
