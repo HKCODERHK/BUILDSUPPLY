@@ -611,6 +611,19 @@ body {
   animation-duration: 150ms;
   animation-timing-function: ease-out;
 }
+/* The names that keep the top bar and tab bar steady are given only while a
+   screen switch is actually running. As permanent inline styles (4bb8666) they
+   made Chrome paint both bars as their own layers all the time, and the
+   installed Android app then showed a thin grey line between the status bar
+   and the top bar, in both themes. At rest the bars are ordinary parts of the
+   page again. A browser without :active-view-transition just fades the bars
+   along with the screen. */
+html:active-view-transition [data-app-header] {
+  view-transition-name: app-header;
+}
+html:active-view-transition [data-app-tabbar] {
+  view-transition-name: app-tabbar;
+}
 ::view-transition-old(app-tabbar),
 ::view-transition-old(app-header) {
   display: none;

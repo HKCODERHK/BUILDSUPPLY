@@ -436,7 +436,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             Both come back at the top. */}
         <header
           data-app-header
-          style={{ viewTransitionName: 'app-header' }}
           className={cn(
             floating
               ? 'sticky top-0 z-30 flex w-full items-center gap-2 px-3 py-2 pt-[calc(0.5rem_+_var(--safe-top))] lg:hidden'
@@ -567,7 +566,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         data-app-tabbar
         // Its own layer in a screen change, shown as it is now rather than
         // faded — otherwise the bubble's slide is doubled by a fading copy.
-        style={{ viewTransitionName: 'app-tabbar' }}
         className="fixed right-[calc(0.75rem_+_var(--safe-right))] bottom-[calc(0.5rem_+_var(--safe-bottom))] left-[calc(0.75rem_+_var(--safe-left))] z-30 mx-auto flex max-w-md rounded-full border border-border bg-card/70 p-1 shadow-lg shadow-black/10 backdrop-blur-lg backdrop-saturate-150 lg:hidden"
       >
         {/* The bubble behind the current tab: one element that slides to the
