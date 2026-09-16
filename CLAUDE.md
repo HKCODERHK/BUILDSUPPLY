@@ -769,6 +769,36 @@ tables and the blocked list locked (also by real anon REST calls: 42501),
 guards and `security_invoker` views intact, counts unchanged
 (53 / 99 / 91 / 18 / 11 / 21 / 1 driver), 0 bills out of step.
 
+**Phase 18 — faster opening (2026-09-16). No database change.** The user
+picked it from the "what next" list: the app downloaded everything, PDF tools
+included, before showing anything — on budget phones, and for a customer
+opening an order QR or khata link.
+
+- **Every screen is its own chunk.** `lib/screens.ts` holds each route's
+  `import()`; `App.tsx` builds them with `React.lazy`. `Protected` puts a
+  `<Suspense fallback={<TruckLoader />}>` inside `AppShell`, so the top bar and
+  tab bar stay up while a screen's file arrives; sign-in and the public pages
+  use `Page` (a full-height fallback).
+- **The PDF tools load when a PDF is made.** `lib/pdfKit.ts` `loadPdfKit()`
+  imports jsPDF and jspdf-autotable once and shares them. Every builder takes a
+  `kit` and its exported async functions fetch it alongside the logo — so the
+  thirteen callers didn't change. **Never add a value `import` of `jspdf` or
+  `jspdf-autotable` anywhere else** (type imports are fine): it drags the
+  library back into the entry chunk.
+- **A signed-in phone fetches the rest in the background:** `prefetchScreens`
+  (from AppShell) waits 2.5s and for idle, then fetches that role's screens
+  one at a time and, for suppliers, the PDF tools. The service worker caches
+  `/assets/*` as fetched, so it all works offline afterwards. The khata page
+  warms the PDF tools once its link is found.
+- **A deploy while the app is open** can remove a chunk the tab hasn't fetched;
+  `vite:preloadError` in `main.tsx` reloads once (30s guard). Drafts keep a
+  half-typed bill.
+- Verified: on the production preview a customer order page, a khata link and
+  sign-in each load only their own files (no jsPDF); signed in (local copy),
+  all 17 supplier screens and jsPDF were fetched within ~8s of opening, the
+  shell stayed on screen moving to Customers, and a bill's Download PDF and a
+  khata link's Bill PDF both produced real PDFs.
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.
@@ -1086,7 +1116,7 @@ store where Avast's CA lives. Never `NODE_TLS_REJECT_UNAUTHORIZED=0`.
 
 ### Known and accepted
 - The second Supabase project `rnuiiymyhrvafwkfubqs` **no longer exists** (found gone 2026-09-11; only the live project is listed). Test risky SQL in a local Supabase in Docker instead — see Phase 9.
-- Bundle: `dist` is 1.7 MB total; the main chunk is 1.20 MB (**345 kB gzip**), plus jsPDF's `html2canvas` (44 kB gzip), `index.es` (47 kB) and `purify.es` (10 kB). Vite warns about the main chunk. Code-splitting the PDF libraries would fix it if it ever matters.
+- Bundle (since Phase 18, 2026-09-16): the entry chunk is 346 kB (**109 kB gzip**, was 1,499 kB / 428 kB), a shared chunk 386 kB (99 kB gzip), each screen its own small chunk, and jsPDF (130 kB gzip), autotable, `html2canvas`, `index.es` and `purify.es` load only when a PDF is made. Vite may still warn about the shared chunk.
 - **Free-tier Supabase pauses after ~7 days idle.** Deploy, then leave it a week, and the app looks broken when it isn't.
 - **iOS evicts `localStorage`** after extended non-use, which silently signs the supplier out. Expected, not a bug.
 - Contrast: the white-on-green primary button measures **4.41** against WCAG AA's 4.5. Darkening `--color-accent` (#198a45 → #147a3a) would fix it, but it is a brand decision and was left to the user.

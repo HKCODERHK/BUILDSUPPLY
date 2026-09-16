@@ -1,5 +1,5 @@
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import type jsPDF from 'jspdf'
+import { loadPdfKit, type PdfKit } from './pdfKit'
 import type { Customer, PaymentMode, Supplier } from './database.types'
 import { loadLogo, type LogoImage } from './pdfLogo'
 import {
@@ -43,8 +43,10 @@ function buildReceiptPdf(
   input: ReceiptInput,
   receivedAt: Date,
   logo: LogoImage | null,
+  kit: PdfKit,
 ): jsPDF {
-  const doc = new jsPDF()
+  const { JsPDF, autoTable } = kit
+  const doc = new JsPDF()
   const right = doc.internal.pageSize.getWidth() - PDF_MARGIN_X
   const footer = `${supplier.business_name}  ·  Payment receipt`
 
@@ -125,7 +127,7 @@ function fileName(customer: ReceiptCustomer, receivedAt: Date) {
 
 export async function receiptPdfFile(supplier: Supplier, customer: ReceiptCustomer, input: ReceiptInput): Promise<File> {
   const receivedAt = new Date()
-  const logo = await loadLogo(supplier.logo_url)
-  const blob = buildReceiptPdf(supplier, customer, input, receivedAt, logo).output('blob')
+  const [kit, logo] = await Promise.all([loadPdfKit(), loadLogo(supplier.logo_url)])
+  const blob = buildReceiptPdf(supplier, customer, input, receivedAt, logo, kit).output('blob')
   return new File([blob], fileName(customer, receivedAt), { type: 'application/pdf' })
 }
