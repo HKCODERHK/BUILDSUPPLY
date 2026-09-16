@@ -52,11 +52,15 @@
 
    env() reports what the device needs kept clear, and the 0px fallback means
    a phone with neither, and every desktop browser, gets exactly the spacing
-   it had before. Only top and bottom are defined: the manifest pins the
-   installed app to portrait, so the notch is never on a side. */
+   it had before. The manifest pins the installed app to portrait, so the notch is never on a
+   side there — but an iPhone turned sideways in a Safari tab puts it on the
+   left or right, which is what --safe-left / --safe-right are for (0px on
+   every phone held upright). */
 :root {
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
 
   /* The phone tab bar's height. AppShell overwrites this with the bar's real
      measured height once it mounts; this value only covers the first paint,
@@ -120,6 +124,35 @@ select,
 
 * {
   box-sizing: border-box;
+}
+
+/* An iPhone turned sideways in Safari puts its notch on a side: keep the page
+   clear of it. Both are 0px on a phone held upright. */
+body {
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+
+/* Heights against the screen the phone actually shows. iPhone Safari measures
+   vh with its address bar hidden, so a dialog capped at 90vh could run under
+   the bar with its Save button out of reach; dvh follows the bar as it comes
+   and goes. Phones without dvh keep the vh line. Written with @supports rather
+   than two declarations, so the build can't merge the fallback away.
+   vh-cap-90 → max-height 90dvh (90vh where dvh isn't supported). */
+@utility vh-cap-* {
+  max-height: calc(--value(integer) * 1vh);
+  @supports (height: 1dvh) {
+    max-height: calc(--value(integer) * 1dvh);
+  }
+}
+
+/* A full-height screen that centres something (sign-in, account errors) —
+   centred on what is visible, not behind the address bar. */
+@utility min-h-app {
+  min-height: 100vh;
+  @supports (height: 1dvh) {
+    min-height: 100dvh;
+  }
 }
 
 /* Scrollbars: thin, rounded and grey rather than the browser's thick default

@@ -155,7 +155,7 @@ export function AddCustomerModal({
     return (
       <Modal title={t('cust.pickedTitle')} onClose={onClose}>
         <div className="flex flex-col gap-3">
-          <div className="-mx-2 flex max-h-[55vh] flex-col overflow-y-auto">
+          <div className="-mx-2 flex vh-cap-55 flex-col overflow-y-auto">
             {picked.map((row) => {
               const hasPhone = row.phone.length === 10
               return (

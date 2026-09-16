@@ -351,7 +351,7 @@ export default function Payments() {
               {owing.length === 0 ? (
                 <p className="text-sm text-muted">{t('pay.nobodyOwes')}</p>
               ) : (
-                <div className="-mx-2 max-h-[50vh] overflow-y-auto">
+                <div className="-mx-2 vh-cap-50 overflow-y-auto">
                   {owing.map((c) => (
                     <button
                       key={c.id}

@@ -56,7 +56,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-shell p-4">
+    <div className="relative flex min-h-app items-center justify-center bg-shell p-4">
       <div className="absolute right-4 top-4 flex items-center gap-2">
         <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
         <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />

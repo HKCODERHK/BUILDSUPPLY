@@ -23,7 +23,7 @@ export function ProtectedRoute({
   const { t } = useLanguage()
 
   if (loading) {
-    return <TruckLoader inline className="min-h-screen" />
+    return <TruckLoader inline className="min-h-app" />
   }
 
   if (!session) {
@@ -41,7 +41,7 @@ export function ProtectedRoute({
   // its token naturally expires.
   if (supplier.status !== 'active') {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-shell p-4 text-center">
+      <div className="flex min-h-app flex-col items-center justify-center gap-4 bg-shell p-4 text-center">
         <p className="text-lg font-semibold text-white">
           {t(supplier.status === 'suspended' ? 'account.suspended' : 'account.deactivated')}
         </p>

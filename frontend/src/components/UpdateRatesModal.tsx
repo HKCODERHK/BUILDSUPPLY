@@ -61,7 +61,7 @@ export function UpdateRatesModal({ onClose, onSaved }: { onClose: () => void; on
             <LoaderCircle size={20} className="animate-spin text-muted" />
           </div>
         ) : (
-          <div className="-mx-1 flex max-h-[55vh] flex-col divide-y divide-border overflow-y-auto">
+          <div className="-mx-1 flex vh-cap-55 flex-col divide-y divide-border overflow-y-auto">
             {(materials ?? []).map((m) => {
               const unit = m.unit_label || m.per_label || ''
               const moved = (Number(values[m.id]) || 0) !== Number(m.rate)
