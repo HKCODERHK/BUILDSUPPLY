@@ -1449,6 +1449,13 @@ const STRINGS = {
   // Profile: the order QR button under the business name.
   'set.orderQr': { en: 'Order QR', hi: 'ऑर्डर QR', mr: 'ऑर्डर QR' },
   // The customer's links remembered on their phone (lib/customerLinks).
+  // On the order status page: the customer's own account with this shop.
+  'order.myKhata': { en: 'My khata', hi: 'मेरा खाता', mr: 'माझे खाते' },
+  'order.myKhataHint': {
+    en: 'Your bills, payments and balance',
+    hi: 'आपके बिल, भुगतान और बकाया',
+    mr: 'तुमची बिले, पेमेंट आणि बाकी',
+  },
   'order.orderMore': { en: 'Order more materials', hi: 'और माल मँगाएँ', mr: 'अजून माल मागवा' },
   // The khata link's menu: one row per thing a customer comes here for.
   'khata.menuPay': { en: 'Pay now', hi: 'अभी भुगतान करें', mr: 'आता पेमेंट करा' },
