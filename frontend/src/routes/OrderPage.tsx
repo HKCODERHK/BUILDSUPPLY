@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ChevronRight, MapPin, Minus, Navigation, Phone, Plus, Search, Send, Truck } from 'lucide-react'
+import { ChevronDown, ChevronRight, ChevronUp, MapPin, Minus, Navigation, Phone, Plus, Search, Send, Truck } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -79,6 +79,9 @@ export default function OrderPage() {
     return { name: previous?.name ?? '', phone: previous?.phone ?? '', site: previous?.site ?? '', date: '', note: '', trap: '' }
   })
   const [last, setLast] = useState<LastOrder | null>(() => readLast(link))
+  // The materials and the form stay folded into one button until the customer
+  // says they want to order (2026-09-20).
+  const [ordering, setOrdering] = useState(false)
   const [sending, setSending] = useState(false)
   const sendingRef = useRef(false)
   // One id per order: a double tap or a retry returns the same order.
@@ -128,6 +131,8 @@ export default function OrderPage() {
 
   function fillLast() {
     if (!last) return
+    // Their last order is put in for them: open the box so they can see it.
+    setOrdering(true)
     setQty(Object.fromEntries(lastAvailable.map((it) => [it.material_id, String(it.qty)])))
     setForm((f) => ({ ...f, name: f.name || last.name, phone: f.phone || last.phone, site: f.site || last.site }))
     setError(null)
@@ -174,6 +179,7 @@ export default function OrderPage() {
   }
 
   function startAgain() {
+    setOrdering(true)
     setQty({})
     setForm((f) => ({ ...f, date: '', note: '', trap: '' }))
     requestId.current = newRequestId()
@@ -345,151 +351,177 @@ export default function OrderPage() {
           </Card>
         )}
 
-        {/* One box, headed by the shop's name and ended by a button that
-            names it again: on a link a customer opened from a WhatsApp
-            message, whose shop this order goes to should never be a guess. */}
-        <section className="overflow-hidden rounded-2xl border border-border bg-card">
-          <div className="flex items-center gap-3 border-b border-border bg-accent-bg px-4 py-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-white">
-              <Truck size={20} />
+        {/* The page a customer lands on stays short — the shop, where it is,
+            and one button. The materials and the form come out of that same
+            button, and fold back into it. */}
+        {!ordering && (
+          <button
+            type="button"
+            onClick={() => setOrdering(true)}
+            aria-expanded={false}
+            className="flex w-full items-center gap-3 rounded-2xl bg-accent px-4 py-4 text-left text-white shadow-sm transition-colors hover:bg-accent-soft"
+          >
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/15">
+              <Truck size={22} />
             </span>
-            <div className="min-w-0">
-              <div className="text-sm font-bold leading-tight text-accent-text">{page.business_name}</div>
-              <div className="text-xs text-muted">{t('order.title')}</div>
-            </div>
-          </div>
+            <span className="min-w-0 flex-1">
+              <span className="block text-base font-bold leading-tight">{t('order.startNow')}</span>
+              <span className="block truncate text-xs text-white/85">{page.business_name}</span>
+            </span>
+            <ChevronDown size={20} className="shrink-0 text-white/80" />
+          </button>
+        )}
 
-          <div className="flex flex-col gap-3 p-4 sm:p-5">
-            {showSearch && (
-              <div className="relative">
-                <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-                <Input placeholder={t('order.search')} value={query} onChange={(e) => setQuery(e.target.value)} className="pl-9" />
-              </div>
-            )}
-            {materials.length === 0 && <p className="text-sm text-muted">{t('order.noMaterials')}</p>}
-            <div className="flex flex-col divide-y divide-border">
-              {visible.map((m) => {
-                const value = qty[m.id] ?? ''
-                return (
-                  <div key={m.id} className="flex items-center gap-3 py-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-ink">{m.name}</div>
-                      <div className="text-xs text-muted">
-                        {page.show_prices
-                          ? m.price != null
-                            ? `${formatINR(m.price)}${m.unit ? ` / ${m.unit}` : ''}`
-                            : t('order.priceOnRequest')
-                          : m.unit}
+        {ordering && (
+          <section className="overflow-hidden rounded-2xl border border-border bg-card">
+            <button
+              type="button"
+              onClick={() => setOrdering(false)}
+              aria-expanded={true}
+              className="flex w-full items-center gap-3 border-b border-border bg-accent-bg px-4 py-3 text-left"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-white">
+                <Truck size={20} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-bold leading-tight text-accent-text">{page.business_name}</span>
+                <span className="block text-xs text-muted">{t('order.title')}</span>
+              </span>
+              <ChevronUp size={18} className="shrink-0 text-muted" />
+            </button>
+
+            <div className="flex flex-col gap-3 p-4 sm:p-5">
+              {showSearch && (
+                <div className="relative">
+                  <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                  <Input placeholder={t('order.search')} value={query} onChange={(e) => setQuery(e.target.value)} className="pl-9" />
+                </div>
+              )}
+              {materials.length === 0 && <p className="text-sm text-muted">{t('order.noMaterials')}</p>}
+              <div className="flex flex-col divide-y divide-border">
+                {visible.map((m) => {
+                  const value = qty[m.id] ?? ''
+                  return (
+                    <div key={m.id} className="flex items-center gap-3 py-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium text-ink">{m.name}</div>
+                        <div className="text-xs text-muted">
+                          {page.show_prices
+                            ? m.price != null
+                              ? `${formatINR(m.price)}${m.unit ? ` / ${m.unit}` : ''}`
+                              : t('order.priceOnRequest')
+                            : m.unit}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <button
+                          type="button"
+                          aria-label={t('order.less', { name: m.name })}
+                          onClick={() => step(m.id, -1)}
+                          disabled={!Number(value)}
+                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-ink disabled:opacity-40"
+                        >
+                          <Minus size={15} />
+                        </button>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          aria-label={t('order.qtyOf', { name: m.name })}
+                          placeholder="0"
+                          value={value}
+                          onChange={(e) => {
+                            setQty((prev) => ({ ...prev, [m.id]: sanitizeDecimal(e.target.value).slice(0, 8) }))
+                            setError(null)
+                          }}
+                          className="h-9 w-16 rounded-lg border border-border bg-card text-center text-sm text-ink outline-none focus:border-accent"
+                        />
+                        <button
+                          type="button"
+                          aria-label={t('order.more', { name: m.name })}
+                          onClick={() => step(m.id, 1)}
+                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-accent"
+                        >
+                          <Plus size={15} />
+                        </button>
                       </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <button
-                        type="button"
-                        aria-label={t('order.less', { name: m.name })}
-                        onClick={() => step(m.id, -1)}
-                        disabled={!Number(value)}
-                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-ink disabled:opacity-40"
-                      >
-                        <Minus size={15} />
-                      </button>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        aria-label={t('order.qtyOf', { name: m.name })}
-                        placeholder="0"
-                        value={value}
-                        onChange={(e) => {
-                          setQty((prev) => ({ ...prev, [m.id]: sanitizeDecimal(e.target.value).slice(0, 8) }))
-                          setError(null)
-                        }}
-                        className="h-9 w-16 rounded-lg border border-border bg-card text-center text-sm text-ink outline-none focus:border-accent"
-                      />
-                      <button
-                        type="button"
-                        aria-label={t('order.more', { name: m.name })}
-                        onClick={() => step(m.id, 1)}
-                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-accent"
-                      >
-                        <Plus size={15} />
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
-          </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4 border-t border-border p-4 sm:p-5">
-            <div className="text-sm font-semibold text-ink">
-              {chosen.length > 0 ? t('order.selectedCount', { count: chosen.length }) : t('order.yourDetails')}
-              {estimatedTotal != null && (
-                <span className="block text-xs font-normal text-muted">
-                  {t('order.estimatedTotal', { amount: formatINR(estimatedTotal) })}
-                </span>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4 border-t border-border p-4 sm:p-5">
+              <div className="text-sm font-semibold text-ink">
+                {chosen.length > 0 ? t('order.selectedCount', { count: chosen.length }) : t('order.yourDetails')}
+                {estimatedTotal != null && (
+                  <span className="block text-xs font-normal text-muted">
+                    {t('order.estimatedTotal', { amount: formatINR(estimatedTotal) })}
+                  </span>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="order-name" required>{t('order.name')}</Label>
+                <Input id="order-name" autoComplete="name" value={form.name} maxLength={60} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              </div>
+              <div>
+                <Label htmlFor="order-phone" required>{t('order.phone')}</Label>
+                <PhoneInput id="order-phone" value={form.phone} onValueChange={(phone) => setForm({ ...form, phone })} />
+              </div>
+              <div>
+                <Label htmlFor="order-site">{t('order.site')}</Label>
+                <Input id="order-site" value={form.site} maxLength={120} onChange={(e) => setForm({ ...form, site: e.target.value })} />
+              </div>
+              <div>
+                <Label htmlFor="order-date">{t('order.date')}</Label>
+                <Input
+                  id="order-date"
+                  type="date"
+                  min={localIsoDate(0)}
+                  max={localIsoDate(90)}
+                  value={form.date}
+                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="order-note">{t('order.note')}</Label>
+                <textarea
+                  id="order-note"
+                  rows={2}
+                  maxLength={300}
+                  placeholder={t('order.notePlaceholder')}
+                  value={form.note}
+                  onChange={(e) => setForm({ ...form, note: e.target.value })}
+                  className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-ink placeholder:text-muted-2 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                />
+              </div>
+              {/* Only bots fill this in: invisible, unfocusable, and skipped by autofill. */}
+              <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
+                <label htmlFor="order-website">Website</label>
+                <input id="order-website" tabIndex={-1} autoComplete="off" value={form.trap} onChange={(e) => setForm({ ...form, trap: e.target.value })} />
+              </div>
+              {error && (
+                <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>
               )}
-            </div>
-            <div>
-              <Label htmlFor="order-name" required>{t('order.name')}</Label>
-              <Input id="order-name" autoComplete="name" value={form.name} maxLength={60} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            </div>
-            <div>
-              <Label htmlFor="order-phone" required>{t('order.phone')}</Label>
-              <PhoneInput id="order-phone" value={form.phone} onValueChange={(phone) => setForm({ ...form, phone })} />
-            </div>
-            <div>
-              <Label htmlFor="order-site">{t('order.site')}</Label>
-              <Input id="order-site" value={form.site} maxLength={120} onChange={(e) => setForm({ ...form, site: e.target.value })} />
-            </div>
-            <div>
-              <Label htmlFor="order-date">{t('order.date')}</Label>
-              <Input
-                id="order-date"
-                type="date"
-                min={localIsoDate(0)}
-                max={localIsoDate(90)}
-                value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="order-note">{t('order.note')}</Label>
-              <textarea
-                id="order-note"
-                rows={2}
-                maxLength={300}
-                placeholder={t('order.notePlaceholder')}
-                value={form.note}
-                onChange={(e) => setForm({ ...form, note: e.target.value })}
-                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-ink placeholder:text-muted-2 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-              />
-            </div>
-            {/* Only bots fill this in: invisible, unfocusable, and skipped by autofill. */}
-            <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
-              <label htmlFor="order-website">Website</label>
-              <input id="order-website" tabIndex={-1} autoComplete="off" value={form.trap} onChange={(e) => setForm({ ...form, trap: e.target.value })} />
-            </div>
-            {error && (
-              <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>
-            )}
-            {/* Big, and wrapping rather than clipped: a long business name
-                must still read as one sentence with the button's word. */}
-            <Button
-              type="submit"
-              size="lg"
-              disabled={sending}
-              className="h-auto w-full whitespace-normal rounded-xl py-4 text-base leading-snug shadow-sm"
-            >
-              {sending ? (
-                t('order.placing')
-              ) : (
-                <>
-                  <Send size={18} className="shrink-0" />
-                  <span>{t('order.placeAt', { business: page.business_name })}</span>
-                </>
-              )}
-            </Button>
-          </form>
-        </section>
+              {/* Big, and wrapping rather than clipped: a long business name
+                  must still read as one sentence with the button's word. */}
+              <Button
+                type="submit"
+                size="lg"
+                disabled={sending}
+                className="h-auto w-full whitespace-normal rounded-xl py-4 text-base leading-snug shadow-sm"
+              >
+                {sending ? (
+                  t('order.placing')
+                ) : (
+                  <>
+                    <Send size={18} className="shrink-0" />
+                    <span>{t('order.placeAt', { business: page.business_name })}</span>
+                  </>
+                )}
+              </Button>
+            </form>
+          </section>
+        )}
       </main>
     </div>
   )
