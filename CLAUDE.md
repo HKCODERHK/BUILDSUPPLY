@@ -876,6 +876,80 @@ it. If it survives, undo this commit and look at Chrome's installed-app frame
 rather than the page. **Don't put a `view-transition-name` back on the bars
 as an inline style.**
 
+**Phase 22 — the customer's order page (2026-09-20). No database change.**
+Asked for one piece at a time, merged together (9405d9e…, branch
+`order-page-theme`).
+
+- **Day/night beside the language button**, the same `ThemeToggle` the sign-in
+  screen carries. The top bar stays `bg-shell` in both themes, so both buttons
+  keep the white-outline classes.
+- **The shop's name heads its own address card** — the logo stays in the top
+  bar, where the user wanted it.
+- **The language button is a dropdown** (`components/LanguageToggle.tsx`),
+  saying **Language / भाषा** with the three languages each in its own script and
+  a tick on the one in use, in place of a button that cycled through "EN". It
+  closes on an outside pointerdown or Escape, as `ActionMenu` does. Under
+  360px the word steps aside and the globe stands alone. **`compact` keeps the
+  old two-letter code** and is what AppShell's phone bar passes: the word is
+  115px against the old 37px, which pushes the brand's tagline (215px at
+  12px) onto a second line at 360 and makes the bar taller.
+- **One order box.** Everything under the "prices are indicative" notice — the
+  materials and the customer's details — is one bordered section headed by a
+  green strip with a truck badge and the shop's name, ending in a big
+  **"Place order at ‹shop›"** button (`order.placeAt`) that wraps rather than
+  clips. The materials list stays *outside* the `<form>`, so Enter in a
+  quantity box still cannot submit an order.
+- **The box folds into one button** (`order.startNow`, "Order materials now"),
+  so the page a customer lands on is the shop, its address and one button.
+  Nothing typed is lost when it folds — the state lives in the route. "Fill in
+  my last order" and "Order more materials" open it themselves.
+- **A summary between the materials and the form**: every chosen material with
+  `qty × rate` and its amount, under a large **Estimated total** in a green
+  panel. Only amounts a supplier shows prices for; otherwise the same list
+  without money.
+- Verified at 320/360/375, light and dark, in all three languages; the submit
+  path re-checked after the restructure (nothing chosen → "Add at least one
+  material", no request). Live bundle grepped for every new string after the
+  merge.
+
+**Phase 23 — the khata link, structured (2026-09-20). No database change.**
+The user's ask: a customer should understand their own account without facing
+a wall of options. Built one item at a time on `khata-structure`.
+
+- **One figure at the top.** `pending − advance`, the same number the
+  statement's last line and the ledger PDF already show. With both, the parts
+  are spelled out under it (`khata.netNote`). The old page showed due and
+  advance at the top and a third, netted figure at the foot of the list.
+- **The UPI QR and button ask for that netted figure too** — they used to ask
+  for the bills' gross, so a customer holding an advance was shown a QR for
+  more than they owed.
+- **A menu, and one screen per option** (`?s=pay|bills|payments|estimates|orders|statement`,
+  so the phone's back button returns to the menu; an unknown value falls back
+  to it). `MenuRow` follows Settings' plain outline-icon rows — **no boxed or
+  coloured icons** — with a line saying what is inside ("12 bills · ₹45,000
+  still to pay"). A row with nothing behind it is not rendered, and a section
+  reached by its own link with nothing in it says so rather than showing a
+  blank screen.
+- **Bills**: "Still to pay" with its own total first, then "Fully paid".
+  Part-paid bills say both halves ("₹2 already paid" / "₹40,725 left"). An
+  opening balance is a row here, titled "Old balance". When the shop holds an
+  advance, a line says it goes against these bills.
+- **Payments**: the total received, then each receipt with its date, mode and
+  which bill it was put against; one that covered several opens a "Where it
+  went" box with each bill's share and anything kept as advance (which is
+  also where money released by a cancelled bill appears).
+- **Estimates** split into Open and Billed-or-finished; **orders** into
+  Waiting for the shop and Answered.
+- **Full statement** keeps the mixed running-balance list and the ledger PDF,
+  with a line explaining that the small figure under each amount is the
+  balance after that line.
+- Verified on real Shree Balaji khata links: 7 screens × 3 languages at 320px,
+  zero overflow and no blank screen, plus the back button. Cases no live row
+  covers — an advance alongside dues, a payment split across bills, an order
+  still waiting, empty sections — were proved by patching the `customer_khata`
+  response in flight (wrap `fetch`, then `pushState` to a *different* token so
+  the effect refetches; a `?s=` change alone does not).
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.
