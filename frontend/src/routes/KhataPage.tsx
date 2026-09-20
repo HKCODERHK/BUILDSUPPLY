@@ -179,7 +179,7 @@ export default function KhataPage() {
         setView(v)
         // Kept on the customer's phone so the supplier's order page can offer
         // "My khata"; a link the supplier has stopped is forgotten.
-        if (v.found && v.order_link) rememberKhataCode(v.order_link, token)
+        if (v.found && v.order_link) rememberKhataCode(v.order_link, token, v.customer.name)
         if (!v.found) forgetKhataCode(token)
         // Every button on this page makes a PDF: have the PDF tools ready.
         if (v.found) void warmPdfKit()

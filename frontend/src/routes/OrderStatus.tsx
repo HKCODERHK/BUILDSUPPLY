@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Check, ChevronRight } from 'lucide-react'
-import { readKhataCode, rememberOrder } from '@/lib/customerLinks'
+import { readKhata, rememberOrder } from '@/lib/customerLinks'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -47,7 +47,7 @@ export default function OrderStatus() {
         // this customer's recent orders from now on (on this phone only).
         if (v.found && v.order_link) {
           rememberOrder(v.order_link, token, v.created_at)
-          setKhataCode(readKhataCode(v.order_link))
+          setKhataCode(readKhata(v.order_link)?.code ?? null)
         }
       })
       .catch(() => setFailed(true))
