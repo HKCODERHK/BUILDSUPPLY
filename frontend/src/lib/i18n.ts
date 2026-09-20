@@ -1107,12 +1107,20 @@ const STRINGS = {
   'order.less': { en: 'Less {name}', hi: '{name} कम करें', mr: '{name} कमी करा' },
   'order.more': { en: 'More {name}', hi: '{name} बढ़ाएँ', mr: '{name} वाढवा' },
   'order.qtyOf': { en: 'Quantity of {name}', hi: '{name} की मात्रा', mr: '{name} ची मात्रा' },
-  'order.selectedCount': { en: '{count} selected — your details', hi: '{count} चुने गए — आपकी जानकारी', mr: '{count} निवडले — तुमची माहिती' },
+  'order.selectedCount': { en: '{count} selected', hi: '{count} चुने गए', mr: '{count} निवडले' },
   'order.yourDetails': { en: 'Your details', hi: 'आपकी जानकारी', mr: 'तुमची माहिती' },
-  'order.estimatedTotal': {
-    en: 'Estimated total (indicative): {amount}',
-    hi: 'अंदाज़न कुल (अंतिम नहीं): {amount}',
-    mr: 'अंदाजे एकूण (अंतिम नाही): {amount}',
+  // The summary between the materials and the form: what is being added, and
+  // what it is likely to come to.
+  'order.summaryTitle': {
+    en: 'What you are ordering',
+    hi: 'आप क्या ऑर्डर कर रहे हैं',
+    mr: 'तुम्ही काय ऑर्डर करत आहात',
+  },
+  'order.estimatedLabel': { en: 'Estimated total', hi: 'अंदाज़न कुल', mr: 'अंदाजे एकूण' },
+  'order.estimatedNote': {
+    en: 'An estimate, not the final price.',
+    hi: 'यह अंदाज़ा है, अंतिम दाम नहीं।',
+    mr: 'हा अंदाज आहे, अंतिम दर नाही.',
   },
   'order.name': { en: 'Your name', hi: 'आपका नाम', mr: 'तुमचे नाव' },
   'order.phone': { en: 'Mobile number', hi: 'मोबाइल नंबर', mr: 'मोबाईल नंबर' },
@@ -1121,6 +1129,19 @@ const STRINGS = {
   'order.note': { en: 'Note for the supplier (optional)', hi: 'सप्लायर के लिए नोट (वैकल्पिक)', mr: 'सप्लायरसाठी नोट (ऐच्छिक)' },
   'order.notePlaceholder': { en: 'e.g. Deliver before 10 am', hi: 'जैसे: सुबह 10 बजे से पहले भेजें', mr: 'उदा. सकाळी 10 च्या आधी पाठवा' },
   'order.place': { en: 'Place order', hi: 'ऑर्डर भेजें', mr: 'ऑर्डर पाठवा' },
+  // The button the whole order box folds into.
+  'order.startNow': {
+    en: 'Order materials now',
+    hi: 'अभी सामान ऑर्डर करें',
+    mr: 'आता साहित्य ऑर्डर करा',
+  },
+  // The button at the end of the order box names the shop: the customer
+  // came in on a shared link and should see who the order goes to.
+  'order.placeAt': {
+    en: 'Place order at {business}',
+    hi: '{business} को ऑर्डर भेजें',
+    mr: '{business} ला ऑर्डर पाठवा',
+  },
   'order.placing': { en: 'Sending…', hi: 'भेज रहे हैं…', mr: 'पाठवत आहे…' },
   'order.pickSomething': { en: 'Add at least one material.', hi: 'कम से कम एक सामान जोड़ें।', mr: 'किमान एक साहित्य जोडा.' },
   'order.nameInvalid': { en: 'Please enter your name.', hi: 'कृपया अपना नाम लिखें।', mr: 'कृपया तुमचे नाव लिहा.' },
