@@ -1392,6 +1392,12 @@ const STRINGS = {
   'khata.pageTitle': { en: 'Account statement', hi: 'खाता विवरण', mr: 'खाते विवरण' },
   'khata.for': { en: 'Statement for {name}', hi: '{name} का खाता', mr: '{name} यांचे खाते' },
   'khata.due': { en: 'Balance due', hi: 'बकाया', mr: 'बाकी' },
+  'khata.youOwe': { en: 'You owe', hi: 'आपको देना है', mr: 'तुम्हाला द्यायचे आहे' },
+  'khata.netNote': {
+    en: '{bills} on your bills, less {advance} advance with us.',
+    hi: 'बिलों पर {bills}, उसमें से {advance} जमा घटाया गया।',
+    mr: 'बिलांवर {bills}, त्यातून {advance} जमा वजा केले.',
+  },
   'khata.advance': { en: 'Advance with us', hi: 'हमारे पास जमा', mr: 'आमच्याकडे जमा' },
   'khata.settled': { en: 'Your account is fully settled. Thank you!', hi: 'आपका खाता पूरा साफ़ है। धन्यवाद!', mr: 'तुमचे खाते पूर्ण साफ आहे. धन्यवाद!' },
   'khata.download': { en: 'Download PDF', hi: 'PDF डाउनलोड करें', mr: 'PDF डाउनलोड करा' },

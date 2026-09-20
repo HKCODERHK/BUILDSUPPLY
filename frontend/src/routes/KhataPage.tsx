@@ -90,11 +90,16 @@ export default function KhataPage() {
   // Nothing in three months: still show the latest few rather than an empty list.
   const shown = showOlder ? newestFirst : recent.length > 0 ? recent : newestFirst.slice(0, 5)
   const olderCount = newestFirst.length - shown.length
+  // What the customer actually owes: the bills' dues less any advance the
+  // shop is holding — the figure the statement's last line already shows.
+  const net = found ? Number(found.pending) - Number(found.advance) : 0
   // "Pay by UPI" (migration 029): only when the supplier switched it on, and
   // only for money actually due. Nothing is recorded until the supplier does.
+  // The amount asked for is the netted one, not the bills' total: a customer
+  // holding an advance must not be shown a QR for more than they owe.
   const upiUrl =
-    found?.upi_id && found.pending > 0.005
-      ? upiPayUrl({ upiId: found.upi_id, payee: found.supplier.business_name, amount: Math.round(Number(found.pending) * 100) / 100, note: found.customer.name })
+    found?.upi_id && net > 0.005
+      ? upiPayUrl({ upiId: found.upi_id, payee: found.supplier.business_name, amount: Math.round(net * 100) / 100, note: found.customer.name })
       : null
 
   async function download() {
@@ -188,22 +193,33 @@ export default function KhataPage() {
         ) : (
           <>
             <Card className="flex flex-col gap-3">
-              <div className="text-sm text-muted">{t('khata.for', { name: found.customer.name })}</div>
-              {found.pending > 0.005 && (
-                <div>
-                  <div className="text-xs text-muted">{t('khata.due')}</div>
-                  <div className="text-2xl font-bold text-red-600 dark:text-red-400">{formatINR(Number(found.pending))}</div>
+              {/* One figure, not three. The bills owe one amount and any
+                  advance sits against it, and the statement's own running
+                  balance already nets the two — so showing both at the top
+                  and a third number at the bottom of the list was the most
+                  confusing thing on this page. The parts are spelled out
+                  underneath when there is an advance to explain. */}
+              <div>
+                <div className="text-sm text-muted">{t('khata.for', { name: found.customer.name })}</div>
+                <div className="mt-2 text-xs font-medium text-muted">
+                  {net > 0.005 ? t('khata.youOwe') : net < -0.005 ? t('khata.advance') : ''}
                 </div>
-              )}
-              {found.advance > 0.005 && (
-                <div>
-                  <div className="text-xs text-muted">{t('khata.advance')}</div>
-                  <div className="text-xl font-bold text-accent">{formatINR(Number(found.advance))}</div>
-                </div>
-              )}
-              {found.pending <= 0.005 && found.advance <= 0.005 && (
-                <div className="text-sm font-semibold text-accent">{t('khata.settled')}</div>
-              )}
+                {net > 0.005 ? (
+                  <div className="text-4xl font-bold leading-none text-red-600 dark:text-red-400">{formatINR(net)}</div>
+                ) : net < -0.005 ? (
+                  <div className="text-4xl font-bold leading-none text-accent">{formatINR(-net)}</div>
+                ) : (
+                  <div className="text-lg font-bold text-accent">{t('khata.settled')}</div>
+                )}
+                {found.pending > 0.005 && found.advance > 0.005 && (
+                  <p className="mt-2 text-xs text-muted">
+                    {t('khata.netNote', {
+                      bills: formatINR(Number(found.pending)),
+                      advance: formatINR(Number(found.advance)),
+                    })}
+                  </p>
+                )}
+              </div>
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={download} disabled={downloading}>
                   {downloading ? <LoaderCircle size={14} className="animate-spin" /> : <Download size={14} />} {t('khata.download')}
@@ -239,7 +255,7 @@ export default function KhataPage() {
                 <div className="text-xs text-muted">{found.upi_id}</div>
                 {/* On the customer's own phone there is nothing to scan: this opens their UPI app instead. */}
                 <a href={upiUrl} className="w-full">
-                  <Button className="w-full">{t('upi.openApp', { amount: formatINR(Number(found.pending)) })}</Button>
+                  <Button className="w-full">{t('upi.openApp', { amount: formatINR(net) })}</Button>
                 </a>
                 <p className="text-xs text-muted">{t('upi.payHint', { business: found.supplier.business_name })}</p>
               </Card>
