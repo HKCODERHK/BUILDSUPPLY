@@ -907,6 +907,22 @@ Asked for one piece at a time, merged together (9405d9e…, branch
   `qty × rate` and its amount, under a large **Estimated total** in a green
   panel. Only amounts a supplier shows prices for; otherwise the same list
   without money.
+- **"My khata" and "Your recent orders" were removed from the order page**
+  (2026-09-20, the user's call): the khata link already lists the account and
+  the customer's orders, and it now ends on its own "Order materials now"
+  button, so the order page is only for placing one. Orders are still written
+  to the phone (`rememberOrder`) and the status page still reads them back.
+  A customer who came in by QR, with no khata link, no longer has a list of
+  their past orders on this page; their way back is the status link the
+  success screen gives them. Putting the list back is re-adding one card.
+- **"My khata" moved to the order status page instead** (2026-09-20). An old
+  order link is often the only one a customer still has, and `order_status`
+  carries nothing about the khata — checked: it returns bill, business_name,
+  created_at, decided_at, delivery_date, estimate, items, responded_at,
+  response, status and `order_link`, and nothing else. The card reads the code
+  from the customer's own phone (`readKhataCode(found.order_link)`), so the
+  status link still says nothing about their account; with no code stored,
+  or with ordering off (no `order_link`, so no key to look under), no card.
 - Verified at 320/360/375, light and dark, in all three languages; the submit
   path re-checked after the restructure (nothing chosen → "Add at least one
   material", no request). Live bundle grepped for every new string after the

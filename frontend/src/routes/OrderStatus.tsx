@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Check } from 'lucide-react'
-import { rememberOrder } from '@/lib/customerLinks'
+import { Check, ChevronRight } from 'lucide-react'
+import { readKhataCode, rememberOrder } from '@/lib/customerLinks'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -35,6 +35,9 @@ export default function OrderStatus() {
   const [failed, setFailed] = useState(false)
   const [answering, setAnswering] = useState<'accepted' | 'call_me' | null>(null)
   const [answerFailed, setAnswerFailed] = useState(false)
+  // Their khata code with this shop, if this phone has ever opened it
+  // (lib/customerLinks — kept on the phone, never on the server).
+  const [khataCode, setKhataCode] = useState<string | null>(null)
 
   useEffect(() => {
     getOrderStatus(token)
@@ -42,7 +45,10 @@ export default function OrderStatus() {
         setView(v)
         // Opened from WhatsApp, say: the supplier's order page lists it under
         // this customer's recent orders from now on (on this phone only).
-        if (v.found && v.order_link) rememberOrder(v.order_link, token, v.created_at)
+        if (v.found && v.order_link) {
+          rememberOrder(v.order_link, token, v.created_at)
+          setKhataCode(readKhataCode(v.order_link))
+        }
       })
       .catch(() => setFailed(true))
   }, [token])
@@ -257,6 +263,22 @@ export default function OrderStatus() {
                   </>
                 )}
               </Card>
+            )}
+
+            {/* An old order link is often the only one a customer still has.
+                From here their whole account is one tap away — the code comes
+                from their own phone, so nothing about it travels with the
+                order's status. */}
+            {khataCode && (
+              <Link to={`/khata/${khataCode}`}>
+                <Card className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-ink">{t('order.myKhata')}</div>
+                    <div className="text-xs text-muted">{t('order.myKhataHint')}</div>
+                  </div>
+                  <ChevronRight size={18} className="shrink-0 text-muted" />
+                </Card>
+              </Link>
             )}
 
             {/* Only while the supplier takes orders (migration 031). */}
