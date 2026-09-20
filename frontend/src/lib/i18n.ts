@@ -1460,7 +1460,6 @@ const STRINGS = {
   'khata.orderMaterials': { en: 'Order materials', hi: 'माल मँगाएँ', mr: 'माल मागवा' },
   // The khata link's menu: one row per thing a customer comes here for.
   'khata.menuPay': { en: 'Pay now', hi: 'अभी भुगतान करें', mr: 'आता पेमेंट करा' },
-  'khata.payDetail': { en: 'Pay {amount} by UPI', hi: 'UPI से {amount} भेजें', mr: 'UPI ने {amount} पाठवा' },
   'khata.menuBills': { en: 'My bills', hi: 'मेरे बिल', mr: 'माझी बिले' },
   'khata.billsDetail': {
     en: '{count} bills · {amount} still to pay',

@@ -106,7 +106,6 @@ function MenuRow({
   onClick,
   to,
   href,
-  accent = false,
 }: {
   icon: ComponentType<{ size?: number; strokeWidth?: number; className?: string }>
   title: string
@@ -114,15 +113,13 @@ function MenuRow({
   onClick?: () => void
   to?: string
   href?: string
-  /** The one row that is an action rather than a list — paying. */
-  accent?: boolean
 }) {
   const className = 'flex w-full items-start gap-4 rounded-xl px-2 py-3.5 text-left transition-colors hover:bg-surface active:bg-surface'
   const inner = (
     <>
-      <Icon size={24} strokeWidth={1.75} className={cn('mt-0.5 shrink-0', accent ? 'text-accent' : 'text-muted')} />
+      <Icon size={24} strokeWidth={1.75} className="mt-0.5 shrink-0 text-muted" />
       <span className="min-w-0 flex-1">
-        <span className={cn('block text-[15px] font-medium', accent ? 'text-accent-text' : 'text-ink')}>{title}</span>
+        <span className="block text-[15px] font-medium text-ink">{title}</span>
         {detail && <span className="mt-0.5 block break-words text-sm text-muted">{detail}</span>}
       </span>
       <ChevronRight size={18} className="mt-1 shrink-0 text-muted" />
@@ -764,16 +761,28 @@ export default function KhataPage() {
                 </div>
               </div>
               <div className="border-t border-border pt-3">
-                <div className="text-xs font-medium text-muted">
-                  {net > 0.005 ? t('khata.youOwe') : net < -0.005 ? t('khata.advance') : ''}
+                {/* Paying sits against the figure it settles, not down among
+                    the lists. It wraps to its own line only where the two
+                    cannot share a row — a 320px phone in Hindi or Marathi. */}
+                <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-2">
+                  <div className="min-w-0">
+                    <div className="text-xs font-medium text-muted">
+                      {net > 0.005 ? t('khata.youOwe') : net < -0.005 ? t('khata.advance') : ''}
+                    </div>
+                    {net > 0.005 ? (
+                      <div className="text-4xl font-bold leading-none text-red-600 dark:text-red-400">{formatINR(net)}</div>
+                    ) : net < -0.005 ? (
+                      <div className="text-4xl font-bold leading-none text-accent">{formatINR(-net)}</div>
+                    ) : (
+                      <div className="text-lg font-bold text-accent">{t('khata.settled')}</div>
+                    )}
+                  </div>
+                  {upiUrl && (
+                    <Button size="sm" className="ml-auto shrink-0" onClick={() => openSection('pay')}>
+                      <CreditCard size={15} /> {t('khata.menuPay')}
+                    </Button>
+                  )}
                 </div>
-                {net > 0.005 ? (
-                  <div className="text-4xl font-bold leading-none text-red-600 dark:text-red-400">{formatINR(net)}</div>
-                ) : net < -0.005 ? (
-                  <div className="text-4xl font-bold leading-none text-accent">{formatINR(-net)}</div>
-                ) : (
-                  <div className="text-lg font-bold text-accent">{t('khata.settled')}</div>
-                )}
                 {found.pending > 0.005 && found.advance > 0.005 && (
                   <p className="mt-2 text-xs text-muted">
                     {t('khata.netNote', {
@@ -789,15 +798,6 @@ export default function KhataPage() {
                 customer has nothing behind — no estimates, no orders, a shop
                 with no UPI — is not shown at all. */}
             <Card className="divide-y divide-border p-2">
-              {upiUrl && (
-                <MenuRow
-                  icon={CreditCard}
-                  accent
-                  title={t('khata.menuPay')}
-                  detail={t('khata.payDetail', { amount: formatINR(net) })}
-                  onClick={() => openSection('pay')}
-                />
-              )}
               {billRows.length > 0 && (
                 <MenuRow
                   icon={Receipt}
