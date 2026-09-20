@@ -925,8 +925,15 @@ Asked for one piece at a time, merged together (9405d9e…, branch
   reads, with no name), the khata page writes the name it is showing, and the
   card is either that customer — name, and it opens their khata — or, with no
   khata on this phone, the last order's own name, phone and site and no link.
-  A first-time visitor sees no card. The order form still prefills from the
-  last order, which is a different question and stays that way.
+  A first-time visitor sees no card.
+- **And the form fills itself in as that customer too** (2026-09-20, the same
+  report): the khata store keeps `{ code, name, phone, site }` and the order
+  form takes its name and phone from there when the phone knows a khata — the
+  shop's own record — falling back to the last order otherwise. `samePerson()`
+  compares the two names, and when they differ (one phone, two customers) the
+  last order's **site** is not carried over and **"Fill in my last order"** is
+  not offered: none of it is this customer's. When they agree, nothing changes
+  — the last order's site and the repeat offer stay.
 - **"My khata" moved to the order status page instead** (2026-09-20). An old
   order link is often the only one a customer still has, and `order_status`
   carries nothing about the khata — checked: it returns bill, business_name,
