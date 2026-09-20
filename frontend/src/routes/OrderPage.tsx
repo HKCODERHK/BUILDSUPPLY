@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PhoneInput } from '@/components/ui/phone-input'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { SuccessHeader } from '@/components/SuccessTick'
 import { TruckLoader } from '@/components/TruckLoader'
@@ -199,7 +200,10 @@ export default function OrderPage() {
           <div className="truncate text-lg font-bold">{open?.business_name ?? 'BuildSupply'}</div>
           <div className="text-xs text-sidebar-text">{t('order.title')}</div>
         </div>
-        <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
+        <div className="flex shrink-0 items-center gap-2">
+          <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
+          <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
+        </div>
       </div>
     </header>
   )
@@ -266,12 +270,15 @@ export default function OrderPage() {
             call — for a customer who would rather come by or ask first. */}
         {(page.address || page.phone) && (
           <Card className="flex flex-col gap-3">
-            {page.address && (
-              <div className="flex items-start gap-2 text-sm text-ink">
-                <MapPin size={16} className="mt-0.5 shrink-0 text-muted" />
-                <span className="min-w-0">{page.address}</span>
-              </div>
-            )}
+            <div className="flex flex-col gap-1">
+              <div className="text-base font-semibold text-ink">{page.business_name}</div>
+              {page.address && (
+                <div className="flex items-start gap-2 text-sm text-ink">
+                  <MapPin size={16} className="mt-0.5 shrink-0 text-muted" />
+                  <span className="min-w-0">{page.address}</span>
+                </div>
+              )}
+            </div>
             <div className="flex flex-wrap gap-2">
               {page.address && (
                 <a
