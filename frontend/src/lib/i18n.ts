@@ -1510,6 +1510,14 @@ const STRINGS = {
     hi: 'हर बिल और भुगतान, और PDF',
     mr: 'प्रत्येक बिल आणि पेमेंट, आणि PDF',
   },
+  'khata.noEstimates': { en: 'No estimates yet.', hi: 'अभी कोई एस्टिमेट नहीं।', mr: 'अजून कोणतेही एस्टिमेट नाही.' },
+  'khata.noOrders': { en: 'No orders yet.', hi: 'अभी कोई ऑर्डर नहीं।', mr: 'अजून कोणतीही ऑर्डर नाही.' },
+  'khata.nothingToPay': { en: 'Nothing to pay right now.', hi: 'अभी कुछ देना नहीं है।', mr: 'आता काही द्यायचे नाही.' },
+  'khata.statementIntro': {
+    en: 'Every bill and payment, newest first. The small figure under each amount is what was owed after that line.',
+    hi: 'हर बिल और भुगतान, नए पहले। हर रकम के नीचे की छोटी संख्या उस लाइन के बाद का बकाया है।',
+    mr: 'प्रत्येक बिल आणि पेमेंट, नवीन आधी. प्रत्येक रकमेखालील लहान आकडा त्या ओळीनंतरची बाकी आहे.',
+  },
   'khata.menuCall': { en: 'Call the shop', hi: 'दुकान को कॉल करें', mr: 'दुकानाला कॉल करा' },
   'khata.orderDetail': {
     en: 'Send a new order to {business}',

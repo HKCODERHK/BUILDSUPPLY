@@ -465,6 +465,9 @@ export default function KhataPage() {
               <span className="text-base font-bold text-ink">{sectionTitle[section]}</span>
             </button>
 
+            {section === 'pay' && !(upiUrl && found.upi_id) && (
+              <Card className="text-sm text-muted">{t('khata.nothingToPay')}</Card>
+            )}
             {section === 'pay' && upiUrl && found.upi_id && (
               <Card className="flex flex-col items-center gap-3 text-center">
                 <div className="rounded-xl bg-white p-2">
@@ -563,6 +566,7 @@ export default function KhataPage() {
             {section === 'estimates' && (
               <>
                 {docFailed && problem(t('error.generic'))}
+                {estimates.length === 0 && <Card className="text-sm text-muted">{t('khata.noEstimates')}</Card>}
                 {/* An estimate a customer can still act on is the one they
                     came to look at; the ones already billed, or past their
                     date, sit below as a record. */}
@@ -573,6 +577,7 @@ export default function KhataPage() {
 
             {section === 'orders' && (
               <>
+                {orders.length === 0 && <Card className="text-sm text-muted">{t('khata.noOrders')}</Card>}
                 {/* Orders the shop has not answered yet are the ones a
                     customer is waiting on, so they come first. */}
                 {orderGroup(waitingOrders, t('khata.ordWaiting', { count: waitingOrders.length }))}
@@ -582,6 +587,7 @@ export default function KhataPage() {
 
             {section === 'statement' && (
               <>
+                <p className="px-1 text-xs text-muted">{t('khata.statementIntro')}</p>
                 <Button variant="outline" onClick={download} disabled={downloading} className="w-full">
                   {downloading ? <LoaderCircle size={16} className="animate-spin" /> : <Download size={16} />} {t('khata.download')}
                 </Button>
