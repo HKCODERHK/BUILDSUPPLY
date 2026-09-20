@@ -532,7 +532,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
           {/* EN and theme step aside on the floating bar, as in Telegram's chat. */}
           <div className={cn('flex shrink-0 items-center gap-2', floating && 'hidden')}>
-            <LanguageToggle className="dark:border-white/20 dark:text-white dark:hover:bg-white/10 dark:hover:text-white" />
+            <LanguageToggle compact className="dark:border-white/20 dark:text-white dark:hover:bg-white/10 dark:hover:text-white" />
             {/* Day / night lives in the More sheet on a phone (the user's call). */}
           </div>
         </header>
