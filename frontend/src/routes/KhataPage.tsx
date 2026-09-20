@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentType } from 'react'
+import { useEffect, useRef, useState, type ComponentType } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -157,6 +157,34 @@ export default function KhataPage() {
       })
       .catch(() => setFailed(true))
   }, [token])
+
+  // The shop's band rising into the bar (the supplier's own Profile screen
+  // does the same with their name). A frame is asked for per scroll burst
+  // rather than measuring on every event.
+  const barRef = useRef<HTMLElement>(null)
+  const bandRef = useRef<HTMLDivElement>(null)
+  const [shopUp, setShopUp] = useState(false)
+  useEffect(() => {
+    let frame = 0
+    const check = () => {
+      frame = 0
+      const band = bandRef.current?.getBoundingClientRect()
+      const bar = barRef.current?.getBoundingClientRect()
+      // No band yet (still loading, or the link is dead): keep BuildSupply up.
+      setShopUp(!!band && !!bar && band.bottom <= bar.bottom)
+    }
+    const onChange = () => {
+      if (!frame) frame = requestAnimationFrame(check)
+    }
+    frame = requestAnimationFrame(check)
+    window.addEventListener('scroll', onChange, { passive: true })
+    window.addEventListener('resize', onChange)
+    return () => {
+      if (frame) cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', onChange)
+      window.removeEventListener('resize', onChange)
+    }
+  }, [view, params])
 
   const found = view && view.found ? view : null
   // The per-document PDFs need khata_document, which came with the estimates list.
@@ -446,25 +474,73 @@ export default function KhataPage() {
 
   return (
     <div className="min-h-screen bg-surface">
-      {/* The shop's own logo and name head every screen of the link — a
-          customer opened it from that shop's message and should see whose
-          khata this is wherever they are in it. */}
-      <header className="bg-shell px-4 pb-4 pt-[calc(1rem_+_var(--safe-top))] text-white">
-        <div className="mx-auto flex max-w-lg items-center gap-3">
-          {found?.supplier.logo_url ? (
-            <img src={found.supplier.logo_url} alt="" className="h-11 w-11 shrink-0 rounded-xl bg-white object-cover" />
-          ) : null}
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-lg font-bold">{found?.supplier.business_name ?? 'BuildSupply'}</div>
-            <div className="text-xs text-sidebar-text">{t('khata.pageTitle')}</div>
+      {/* Two brands, one bar. At the top of a page it says BuildSupply, with
+          the language and day/night buttons, and the shop's own logo and name
+          sit under it on the page. Scroll, and the shop rises into the bar as
+          BuildSupply and the buttons step aside — so the platform is named
+          where a customer first lands, and the shop owns the bar while they
+          read their account. Scrolling back brings BuildSupply back. */}
+      <header
+        ref={barRef}
+        className="sticky top-0 z-30 bg-shell px-4 pb-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white"
+      >
+        <div className="relative mx-auto flex h-11 max-w-lg items-center">
+          <div
+            className={cn(
+              'absolute inset-0 flex items-center gap-3 transition-opacity duration-200 motion-reduce:transition-none',
+              shopUp && 'pointer-events-none opacity-0',
+            )}
+          >
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#35A85D"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="shrink-0"
+            >
+              <path d="M3 21h18" />
+              <path d="M5 21V8l5-4v17" />
+              <path d="M10 21V11l6 3v7" />
+              <path d="M16 21v-4l3 1.5V21" />
+            </svg>
+            <span className="text-lg font-bold">BuildSupply</span>
+            <div className="ml-auto flex shrink-0 items-center gap-2">
+              <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
+              <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
+            </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
-            <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
+          <div
+            className={cn(
+              'absolute inset-0 flex items-center gap-2.5 transition-opacity duration-200 motion-reduce:transition-none',
+              !shopUp && 'pointer-events-none opacity-0',
+            )}
+          >
+            {found?.supplier.logo_url ? (
+              <img src={found.supplier.logo_url} alt="" className="h-9 w-9 shrink-0 rounded-lg bg-white object-cover" />
+            ) : null}
+            <span className="min-w-0 truncate text-base font-bold">{found?.supplier.business_name ?? 'BuildSupply'}</span>
           </div>
         </div>
       </header>
       <main className="mx-auto flex max-w-lg flex-col gap-4 p-4">
+        {/* The shop, large, where the page begins — this is what rises into
+            the bar. Measured, not guessed: `shopUp` turns on the moment this
+            block's last pixel passes under the bar. */}
+        {found && (
+          <div ref={bandRef} className="flex items-center gap-3">
+            {found.supplier.logo_url ? (
+              <img src={found.supplier.logo_url} alt="" className="h-14 w-14 shrink-0 rounded-2xl bg-white object-cover" />
+            ) : null}
+            <div className="min-w-0">
+              <div className="truncate text-xl font-bold leading-tight text-ink">{found.supplier.business_name}</div>
+              <div className="text-xs text-muted">{t('khata.pageTitle')}</div>
+            </div>
+          </div>
+        )}
         {!view && !failed ? (
           <TruckLoader />
         ) : !found ? (
