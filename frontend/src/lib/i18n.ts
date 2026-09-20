@@ -1091,15 +1091,13 @@ const STRINGS = {
 
   // ── Customer order page (public, /order/<link>) ─────────────────────
   'order.title': { en: 'Order materials', hi: 'सामान ऑर्डर करें', mr: 'साहित्य ऑर्डर करा' },
+  // Short, and without the shop's name: the bar, the address card and the
+  // order button all carry that already. What is left is the one thing the
+  // page does not otherwise say — that this is a request, not a firm order.
   'order.intro': {
-    en: 'Choose what you need and send your order. {business} will check it and confirm the final order.',
-    hi: 'जो चाहिए वह चुनें और ऑर्डर भेजें। {business} इसे देखकर अंतिम ऑर्डर पक्का करेंगे।',
-    mr: 'हवे ते निवडा आणि ऑर्डर पाठवा. {business} ते तपासून अंतिम ऑर्डर निश्चित करतील.',
-  },
-  'order.pricesNote': {
-    en: 'Prices are indicative. Final price will be confirmed by the supplier.',
-    hi: 'दाम अंदाज़न हैं। अंतिम दाम सप्लायर पक्का करेंगे।',
-    mr: 'दर अंदाजे आहेत. अंतिम दर सप्लायर निश्चित करतील.',
+    en: 'The shop will check your order and confirm the final one.',
+    hi: 'दुकान आपका ऑर्डर देखकर अंतिम ऑर्डर पक्का करेगी।',
+    mr: 'दुकान तुमची ऑर्डर तपासून अंतिम ऑर्डर निश्चित करेल.',
   },
   'order.priceOnRequest': { en: 'Price on request', hi: 'दाम पूछें', mr: 'दर विचारा' },
   'order.search': { en: 'Search materials…', hi: 'सामान खोजें…', mr: 'साहित्य शोधा…' },
@@ -1128,7 +1126,6 @@ const STRINGS = {
   'order.date': { en: 'Delivery date (optional)', hi: 'डिलीवरी की तारीख (वैकल्पिक)', mr: 'डिलिव्हरीची तारीख (ऐच्छिक)' },
   'order.note': { en: 'Note for the supplier (optional)', hi: 'सप्लायर के लिए नोट (वैकल्पिक)', mr: 'सप्लायरसाठी नोट (ऐच्छिक)' },
   'order.notePlaceholder': { en: 'e.g. Deliver before 10 am', hi: 'जैसे: सुबह 10 बजे से पहले भेजें', mr: 'उदा. सकाळी 10 च्या आधी पाठवा' },
-  'order.place': { en: 'Place order', hi: 'ऑर्डर भेजें', mr: 'ऑर्डर पाठवा' },
   // The button the whole order box folds into.
   'order.startNow': {
     en: 'Order materials now',
@@ -1455,9 +1452,9 @@ const STRINGS = {
   // The customer's links remembered on their phone (lib/customerLinks).
   'order.myKhata': { en: 'My khata', hi: 'मेरा खाता', mr: 'माझे खाते' },
   'order.myKhataHint': {
-    en: 'Your bills, payments and balance with {business}',
-    hi: '{business} के साथ आपके बिल, भुगतान और बकाया',
-    mr: '{business} सोबतची तुमची बिले, पेमेंट आणि बाकी',
+    en: 'Your bills, payments and balance',
+    hi: 'आपके बिल, भुगतान और बकाया',
+    mr: 'तुमची बिले, पेमेंट आणि बाकी',
   },
   'order.orderMore': { en: 'Order more materials', hi: 'और माल मँगाएँ', mr: 'अजून माल मागवा' },
   'khata.orderMaterials': { en: 'Order materials', hi: 'माल मँगाएँ', mr: 'माल मागवा' },
