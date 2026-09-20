@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ComponentType } from 'react'
+import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -37,6 +37,7 @@ import {
   type KhataEstimate,
   type KhataInvoice,
   type KhataOrder,
+  type KhataPayment,
   type KhataView,
 } from '@/services/khata'
 import { forgetKhataCode, rememberKhataCode } from '@/lib/customerLinks'
@@ -65,6 +66,37 @@ const RECENT_MS = 90 * 24 * 60 * 60 * 1000
  */
 const SECTIONS = ['pay', 'bills', 'payments', 'estimates', 'orders', 'statement'] as const
 type Section = (typeof SECTIONS)[number]
+
+/**
+ * A titled group of rows — bills, estimates or orders. The heading can carry
+ * a total on the right and a line of explanation under it; the rows themselves
+ * are whatever the caller passes.
+ */
+function Group({
+  heading,
+  total,
+  note,
+  children,
+}: {
+  heading: string
+  /** Shown in red beside the heading — what this group still wants. */
+  total?: number | null
+  note?: string | null
+  children: ReactNode
+}) {
+  return (
+    <div>
+      <div className="mb-1.5 flex items-baseline justify-between gap-3 px-1">
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted">{heading}</span>
+        {total != null && <span className="shrink-0 text-sm font-bold text-red-600 dark:text-red-400">{formatINR(total)}</span>}
+      </div>
+      {note && <p className="mb-1.5 px-1 text-xs text-muted">{note}</p>}
+      <Card className="p-0">
+        <div className="flex flex-col divide-y divide-border">{children}</div>
+      </Card>
+    </div>
+  )
+}
 
 /** One row of the menu. Plain outline icon, a title and a line saying what is inside. */
 function MenuRow({
@@ -345,117 +377,102 @@ export default function KhataPage() {
     )
   }
 
-  /** One group of bills — "Still to pay" or "Fully paid" — with its heading. */
-  function billGroup(rows: KhataInvoice[], heading: string, total: number | null, note: string | null) {
-    if (rows.length === 0) return null
+  /** What a payment or a bill row is called: a bill's number, or "Old balance". */
+  function refLabel(kind: KhataInvoice['kind'], no: string) {
+    return kind === 'opening' ? t('khata.opening') : t('khata.bill', { no })
+  }
+
+  /**
+   * What one payment was put into: each bill with its share, and then whatever
+   * was left over, which the shop keeps as advance (money released by a
+   * cancelled bill comes back the same way). Used for the line under a single
+   * payment and for the box under a split one, so the two cannot drift.
+   */
+  function paymentParts(p: KhataPayment) {
+    const allocated = p.payment_allocations.reduce((sum, a) => sum + Number(a.amount), 0)
+    const kept = Math.max(0, Number(p.amount) - allocated)
+    return [
+      ...p.payment_allocations.map((a) => ({
+        label: refLabel(a.invoices.kind, a.invoices.invoice_no),
+        amount: Number(a.amount),
+      })),
+      ...(kept > 0.005 ? [{ label: t('khata.keptAdvance'), amount: kept }] : []),
+    ]
+  }
+
+  /** One bill, in either group. */
+  function billRow(b: KhataInvoice) {
+    const paid = Number(b.paid)
+    const left = Math.max(0, Number(b.total) - paid)
     return (
-      <div>
-        <div className="mb-1.5 flex items-baseline justify-between gap-3 px-1">
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted">{heading}</span>
-          {total != null && <span className="shrink-0 text-sm font-bold text-red-600 dark:text-red-400">{formatINR(total)}</span>}
+      <div key={`${b.kind}-${b.invoice_no}`} className="flex items-start justify-between gap-3 p-4">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-ink">{refLabel(b.kind, b.invoice_no)}</div>
+          <div className="text-xs text-muted">
+            {formatDate(b.created_at)}
+            {b.site ? ` · ${b.site}` : ''}
+          </div>
+          {/* Part paid: say what has gone in, so the smaller "left"
+              figure beside the bill's total makes sense. */}
+          {left > 0.005 && paid > 0.005 && (
+            <div className="text-xs text-accent">{t('khata.billPaidPart', { amount: formatINR(paid) })}</div>
+          )}
+          {billActions(b)}
         </div>
-        {note && <p className="mb-1.5 px-1 text-xs text-muted">{note}</p>}
-        <Card className="p-0">
-          <div className="flex flex-col divide-y divide-border">
-            {rows.map((b) => {
-              const paid = Number(b.paid)
-              const left = Math.max(0, Number(b.total) - paid)
-              return (
-                <div key={`${b.kind}-${b.invoice_no}`} className="flex items-start justify-between gap-3 p-4">
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold text-ink">
-                      {b.kind === 'opening' ? t('khata.opening') : t('khata.bill', { no: b.invoice_no })}
-                    </div>
-                    <div className="text-xs text-muted">
-                      {formatDate(b.created_at)}
-                      {b.site ? ` · ${b.site}` : ''}
-                    </div>
-                    {/* Part paid: say what has gone in, so the smaller "left"
-                        figure beside the bill's total makes sense. */}
-                    {left > 0.005 && paid > 0.005 && (
-                      <div className="text-xs text-accent">{t('khata.billPaidPart', { amount: formatINR(paid) })}</div>
-                    )}
-                    {billActions(b)}
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <div className="text-sm font-semibold text-ink">{formatINR(Number(b.total))}</div>
-                    <div className={cn('text-[11px] font-medium', left > 0.005 ? 'text-red-600 dark:text-red-400' : 'text-accent')}>
-                      {left > 0.005 ? t('khata.billLeft', { amount: formatINR(left) }) : `${t('status.Paid')} ✓`}
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
+        <div className="shrink-0 text-right">
+          <div className="text-sm font-semibold text-ink">{formatINR(Number(b.total))}</div>
+          <div className={cn('text-[11px] font-medium', left > 0.005 ? 'text-red-600 dark:text-red-400' : 'text-accent')}>
+            {left > 0.005 ? t('khata.billLeft', { amount: formatINR(left) }) : `${t('status.Paid')} ✓`}
           </div>
-        </Card>
+        </div>
       </div>
     )
   }
 
-  /** One group of estimates, with its heading. */
-  function estimateGroup(rows: KhataEstimate[], heading: string) {
-    if (rows.length === 0) return null
+  /** One estimate. */
+  function estimateRow(q: KhataEstimate) {
     return (
-      <div>
-        <div className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-muted">{heading}</div>
-        <Card className="p-0">
-          <div className="flex flex-col divide-y divide-border">
-            {rows.map((q) => (
-              <div key={q.quote_no} className="flex items-start justify-between gap-3 p-4">
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold text-ink">{t('khata.estimate', { no: q.quote_no })}</div>
-                  <div className="text-xs text-muted">
-                    {formatDate(q.created_at)}
-                    {q.site ? ` · ${q.site}` : ''}
-                  </div>
-                  <div className="mt-1">{pdfButton('estimate', q.quote_no, t('khata.estimatePdf'))}</div>
-                </div>
-                <div className="shrink-0 text-right">
-                  <div className="text-sm font-semibold text-ink">{formatINR(Number(q.total))}</div>
-                  {q.status === 'Converted' ? (
-                    <div className="text-[11px] font-medium text-accent">{t('khata.estBilled')}</div>
-                  ) : q.status === 'Expired' ? (
-                    <div className="text-[11px] text-muted">{t('status.Expired')}</div>
-                  ) : (
-                    <div className="text-[11px] text-muted">{t('khata.estOpenOne')}</div>
-                  )}
-                </div>
-              </div>
-            ))}
+      <div key={q.quote_no} className="flex items-start justify-between gap-3 p-4">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-ink">{t('khata.estimate', { no: q.quote_no })}</div>
+          <div className="text-xs text-muted">
+            {formatDate(q.created_at)}
+            {q.site ? ` · ${q.site}` : ''}
           </div>
-        </Card>
+          <div className="mt-1">{pdfButton('estimate', q.quote_no, t('khata.estimatePdf'))}</div>
+        </div>
+        <div className="shrink-0 text-right">
+          <div className="text-sm font-semibold text-ink">{formatINR(Number(q.total))}</div>
+          {q.status === 'Converted' ? (
+            <div className="text-[11px] font-medium text-accent">{t('khata.estBilled')}</div>
+          ) : q.status === 'Expired' ? (
+            <div className="text-[11px] text-muted">{t('status.Expired')}</div>
+          ) : (
+            <div className="text-[11px] text-muted">{t('khata.estOpenOne')}</div>
+          )}
+        </div>
       </div>
     )
   }
 
-  /** One group of online orders, with its heading. Each opens its status link. */
-  function orderGroup(rows: KhataOrder[], heading: string) {
-    if (rows.length === 0) return null
+  /** One online order, opening its own status link. */
+  function orderRow(o: KhataOrder) {
     return (
-      <div>
-        <div className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-muted">{heading}</div>
-        <Card className="p-0">
-          <div className="flex flex-col divide-y divide-border">
-            {rows.map((o) => (
-              <Link key={o.code} to={`/order-status/${o.code}`} className="flex items-center justify-between gap-3 p-4">
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold text-ink">{formatDate(o.created_at)}</div>
-                  <div className="text-xs text-muted">
-                    {t('khata.orderItems', { count: o.item_count })}
-                    {o.delivery_date ? ` · ${t('order.deliveryOn', { date: formatDate(o.delivery_date) })}` : ''}
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <Badge tone={o.status === 'approved' ? 'success' : o.status === 'rejected' ? 'neutral' : 'warning'}>
-                    {t(`order.status.${o.status}`)}
-                  </Badge>
-                  <ChevronRight size={16} className="text-muted" />
-                </div>
-              </Link>
-            ))}
+      <Link key={o.code} to={`/order-status/${o.code}`} className="flex items-center justify-between gap-3 p-4">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-ink">{formatDate(o.created_at)}</div>
+          <div className="text-xs text-muted">
+            {t('khata.orderItems', { count: o.item_count })}
+            {o.delivery_date ? ` · ${t('order.deliveryOn', { date: formatDate(o.delivery_date) })}` : ''}
           </div>
-        </Card>
-      </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <Badge tone={o.status === 'approved' ? 'success' : o.status === 'rejected' ? 'neutral' : 'warning'}>
+            {t(`order.status.${o.status}`)}
+          </Badge>
+          <ChevronRight size={16} className="text-muted" />
+        </div>
+      </Link>
     )
   }
 
@@ -565,7 +582,7 @@ export default function KhataPage() {
                 <a href={upiUrl} className="w-full">
                   <Button className="w-full">{t('upi.openApp', { amount: formatINR(net) })}</Button>
                 </a>
-                <p className="text-xs text-muted">{t('upi.payHint', { business: found.supplier.business_name })}</p>
+                <p className="text-xs text-muted">{t('upi.payHint')}</p>
               </Card>
             )}
 
@@ -580,13 +597,18 @@ export default function KhataPage() {
                     {/* The bills still wanting money come first, under their own
                         total. What is settled stays on the page — a customer
                         checks old bills too — but below, and not in red. */}
-                    {billGroup(
-                      unpaidBills,
-                      t('khata.billsUnpaid', { count: unpaidBills.length }),
-                      leftToPay,
-                      found.advance > 0.005 ? t('khata.advanceGoesTo', { amount: formatINR(Number(found.advance)) }) : null,
+                    {unpaidBills.length > 0 && (
+                      <Group
+                        heading={t('khata.billsUnpaid', { count: unpaidBills.length })}
+                        total={leftToPay}
+                        note={found.advance > 0.005 ? t('khata.advanceGoesTo', { amount: formatINR(Number(found.advance)) }) : null}
+                      >
+                        {unpaidBills.map(billRow)}
+                      </Group>
                     )}
-                    {billGroup(paidBills, t('khata.billsPaidGroup', { count: paidBills.length }), null, null)}
+                    {paidBills.length > 0 && (
+                      <Group heading={t('khata.billsPaidGroup', { count: paidBills.length })}>{paidBills.map(billRow)}</Group>
+                    )}
                   </>
                 )}
               </>
@@ -597,6 +619,8 @@ export default function KhataPage() {
                 <Card className="text-sm text-muted">{t('khata.noPayments')}</Card>
               ) : (
                 <div>
+                  {/* The one group whose total is money in, so it is green
+                      rather than the red the Group heading uses. */}
                   <div className="mb-1.5 flex items-baseline justify-between gap-3 px-1">
                     <span className="text-xs font-semibold uppercase tracking-wide text-muted">
                       {t('khata.paymentsGroup', { count: payments.length })}
@@ -606,17 +630,7 @@ export default function KhataPage() {
                   <Card className="p-0">
                     <div className="flex flex-col divide-y divide-border">
                       {payments.map((p, i) => {
-                        const allocated = p.payment_allocations.reduce((sum, a) => sum + Number(a.amount), 0)
-                        // Whatever a receipt was not used on sits as advance
-                        // (and money released by a cancelled bill comes back here).
-                        const kept = Math.max(0, Number(p.amount) - allocated)
-                        const parts = [
-                          ...p.payment_allocations.map((a) => ({
-                            label: a.invoices.kind === 'opening' ? t('khata.opening') : t('khata.bill', { no: a.invoices.invoice_no }),
-                            amount: Number(a.amount),
-                          })),
-                          ...(kept > 0.005 ? [{ label: t('khata.keptAdvance'), amount: kept }] : []),
-                        ]
+                        const parts = paymentParts(p)
                         return (
                           <div key={i} className="p-4">
                             <div className="flex items-start justify-between gap-3">
@@ -657,8 +671,12 @@ export default function KhataPage() {
                 {/* An estimate a customer can still act on is the one they
                     came to look at; the ones already billed, or past their
                     date, sit below as a record. */}
-                {estimateGroup(openEstimates, t('khata.estOpen', { count: openEstimates.length }))}
-                {estimateGroup(closedEstimates, t('khata.estClosed', { count: closedEstimates.length }))}
+                {openEstimates.length > 0 && (
+                  <Group heading={t('khata.estOpen', { count: openEstimates.length })}>{openEstimates.map(estimateRow)}</Group>
+                )}
+                {closedEstimates.length > 0 && (
+                  <Group heading={t('khata.estClosed', { count: closedEstimates.length })}>{closedEstimates.map(estimateRow)}</Group>
+                )}
               </>
             )}
 
@@ -667,8 +685,12 @@ export default function KhataPage() {
                 {orders.length === 0 && <Card className="text-sm text-muted">{t('khata.noOrders')}</Card>}
                 {/* Orders the shop has not answered yet are the ones a
                     customer is waiting on, so they come first. */}
-                {orderGroup(waitingOrders, t('khata.ordWaiting', { count: waitingOrders.length }))}
-                {orderGroup(answeredOrders, t('khata.ordAnswered', { count: answeredOrders.length }))}
+                {waitingOrders.length > 0 && (
+                  <Group heading={t('khata.ordWaiting', { count: waitingOrders.length })}>{waitingOrders.map(orderRow)}</Group>
+                )}
+                {answeredOrders.length > 0 && (
+                  <Group heading={t('khata.ordAnswered', { count: answeredOrders.length })}>{answeredOrders.map(orderRow)}</Group>
+                )}
               </>
             )}
 
@@ -836,13 +858,11 @@ export default function KhataPage() {
                 <MenuRow
                   icon={Truck}
                   title={t('khata.orderMaterials')}
-                  detail={t('khata.orderDetail', { business: found.supplier.business_name })}
+                  detail={t('khata.orderDetail')}
                   to={`/order/${found.order_link}`}
                 />
               )}
             </Card>
-
-            <p className="px-1 text-center text-xs text-muted">{t('khata.readOnly', { business: found.supplier.business_name })}</p>
           </>
         )}
       </main>
