@@ -18,6 +18,8 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { LanguageToggle } from '@/components/LanguageToggle'
+import { ThemeToggle } from '@/components/ThemeToggle'
+import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { TruckLoader } from '@/components/TruckLoader'
 import { useLanguage } from '@/context/LanguageContext'
 import { cn } from '@/lib/utils'
@@ -444,13 +446,22 @@ export default function KhataPage() {
 
   return (
     <div className="min-h-screen bg-surface">
+      {/* The shop's own logo and name head every screen of the link — a
+          customer opened it from that shop's message and should see whose
+          khata this is wherever they are in it. */}
       <header className="bg-shell px-4 pb-4 pt-[calc(1rem_+_var(--safe-top))] text-white">
         <div className="mx-auto flex max-w-lg items-center gap-3">
+          {found?.supplier.logo_url ? (
+            <img src={found.supplier.logo_url} alt="" className="h-11 w-11 shrink-0 rounded-xl bg-white object-cover" />
+          ) : null}
           <div className="min-w-0 flex-1">
             <div className="truncate text-lg font-bold">{found?.supplier.business_name ?? 'BuildSupply'}</div>
             <div className="text-xs text-sidebar-text">{t('khata.pageTitle')}</div>
           </div>
-          <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
+          <div className="flex shrink-0 items-center gap-2">
+            <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
+            <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
+          </div>
         </div>
       </header>
       <main className="mx-auto flex max-w-lg flex-col gap-4 p-4">
@@ -642,9 +653,20 @@ export default function KhataPage() {
                   and a third number at the bottom of the list was the most
                   confusing thing on this page. The parts are spelled out
                   underneath when there is an advance to explain. */}
-              <div>
-                <div className="text-sm text-muted">{t('khata.for', { name: found.customer.name })}</div>
-                <div className="mt-2 text-xs font-medium text-muted">
+              {/* Their name, their initials and their own details: the page
+                  belongs to the customer, under the shop's roof above. */}
+              <div className="flex items-center gap-3">
+                <CustomerAvatar id={token} name={found.customer.name} size={52} />
+                <div className="min-w-0">
+                  <div className="truncate text-lg font-bold leading-tight text-ink">{found.customer.name}</div>
+                  <div className="truncate text-xs text-muted">
+                    {[found.customer.phone, found.customer.site].filter(Boolean).join(' · ') ||
+                      t('khata.yourAccountWith', { business: found.supplier.business_name })}
+                  </div>
+                </div>
+              </div>
+              <div className="border-t border-border pt-3">
+                <div className="text-xs font-medium text-muted">
                   {net > 0.005 ? t('khata.youOwe') : net < -0.005 ? t('khata.advance') : ''}
                 </div>
                 {net > 0.005 ? (

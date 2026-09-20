@@ -943,6 +943,13 @@ a wall of options. Built one item at a time on `khata-structure`.
 - **Full statement** keeps the mixed running-balance list and the ledger PDF,
   with a line explaining that the small figure under each amount is the
   balance after that line.
+- **The shop's branding and the customer's own profile** (2026-09-20, asked
+  for straight after): the header carries the supplier's logo beside their
+  name on every screen of the link, and day/night sits beside the language
+  dropdown, as on the order page. The top card opens with the customer's
+  coloured initials (`CustomerAvatar`, seeded from the khata token — the view
+  returns no customer id), their name in bold and their phone and site under
+  it, with the figure below a divider.
 - Verified on real Shree Balaji khata links: 7 screens × 3 languages at 320px,
   zero overflow and no blank screen, plus the back button. Cases no live row
   covers — an advance alongside dues, a payment split across bills, an order

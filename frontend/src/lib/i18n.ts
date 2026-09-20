@@ -1391,6 +1391,11 @@ const STRINGS = {
   // …and the customer's page.
   'khata.pageTitle': { en: 'Account statement', hi: 'खाता विवरण', mr: 'खाते विवरण' },
   'khata.for': { en: 'Statement for {name}', hi: '{name} का खाता', mr: '{name} यांचे खाते' },
+  'khata.yourAccountWith': {
+    en: 'Your account with {business}',
+    hi: '{business} के साथ आपका खाता',
+    mr: '{business} सोबत तुमचे खाते',
+  },
   'khata.due': { en: 'Balance due', hi: 'बकाया', mr: 'बाकी' },
   'khata.youOwe': { en: 'You owe', hi: 'आपको देना है', mr: 'तुम्हाला द्यायचे आहे' },
   'khata.netNote': {
