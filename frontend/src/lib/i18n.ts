@@ -1472,6 +1472,14 @@ const STRINGS = {
   'khata.billsDetailOnePaid': { en: '1 bill · paid', hi: '1 बिल · चुकता', mr: '1 बिल · चुकते' },
   'khata.billsDetailPaid': { en: '{count} bills · all paid', hi: '{count} बिल · सब चुकता', mr: '{count} बिले · सर्व चुकते' },
   'khata.billLeft': { en: '{amount} left', hi: '{amount} बाकी', mr: '{amount} बाकी' },
+  'khata.billsUnpaid': { en: 'Still to pay ({count})', hi: 'देना बाकी ({count})', mr: 'द्यायचे बाकी ({count})' },
+  'khata.billsPaidGroup': { en: 'Fully paid ({count})', hi: 'पूरे चुकता ({count})', mr: 'पूर्ण चुकते ({count})' },
+  'khata.billPaidPart': { en: '{amount} already paid', hi: '{amount} जमा हो चुका', mr: '{amount} जमा झाले' },
+  'khata.advanceGoesTo': {
+    en: 'Your {amount} advance with the shop goes against these.',
+    hi: 'दुकान के पास आपका {amount} जमा इन्हीं में लगेगा।',
+    mr: 'दुकानाकडे तुमचे {amount} जमा याच बिलांत वापरले जाईल.',
+  },
   'khata.noBills': { en: 'No bills yet.', hi: 'अभी कोई बिल नहीं।', mr: 'अजून कोणतेही बिल नाही.' },
   'khata.menuPayments': { en: 'My payments', hi: 'मेरे भुगतान', mr: 'माझी पेमेंट' },
   'khata.paymentsDetail': {

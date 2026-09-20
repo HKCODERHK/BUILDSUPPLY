@@ -193,6 +193,8 @@ export default function KhataPage() {
   const billRows = found ? [...found.invoices].sort((a, b) => b.created_at.localeCompare(a.created_at)) : []
   const billCount = billRows.filter((b) => b.kind === 'bill').length
   const leftToPay = billRows.reduce((sum, b) => sum + Math.max(0, Number(b.total) - Number(b.paid)), 0)
+  const unpaidBills = billRows.filter((b) => Number(b.total) - Number(b.paid) > 0.005)
+  const paidBills = billRows.filter((b) => Number(b.total) - Number(b.paid) <= 0.005)
   const payments = found ? [...found.payments].sort((a, b) => b.created_at.localeCompare(a.created_at)) : []
   const estimates = found?.estimates ?? []
   const orders = found?.orders ?? []
@@ -300,6 +302,53 @@ export default function KhataPage() {
     )
   }
 
+  /** One group of bills — "Still to pay" or "Fully paid" — with its heading. */
+  function billGroup(rows: KhataInvoice[], heading: string, total: number | null, note: string | null) {
+    if (rows.length === 0) return null
+    return (
+      <div>
+        <div className="mb-1.5 flex items-baseline justify-between gap-3 px-1">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted">{heading}</span>
+          {total != null && <span className="shrink-0 text-sm font-bold text-red-600 dark:text-red-400">{formatINR(total)}</span>}
+        </div>
+        {note && <p className="mb-1.5 px-1 text-xs text-muted">{note}</p>}
+        <Card className="p-0">
+          <div className="flex flex-col divide-y divide-border">
+            {rows.map((b) => {
+              const paid = Number(b.paid)
+              const left = Math.max(0, Number(b.total) - paid)
+              return (
+                <div key={`${b.kind}-${b.invoice_no}`} className="flex items-start justify-between gap-3 p-4">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-ink">
+                      {b.kind === 'opening' ? t('khata.opening') : t('khata.bill', { no: b.invoice_no })}
+                    </div>
+                    <div className="text-xs text-muted">
+                      {formatDate(b.created_at)}
+                      {b.site ? ` · ${b.site}` : ''}
+                    </div>
+                    {/* Part paid: say what has gone in, so the smaller "left"
+                        figure beside the bill's total makes sense. */}
+                    {left > 0.005 && paid > 0.005 && (
+                      <div className="text-xs text-accent">{t('khata.billPaidPart', { amount: formatINR(paid) })}</div>
+                    )}
+                    {billActions(b)}
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="text-sm font-semibold text-ink">{formatINR(Number(b.total))}</div>
+                    <div className={cn('text-[11px] font-medium', left > 0.005 ? 'text-red-600 dark:text-red-400' : 'text-accent')}>
+                      {left > 0.005 ? t('khata.billLeft', { amount: formatINR(left) }) : `${t('status.Paid')} ✓`}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      </div>
+    )
+  }
+
   const sectionTitle: Record<Section, string> = {
     pay: t('khata.menuPay'),
     bills: t('khata.menuBills'),
@@ -357,38 +406,18 @@ export default function KhataPage() {
                 {billRows.length === 0 ? (
                   <Card className="text-sm text-muted">{t('khata.noBills')}</Card>
                 ) : (
-                  <Card className="p-0">
-                    <div className="flex flex-col divide-y divide-border">
-                      {billRows.map((b) => {
-                        const left = Math.max(0, Number(b.total) - Number(b.paid))
-                        return (
-                          <div key={`${b.kind}-${b.invoice_no}`} className="flex items-start justify-between gap-3 p-4">
-                            <div className="min-w-0">
-                              <div className="text-sm font-semibold text-ink">
-                                {b.kind === 'opening' ? t('khata.opening') : t('khata.bill', { no: b.invoice_no })}
-                              </div>
-                              <div className="text-xs text-muted">
-                                {formatDate(b.created_at)}
-                                {b.site ? ` · ${b.site}` : ''}
-                              </div>
-                              {billActions(b)}
-                            </div>
-                            <div className="shrink-0 text-right">
-                              <div className="text-sm font-semibold text-ink">{formatINR(Number(b.total))}</div>
-                              <div
-                                className={cn(
-                                  'text-[11px] font-medium',
-                                  left > 0.005 ? 'text-red-600 dark:text-red-400' : 'text-accent',
-                                )}
-                              >
-                                {left > 0.005 ? t('khata.billLeft', { amount: formatINR(left) }) : t('status.Paid')}
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </Card>
+                  <>
+                    {/* The bills still wanting money come first, under their own
+                        total. What is settled stays on the page — a customer
+                        checks old bills too — but below, and not in red. */}
+                    {billGroup(
+                      unpaidBills,
+                      t('khata.billsUnpaid', { count: unpaidBills.length }),
+                      leftToPay,
+                      found.advance > 0.005 ? t('khata.advanceGoesTo', { amount: formatINR(Number(found.advance)) }) : null,
+                    )}
+                    {billGroup(paidBills, t('khata.billsPaidGroup', { count: paidBills.length }), null, null)}
+                  </>
                 )}
               </>
             )}
