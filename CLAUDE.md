@@ -915,6 +915,12 @@ Asked for one piece at a time, merged together (9405d9e…, branch
   A customer who came in by QR, with no khata link, no longer has a list of
   their past orders on this page; their way back is the status link the
   success screen gives them. Putting the list back is re-adding one card.
+- **A returning customer is named on the order page** (2026-09-20): when this
+  phone has sent an order before, a card under the shop's shows their own
+  initials and the name they gave, their phone and site under it, and — when
+  the phone also knows their khata code — **My khata ›** on the right, linking
+  to it. Both come from the phone (`readLast`, `readKhataCode`); a first-time
+  visitor, or a shared link opened on another phone, sees no card at all.
 - **"My khata" moved to the order status page instead** (2026-09-20). An old
   order link is often the only one a customer still has, and `order_status`
   carries nothing about the khata — checked: it returns bill, business_name,
