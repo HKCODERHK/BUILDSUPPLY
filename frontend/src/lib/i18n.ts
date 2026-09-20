@@ -1457,7 +1457,6 @@ const STRINGS = {
     mr: 'तुमची बिले, पेमेंट आणि बाकी',
   },
   'order.orderMore': { en: 'Order more materials', hi: 'और माल मँगाएँ', mr: 'अजून माल मागवा' },
-  'khata.orderMaterials': { en: 'Order materials', hi: 'माल मँगाएँ', mr: 'माल मागवा' },
   // The khata link's menu: one row per thing a customer comes here for.
   'khata.menuPay': { en: 'Pay now', hi: 'अभी भुगतान करें', mr: 'आता पेमेंट करा' },
   'khata.menuBills': { en: 'My bills', hi: 'मेरे बिल', mr: 'माझी बिले' },
@@ -1517,11 +1516,6 @@ const STRINGS = {
     mr: 'प्रत्येक बिल आणि पेमेंट, नवीन आधी. प्रत्येक रकमेखालील लहान आकडा त्या ओळीनंतरची बाकी आहे.',
   },
   'khata.menuCall': { en: 'Call the shop', hi: 'दुकान को कॉल करें', mr: 'दुकानाला कॉल करा' },
-  'khata.orderDetail': {
-    en: 'Send a new order to the shop',
-    hi: 'दुकान को नया ऑर्डर भेजें',
-    mr: 'दुकानाला नवीन ऑर्डर पाठवा',
-  },
   // The order page's Get directions (migration 031).
   'order.directions': { en: 'Get directions', hi: 'रास्ता देखें', mr: 'रस्ता पाहा' },
   // The order status link's progress timeline (migration 031).

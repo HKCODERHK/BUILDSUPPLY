@@ -853,16 +853,20 @@ export default function KhataPage() {
               {found.supplier.phone && (
                 <MenuRow icon={Phone} title={t('khata.menuCall')} detail={found.supplier.phone} href={`tel:${found.supplier.phone}`} />
               )}
-              {/* Only while the supplier takes online orders (migration 031). */}
-              {found.order_link && (
-                <MenuRow
-                  icon={Truck}
-                  title={t('khata.orderMaterials')}
-                  detail={t('khata.orderDetail')}
-                  to={`/order/${found.order_link}`}
-                />
-              )}
             </Card>
+
+            {/* The page ends on the one thing a customer might want to DO
+                rather than look up. A green button, not a menu row, and the
+                same words the order page's own button carries. Only while the
+                supplier takes online orders (migration 031). */}
+            {found.order_link && (
+              <Link to={`/order/${found.order_link}`} className="block">
+                <span className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-accent px-4 py-4 text-base font-bold text-white shadow-sm transition-colors hover:bg-accent-soft">
+                  <Truck size={20} className="shrink-0" />
+                  {t('order.startNow')}
+                </span>
+              </Link>
+            )}
           </>
         )}
       </main>

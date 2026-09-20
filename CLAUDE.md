@@ -955,6 +955,13 @@ a wall of options. Built one item at a time on `khata-structure`.
   coloured initials (`CustomerAvatar`, seeded from the khata token — the view
   returns no customer id), their name in bold and their phone and site under
   it, with the figure below a divider.
+- **Ordering is a green button, not a menu row** (2026-09-20): the khata page
+  ends on a full-width **"Order materials now"** (`order.startNow`, the order
+  page's own words) to `/order/<link>`, and **Pay now** likewise left the menu
+  to sit beside the figure it settles. What is left in the menu is only
+  looking things up. Both appear solely when they can act — the button needs
+  `order_link`, which `customer_khata` withholds while ordering is off; the
+  Pay button needs `upi_id`, withheld while the UPI switch is off.
 - Verified on real Shree Balaji khata links: 7 screens × 3 languages at 320px,
   zero overflow and no blank screen, plus the back button. Cases no live row
   covers — an advance alongside dues, a payment split across bills, an order
