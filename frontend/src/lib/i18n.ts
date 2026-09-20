@@ -1091,15 +1091,13 @@ const STRINGS = {
 
   // ── Customer order page (public, /order/<link>) ─────────────────────
   'order.title': { en: 'Order materials', hi: 'सामान ऑर्डर करें', mr: 'साहित्य ऑर्डर करा' },
+  // Short, and without the shop's name: the bar, the address card and the
+  // order button all carry that already. What is left is the one thing the
+  // page does not otherwise say — that this is a request, not a firm order.
   'order.intro': {
-    en: 'Choose what you need and send your order. {business} will check it and confirm the final order.',
-    hi: 'जो चाहिए वह चुनें और ऑर्डर भेजें। {business} इसे देखकर अंतिम ऑर्डर पक्का करेंगे।',
-    mr: 'हवे ते निवडा आणि ऑर्डर पाठवा. {business} ते तपासून अंतिम ऑर्डर निश्चित करतील.',
-  },
-  'order.pricesNote': {
-    en: 'Prices are indicative. Final price will be confirmed by the supplier.',
-    hi: 'दाम अंदाज़न हैं। अंतिम दाम सप्लायर पक्का करेंगे।',
-    mr: 'दर अंदाजे आहेत. अंतिम दर सप्लायर निश्चित करतील.',
+    en: 'The shop will check your order and confirm the final one.',
+    hi: 'दुकान आपका ऑर्डर देखकर अंतिम ऑर्डर पक्का करेगी।',
+    mr: 'दुकान तुमची ऑर्डर तपासून अंतिम ऑर्डर निश्चित करेल.',
   },
   'order.priceOnRequest': { en: 'Price on request', hi: 'दाम पूछें', mr: 'दर विचारा' },
   'order.search': { en: 'Search materials…', hi: 'सामान खोजें…', mr: 'साहित्य शोधा…' },
@@ -1128,7 +1126,6 @@ const STRINGS = {
   'order.date': { en: 'Delivery date (optional)', hi: 'डिलीवरी की तारीख (वैकल्पिक)', mr: 'डिलिव्हरीची तारीख (ऐच्छिक)' },
   'order.note': { en: 'Note for the supplier (optional)', hi: 'सप्लायर के लिए नोट (वैकल्पिक)', mr: 'सप्लायरसाठी नोट (ऐच्छिक)' },
   'order.notePlaceholder': { en: 'e.g. Deliver before 10 am', hi: 'जैसे: सुबह 10 बजे से पहले भेजें', mr: 'उदा. सकाळी 10 च्या आधी पाठवा' },
-  'order.place': { en: 'Place order', hi: 'ऑर्डर भेजें', mr: 'ऑर्डर पाठवा' },
   // The button the whole order box folds into.
   'order.startNow': {
     en: 'Order materials now',
@@ -1390,8 +1387,11 @@ const STRINGS = {
   },
   // …and the customer's page.
   'khata.pageTitle': { en: 'Account statement', hi: 'खाता विवरण', mr: 'खाते विवरण' },
-  'khata.for': { en: 'Statement for {name}', hi: '{name} का खाता', mr: '{name} यांचे खाते' },
-  'khata.due': { en: 'Balance due', hi: 'बकाया', mr: 'बाकी' },
+  'khata.yourAccountWith': {
+    en: 'Your account with {business}',
+    hi: '{business} के साथ आपका खाता',
+    mr: '{business} सोबत तुमचे खाते',
+  },
   'khata.youOwe': { en: 'You owe', hi: 'आपको देना है', mr: 'तुम्हाला द्यायचे आहे' },
   'khata.netNote': {
     en: '{bills} on your bills, less {advance} advance with us.',
@@ -1402,7 +1402,6 @@ const STRINGS = {
   'khata.settled': { en: 'Your account is fully settled. Thank you!', hi: 'आपका खाता पूरा साफ़ है। धन्यवाद!', mr: 'तुमचे खाते पूर्ण साफ आहे. धन्यवाद!' },
   'khata.download': { en: 'Download PDF', hi: 'PDF डाउनलोड करें', mr: 'PDF डाउनलोड करा' },
   'khata.call': { en: 'Call', hi: 'कॉल करें', mr: 'कॉल करा' },
-  'khata.history': { en: 'Bills and payments', hi: 'बिल और भुगतान', mr: 'बिले आणि पेमेंट' },
   'khata.none': { en: 'No bills or payments yet.', hi: 'अभी कोई बिल या भुगतान नहीं।', mr: 'अजून कोणतेही बिल किंवा पेमेंट नाही.' },
   'khata.showOlder': { en: 'Show older ({count})', hi: 'पुराने देखें ({count})', mr: 'जुने पाहा ({count})' },
   'khata.bill': { en: 'Bill {no}', hi: 'बिल {no}', mr: 'बिल {no}' },
@@ -1453,15 +1452,14 @@ const STRINGS = {
   // The customer's links remembered on their phone (lib/customerLinks).
   'order.myKhata': { en: 'My khata', hi: 'मेरा खाता', mr: 'माझे खाते' },
   'order.myKhataHint': {
-    en: 'Your bills, payments and balance with {business}',
-    hi: '{business} के साथ आपके बिल, भुगतान और बकाया',
-    mr: '{business} सोबतची तुमची बिले, पेमेंट आणि बाकी',
+    en: 'Your bills, payments and balance',
+    hi: 'आपके बिल, भुगतान और बकाया',
+    mr: 'तुमची बिले, पेमेंट आणि बाकी',
   },
   'order.orderMore': { en: 'Order more materials', hi: 'और माल मँगाएँ', mr: 'अजून माल मागवा' },
   'khata.orderMaterials': { en: 'Order materials', hi: 'माल मँगाएँ', mr: 'माल मागवा' },
   // The khata link's menu: one row per thing a customer comes here for.
   'khata.menuPay': { en: 'Pay now', hi: 'अभी भुगतान करें', mr: 'आता पेमेंट करा' },
-  'khata.payDetail': { en: 'Pay {amount} by UPI', hi: 'UPI से {amount} भेजें', mr: 'UPI ने {amount} पाठवा' },
   'khata.menuBills': { en: 'My bills', hi: 'मेरे बिल', mr: 'माझी बिले' },
   'khata.billsDetail': {
     en: '{count} bills · {amount} still to pay',
@@ -1506,9 +1504,9 @@ const STRINGS = {
   },
   'khata.menuStatement': { en: 'Full statement', hi: 'पूरा खाता', mr: 'पूर्ण खाते' },
   'khata.statementDetail': {
-    en: 'Every bill and payment, and the PDF',
-    hi: 'हर बिल और भुगतान, और PDF',
-    mr: 'प्रत्येक बिल आणि पेमेंट, आणि PDF',
+    en: 'How your balance moved, and the PDF to keep',
+    hi: 'आपका बकाया कैसे बढ़ा और घटा, और रखने के लिए PDF',
+    mr: 'तुमची बाकी कशी बदलली, आणि ठेवण्यासाठी PDF',
   },
   'khata.noEstimates': { en: 'No estimates yet.', hi: 'अभी कोई एस्टिमेट नहीं।', mr: 'अजून कोणतेही एस्टिमेट नाही.' },
   'khata.noOrders': { en: 'No orders yet.', hi: 'अभी कोई ऑर्डर नहीं।', mr: 'अजून कोणतीही ऑर्डर नाही.' },
@@ -1520,9 +1518,9 @@ const STRINGS = {
   },
   'khata.menuCall': { en: 'Call the shop', hi: 'दुकान को कॉल करें', mr: 'दुकानाला कॉल करा' },
   'khata.orderDetail': {
-    en: 'Send a new order to {business}',
-    hi: '{business} को नया ऑर्डर भेजें',
-    mr: '{business} ला नवीन ऑर्डर पाठवा',
+    en: 'Send a new order to the shop',
+    hi: 'दुकान को नया ऑर्डर भेजें',
+    mr: 'दुकानाला नवीन ऑर्डर पाठवा',
   },
   // The order page's Get directions (migration 031).
   'order.directions': { en: 'Get directions', hi: 'रास्ता देखें', mr: 'रस्ता पाहा' },
@@ -1538,7 +1536,6 @@ const STRINGS = {
   'tl.received': { en: 'Material received', hi: 'माल मिल गया', mr: 'माल मिळाला' },
   // The khata link's bill and estimate PDFs, estimates and orders (migration 031).
   'khata.billPdf': { en: 'Bill PDF', hi: 'बिल PDF', mr: 'बिल PDF' },
-  'khata.estimates': { en: 'Estimates', hi: 'एस्टिमेट', mr: 'एस्टिमेट' },
   'khata.estimate': { en: 'Estimate {no}', hi: 'एस्टिमेट {no}', mr: 'एस्टिमेट {no}' },
   'khata.estOpen': { en: 'Open ({count})', hi: 'चालू ({count})', mr: 'चालू ({count})' },
   'khata.estOpenOne': { en: 'Open', hi: 'चालू', mr: 'चालू' },
@@ -1551,17 +1548,11 @@ const STRINGS = {
   'khata.ordAnswered': { en: 'Answered ({count})', hi: 'जवाब मिल गया ({count})', mr: 'उत्तर मिळाले ({count})' },
   'khata.estimatePdf': { en: 'Estimate PDF', hi: 'एस्टिमेट PDF', mr: 'एस्टिमेट PDF' },
   'khata.estBilled': { en: 'Billed', hi: 'बिल बन गया', mr: 'बिल झाले' },
-  'khata.orders': { en: 'Your orders', hi: 'आपके ऑर्डर', mr: 'तुमच्या ऑर्डर' },
   'khata.orderItems': { en: 'Materials: {count}', hi: 'सामान: {count}', mr: 'साहित्य: {count}' },
   'khata.notFound': {
     en: 'This khata link is not valid, or it has been stopped. Please ask your supplier for a new one.',
     hi: 'यह खाता लिंक सही नहीं है या बंद कर दिया गया है। कृपया अपने सप्लायर से नया लिंक माँगें।',
     mr: 'ही खाते लिंक योग्य नाही किंवा बंद केली आहे. कृपया तुमच्या सप्लायरकडून नवीन लिंक मागा.',
-  },
-  'khata.readOnly': {
-    en: 'This page only shows your account. For any question, contact {business}.',
-    hi: 'यह पेज सिर्फ़ आपका खाता दिखाता है। किसी भी सवाल के लिए {business} से संपर्क करें।',
-    mr: 'हे पेज फक्त तुमचे खाते दाखवते. कोणत्याही प्रश्नासाठी {business} यांच्याशी संपर्क साधा.',
   },
   // UPI (migration 029): Settings…
   'upi.settingsTitle': { en: 'UPI payments', hi: 'UPI भुगतान', mr: 'UPI पेमेंट' },
@@ -1626,9 +1617,9 @@ const STRINGS = {
   // …and the customer's khata page.
   'upi.payTitle': { en: 'Pay by UPI', hi: 'UPI से भुगतान', mr: 'UPI ने पेमेंट' },
   'upi.payHint': {
-    en: 'Scan with any UPI app, or tap the button on this phone. It shows here once {business} has recorded it.',
-    hi: 'किसी भी UPI ऐप से स्कैन करें, या इसी फ़ोन पर बटन दबाएँ। {business} के दर्ज करने के बाद यह यहाँ दिखेगा।',
-    mr: 'कोणत्याही UPI ॲपने स्कॅन करा, किंवा याच फोनवर बटण दाबा. {business} यांनी नोंदवल्यावर हे इथे दिसेल.',
+    en: 'Scan with any UPI app, or tap the button on this phone. It shows here once the shop has recorded it.',
+    hi: 'किसी भी UPI ऐप से स्कैन करें, या इसी फ़ोन पर बटन दबाएँ। दुकान के दर्ज करने के बाद यह यहाँ दिखेगा।',
+    mr: 'कोणत्याही UPI ॲपने स्कॅन करा, किंवा याच फोनवर बटण दाबा. दुकानाने नोंदवल्यावर हे इथे दिसेल.',
   },
   'upi.openApp': { en: 'Pay {amount} in UPI app', hi: 'UPI ऐप में {amount} दें', mr: 'UPI ॲपमध्ये {amount} द्या' },
   'ord.cancel': { en: 'Cancel', hi: 'रद्द करें', mr: 'रद्द करा' },

@@ -943,6 +943,18 @@ a wall of options. Built one item at a time on `khata-structure`.
 - **Full statement** keeps the mixed running-balance list and the ledger PDF,
   with a line explaining that the small figure under each amount is the
   balance after that line.
+- **Two brands, one bar** (2026-09-20, asked for straight after): the sticky
+  bar says **BuildSupply** with the language and day/night buttons while the
+  page is at the top, and the shop's logo and name sit under it on the page;
+  scrolling brings the shop up into the bar and fades BuildSupply and both
+  buttons out, scrolling back brings them home. Two absolutely-placed layers
+  in a fixed 44px row, cross-faded on `shopUp`, which a rAF-throttled scroll
+  listener sets the moment the shop's band passes under the bar (the
+  supplier's own Profile screen does the same with their name). No band —
+  loading, or a dead link — means BuildSupply stays. The top card opens with the customer's
+  coloured initials (`CustomerAvatar`, seeded from the khata token — the view
+  returns no customer id), their name in bold and their phone and site under
+  it, with the figure below a divider.
 - Verified on real Shree Balaji khata links: 7 screens × 3 languages at 320px,
   zero overflow and no blank screen, plus the back button. Cases no live row
   covers — an advance alongside dues, a payment split across bills, an order
