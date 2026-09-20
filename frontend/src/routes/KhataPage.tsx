@@ -28,7 +28,15 @@ import { downloadQuotationPdf } from '@/lib/quotationPdf'
 import type { Customer, Invoice, InvoiceItem, Quotation, QuotationItem, Supplier } from '@/lib/database.types'
 import type { InvoiceWithCustomer } from '@/services/invoices'
 import type { PaymentWithInvoice } from '@/services/payments'
-import { confirmReceived, getKhata, getKhataDocument, type KhataInvoice, type KhataView } from '@/services/khata'
+import {
+  confirmReceived,
+  getKhata,
+  getKhataDocument,
+  type KhataEstimate,
+  type KhataInvoice,
+  type KhataOrder,
+  type KhataView,
+} from '@/services/khata'
 import { forgetKhataCode, rememberKhataCode } from '@/lib/customerLinks'
 import { warmPdfKit } from '@/lib/pdfKit'
 import { QrCode } from '@/components/QrCode'
@@ -198,8 +206,12 @@ export default function KhataPage() {
   const payments = found ? [...found.payments].sort((a, b) => b.created_at.localeCompare(a.created_at)) : []
   const paidTotal = payments.reduce((sum, p) => sum + Number(p.amount), 0)
   const estimates = found?.estimates ?? []
+  const openEstimates = estimates.filter((q) => q.status !== 'Converted' && q.status !== 'Expired')
+  const closedEstimates = estimates.filter((q) => q.status === 'Converted' || q.status === 'Expired')
   const orders = found?.orders ?? []
-  const ordersWaiting = orders.filter((o) => o.status === 'pending').length
+  const waitingOrders = orders.filter((o) => o.status === 'pending')
+  const answeredOrders = orders.filter((o) => o.status !== 'pending')
+  const ordersWaiting = waitingOrders.length
 
   async function download() {
     if (!found || !ledger || downloading) return
@@ -350,6 +362,73 @@ export default function KhataPage() {
     )
   }
 
+  /** One group of estimates, with its heading. */
+  function estimateGroup(rows: KhataEstimate[], heading: string) {
+    if (rows.length === 0) return null
+    return (
+      <div>
+        <div className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-muted">{heading}</div>
+        <Card className="p-0">
+          <div className="flex flex-col divide-y divide-border">
+            {rows.map((q) => (
+              <div key={q.quote_no} className="flex items-start justify-between gap-3 p-4">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-ink">{t('khata.estimate', { no: q.quote_no })}</div>
+                  <div className="text-xs text-muted">
+                    {formatDate(q.created_at)}
+                    {q.site ? ` · ${q.site}` : ''}
+                  </div>
+                  <div className="mt-1">{pdfButton('estimate', q.quote_no, t('khata.estimatePdf'))}</div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <div className="text-sm font-semibold text-ink">{formatINR(Number(q.total))}</div>
+                  {q.status === 'Converted' ? (
+                    <div className="text-[11px] font-medium text-accent">{t('khata.estBilled')}</div>
+                  ) : q.status === 'Expired' ? (
+                    <div className="text-[11px] text-muted">{t('status.Expired')}</div>
+                  ) : (
+                    <div className="text-[11px] text-muted">{t('khata.estOpenOne')}</div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+    )
+  }
+
+  /** One group of online orders, with its heading. Each opens its status link. */
+  function orderGroup(rows: KhataOrder[], heading: string) {
+    if (rows.length === 0) return null
+    return (
+      <div>
+        <div className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-muted">{heading}</div>
+        <Card className="p-0">
+          <div className="flex flex-col divide-y divide-border">
+            {rows.map((o) => (
+              <Link key={o.code} to={`/order-status/${o.code}`} className="flex items-center justify-between gap-3 p-4">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-ink">{formatDate(o.created_at)}</div>
+                  <div className="text-xs text-muted">
+                    {t('khata.orderItems', { count: o.item_count })}
+                    {o.delivery_date ? ` · ${t('order.deliveryOn', { date: formatDate(o.delivery_date) })}` : ''}
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Badge tone={o.status === 'approved' ? 'success' : o.status === 'rejected' ? 'neutral' : 'warning'}>
+                    {t(`order.status.${o.status}`)}
+                  </Badge>
+                  <ChevronRight size={16} className="text-muted" />
+                </div>
+              </Link>
+            ))}
+          </div>
+        </Card>
+      </div>
+    )
+  }
+
   const sectionTitle: Record<Section, string> = {
     pay: t('khata.menuPay'),
     bills: t('khata.menuBills'),
@@ -484,55 +563,21 @@ export default function KhataPage() {
             {section === 'estimates' && (
               <>
                 {docFailed && problem(t('error.generic'))}
-                <Card className="p-0">
-                  <div className="flex flex-col divide-y divide-border">
-                    {estimates.map((q) => (
-                      <div key={q.quote_no} className="flex items-start justify-between gap-3 p-4">
-                        <div className="min-w-0">
-                          <div className="text-sm font-semibold text-ink">{t('khata.estimate', { no: q.quote_no })}</div>
-                          <div className="text-xs text-muted">
-                            {formatDate(q.created_at)}
-                            {q.site ? ` · ${q.site}` : ''}
-                          </div>
-                          <div className="mt-1">{pdfButton('estimate', q.quote_no, t('khata.estimatePdf'))}</div>
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <div className="text-sm font-semibold text-ink">{formatINR(Number(q.total))}</div>
-                          {q.status === 'Converted' ? (
-                            <div className="text-[11px] font-medium text-accent">{t('khata.estBilled')}</div>
-                          ) : q.status === 'Expired' ? (
-                            <div className="text-[11px] text-muted">{t('status.Expired')}</div>
-                          ) : null}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
+                {/* An estimate a customer can still act on is the one they
+                    came to look at; the ones already billed, or past their
+                    date, sit below as a record. */}
+                {estimateGroup(openEstimates, t('khata.estOpen', { count: openEstimates.length }))}
+                {estimateGroup(closedEstimates, t('khata.estClosed', { count: closedEstimates.length }))}
               </>
             )}
 
             {section === 'orders' && (
-              <Card className="p-0">
-                <div className="flex flex-col divide-y divide-border">
-                  {orders.map((o) => (
-                    <Link key={o.code} to={`/order-status/${o.code}`} className="flex items-center justify-between gap-3 p-4">
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold text-ink">{formatDate(o.created_at)}</div>
-                        <div className="text-xs text-muted">
-                          {t('khata.orderItems', { count: o.item_count })}
-                          {o.delivery_date ? ` · ${t('order.deliveryOn', { date: formatDate(o.delivery_date) })}` : ''}
-                        </div>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-1">
-                        <Badge tone={o.status === 'approved' ? 'success' : o.status === 'rejected' ? 'neutral' : 'warning'}>
-                          {t(`order.status.${o.status}`)}
-                        </Badge>
-                        <ChevronRight size={16} className="text-muted" />
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </Card>
+              <>
+                {/* Orders the shop has not answered yet are the ones a
+                    customer is waiting on, so they come first. */}
+                {orderGroup(waitingOrders, t('khata.ordWaiting', { count: waitingOrders.length }))}
+                {orderGroup(answeredOrders, t('khata.ordAnswered', { count: answeredOrders.length }))}
+              </>
             )}
 
             {section === 'statement' && (
