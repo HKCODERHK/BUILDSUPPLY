@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ChevronRight, MapPin, Minus, Navigation, Phone, Plus, Search } from 'lucide-react'
+import { ChevronRight, MapPin, Minus, Navigation, Phone, Plus, Search, Send, Truck } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -345,68 +345,81 @@ export default function OrderPage() {
           </Card>
         )}
 
-        <Card className="flex flex-col gap-3 p-4">
-          {showSearch && (
-            <div className="relative">
-              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-              <Input placeholder={t('order.search')} value={query} onChange={(e) => setQuery(e.target.value)} className="pl-9" />
+        {/* One box, headed by the shop's name and ended by a button that
+            names it again: on a link a customer opened from a WhatsApp
+            message, whose shop this order goes to should never be a guess. */}
+        <section className="overflow-hidden rounded-2xl border border-border bg-card">
+          <div className="flex items-center gap-3 border-b border-border bg-accent-bg px-4 py-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-white">
+              <Truck size={20} />
+            </span>
+            <div className="min-w-0">
+              <div className="text-sm font-bold leading-tight text-accent-text">{page.business_name}</div>
+              <div className="text-xs text-muted">{t('order.title')}</div>
             </div>
-          )}
-          {materials.length === 0 && <p className="text-sm text-muted">{t('order.noMaterials')}</p>}
-          <div className="flex flex-col divide-y divide-border">
-            {visible.map((m) => {
-              const value = qty[m.id] ?? ''
-              return (
-                <div key={m.id} className="flex items-center gap-3 py-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium text-ink">{m.name}</div>
-                    <div className="text-xs text-muted">
-                      {page.show_prices
-                        ? m.price != null
-                          ? `${formatINR(m.price)}${m.unit ? ` / ${m.unit}` : ''}`
-                          : t('order.priceOnRequest')
-                        : m.unit}
+          </div>
+
+          <div className="flex flex-col gap-3 p-4 sm:p-5">
+            {showSearch && (
+              <div className="relative">
+                <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                <Input placeholder={t('order.search')} value={query} onChange={(e) => setQuery(e.target.value)} className="pl-9" />
+              </div>
+            )}
+            {materials.length === 0 && <p className="text-sm text-muted">{t('order.noMaterials')}</p>}
+            <div className="flex flex-col divide-y divide-border">
+              {visible.map((m) => {
+                const value = qty[m.id] ?? ''
+                return (
+                  <div key={m.id} className="flex items-center gap-3 py-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium text-ink">{m.name}</div>
+                      <div className="text-xs text-muted">
+                        {page.show_prices
+                          ? m.price != null
+                            ? `${formatINR(m.price)}${m.unit ? ` / ${m.unit}` : ''}`
+                            : t('order.priceOnRequest')
+                          : m.unit}
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <button
+                        type="button"
+                        aria-label={t('order.less', { name: m.name })}
+                        onClick={() => step(m.id, -1)}
+                        disabled={!Number(value)}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-ink disabled:opacity-40"
+                      >
+                        <Minus size={15} />
+                      </button>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        aria-label={t('order.qtyOf', { name: m.name })}
+                        placeholder="0"
+                        value={value}
+                        onChange={(e) => {
+                          setQty((prev) => ({ ...prev, [m.id]: sanitizeDecimal(e.target.value).slice(0, 8) }))
+                          setError(null)
+                        }}
+                        className="h-9 w-16 rounded-lg border border-border bg-card text-center text-sm text-ink outline-none focus:border-accent"
+                      />
+                      <button
+                        type="button"
+                        aria-label={t('order.more', { name: m.name })}
+                        onClick={() => step(m.id, 1)}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-accent"
+                      >
+                        <Plus size={15} />
+                      </button>
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <button
-                      type="button"
-                      aria-label={t('order.less', { name: m.name })}
-                      onClick={() => step(m.id, -1)}
-                      disabled={!Number(value)}
-                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-ink disabled:opacity-40"
-                    >
-                      <Minus size={15} />
-                    </button>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      aria-label={t('order.qtyOf', { name: m.name })}
-                      placeholder="0"
-                      value={value}
-                      onChange={(e) => {
-                        setQty((prev) => ({ ...prev, [m.id]: sanitizeDecimal(e.target.value).slice(0, 8) }))
-                        setError(null)
-                      }}
-                      className="h-9 w-16 rounded-lg border border-border bg-card text-center text-sm text-ink outline-none focus:border-accent"
-                    />
-                    <button
-                      type="button"
-                      aria-label={t('order.more', { name: m.name })}
-                      onClick={() => step(m.id, 1)}
-                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-accent"
-                    >
-                      <Plus size={15} />
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
-        </Card>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <Card className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4 border-t border-border p-4 sm:p-5">
             <div className="text-sm font-semibold text-ink">
               {chosen.length > 0 ? t('order.selectedCount', { count: chosen.length }) : t('order.yourDetails')}
               {estimatedTotal != null && (
@@ -458,11 +471,25 @@ export default function OrderPage() {
             {error && (
               <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>
             )}
-            <Button type="submit" disabled={sending} className="w-full">
-              {sending ? t('order.placing') : t('order.place')}
+            {/* Big, and wrapping rather than clipped: a long business name
+                must still read as one sentence with the button's word. */}
+            <Button
+              type="submit"
+              size="lg"
+              disabled={sending}
+              className="h-auto w-full whitespace-normal rounded-xl py-4 text-base leading-snug shadow-sm"
+            >
+              {sending ? (
+                t('order.placing')
+              ) : (
+                <>
+                  <Send size={18} className="shrink-0" />
+                  <span>{t('order.placeAt', { business: page.business_name })}</span>
+                </>
+              )}
             </Button>
-          </Card>
-        </form>
+          </form>
+        </section>
       </main>
     </div>
   )

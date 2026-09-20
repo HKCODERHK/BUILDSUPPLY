@@ -1121,6 +1121,13 @@ const STRINGS = {
   'order.note': { en: 'Note for the supplier (optional)', hi: 'सप्लायर के लिए नोट (वैकल्पिक)', mr: 'सप्लायरसाठी नोट (ऐच्छिक)' },
   'order.notePlaceholder': { en: 'e.g. Deliver before 10 am', hi: 'जैसे: सुबह 10 बजे से पहले भेजें', mr: 'उदा. सकाळी 10 च्या आधी पाठवा' },
   'order.place': { en: 'Place order', hi: 'ऑर्डर भेजें', mr: 'ऑर्डर पाठवा' },
+  // The button at the end of the order box names the shop: the customer
+  // came in on a shared link and should see who the order goes to.
+  'order.placeAt': {
+    en: 'Place order at {business}',
+    hi: '{business} को ऑर्डर भेजें',
+    mr: '{business} ला ऑर्डर पाठवा',
+  },
   'order.placing': { en: 'Sending…', hi: 'भेज रहे हैं…', mr: 'पाठवत आहे…' },
   'order.pickSomething': { en: 'Add at least one material.', hi: 'कम से कम एक सामान जोड़ें।', mr: 'किमान एक साहित्य जोडा.' },
   'order.nameInvalid': { en: 'Please enter your name.', hi: 'कृपया अपना नाम लिखें।', mr: 'कृपया तुमचे नाव लिहा.' },
