@@ -33,19 +33,35 @@ export function rememberOrder(link: string, token: string, at: string = new Date
   return list
 }
 
-/** Their khata link code with this supplier, if this phone has opened it. */
-export function readKhataCode(link: string): string | null {
+/**
+ * Their khata with this supplier, if this phone has opened it: the code and
+ * the name it belongs to, kept together.
+ *
+ * The name is stored *with* the code on purpose. It used to be read from the
+ * last order this phone had sent instead, and those are two different things:
+ * one phone that has opened one customer's khata and placed another
+ * customer's order showed the first name over the second account. One store,
+ * one customer.
+ */
+export type KhataLink = { code: string; name: string | null }
+
+export function readKhata(link: string): KhataLink | null {
   try {
-    const code = localStorage.getItem(khataKey(link))
-    return code && CODE.test(code) ? code : null
+    const raw = localStorage.getItem(khataKey(link))
+    if (!raw) return null
+    // Stored before the name was kept: the code on its own.
+    if (CODE.test(raw)) return { code: raw, name: null }
+    const value = JSON.parse(raw)
+    if (!value || !CODE.test(value.code)) return null
+    return { code: value.code, name: typeof value.name === 'string' && value.name ? value.name : null }
   } catch {
     return null
   }
 }
 
-export function rememberKhataCode(link: string, code: string) {
+export function rememberKhataCode(link: string, code: string, name?: string | null) {
   try {
-    localStorage.setItem(khataKey(link), code)
+    localStorage.setItem(khataKey(link), JSON.stringify({ code, name: name ?? null }))
   } catch {
     // Not remembered; the customer still has the link the supplier sent.
   }
@@ -56,7 +72,11 @@ export function forgetKhataCode(code: string) {
   try {
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const key = localStorage.key(i)
-      if (key?.startsWith('buildsupply-khata:') && localStorage.getItem(key) === code) localStorage.removeItem(key)
+      if (!key?.startsWith('buildsupply-khata:')) continue
+      const raw = localStorage.getItem(key)
+      // Either shape: the bare code as it used to be kept, or { code, name }.
+      const stored = raw && CODE.test(raw) ? raw : raw ? (JSON.parse(raw) || {}).code : null
+      if (stored === code) localStorage.removeItem(key)
     }
   } catch {
     // Nothing to forget on a phone that stores nothing.

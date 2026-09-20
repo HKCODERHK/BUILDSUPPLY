@@ -16,7 +16,7 @@ import type { TranslationKey } from '@/lib/i18n'
 import { sanitizeDecimal } from '@/lib/numberInput'
 import { newRequestId } from '@/services/db'
 import { getOrderPage, orderStatusUrl, placeOrder, type OrderPage as OrderPageData } from '@/services/orders'
-import { readKhataCode, rememberOrder } from '@/lib/customerLinks'
+import { readKhata, rememberOrder } from '@/lib/customerLinks'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
@@ -80,9 +80,9 @@ export default function OrderPage() {
     return { name: previous?.name ?? '', phone: previous?.phone ?? '', site: previous?.site ?? '', date: '', note: '', trap: '' }
   })
   const [last, setLast] = useState<LastOrder | null>(() => readLast(link))
-  // Their khata code with this shop, if this phone has ever opened it
-  // (lib/customerLinks — on the phone only, never on the server).
-  const [khataCode] = useState(() => readKhataCode(link))
+  // Their khata with this shop — code and name together — if this phone has
+  // ever opened it (lib/customerLinks — on the phone only, never on the server).
+  const [khata] = useState(() => readKhata(link))
   // The materials and the form stay folded into one button until the customer
   // says they want to order (2026-09-20).
   const [ordering, setOrdering] = useState(false)
@@ -325,34 +325,28 @@ export default function OrderPage() {
             name, from the last order this phone sent, and their khata a tap
             away when this phone knows the code. Both come off the phone, so
             a shared link still shows nothing about anybody. */}
-        {last?.name &&
-          (khataCode ? (
-            <Link to={`/khata/${khataCode}`}>
-              <Card className="flex items-center gap-3">
-                <CustomerAvatar id={khataCode} name={last.name} size={44} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-bold text-ink">{last.name}</span>
-                  <span className="block truncate text-xs text-muted">
-                    {[last.phone, last.site].filter(Boolean).join(' · ')}
-                  </span>
-                </span>
-                <span className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-accent">
-                  {t('order.myKhata')}
-                  <ChevronRight size={14} />
-                </span>
-              </Card>
-            </Link>
-          ) : (
+        {khata ? (
+          <Link to={`/khata/${khata.code}`}>
             <Card className="flex items-center gap-3">
-              <CustomerAvatar id={link} name={last.name} size={44} />
-              <span className="min-w-0">
-                <span className="block truncate text-sm font-bold text-ink">{last.name}</span>
-                <span className="block truncate text-xs text-muted">
-                  {[last.phone, last.site].filter(Boolean).join(' · ')}
-                </span>
+              <CustomerAvatar id={khata.code} name={khata.name ?? t('order.myKhata')} size={44} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-bold text-ink">{khata.name ?? t('order.myKhata')}</span>
+                <span className="block truncate text-xs text-muted">{t('order.myKhataHint')}</span>
               </span>
+              <ChevronRight size={18} className="shrink-0 text-muted" />
             </Card>
-          ))}
+          </Link>
+        ) : last?.name ? (
+          <Card className="flex items-center gap-3">
+            <CustomerAvatar id={link} name={last.name} size={44} />
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-bold text-ink">{last.name}</span>
+              <span className="block truncate text-xs text-muted">
+                {[last.phone, last.site].filter(Boolean).join(' · ')}
+              </span>
+            </span>
+          </Card>
+        ) : null}
 
         {/* The page a customer lands on stays short — the shop, where it is,
             and one button. The materials and the form come out of that same

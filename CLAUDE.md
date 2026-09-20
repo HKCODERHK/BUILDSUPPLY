@@ -915,12 +915,18 @@ Asked for one piece at a time, merged together (9405d9e…, branch
   A customer who came in by QR, with no khata link, no longer has a list of
   their past orders on this page; their way back is the status link the
   success screen gives them. Putting the list back is re-adding one card.
-- **A returning customer is named on the order page** (2026-09-20): when this
-  phone has sent an order before, a card under the shop's shows their own
-  initials and the name they gave, their phone and site under it, and — when
-  the phone also knows their khata code — **My khata ›** on the right, linking
-  to it. Both come from the phone (`readLast`, `readKhataCode`); a first-time
-  visitor, or a shared link opened on another phone, sees no card at all.
+- **A returning customer is named on the order page** (2026-09-20): a card
+  under the shop's, with their initials and name. **The name and the khata
+  link must come from the same store.** The first version took the name from
+  the last order this phone sent and the code from the last khata it opened,
+  and the user's own phone had both — it showed "himanshu khalatkar" over a
+  card that opened toshan's khata. `buildsupply-khata:<link>` now holds
+  `{ code, name }` (`readKhata`; a bare code left by the old version still
+  reads, with no name), the khata page writes the name it is showing, and the
+  card is either that customer — name, and it opens their khata — or, with no
+  khata on this phone, the last order's own name, phone and site and no link.
+  A first-time visitor sees no card. The order form still prefills from the
+  last order, which is a different question and stays that way.
 - **"My khata" moved to the order status page instead** (2026-09-20). An old
   order link is often the only one a customer still has, and `order_status`
   carries nothing about the khata — checked: it returns bill, business_name,
