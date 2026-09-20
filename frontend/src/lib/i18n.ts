@@ -1206,7 +1206,6 @@ const STRINGS = {
     mr: 'ऑनलाइन ऑर्डर सध्या उपलब्ध नाही.',
   },
   'order.notFound': { en: 'This order link is not valid.', hi: 'यह ऑर्डर लिंक सही नहीं है।', mr: 'ही ऑर्डर लिंक योग्य नाही.' },
-  'order.recent': { en: 'Your recent orders', hi: 'आपके हाल के ऑर्डर', mr: 'तुमच्या अलीकडील ऑर्डर' },
   'order.againTitle': { en: 'Order the same again?', hi: 'वही ऑर्डर फिर से?', mr: 'तीच ऑर्डर पुन्हा?' },
   'order.againHint': {
     en: 'The materials and quantities from your last order ({count}).',
@@ -1450,12 +1449,6 @@ const STRINGS = {
   // Profile: the order QR button under the business name.
   'set.orderQr': { en: 'Order QR', hi: 'ऑर्डर QR', mr: 'ऑर्डर QR' },
   // The customer's links remembered on their phone (lib/customerLinks).
-  'order.myKhata': { en: 'My khata', hi: 'मेरा खाता', mr: 'माझे खाते' },
-  'order.myKhataHint': {
-    en: 'Your bills, payments and balance',
-    hi: 'आपके बिल, भुगतान और बकाया',
-    mr: 'तुमची बिले, पेमेंट आणि बाकी',
-  },
   'order.orderMore': { en: 'Order more materials', hi: 'और माल मँगाएँ', mr: 'अजून माल मागवा' },
   // The khata link's menu: one row per thing a customer comes here for.
   'khata.menuPay': { en: 'Pay now', hi: 'अभी भुगतान करें', mr: 'आता पेमेंट करा' },

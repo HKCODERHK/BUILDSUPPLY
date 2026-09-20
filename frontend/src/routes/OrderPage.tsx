@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ChevronDown, ChevronRight, ChevronUp, MapPin, Minus, Navigation, Phone, Plus, Search, Send, Truck } from 'lucide-react'
+import { ChevronDown, ChevronUp, MapPin, Minus, Navigation, Phone, Plus, Search, Send, Truck } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,7 +15,7 @@ import type { TranslationKey } from '@/lib/i18n'
 import { sanitizeDecimal } from '@/lib/numberInput'
 import { newRequestId } from '@/services/db'
 import { getOrderPage, orderStatusUrl, placeOrder, type OrderPage as OrderPageData } from '@/services/orders'
-import { readKhataCode, readRecentOrders, rememberOrder, type RecentOrder } from '@/lib/customerLinks'
+import { rememberOrder } from '@/lib/customerLinks'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
@@ -90,11 +90,6 @@ export default function OrderPage() {
   // undefined: not sent yet. A string: the status code. null: nothing to show.
   const [sentToken, setSentToken] = useState<string | null | undefined>(undefined)
   const [copied, setCopied] = useState(false)
-  // The customer's own recent orders and khata link from this supplier, kept
-  // on their phone only (lib/customerLinks), so neither is lost after they
-  // close the page.
-  const [recent, setRecent] = useState<RecentOrder[]>(() => readRecentOrders(link))
-  const [khataCode] = useState(() => readKhataCode(link))
 
   useEffect(() => {
     getOrderPage(link)
@@ -167,7 +162,7 @@ export default function OrderPage() {
       }
       rememberLast(link, sent)
       setLast(sent)
-      if (result.token) setRecent(rememberOrder(link, result.token))
+      if (result.token) rememberOrder(link, result.token)
       setSentToken(result.token)
       window.scrollTo({ top: 0 })
     } catch (err) {
@@ -307,29 +302,6 @@ export default function OrderPage() {
             </div>
           </Card>
         )}
-        {khataCode && (
-          <Link to={`/khata/${khataCode}`}>
-            <Card className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-ink">{t('order.myKhata')}</div>
-                <div className="text-xs text-muted">{t('order.myKhataHint')}</div>
-              </div>
-              <ChevronRight size={18} className="shrink-0 text-muted" />
-            </Card>
-          </Link>
-        )}
-
-        {recent.length > 0 && (
-          <Card className="flex flex-col gap-2">
-            <div className="text-sm font-semibold text-ink">{t('order.recent')}</div>
-            {recent.map((r) => (
-              <Link key={r.token} to={`/order-status/${r.token}`} className="text-sm font-medium text-accent">
-                {new Date(r.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })} →
-              </Link>
-            ))}
-          </Card>
-        )}
-
         {lastAvailable.length > 0 && chosen.length === 0 && (
           <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
