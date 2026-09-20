@@ -196,6 +196,7 @@ export default function KhataPage() {
   const unpaidBills = billRows.filter((b) => Number(b.total) - Number(b.paid) > 0.005)
   const paidBills = billRows.filter((b) => Number(b.total) - Number(b.paid) <= 0.005)
   const payments = found ? [...found.payments].sort((a, b) => b.created_at.localeCompare(a.created_at)) : []
+  const paidTotal = payments.reduce((sum, p) => sum + Number(p.amount), 0)
   const estimates = found?.estimates ?? []
   const orders = found?.orders ?? []
   const ordersWaiting = orders.filter((o) => o.status === 'pending').length
@@ -426,26 +427,58 @@ export default function KhataPage() {
               (payments.length === 0 ? (
                 <Card className="text-sm text-muted">{t('khata.noPayments')}</Card>
               ) : (
-                <Card className="p-0">
-                  <div className="flex flex-col divide-y divide-border">
-                    {payments.map((p, i) => {
-                      const refs = p.payment_allocations
-                        .map((a) => (a.invoices.kind === 'opening' ? t('khata.opening') : a.invoices.invoice_no))
-                        .join(', ')
-                      return (
-                        <div key={i} className="flex items-start justify-between gap-3 p-4">
-                          <div className="min-w-0">
-                            <div className="text-sm font-semibold text-ink">{t('khata.payment', { mode: t(`mode.${p.mode}`) })}</div>
-                            <div className="text-xs text-muted">
-                              {formatDate(p.created_at)} · {refs ? t('khata.paidFor', { refs }) : t('khata.advanceReceived')}
-                            </div>
-                          </div>
-                          <div className="shrink-0 text-sm font-semibold text-accent">− {formatINR(Number(p.amount))}</div>
-                        </div>
-                      )
-                    })}
+                <div>
+                  <div className="mb-1.5 flex items-baseline justify-between gap-3 px-1">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+                      {t('khata.paymentsGroup', { count: payments.length })}
+                    </span>
+                    <span className="shrink-0 text-sm font-bold text-accent">{formatINR(paidTotal)}</span>
                   </div>
-                </Card>
+                  <Card className="p-0">
+                    <div className="flex flex-col divide-y divide-border">
+                      {payments.map((p, i) => {
+                        const allocated = p.payment_allocations.reduce((sum, a) => sum + Number(a.amount), 0)
+                        // Whatever a receipt was not used on sits as advance
+                        // (and money released by a cancelled bill comes back here).
+                        const kept = Math.max(0, Number(p.amount) - allocated)
+                        const parts = [
+                          ...p.payment_allocations.map((a) => ({
+                            label: a.invoices.kind === 'opening' ? t('khata.opening') : t('khata.bill', { no: a.invoices.invoice_no }),
+                            amount: Number(a.amount),
+                          })),
+                          ...(kept > 0.005 ? [{ label: t('khata.keptAdvance'), amount: kept }] : []),
+                        ]
+                        return (
+                          <div key={i} className="p-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="text-sm font-semibold text-ink">{formatDate(p.created_at)}</div>
+                                <div className="text-xs text-muted">{t(`mode.${p.mode}`)}</div>
+                              </div>
+                              <div className="shrink-0 text-base font-bold text-accent">− {formatINR(Number(p.amount))}</div>
+                            </div>
+                            {/* One bill: a line is enough. Several: every bill
+                                and its share, so a customer can check their
+                                money landed where they meant it to. */}
+                            {parts.length === 1 ? (
+                              <div className="mt-1 text-xs text-muted">{t('khata.paidInto', { ref: parts[0].label })}</div>
+                            ) : parts.length > 1 ? (
+                              <div className="mt-2 flex flex-col gap-1 rounded-lg bg-surface p-2.5">
+                                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">{t('khata.paymentSplit')}</div>
+                                {parts.map((part, j) => (
+                                  <div key={j} className="flex items-center justify-between gap-3 text-xs">
+                                    <span className="min-w-0 truncate text-muted">{part.label}</span>
+                                    <span className="shrink-0 font-semibold text-ink">{formatINR(part.amount)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </Card>
+                </div>
               ))}
 
             {section === 'estimates' && (
