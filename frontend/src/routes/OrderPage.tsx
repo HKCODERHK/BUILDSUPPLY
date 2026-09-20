@@ -450,15 +450,51 @@ export default function OrderPage() {
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4 border-t border-border p-4 sm:p-5">
-              <div className="text-sm font-semibold text-ink">
-                {chosen.length > 0 ? t('order.selectedCount', { count: chosen.length }) : t('order.yourDetails')}
-                {estimatedTotal != null && (
-                  <span className="block text-xs font-normal text-muted">
-                    {t('order.estimatedTotal', { amount: formatINR(estimatedTotal) })}
+            {/* What has been added, in words and in rupees, between the
+                materials and the form — the customer reads it where they are
+                adding, and the figure is the size of the decision it is. */}
+            {chosen.length > 0 && (
+              <div className="border-t border-border bg-surface p-4 sm:p-5">
+                <div className="mb-3 flex items-baseline justify-between gap-3">
+                  <span className="text-sm font-bold text-ink">{t('order.summaryTitle')}</span>
+                  <span className="shrink-0 text-xs font-medium text-muted">
+                    {t('order.selectedCount', { count: chosen.length })}
                   </span>
+                </div>
+                <ul className="flex flex-col gap-2.5">
+                  {chosen.map((c) => (
+                    <li key={c.material.id} className="flex items-start justify-between gap-3">
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium text-ink">{c.material.name}</span>
+                        <span className="block text-xs text-muted">
+                          {c.qty} {c.material.unit}
+                          {page.show_prices && c.material.price != null ? ` × ${formatINR(c.material.price)}` : ''}
+                        </span>
+                      </span>
+                      {page.show_prices && c.material.price != null && (
+                        <span className="shrink-0 text-sm font-semibold text-ink">
+                          {formatINR(c.qty * c.material.price)}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                {estimatedTotal != null && (
+                  <div className="mt-4 rounded-xl border border-accent/30 bg-accent-bg px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold text-accent-text">{t('order.estimatedLabel')}</span>
+                      <span className="shrink-0 text-2xl font-bold leading-none text-accent-text">
+                        {formatINR(estimatedTotal)}
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-xs text-muted">{t('order.estimatedNote')}</p>
+                  </div>
                 )}
               </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4 border-t border-border p-4 sm:p-5">
+              <div className="text-sm font-semibold text-ink">{t('order.yourDetails')}</div>
               <div>
                 <Label htmlFor="order-name" required>{t('order.name')}</Label>
                 <Input id="order-name" autoComplete="name" value={form.name} maxLength={60} onChange={(e) => setForm({ ...form, name: e.target.value })} />
