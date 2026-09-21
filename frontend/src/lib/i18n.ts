@@ -1553,20 +1553,19 @@ const STRINGS = {
   'khata.estOpen': { en: 'Open ({count})', hi: 'चालू ({count})', mr: 'चालू ({count})' },
   'khata.estOpenOne': { en: 'Open', hi: 'चालू', mr: 'चालू' },
   'khata.estClosed': { en: 'Billed or finished ({count})', hi: 'बिल या पूरा ({count})', mr: 'बिल किंवा संपले ({count})' },
-  'khata.ordWaiting': {
-    en: 'Waiting for the shop ({count})',
-    hi: 'दुकान के जवाब का इंतज़ार ({count})',
-    mr: 'दुकानाच्या उत्तराची वाट ({count})',
+  // The two sections of My orders: what the customer sent themselves, and
+  // what the shop wrote down for them.
+  'khata.ordOnline': {
+    en: 'Ordered online by you ({count})',
+    hi: 'आपने ऐप से किए ({count})',
+    mr: 'तुम्ही ॲपवरून केलेले ({count})',
   },
-  'khata.ordPlaced': { en: 'Your orders ({count})', hi: 'आपके ऑर्डर ({count})', mr: 'तुमच्या ऑर्डर ({count})' },
-  'khata.ordFromApp': { en: 'Sent from the app', hi: 'ऐप से भेजा', mr: 'ॲपवरून पाठवले' },
-  'khata.ordByPhone': {
-    en: 'Ordered by phone or at the shop',
-    hi: 'फ़ोन पर या दुकान पर ऑर्डर किया',
-    mr: 'फोनवर किंवा दुकानात ऑर्डर केली',
+  'khata.ordOffline': {
+    en: 'Taken at the shop or by phone ({count})',
+    hi: 'दुकान पर या फ़ोन पर लिए ({count})',
+    mr: 'दुकानात किंवा फोनवर घेतलेले ({count})',
   },
   'khata.ordDelivered': { en: 'Delivered ✓', hi: 'पहुँच गया ✓', mr: 'पोहोचले ✓' },
-  'khata.ordAnswered': { en: 'Answered ({count})', hi: 'जवाब मिल गया ({count})', mr: 'उत्तर मिळाले ({count})' },
   'khata.estimatePdf': { en: 'Estimate PDF', hi: 'एस्टिमेट PDF', mr: 'एस्टिमेट PDF' },
   'khata.estBilled': { en: 'Billed', hi: 'बिल बन गया', mr: 'बिल झाले' },
   'khata.orderItems': { en: 'Materials: {count}', hi: 'सामान: {count}', mr: 'साहित्य: {count}' },

@@ -468,10 +468,7 @@ export default function KhataPage() {
             {t('khata.orderItems', { count: o.item_count })}
             {o.delivery_date ? ` · ${t('order.deliveryOn', { date: formatDate(o.delivery_date) })}` : ''}
           </div>
-          <div className="text-xs text-muted">
-            {t('khata.ordFromApp')}
-            {o.bill ? ` · ${t('khata.bill', { no: o.bill })}` : ''}
-          </div>
+          {o.bill && <div className="text-xs text-muted">{t('khata.bill', { no: o.bill })}</div>}
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Badge tone={o.status === 'approved' ? 'success' : o.status === 'rejected' ? 'neutral' : 'warning'}>
@@ -497,7 +494,6 @@ export default function KhataPage() {
             {t('khata.bill', { no: b.invoice_no })}
             {b.site ? ` · ${b.site}` : ''}
           </div>
-          <div className="text-xs text-muted">{t('khata.ordByPhone')}</div>
         </div>
         <div className="shrink-0 text-right">
           <div className="text-sm font-semibold text-ink">{formatINR(Number(b.total))}</div>
@@ -718,23 +714,19 @@ export default function KhataPage() {
             {section === 'orders' && (
               <>
                 {orderCount === 0 && <Card className="text-sm text-muted">{t('khata.noOrders')}</Card>}
-                {/* Orders the shop has not answered yet are the ones a
-                    customer is waiting on, so they come first. */}
-                {waitingOrders.length > 0 && (
-                  <Group heading={t('khata.ordWaiting', { count: waitingOrders.length })}>{waitingOrders.map(orderRow)}</Group>
+                {/* Two sections, by how the order reached the shop — the ones
+                    the customer sent themselves, and the ones the shop wrote
+                    down for them. Each heading says which, so the rows
+                    underneath do not have to repeat it. Within the online
+                    ones, anything still waiting for an answer sits first. */}
+                {orders.length > 0 && (
+                  <Group heading={t('khata.ordOnline', { count: orders.length })}>
+                    {[...waitingOrders, ...answeredOrders].map(orderRow)}
+                  </Group>
                 )}
-                {/* Then every order that has been dealt with, whichever way
-                    it came in — sent from this app, or taken by the shop over
-                    the phone or at the counter, which is a bill and nothing
-                    else. Newest first across both. */}
-                {answeredOrders.length + offlineOrders.length > 0 && (
-                  <Group heading={t('khata.ordPlaced', { count: answeredOrders.length + offlineOrders.length })}>
-                    {[
-                      ...answeredOrders.map((o) => ({ at: o.created_at, node: orderRow(o) })),
-                      ...offlineOrders.map((b) => ({ at: b.created_at, node: offlineOrderRow(b) })),
-                    ]
-                      .sort((a, b) => b.at.localeCompare(a.at))
-                      .map((row) => row.node)}
+                {offlineOrders.length > 0 && (
+                  <Group heading={t('khata.ordOffline', { count: offlineOrders.length })}>
+                    {offlineOrders.map(offlineOrderRow)}
                   </Group>
                 )}
               </>
