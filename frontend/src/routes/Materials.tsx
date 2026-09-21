@@ -28,6 +28,7 @@ const emptyForm = {
   name: '',
   category: '',
   rate: '',
+  gst_rate: '18',
   unit_label: '',
   per_label: '',
   low_stock_threshold: '',
@@ -162,6 +163,7 @@ export default function Materials() {
       name: m.name,
       category: m.category ?? '',
       rate: String(m.rate),
+      gst_rate: String(Number(m.gst_rate ?? 18)),
       unit_label: m.unit_label ?? '',
       per_label: m.per_label ?? '',
       low_stock_threshold: m.low_stock_threshold != null ? String(m.low_stock_threshold) : '',
@@ -177,6 +179,8 @@ export default function Materials() {
       name: form.name,
       category: form.category || null,
       rate: Number(form.rate) || 0,
+      // The percentage every bill will charge for it (migration 035).
+      gst_rate: Math.min(100, Number(form.gst_rate) || 0),
       unit_label: form.unit_label || null,
       per_label: form.per_label || null,
       low_stock_threshold: form.low_stock_threshold ? Number(form.low_stock_threshold) : null,
@@ -443,6 +447,16 @@ export default function Materials() {
               <div>
                 <Label htmlFor="per_label">{t('mat.per')}</Label>
                 <Input id="per_label" value={form.per_label} onChange={(e) => setForm({ ...form, per_label: e.target.value })} />
+              </div>
+              <div>
+                <Label htmlFor="gst_rate">{t('gst.material')}</Label>
+                <Input
+                  id="gst_rate"
+                  type="text"
+                  inputMode="decimal"
+                  value={form.gst_rate}
+                  onChange={(e) => setForm({ ...form, gst_rate: sanitizeDecimal(e.target.value).slice(0, 5) })}
+                />
               </div>
             </div>
             <div>

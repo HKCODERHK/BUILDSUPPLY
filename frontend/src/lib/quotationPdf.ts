@@ -14,6 +14,7 @@ import {
   drawParties,
   drawPageFooter,
 } from './pdfTheme'
+import { formatRate, gstSlabs } from './gst'
 
 // Same layout as the invoice (see pdfTheme), headed "ESTIMATE" and with no
 // Paid/Remaining rows — an estimate hasn't been billed, so nothing is paid
@@ -40,22 +41,33 @@ function buildQuotationPdf(
 
   y = drawParties(doc, y, { supplier, customer, site: quotation.site })
 
+  // As on a bill: the percentage per line once 035 has recorded one.
+  const slabs = gstSlabs(items)
+  const perLine = slabs.length > 0
+
   autoTable(doc, {
     startY: y,
-    head: [['#', 'Particulars', 'Qty', 'Rate', 'Amount']],
-    body: items.map((item, i) => [
-      String(i + 1),
-      item.description || '—',
-      String(item.qty),
-      formatINR(item.rate),
-      formatINR(item.amount),
-    ]),
-    columnStyles: {
-      0: { cellWidth: 10 },
-      2: { halign: 'right', cellWidth: 20 },
-      3: { halign: 'right', cellWidth: 30 },
-      4: { halign: 'right', cellWidth: 30 },
-    },
+    head: [perLine ? ['#', 'Particulars', 'Qty', 'Rate', 'GST', 'Amount'] : ['#', 'Particulars', 'Qty', 'Rate', 'Amount']],
+    body: items.map((item, i) => {
+      const row = [String(i + 1), item.description || '—', String(item.qty), formatINR(item.rate)]
+      if (perLine) row.push(item.gst_rate == null ? '—' : formatRate(Number(item.gst_rate)))
+      row.push(formatINR(item.amount))
+      return row
+    }),
+    columnStyles: perLine
+      ? {
+          0: { cellWidth: 10 },
+          2: { halign: 'right', cellWidth: 18 },
+          3: { halign: 'right', cellWidth: 26 },
+          4: { halign: 'right', cellWidth: 16 },
+          5: { halign: 'right', cellWidth: 28 },
+        }
+      : {
+          0: { cellWidth: 10 },
+          2: { halign: 'right', cellWidth: 20 },
+          3: { halign: 'right', cellWidth: 30 },
+          4: { halign: 'right', cellWidth: 30 },
+        },
     ...tableStyles,
     didDrawPage: () => drawPageFooter(doc, `${supplier.business_name}  ·  ${quotation.quote_no}`),
   })
@@ -75,7 +87,13 @@ function buildQuotationPdf(
   }
 
   totalRow('Subtotal', formatINR(quotation.subtotal))
-  if (quotation.gst_amount > 0) totalRow('GST', formatINR(quotation.gst_amount))
+  if (perLine) {
+    for (const slab of slabs) {
+      totalRow(`GST ${formatRate(slab.rate)} on ${formatINR(slab.taxable)}`, formatINR(slab.amount))
+    }
+  } else if (quotation.gst_amount > 0) {
+    totalRow('GST', formatINR(quotation.gst_amount))
+  }
   if (quotation.transport_labour_charge > 0) totalRow('Transport + Labour', formatINR(quotation.transport_labour_charge))
   doc.setDrawColor(...LINE)
   doc.line(labelX, y - 3, totalsX, y - 3)

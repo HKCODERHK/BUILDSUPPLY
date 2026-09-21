@@ -208,6 +208,8 @@ export interface Material {
   stock_qty: number
   stock_unit: string | null
   low_stock_threshold: number | null
+  /** GST percentage charged on this material (migration 035). 18 by default. */
+  gst_rate: number
   created_at: string
 }
 
@@ -237,6 +239,9 @@ export interface QuotationItem {
   qty: number
   rate: number
   amount: number
+  /** The GST charged on this line, fixed when it was saved (035). Null before it. */
+  gst_rate?: number | null
+  gst_amount?: number | null
 }
 
 export interface Invoice {
@@ -269,6 +274,9 @@ export interface InvoiceItem {
   qty: number
   rate: number
   amount: number
+  /** The GST charged on this line, fixed when the bill was saved (035). Null before it. */
+  gst_rate?: number | null
+  gst_amount?: number | null
 }
 
 export interface Payment {

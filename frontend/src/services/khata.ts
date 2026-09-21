@@ -77,6 +77,9 @@ export interface KhataDocumentLine {
   qty: number
   rate: number
   amount: number
+  /** The GST this line was charged (035); absent on lines saved before it. */
+  gst_rate?: number | null
+  gst_amount?: number | null
 }
 
 interface KhataDocumentTotals {

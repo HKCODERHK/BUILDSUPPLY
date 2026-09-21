@@ -31,10 +31,10 @@ import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { usePin } from '@/context/PinContext'
 import { sanitizeDigits, sanitizeDecimal } from '@/lib/numberInput'
+import { formatRate, gstSlabs, rateForMaterial, taxLines } from '@/lib/gst'
 import { cn } from '@/lib/utils'
 import { TruckLoader } from '@/components/TruckLoader'
 
-const GST_RATE = 0.18
 const PAYMENT_MODES: PaymentMode[] = ['Cash', 'UPI', 'Bank/Cheque']
 
 interface LineItem extends NewInvoiceItem {
@@ -328,7 +328,14 @@ export default function NewInvoice() {
   const billedItems = items.filter((it) => it.qty > 0)
 
   const subtotal = billedItems.reduce((sum, it) => sum + it.qty * it.rate, 0)
-  const gst = gstApplicable ? Math.round(subtotal * GST_RATE) : 0
+  // Each line at its own material's percentage (migration 035). The database
+  // resolves the same rates from the material rows when the bill is saved, so
+  // what is shown here and what is stored can't drift.
+  const taxed = taxLines(billedItems, materials, gstApplicable)
+  const gst = taxed.reduce((sum, line) => sum + line.gst, 0)
+  const gstByRate = gstSlabs(
+    taxed.map((line) => ({ amount: line.amount, gst_rate: line.rate, gst_amount: line.gst })),
+  )
   const transportLabourAmount = Number(transportLabour) || 0
   const total = subtotal + gst + transportLabourAmount
   // Every part taken at the counter, whatever the mode.
@@ -630,6 +637,9 @@ export default function NewInvoice() {
                   <div className="text-sm font-medium text-ink sm:truncate">{mt(item.description)}</div>
                   <div className="text-xs text-muted">
                     {item.qty > 0 ? formatINR(item.qty * item.rate) : t('inv.notOnBill')}
+                    {item.qty > 0 && gstApplicable && (
+                      <span> · {t('inv.gst')} {formatRate(rateForMaterial(item.material_id, materials))}</span>
+                    )}
                   </div>
                   <LastRateHint item={item} />
                 </div>
@@ -724,12 +734,18 @@ export default function NewInvoice() {
             <span className="text-muted">{t('inv.subtotal')}</span>
             <span>₹{subtotal.toLocaleString('en-IN')}</span>
           </div>
-          {gstApplicable && (
-            <div className="flex justify-between">
-              <span className="text-muted">{t('inv.gst')}</span>
-              <span>₹{gst.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
-            </div>
-          )}
+          {/* One row per rate, so a bill carrying cement at 28% and sand at
+              5% shows both — which is how a tax invoice has to read. */}
+          {gstApplicable &&
+            gstByRate.map((slab) => (
+              <div key={slab.rate} className="flex justify-between">
+                <span className="text-muted">
+                  {t('inv.gst')} {formatRate(slab.rate)}
+                  <span className="text-[11px]"> {t('inv.gstOn', { amount: formatINR(slab.taxable) })}</span>
+                </span>
+                <span>₹{slab.amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+              </div>
+            ))}
           {transportLabourAmount > 0 && (
             <div className="flex justify-between">
               <span className="text-muted">{t('inv.transportLabourShort')}</span>
