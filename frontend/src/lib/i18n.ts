@@ -1325,6 +1325,13 @@ const STRINGS = {
   'khata.receivedAsk': { en: 'Material received?', hi: 'माल मिल गया?', mr: 'माल मिळाला?' },
   'khata.receivedYes': { en: 'Yes, received', hi: 'हाँ, मिल गया', mr: 'हो, मिळाला' },
   'khata.receivedOn': { en: 'Received ✓ {date}', hi: 'मिल गया ✓ {date}', mr: 'मिळाला ✓ {date}' },
+  // A delivery a day old that the customer never answered. Deliberately not
+  // worded as their confirmation — see lib/received.ts.
+  'inv.receivedAssumed': {
+    en: 'Delivered · taken as received, no reply in 24 hours',
+    hi: 'पहुँच गया · 24 घंटे कोई जवाब नहीं, मिला माना गया',
+    mr: 'पोहोचले · 24 तासांत उत्तर नाही, मिळाले असे धरले',
+  },
   'inv.customerReceived': {
     en: 'Customer confirmed received on {date}',
     hi: 'ग्राहक ने {date} को माल मिलने की पुष्टि की',
@@ -1593,6 +1600,11 @@ const STRINGS = {
   'tl.billDetail': { en: 'Bill {no} · {date}', hi: 'बिल {no} · {date}', mr: 'बिल {no} · {date}' },
   'tl.delivered': { en: 'Delivered', hi: 'डिलीवर हुआ', mr: 'डिलिव्हर झाले' },
   'tl.received': { en: 'Material received', hi: 'माल मिल गया', mr: 'माल मिळाला' },
+  'tl.receivedAssumed': {
+    en: 'Taken as received a day after delivery',
+    hi: 'डिलीवरी के एक दिन बाद मिला माना गया',
+    mr: 'डिलिव्हरीनंतर एक दिवसाने मिळाले असे धरले',
+  },
   // The khata link's bill and estimate PDFs, estimates and orders (migration 031).
   'khata.billPdf': { en: 'Bill PDF', hi: 'बिल PDF', mr: 'बिल PDF' },
   'khata.estimate': { en: 'Estimate {no}', hi: 'एस्टिमेट {no}', mr: 'एस्टिमेट {no}' },

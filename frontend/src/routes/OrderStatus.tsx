@@ -10,6 +10,7 @@ import { TruckLoader } from '@/components/TruckLoader'
 import { useLanguage } from '@/context/LanguageContext'
 import { getOrderStatus, respondToEstimate, type OrderStatusView } from '@/services/orders'
 import { rejectReasonText } from '@/lib/orderFormat'
+import { receivedState } from '@/lib/received'
 import { cn } from '@/lib/utils'
 
 function formatDate(iso: string) {
@@ -93,9 +94,15 @@ export default function OrderStatus() {
           { key: 'delivered', label: t('tl.delivered'), detail: null, done: !!bill && (bill.delivered || !!bill.received_at) },
           {
             key: 'received',
+            // Their own tap, or — a day after delivery with nothing said —
+            // taken as received, which the line underneath says plainly.
             label: t('tl.received'),
-            detail: bill?.received_at ? formatDate(bill.received_at) : null,
-            done: !!bill?.received_at,
+            detail: bill?.received_at
+              ? formatDate(bill.received_at)
+              : bill && receivedState(bill) === 'assumed'
+                ? t('tl.receivedAssumed')
+                : null,
+            done: !!bill && receivedState(bill) !== 'none' && receivedState(bill) !== 'waiting',
           },
         ]
       : null

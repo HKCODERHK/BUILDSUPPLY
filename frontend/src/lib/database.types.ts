@@ -276,6 +276,8 @@ export interface Invoice {
   delivered: boolean
   kind: InvoiceKind
   /** When the customer tapped "Material received" on their khata link (migration 030). Only they can set it. */
+  /** When the supplier marked it delivered (migration 034). */
+  delivered_at: string | null
   received_at: string | null
   created_at: string
 }

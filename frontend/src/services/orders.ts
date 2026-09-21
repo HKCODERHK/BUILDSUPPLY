@@ -97,7 +97,7 @@ export type OrderStatusView =
       /** Migration 031 — absent until it is applied. When the order was approved or rejected. */
       decided_at?: string | null
       /** The bill made from the estimate, once there is one (031). */
-      bill?: { invoice_no: string; created_at: string; delivered: boolean; received_at: string | null }
+      bill?: { invoice_no: string; created_at: string; delivered: boolean; delivered_at?: string | null; received_at: string | null }
       /** Only while the supplier takes online orders (031). */
       order_link?: string
     }
