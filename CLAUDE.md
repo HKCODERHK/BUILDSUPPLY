@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `036`, run in order. **036 is the latest and is applied** (2026-09-22 — date-wise stock logs, see Phase 27). 034 (when a bill was marked delivered, Phase 26) and 035 (GST per material, Phase 25) were pasted the same day, in that order: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would quietly take the stock logging back out of deliveries. 033 is applied too (2026-09-21 — every order on the khata link, see Phase 24).
+- **Schema migrations**: `supabase/migrations/` — `002` through `037`, run in order. **037 is the latest and is applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -1223,6 +1223,71 @@ and I counted 170" had no answer.
   GST per material *and* logs); counts unchanged (52 bills / 103 payments / 95
   allocations / 21 customers / 9 materials), 0 bills out of step, all three
   guards and both `security_invoker` views intact.
+
+
+**Phase 28 — a payment method on an order, and Approve on the spot
+(migration 037, 2026-09-22). Applied to live the same day.** Items 7 and 2 of
+the eight-feature list, in one migration because both are the order flow.
+
+- **The customer says how they mean to pay**: Cash, or pay the shop's own UPI
+  ID. `order_requests.payment_method`, null on everything placed before this
+  and on any order where the question was not asked. **It never means the
+  money arrived** — there is no gateway in this app and there is not going to
+  be one, so "pay online" is the customer paying the supplier's bank directly
+  and BuildSupply never sees it. The supplier records it with Receive payment
+  as always; the order screen says exactly that under the choice.
+- **The question is only asked where it can be acted on**: the shop has a UPI
+  ID and has UPI switched on for customers. That is 029's own
+  `khata_upi_enabled` — one switch, one idea ("I take UPI from customers") —
+  rather than a second one to keep in step. `order_page` returns a plain
+  `upi` boolean and **never the UPI ID**: there is no amount yet, so there
+  would be nothing to do with it. An order claiming `online` where it is not
+  on offer is stored as `cash`; anything else sent is stored as nothing.
+- **The QR reaches the customer on their own status link**, once there is a
+  real figure: `order_status` returns `upi_id` and `due` only for a customer
+  who chose online, only while the shop still takes UPI, and only while
+  something is owed — the bill's outstanding once a bill exists, the
+  estimate's total until then. A cash customer is never shown one. This is
+  why `order_status`'s `bill` now also carries `total` and `paid`; the
+  estimate's own totals were already on that link since 031.
+- **Approve says yes on the spot** (`accept_order`, INVOKER so RLS decides
+  whose order it is): status `approved`, `decided_at` stamped, and **nothing
+  else** — no customer created, no estimate, no money, no stock. "Make
+  estimate" then takes the button's place and opens the same prefilled screen
+  Approve always did. `approve_order` still does both in one step, and now
+  also prices an order that was already said yes to (`status in ('pending',
+  'approved')` with no `quotation_id`), keeping the `decided_at` it already
+  had.
+- **The customer's link stops claiming an estimate that does not exist**:
+  approved with no estimate reads "Order accepted — the price is on its way"
+  (`order.status.accepted`), not "Estimate ready".
+- **`place_order`'s parameter list changed**, so the old signature is dropped
+  and its grants re-made by hand — `create or replace` only keeps them when
+  the signature is identical. `services/orders.ts` retries without
+  `p_payment_method` on a PGRST202, so a build that reaches a database without
+  037 still takes orders; delete that once it is applied everywhere.
+- **Tested on the local Docker copy from a clean reset with 034 through 037 in
+  the structure: 502 of 502**, 29 new (`tests/93_order_payment.sql`). Five of
+  those checks failed on the first run and every one was the test's own fault,
+  not the migration's — a `like` pattern that forgot
+  `pg_get_function_identity_arguments` includes parameter names, `place_order`
+  called inside a `WHERE` clause (Postgres evaluated it more than once), and
+  three counts over a time window that swept up rows earlier files in the run
+  had made. **Count before and after; never "in the last minute".**
+- **Both public screens were driven with their reads answered in flight**, no
+  row written: the question appears only where UPI is offered, the order
+  carries `online` when chosen and `null` when never asked, the status page
+  shows `Pay ₹3,000 in UPI app` with a correct `upi://` link and QR for an
+  online customer and nothing for a cash one or before there is a price, and
+  zero overflow at 360px in all three languages.
+- **Checked on live** after pasting, read-only: one version of each of the
+  five functions; `place_order` still security definer, still anon-executable,
+  and carrying `p_payment_method`; `accept_order` is INVOKER, granted to
+  `authenticated` and refused to `anon` (42501 over a real anonymous call, as
+  is the `order_requests` table); `order_page` on the live link offers UPI and
+  leaks no ID; counts unchanged (52 bills / 103 payments / 95 allocations / 21
+  customers / 20 estimates), 0 bills out of step, guards and both
+  `security_invoker` views intact.
 
 
 ## The admin panel
