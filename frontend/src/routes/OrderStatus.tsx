@@ -11,6 +11,8 @@ import { useLanguage } from '@/context/LanguageContext'
 import { getOrderStatus, respondToEstimate, type OrderStatusView } from '@/services/orders'
 import { rejectReasonText } from '@/lib/orderFormat'
 import { receivedState } from '@/lib/received'
+import { QrCode } from '@/components/QrCode'
+import { upiPayUrl } from '@/lib/upi'
 import { cn } from '@/lib/utils'
 
 function formatDate(iso: string) {
@@ -57,6 +59,19 @@ export default function OrderStatus() {
   const found = view && view.found ? view : null
   const tone = found?.status === 'approved' ? 'success' : found?.status === 'rejected' ? 'neutral' : 'warning'
   const estimate = found?.status === 'approved' ? (found.estimate ?? null) : null
+  const statusKey = found?.status === 'approved' && !found.estimate ? 'accepted' : (found?.status ?? 'pending')
+  // The shop's own UPI ID, sent only to a customer who chose to pay online and
+  // only while something is owed (migration 037). The amount is the bill's
+  // outstanding once a bill exists, the estimate's total until then.
+  const upiUrl =
+    found?.upi_id && (found.due ?? 0) > 0.005
+      ? upiPayUrl({
+          upiId: found.upi_id,
+          payee: found.business_name,
+          amount: Math.round((found.due ?? 0) * 100) / 100,
+          note: found.business_name,
+        })
+      : null
 
   // The order's progress, ticked as it happens (migration 031): sent →
   // estimate ready → accepted → bill made → delivered → received. Nothing to
@@ -141,8 +156,10 @@ export default function OrderStatus() {
           <>
             <Card className="flex flex-col gap-4">
               <div>
-                <Badge tone={tone}>{t(`order.status.${found.status}`)}</Badge>
-                <p className="mt-3 text-sm text-ink">{t(`order.status.${found.status}Body`, { business: found.business_name })}</p>
+                {/* Approved reads "Estimate ready" only once there is one; an
+                    order said yes to on the spot (037) says so instead. */}
+                <Badge tone={tone}>{t(`order.status.${statusKey}`)}</Badge>
+                <p className="mt-3 text-sm text-ink">{t(`order.status.${statusKey}Body`, { business: found.business_name })}</p>
                 {found.status === 'rejected' && rejectReasonText(found, t) && (
                   <p className="mt-2 rounded-lg bg-surface p-3 text-sm font-medium text-ink">
                     {t('ord.rejectedReason', { reason: rejectReasonText(found, t) ?? '' })}
@@ -162,8 +179,31 @@ export default function OrderStatus() {
               <div className="flex flex-col gap-1 text-xs text-muted">
                 <span>{t('order.placedOn', { date: formatDate(found.created_at) })}</span>
                 {found.delivery_date && <span>{t('order.deliveryOn', { date: formatDate(found.delivery_date) })}</span>}
+                {found.payment_method && (
+                  <span>
+                    {t('order.payChose', {
+                      method: t(found.payment_method === 'cash' ? 'order.payCash' : 'order.payOnline'),
+                    })}
+                  </span>
+                )}
               </div>
             </Card>
+
+            {/* Only for a customer who said they would pay online, and only
+                once there is a real figure — the bill's if there is one, the
+                estimate's until then. The money goes straight to the shop;
+                nothing here records it. */}
+            {upiUrl && found.upi_id && (
+              <Card className="flex flex-col items-center gap-3 text-center">
+                <div className="text-sm font-semibold text-ink">{t('upi.payTitle')}</div>
+                <QrCode text={upiUrl} size={200} label={t('upi.payTitle')} />
+                <div className="text-xs text-muted">{found.upi_id}</div>
+                <a href={upiUrl} className="w-full">
+                  <Button className="w-full">{t('upi.openApp', { amount: formatINR(found.due ?? 0) })}</Button>
+                </a>
+                <p className="text-xs text-muted">{t('upi.payHint')}</p>
+              </Card>
+            )}
 
             {steps && (
               <Card>

@@ -111,6 +111,8 @@ export default function OrderPage() {
     }
   })
   const [last, setLast] = useState<LastOrder | null>(() => readLast(link))
+  // Cash unless the customer says otherwise — which is nearly every order.
+  const [payment, setPayment] = useState<'cash' | 'online'>('cash')
   // The materials and the form stay folded into one button until the customer
   // says they want to order (2026-09-20).
   const [ordering, setOrdering] = useState(false)
@@ -130,6 +132,9 @@ export default function OrderPage() {
   }, [link])
 
   const open = page && page.found && page.open ? page : null
+  // Asking how they will pay is only worth it where the shop takes UPI;
+  // otherwise every order is cash and there is nothing to choose between.
+  const takesUpi = !!open?.upi
   const materials = open?.materials ?? []
   const showSearch = materials.length > 8
   const search = query.trim().toLowerCase()
@@ -190,6 +195,9 @@ export default function OrderPage() {
         note: form.note.trim(),
         items: chosen.map((c) => ({ material_id: c.material.id, qty: c.qty })),
         trap: form.trap,
+        // Only where the shop takes UPI is the question asked at all, and the
+        // answer is an intention — nothing is paid or recorded by it.
+        paymentMethod: takesUpi ? payment : null,
       })
       const sent: LastOrder = {
         items: chosen.map((c) => ({ material_id: c.material.id, qty: c.qty })),
@@ -545,6 +553,28 @@ export default function OrderPage() {
                   onChange={(e) => setForm({ ...form, date: e.target.value })}
                 />
               </div>
+              {takesUpi && (
+                <div>
+                  <Label>{t('order.payHow')}</Label>
+                  <div className="mt-1 grid grid-cols-2 gap-2">
+                    {(['cash', 'online'] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => setPayment(mode)}
+                        className={`rounded-xl border px-3 py-2.5 text-sm font-medium ${
+                          payment === mode ? 'border-accent bg-accent-bg text-accent-text' : 'border-border text-muted'
+                        }`}
+                      >
+                        {t(mode === 'cash' ? 'order.payCash' : 'order.payOnline')}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-1.5 text-xs text-muted">
+                    {t(payment === 'cash' ? 'order.payCashHint' : 'order.payOnlineHint')}
+                  </p>
+                </div>
+              )}
               <div>
                 <Label htmlFor="order-note">{t('order.note')}</Label>
                 <textarea

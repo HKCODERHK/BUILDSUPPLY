@@ -31,6 +31,8 @@ export type OrderPage =
       address?: string | null
       phone?: string | null
       show_prices: boolean
+      /** True when the shop takes UPI, so "pay online" is worth offering (migration 037). */
+      upi?: boolean
       materials: OrderPageMaterial[]
     }
 
@@ -49,11 +51,13 @@ export interface PlaceOrderInput {
   items: { material_id: string; qty: number }[]
   /** The hidden field only bots fill in. */
   trap: string
+  /** What the customer says they will do about paying (037). Only asked where the shop takes UPI. */
+  paymentMethod?: 'cash' | 'online' | null
 }
 
 /** Returns the status code for the customer's status link (null only for a bot). */
 export async function placeOrder(input: PlaceOrderInput): Promise<{ token: string | null; duplicate: boolean }> {
-  const raw = await callRpc<{ token: string | null; duplicate?: boolean }>('place_order', {
+  const args: Record<string, unknown> = {
     p_link: input.link,
     p_request_id: input.requestId,
     p_name: input.name,
@@ -63,8 +67,27 @@ export async function placeOrder(input: PlaceOrderInput): Promise<{ token: strin
     p_note: input.note || null,
     p_items: input.items,
     p_trap: input.trap || null,
-  })
+    p_payment_method: input.paymentMethod ?? null,
+  }
+  let raw: { token: string | null; duplicate?: boolean }
+  try {
+    raw = await callRpc<{ token: string | null; duplicate?: boolean }>('place_order', args)
+  } catch (error) {
+    // Migration 037 changed this function's parameters. A build can reach a
+    // database that has not had it pasted yet — a preview always does — and a
+    // customer must not be told ordering is broken in that window.
+    // Delete this once 037 is applied everywhere.
+    if (!isMissingFunction(error)) throw error
+    delete args.p_payment_method
+    raw = await callRpc<{ token: string | null; duplicate?: boolean }>('place_order', args)
+  }
   return { token: raw.token, duplicate: !!raw.duplicate }
+}
+
+function isMissingFunction(error: unknown): boolean {
+  const code = (error as { code?: string } | null)?.code
+  const message = (error as { message?: string } | null)?.message ?? ''
+  return code === 'PGRST202' || /could not find the function/i.test(message)
 }
 
 /** The estimate made from an approved order, as its customer sees it (migration 030). */
@@ -96,8 +119,21 @@ export type OrderStatusView =
       responded_at?: string | null
       /** Migration 031 — absent until it is applied. When the order was approved or rejected. */
       decided_at?: string | null
-      /** The bill made from the estimate, once there is one (031). */
-      bill?: { invoice_no: string; created_at: string; delivered: boolean; delivered_at?: string | null; received_at: string | null }
+      /** The bill made from the estimate, once there is one (031); its figures since 037. */
+      bill?: {
+        invoice_no: string
+        created_at: string
+        delivered: boolean
+        delivered_at?: string | null
+        received_at: string | null
+        total?: number
+        paid?: number
+      }
+      /** What the customer chose about paying (037). */
+      payment_method?: 'cash' | 'online' | null
+      /** Only for a customer who chose to pay online, and only while something is owed (037). */
+      upi_id?: string
+      due?: number
       /** Only while the supplier takes online orders (031). */
       order_link?: string
     }
@@ -210,6 +246,18 @@ export async function approveOrder(input: ApproveOrderInput): Promise<{ quotatio
     void logActivity('supplier', 'order_approved', { details: { order_id: input.orderId, quotation_id: quotationId } })
   }
   return { quotationId, customerId: raw.customer_id ?? input.customerId }
+}
+
+/**
+ * Says yes to an order without pricing it (accept_order, migration 037). The
+ * customer sees Approved at once; the estimate is written afterwards, by the
+ * same Approve path as before. Nothing is created, billed or moved by this.
+ */
+export async function acceptOrder(orderId: string): Promise<void> {
+  const raw = await callRpc<{ ok?: boolean; already?: boolean }>('accept_order', { p_order_id: orderId })
+  if (!raw.already) {
+    void logActivity('supplier', 'order_approved', { details: { order_id: orderId } })
+  }
 }
 
 /** Reject with a reason from the list; `reason` is the words for "Other". The customer sees it. */

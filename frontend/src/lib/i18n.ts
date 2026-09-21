@@ -1352,6 +1352,13 @@ const STRINGS = {
     hi: '{business} ने आपके ऑर्डर का एस्टिमेट बना दिया है — नीचे देखें।',
     mr: '{business} यांनी तुमच्या ऑर्डरचे एस्टिमेट तयार केले आहे — खाली पाहा.',
   },
+  // Approved on the spot, with the price still to come (migration 037).
+  'order.status.accepted': { en: 'Order accepted', hi: 'ऑर्डर स्वीकार', mr: 'ऑर्डर स्वीकारली' },
+  'order.status.acceptedBody': {
+    en: '{business} has accepted your order. The price is on its way.',
+    hi: '{business} ने आपका ऑर्डर स्वीकार कर लिया है। कीमत जल्द मिलेगी।',
+    mr: '{business} यांनी तुमची ऑर्डर स्वीकारली आहे. किमत लवकरच मिळेल.',
+  },
   'order.status.rejected': { en: 'Not accepted', hi: 'स्वीकार नहीं', mr: 'स्वीकारली नाही' },
   'order.status.rejectedBody': {
     en: '{business} could not accept this order. Please contact them directly.',
@@ -1694,6 +1701,36 @@ const STRINGS = {
   'upi.imageCaption': { en: 'Scan with any UPI app', hi: 'किसी भी UPI ऐप से स्कैन करें', mr: 'कोणत्याही UPI ॲपने स्कॅन करा' },
   // …and the customer's khata page.
   'upi.payTitle': { en: 'Pay by UPI', hi: 'UPI से भुगतान', mr: 'UPI ने पेमेंट' },
+  // How the customer means to pay for an online order (migration 037).
+  'order.payHow': { en: 'How will you pay?', hi: 'भुगतान कैसे करेंगे?', mr: 'पेमेंट कसे करणार?' },
+  'order.payCash': { en: 'Cash', hi: 'नकद', mr: 'रोख' },
+  'order.payOnline': { en: 'Pay online (UPI)', hi: 'ऑनलाइन (UPI)', mr: 'ऑनलाइन (UPI)' },
+  'order.payCashHint': {
+    en: 'Pay the shop when the material comes.',
+    hi: 'मटेरियल आने पर दुकान को दें।',
+    mr: 'मटेरियल आल्यावर दुकानाला द्या.',
+  },
+  'order.payOnlineHint': {
+    en: 'The shop’s UPI QR comes with the price. Nothing is paid now.',
+    hi: 'कीमत के साथ दुकान का UPI QR मिलेगा। अभी कुछ नहीं कटता।',
+    mr: 'किमतीसोबत दुकानाचा UPI QR मिळेल. आता काहीही कटत नाही.',
+  },
+  'order.payChose': { en: 'You chose: {method}', hi: 'आपने चुना: {method}', mr: 'तुम्ही निवडले: {method}' },
+  // The supplier's side.
+  'ord.payMethod': { en: 'Customer will pay: {method}', hi: 'ग्राहक देगा: {method}', mr: 'ग्राहक देणार: {method}' },
+  'ord.payNote': {
+    en: 'What they said they would do. Record the money yourself when it comes.',
+    hi: 'उन्होंने यही कहा है। पैसा आने पर खुद दर्ज करें।',
+    mr: 'त्यांनी असे सांगितले आहे. पैसे आल्यावर तुम्ही नोंदवा.',
+  },
+  // Approving an order on the spot (037).
+  'ord.approveNow': { en: 'Approve order', hi: 'ऑर्डर मंजूर करें', mr: 'ऑर्डर मंजूर करा' },
+  'ord.makeEstimate': { en: 'Make estimate', hi: 'अनुमान बनाएँ', mr: 'अंदाज बनवा' },
+  'ord.approvedNoEstimate': {
+    en: 'Approved. Make the estimate when you are ready — the customer already knows you said yes.',
+    hi: 'मंजूर। जब तैयार हों तब अनुमान बनाएँ — ग्राहक को पता चल गया है।',
+    mr: 'मंजूर. तयार असाल तेव्हा अंदाज बनवा — ग्राहकाला कळले आहे.',
+  },
   'upi.payHint': {
     en: 'Scan with any UPI app, or tap the button on this phone. It shows here once the shop has recorded it.',
     hi: 'किसी भी UPI ऐप से स्कैन करें, या इसी फ़ोन पर बटन दबाएँ। दुकान के दर्ज करने के बाद यह यहाँ दिखेगा।',

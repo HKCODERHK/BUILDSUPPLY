@@ -14,7 +14,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { openWhatsAppShare } from '@/lib/whatsapp'
 import type { Customer, OrderRequest } from '@/lib/database.types'
 import { listCustomers } from '@/services/customers'
-import { blockOrderPhone, getOrder, listBlockedPhones, unblockOrderPhone } from '@/services/orders'
+import { acceptOrder, blockOrderPhone, getOrder, listBlockedPhones, unblockOrderPhone } from '@/services/orders'
 import { formatOrderDate, rejectReasonText } from '@/lib/orderFormat'
 
 /** One online order in full, with the customer match and Approve / Reject. */
@@ -27,6 +27,7 @@ export default function OrderDetail() {
   const [match, setMatch] = useState<Customer | null>(null)
   const [loading, setLoading] = useState(true)
   const [rejecting, setRejecting] = useState(false)
+  const [accepting, setAccepting] = useState(false)
   // Whether this number is blocked (migration 032); null hides the option —
   // before 032 is applied, or if the list could not be read.
   const [blocked, setBlocked] = useState<boolean | null>(null)
@@ -40,6 +41,19 @@ export default function OrderDetail() {
       setMatch(customers.find((c) => c.phone === o.phone) ?? null)
       setBlocked(blockedList ? blockedList.some((b) => b.phone === o.phone) : null)
     })
+  }
+
+  // Says yes and nothing more: no customer, no estimate, no money, no stock.
+  // The estimate is written afterwards, from the card that then appears.
+  async function accept() {
+    if (!order || accepting) return
+    setAccepting(true)
+    try {
+      await acceptOrder(order.id)
+      await load()
+    } finally {
+      setAccepting(false)
+    }
   }
 
   async function setBlock(block: boolean) {
@@ -113,6 +127,16 @@ export default function OrderDetail() {
             </div>
           )}
           {order.note && <div className="text-sm italic text-muted">“{order.note}”</div>}
+          {/* What the customer said they would do about paying (037). It is
+              an intention, never a receipt — the money is recorded as always. */}
+          {order.payment_method && (
+            <div className="rounded-lg bg-surface p-3">
+              <div className="text-sm font-medium text-ink">
+                {t('ord.payMethod', { method: t(order.payment_method === 'cash' ? 'order.payCash' : 'order.payOnline') })}
+              </div>
+              <div className="mt-0.5 text-xs text-muted">{t('ord.payNote')}</div>
+            </div>
+          )}
         </Card>
 
         <Card>
@@ -128,15 +152,28 @@ export default function OrderDetail() {
           </div>
         </Card>
 
+        {/* Approve says yes on the spot (migration 037) — the customer sees
+            Approved at once — and the estimate is written afterwards, which is
+            the same screen it always opened. */}
         {order.status === 'pending' && (
           <Card className="flex flex-col gap-3">
             <p className="text-xs text-muted">{t('ord.approveHint')}</p>
             <div className="flex gap-2">
-              <Button onClick={() => navigate(`/quotations/new?order=${order.id}`)}>{t('ord.approve')}</Button>
+              <Button onClick={accept} disabled={accepting}>
+                {accepting ? t('common.saving') : t('ord.approveNow')}
+              </Button>
               <Button variant="outline" onClick={() => setRejecting(true)}>
                 {t('ord.reject')}
               </Button>
             </div>
+          </Card>
+        )}
+        {order.status === 'approved' && !order.quotation_id && (
+          <Card className="flex flex-col gap-3">
+            <p className="text-xs text-muted">{t('ord.approvedNoEstimate')}</p>
+            <Button className="self-start" onClick={() => navigate(`/quotations/new?order=${order.id}`)}>
+              {t('ord.makeEstimate')}
+            </Button>
           </Card>
         )}
         {order.status === 'approved' && order.customer_response && (
