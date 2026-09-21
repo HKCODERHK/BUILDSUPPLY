@@ -23,6 +23,9 @@ import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { sanitizeDigits, sanitizeDecimal } from '@/lib/numberInput'
 import { formatRate, gstSlabs, taxLines } from '@/lib/gst'
+import { recordAdvance } from '@/services/payments'
+import { usePin } from '@/context/PinContext'
+import type { PaymentMode } from '@/lib/database.types'
 
 
 interface LineItem extends NewInvoiceItem {
@@ -33,9 +36,16 @@ interface LineItem extends NewInvoiceItem {
 // transport-labour flow — but an estimate never takes payment and never
 // touches stock, so those two sections and the post-save delivery prompt are
 // deliberately absent here.
+
+const PAYMENT_MODES: PaymentMode[] = ['Cash', 'UPI', 'Bank/Cheque']
+
+function formatINR(n: number) {
+  return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
+}
 export default function NewQuotation() {
   const { supplier } = useAuth()
   const { t, mt } = useLanguage()
+  const { confirmWithPin } = usePin()
   const navigate = useNavigate()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [materials, setMaterials] = useState<Material[]>([])
@@ -45,6 +55,15 @@ export default function NewQuotation() {
   const [items, setItems] = useState<LineItem[]>([])
   // Defaults from whether the supplier is GST-registered — see NewInvoice.
   const [gstApplicable, setGstApplicable] = useState(false)
+  // Money taken while the estimate is written (asked for 2026-09-22). An
+  // estimate is not a bill, so there is nothing for it to pay off: it is kept
+  // as this customer's advance and the bill uses it by itself when it is made
+  // (_apply_advance, migration 024). Its own request id, so a retry after the
+  // estimate saved records it once.
+  const [takingAdvance, setTakingAdvance] = useState(false)
+  const [advanceNow, setAdvanceNow] = useState('')
+  const [advanceMode, setAdvanceMode] = useState<PaymentMode>('Cash')
+  const advanceRequestIdRef = useRef(newRequestId())
   const gstDefaulted = useRef(false)
   const [transportLabour, setTransportLabour] = useState('')
   const [saving, setSaving] = useState(false)
@@ -186,6 +205,7 @@ export default function NewQuotation() {
   const gstByRate = gstSlabs(
     taxed.map((line) => ({ amount: line.amount, gst_rate: line.rate, gst_amount: line.gst })),
   )
+  const advanceAmount = takingAdvance ? Number(advanceNow) || 0 : 0
   const transportLabourAmount = Number(transportLabour) || 0
   const total = subtotal + gst + transportLabourAmount
 
@@ -203,6 +223,33 @@ export default function NewQuotation() {
       : null
   // Not for an order: it has its own record to come back to.
   useDraftAutosave(supplier?.id, 'quotation', draftSnapshot, loaded && !pendingDraft && !order)
+
+  /**
+   * Keeps money handed over while the estimate was written. It is recorded as
+   * the customer's advance, never against this estimate: an estimate is not a
+   * bill, and 024's `record_advance` is deliberately only used by bills made
+   * after it — it never quietly clears somebody's old dues.
+   *
+   * Its own request id, so pressing Save again after the estimate saved but
+   * this did not records it once and not twice; the estimate's own save is
+   * idempotent the same way.
+   */
+  async function takeAdvance(cid: string | null) {
+    if (advanceAmount <= 0 || !cid || !supplier) return
+    const threshold = Number(supplier.pin_payment_threshold) || 0
+    if (threshold > 0 && advanceAmount >= threshold) {
+      if (!(await confirmWithPin(t('pin.reasonLargePayment', { amount: formatINR(advanceAmount) })))) {
+        throw new Error(t('est.advanceNotRecorded'))
+      }
+    }
+    try {
+      await recordAdvance(advanceRequestIdRef.current, cid, advanceAmount, advanceMode)
+    } catch {
+      // The estimate is saved; only the money is not. Saying so plainly beats
+      // navigating away as though both had worked.
+      throw new Error(t('est.advanceFailed'))
+    }
+  }
 
   async function handleSave() {
     // From an online order with no customer picked: the order's customer is
@@ -224,6 +271,12 @@ export default function NewQuotation() {
           gstApplicable,
           transportLabourCharge: transportLabourAmount,
         })
+        // A retry after the estimate saved but the money did not: approve_order
+        // answers `already` and names no customer, so the order row is asked
+        // instead — otherwise the advance would be skipped in silence.
+        let cid = result.customerId
+        if (advanceAmount > 0 && !cid) cid = (await getOrder(order.id)).customer_id
+        await takeAdvance(cid)
         // Commit `saved` before navigating: the unsaved-work guard reads it
         // from the last render, and without this it still sees a dirty form.
         flushSync(() => setSaved(true))
@@ -238,6 +291,7 @@ export default function NewQuotation() {
         gstApplicable,
         transportLabourCharge: transportLabourAmount,
       })
+      await takeAdvance(customerId)
       clearDraft(supplier.id, 'quotation')
       // As above: commit `saved` first, or the guard stops the navigation.
       flushSync(() => setSaved(true))
@@ -411,7 +465,59 @@ export default function NewQuotation() {
             <span>{t('common.total')}</span>
             <span>₹{total.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
           </div>
+          {advanceAmount > 0 && (
+            <>
+              <div className="flex justify-between">
+                <span className="text-muted">{t('est.advanceTaken')}</span>
+                <span className="text-accent">−₹{advanceAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+              </div>
+              <div className="flex justify-between font-medium">
+                <span>{t('est.advanceLeft')}</span>
+                <span>₹{Math.max(0, total - advanceAmount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+              </div>
+            </>
+          )}
         </div>
+
+        {/* Money taken while the estimate is written. It is the customer's
+            advance, not a payment against this estimate — an estimate is not
+            a debt — and the bill made from it uses the advance by itself. */}
+        {!takingAdvance ? (
+          <button
+            type="button"
+            onClick={() => setTakingAdvance(true)}
+            className="mt-3 text-sm font-semibold text-accent"
+          >
+            + {t('est.takeAdvance')}
+          </button>
+        ) : (
+          <div className="mt-3 border-t border-border pt-3">
+            <Label htmlFor="advance-now">{t('est.advanceNow')}</Label>
+            <Input
+              id="advance-now"
+              type="text"
+              inputMode="decimal"
+              placeholder="0"
+              value={advanceNow}
+              onChange={(e) => setAdvanceNow(sanitizeDecimal(e.target.value))}
+            />
+            <div className="mt-2 flex flex-wrap gap-2">
+              {PAYMENT_MODES.map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setAdvanceMode(mode)}
+                  className={`rounded-full border px-3.5 py-2 text-xs font-medium ${
+                    advanceMode === mode ? 'border-accent bg-accent-bg text-accent-text' : 'border-border text-muted'
+                  }`}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-muted">{t('est.advanceHint')}</p>
+          </div>
+        )}
       </Card>
 
       {saveError && (

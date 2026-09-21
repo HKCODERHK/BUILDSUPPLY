@@ -102,6 +102,27 @@ const STRINGS = {
   'cust.callName': { en: 'Call {name}', hi: '{name} को कॉल करें', mr: '{name} यांना कॉल करा' },
   'cust.ledgerShare': { en: 'Send ledger on WhatsApp', hi: 'खाता व्हाट्सएप पर भेजें', mr: 'खाते व्हॉट्सॲपवर पाठवा' },
   'pay.recordAdvance': { en: 'Record advance', hi: 'एडवांस दर्ज करें', mr: 'ॲडव्हान्स नोंदवा' },
+  // Money handed over while an estimate is written (2026-09-22). It is kept
+  // as the customer's advance; the bill made later uses it by itself.
+  'est.takeAdvance': { en: 'Money received now?', hi: 'अभी पैसे मिले?', mr: 'आता पैसे मिळाले?' },
+  'est.advanceNow': { en: 'Amount received (₹)', hi: 'मिली रकम (₹)', mr: 'मिळालेली रक्कम (₹)' },
+  'est.advanceTaken': { en: 'Received now', hi: 'अभी मिला', mr: 'आता मिळाले' },
+  'est.advanceLeft': { en: 'Left on this estimate', hi: 'इस एस्टिमेट में बाकी', mr: 'या एस्टिमेटमध्ये बाकी' },
+  'est.advanceHint': {
+    en: 'Kept as this customer’s advance. The bill you make from this estimate uses it by itself — no need to enter it again.',
+    hi: 'यह ग्राहक का एडवांस रहेगा। इस एस्टिमेट से बनने वाला बिल खुद यह लगा लेता है — दोबारा दर्ज करने की ज़रूरत नहीं।',
+    mr: 'ही रक्कम ग्राहकाचा ॲडव्हान्स म्हणून ठेवली जाते. या एस्टिमेटमधून बनणारे बिल ती आपोआप वापरते — पुन्हा नोंदवायची गरज नाही.',
+  },
+  'est.advanceFailed': {
+    en: 'The estimate was saved, but the money was not recorded. Press Save again to record it.',
+    hi: 'एस्टिमेट सेव हो गया, पर रकम दर्ज नहीं हुई। दर्ज करने के लिए फिर से सेव दबाएँ।',
+    mr: 'एस्टिमेट सेव्ह झाले, पण रक्कम नोंदली गेली नाही. नोंदवण्यासाठी पुन्हा सेव्ह दाबा.',
+  },
+  'est.advanceNotRecorded': {
+    en: 'The estimate was saved. The money was not recorded — the PIN was not entered.',
+    hi: 'एस्टिमेट सेव हो गया। रकम दर्ज नहीं हुई — पिन नहीं डाला गया।',
+    mr: 'एस्टिमेट सेव्ह झाले. रक्कम नोंदली गेली नाही — पिन टाकला नाही.',
+  },
   'pay.advanceIntro': {
     en: 'Nothing is owed right now. This is kept as their advance, and their next bill uses it automatically.',
     hi: 'अभी कुछ बाकी नहीं है। यह रकम इनके एडवांस में रहेगी, और अगले बिल में अपने-आप लग जाएगी।',
