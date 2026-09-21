@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `033`, run in order. **033 is the latest and is applied** (2026-09-21, pasted by the user — every order on the khata link, see Phase 24). 032 (the order spam guard, Phase 17) is applied too. 031 (links and drivers, Phase 16), 030 (estimate answers and material received, Phase 13), 024 (money integrity, Phase 9), 025 (supplier row guard), 026 (online orders), 027 (reject reasons), 028 (khata link) and 029 (UPI) are applied too. (An unrelated storage-bucket 024 from Phase 8 was applied and removed again on 2026-09-11 and its file deleted.) (There is no `001` file; the base schema is `supabase/schema.sql`, which predates the migration folder.)
+- **Schema migrations**: `supabase/migrations/` — `002` through `035`, run in order. **035 is the latest and is applied** (2026-09-22, pasted by the user — GST per material, see Phase 25). **034 is written and fully tested but NOT applied and NOT merged** — it sits on the branch `delivered-assumed` waiting for the user to paste it; it and 035 replace no function in common, so either order is safe. 033 is applied too (2026-09-21 — every order on the khata link, see Phase 24). 032 (the order spam guard, Phase 17) is applied too. 031 (links and drivers, Phase 16), 030 (estimate answers and material received, Phase 13), 024 (money integrity, Phase 9), 025 (supplier row guard), 026 (online orders), 027 (reject reasons), 028 (khata link) and 029 (UPI) are applied too. (An unrelated storage-bucket 024 from Phase 8 was applied and removed again on 2026-09-11 and its file deleted.) (There is no `001` file; the base schema is `supabase/schema.sql`, which predates the migration folder.)
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -1076,6 +1076,68 @@ Shree Balaji's seven khata customers were in exactly that position.
   ones; counts unchanged (52 bills / 103 payments / 95 allocations / 19
   estimates / 13 orders / 21 customers), 0 bills out of step.
 
+**Phase 25 — GST per material (migration 035, 2026-09-22). Applied to live
+the same day.** The long-open question in "Still to do" above: one rate, 18%,
+on the whole bill — right for cement and TMT, wrong for sand and gitti at 5%.
+Asked for as item 1 of an eight-feature list, built first because it is the
+only one that changes what a bill charges.
+
+- **Settings → Material GST** (`components/MaterialGstCard.tsx`, `?s=gst`,
+  hidden for the admin): every material with its percentage in a box and the
+  five slabs a building-material supplier meets — 0, 5, 12, 18, 28 — as
+  one-tap chips. Only the percentages that moved are written, the way
+  `UpdateRatesModal` writes only the rates that moved. The field is on the
+  material's own Add / Edit form too, so a new material is not silently 18.
+- **The switch on the bill screen is unchanged.** Off still means no tax at
+  all, which is most suppliers; the user chose that over dropping it. On means
+  each line uses its own material's rate. The supplier never picks a rate
+  while billing — the line shows "₹4,000 · GST 28%" and the totals read one
+  row per rate ("GST 5% on ₹20,000 — ₹1,000"), which is how a tax invoice
+  carrying two rates has to read. Same on the estimate, both PDFs (a "GST"
+  column appears in the item table) and the bill and estimate pages.
+- **An issued bill cannot move.** `invoice_items` and `quotation_items` store
+  `gst_rate` and `gst_amount` per line, written once at save. Changing cement
+  from 18% to 28% next month leaves last month's bills exactly as they were —
+  which is the whole reason this needed the database and not a setting.
+- **`gst_rate` is only trusted when it is not null.** Lines written before 035
+  carry nulls: the tax they charged is recorded only on the bill as a whole,
+  so those bills keep printing the single GST row they always did rather than
+  a column of dashes. `lib/gst.ts` (`gstSlabs` returning empty) is the one
+  place that decides, and the bill page, the estimate page and both PDF
+  builders read it — don't re-derive it per caller.
+- **The rate is resolved in the database, never sent by the app.**
+  `_price_items(supplier, items, gst)` looks each line's percentage up from
+  the material row; a request carrying `gst_rate: 0` for a 28% material still
+  gets 28 (tested). A typed-in line with no material behind it keeps 18, which
+  is what it was charged before this existed.
+- **Rounding moved from one rounding of the whole bill to one per line,
+  summed.** For an all-18% bill that can differ by a rupee from the old
+  figure; per line is what has to be printed, since the printed lines have to
+  add up to the printed total.
+- **Adding a material still works against a database without 035**
+  (`missingGstColumn` / `withoutGst` in `services/materials.ts`): a preview
+  build talks to the live database, so the write is simply made again without
+  the column. Delete that once every environment has 035.
+- **Tested on the local Docker copy from a clean reset with 035 applied as
+  part of the structure: 435 of 435**, 28 of them new (`tests/96_gst.sql`), so
+  the whole existing money, stock, khata, orders, spam, UPI and tenant suite
+  ran against it. The frontend's own preview arithmetic was checked to return
+  the identical figures to the database for the same bill (₹1,120 + ₹100 +
+  ₹90 = ₹1,310), and the real PDF builder was driven three ways: a 035 bill
+  prints the column, each line's rate and three per-rate total rows; a
+  pre-035 bill prints one plain GST row and no column; a no-GST bill prints
+  neither.
+- **Checked on live** after pasting, read-only: one version of each of the
+  seven functions, `khata_document` still security definer and still the only
+  one of them anon can reach (both new helpers 404 over a real anonymous REST
+  call, and `materials` still returns `[]`); the default is 18 and all 9
+  materials sit at it; **0 of 106 invoice lines and 0 quotation lines carry a
+  rate**, so nothing was invented for bills already issued; counts unchanged
+  (52 bills / 103 payments / 95 allocations / 21 customers), 0 bills out of
+  step and 0 whose total disagrees with its own parts; all three guards and
+  both `security_invoker` views intact.
+
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.
@@ -1366,11 +1428,9 @@ confusable names, and the run silently did nothing here.
 
 4. **Raised with the user on 2026-09-10, not decided.** Both came up while
    listing what to collect from a new supplier:
-   - **GST is one rate, 18%, on the whole bill** (`GST_RATE` in New Invoice
-     and New Quotation, and the `0.18` in `services/invoices.ts` and
-     `services/quotations.ts`). Right for cement and TMT; sand and gitti are
-     usually 5%. It matters the day a GST-registered sand or gitti supplier
-     signs up.
+   - ~~GST is one rate, 18%, on the whole bill.~~ Built in 035 (Phase 25):
+     each material carries its own percentage and every line is taxed at its
+     own. Raised here on 2026-09-10; asked for and built 2026-09-22.
    - ~~There is no opening balance for a customer's old udhaar.~~ Built in
      024 (Phase 9): "Old balance (udhaar)" on Add / Edit customer, never
      counted as sales.
