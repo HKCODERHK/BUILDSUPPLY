@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link, Navigate } from 'react-router-dom'
 import { Download, Printer, Ban, Pencil, Truck } from 'lucide-react'
 import { SendToDriverModal } from '@/components/SendToDriverModal'
 import { formatRate, gstSlabs } from '@/lib/gst'
+import { receivedState } from '@/lib/received'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -311,12 +312,16 @@ export default function InvoiceDetail() {
           </Badge>
           <p className="text-sm italic text-muted">{t('inv.thankYou')}</p>
         </div>
-        {/* Tapped by the customer on their khata link (migration 030); only they can set it. */}
-        {invoice.received_at && (
+        {/* Tapped by the customer on their khata link (migration 030); only
+            they can set it. A delivery a day old that they never answered
+            counts too, and says so rather than borrowing their words. */}
+        {invoice.received_at ? (
           <p className="mt-3 text-xs font-medium text-accent">
             ✓ {t('inv.customerReceived', { date: new Date(invoice.received_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) })}
           </p>
-        )}
+        ) : receivedState(invoice) === 'assumed' ? (
+          <p className="mt-3 text-xs font-medium text-muted">✓ {t('inv.receivedAssumed')}</p>
+        ) : null}
       </Card>
 
       {driverOpen && <SendToDriverModal invoice={invoice} customer={customer} onClose={() => setDriverOpen(false)} />}

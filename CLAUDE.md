@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `035`, run in order. **035 is the latest and is applied** (2026-09-22, pasted by the user — GST per material, see Phase 25). **034 is written and fully tested but NOT applied and NOT merged** — it sits on the branch `delivered-assumed` waiting for the user to paste it; it and 035 replace no function in common, so either order is safe. 033 is applied too (2026-09-21 — every order on the khata link, see Phase 24). 032 (the order spam guard, Phase 17) is applied too. 031 (links and drivers, Phase 16), 030 (estimate answers and material received, Phase 13), 024 (money integrity, Phase 9), 025 (supplier row guard), 026 (online orders), 027 (reject reasons), 028 (khata link) and 029 (UPI) are applied too. (An unrelated storage-bucket 024 from Phase 8 was applied and removed again on 2026-09-11 and its file deleted.) (There is no `001` file; the base schema is `supabase/schema.sql`, which predates the migration folder.)
+- **Schema migrations**: `supabase/migrations/` — `002` through `036`, run in order. **036 is the latest and is applied** (2026-09-22 — date-wise stock logs, see Phase 27). 034 (when a bill was marked delivered, Phase 26) and 035 (GST per material, Phase 25) were pasted the same day, in that order: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would quietly take the stock logging back out of deliveries. 033 is applied too (2026-09-21 — every order on the khata link, see Phase 24).
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -1136,6 +1136,93 @@ only one that changes what a bill charges.
   (52 bills / 103 payments / 95 allocations / 21 customers), 0 bills out of
   step and 0 whose total disagrees with its own parts; all three guards and
   both `security_invoker` views intact.
+
+
+**Phase 26 — a delivery a day old counts as received (migration 034,
+2026-09-22).** Asked for 2026-09-21: "if a customer doesn't mark delivered in
+1 day it should be marked as delivered if the supplier has marked it as
+delivered". The app could not answer that at all — `invoices.delivered` is a
+yes/no with no timestamp, so "a day later" had nothing to count from.
+
+- **`invoices.delivered_at`**, stamped by `mark_invoice_delivered`, the one
+  place that flips `delivered` to true. `customer_khata` and `order_status`
+  carry it, so the khata page and the order timeline can stop waiting.
+- **`received_at` is still only ever the customer's own word.** 030's
+  `invoice_received_guard` is untouched: the supplier cannot write it, which
+  is what lets a bill say "Customer confirmed received" and mean it in an
+  argument. A day-old delivery with no reply is its own state, said in its own
+  words — "Delivered · taken as received, no reply in 24 hours" on the bill,
+  "Taken as received a day after delivery" on the timeline.
+- **`lib/received.ts` is the one rule** (`receivedState` → `confirmed` /
+  `assumed` / `waiting` / `none`), read by InvoiceDetail, OrderStatus and
+  KhataPage. Don't re-derive it per screen.
+- **A missing `delivered_at` falls back to the bill's own date, not to "long
+  ago".** Bills delivered before 034 keep a null — the moment is genuinely not
+  recorded and guessing one would put an invented fact in the record — and
+  treating null as "ages ago" would have made a five-minute-old delivery count
+  as received in the window between deploying and pasting the SQL. A delivery
+  cannot predate its bill, so `created_at` is the honest floor.
+- Tested on the local Docker copy: 12 checks of its own, in the full chain.
+  **Checked on live** after pasting: the column is there and nullable, all 54
+  delivered bills keep a null stamp, and both public reads carry the field.
+
+**Phase 27 — date-wise stock logs (migration 036, 2026-09-22). Applied to
+live the same day.** Asked for as item 6 of the eight-feature list. The gap
+was wider than the request: `activity_log` caught a manual top-up and a
+material edit, but the three movements that matter most — goods leaving on a
+delivery, a delivered bill corrected, a delivered bill cancelled — all happen
+inside the database and were written nowhere at all, so "the app says 120 bags
+and I counted 170" had no answer.
+
+- **Materials & Stock → Stock logs** (`components/StockLogs.tsx`,
+  `services/stockLogs.ts`, a third tab beside My materials and Catalog, also
+  reachable as `?view=logs`): grouped by the supplier's own calendar day
+  (`localDateKey`, not the UTC day), each line giving the material, the signed
+  quantity with its unit, "Was 120, now 170", the time, where the change came
+  from and the bill it belonged to. Filters: date from/to, material, and Added
+  / Removed, with Clear. The date filters send the day's own boundaries, not a
+  sliced ISO string — the `lib/localDate.ts` rule.
+- **The line is written by a trigger on `materials`, not by the four
+  functions**, so no movement can escape the history. The functions say *why*
+  through a transaction-local setting (`buildsupply.stock_reason`, and
+  `buildsupply.stock_invoice` for the bill); anything else that ever moves
+  stock — a hand-written statement in the SQL editor — is recorded as
+  `other` rather than going unrecorded. An unknown setting can never stop the
+  stock move itself: it is mapped to `other`.
+- **Immutable.** `stock_logs` has RLS with one policy (the supplier's own —
+  no admin access, as for every business table since 019), `select` and
+  nothing else granted to `authenticated`, nothing at all to `anon`, and
+  `stock_logs_keep` refuses both update and delete anyway. A cascade — the
+  admin deleting a whole supplier account — still works, by the same
+  `pg_trigger_depth() > 1` test `keep_money_rows` uses.
+- **The history starts the day it was applied.** Earlier movements were never
+  recorded anywhere; a partial reconstruction would not reconcile with the
+  stock figures, so none is attempted and the screen says so at the foot.
+- **It needs 034 first** — see the migrations line above. The refusal is a
+  `raise exception` naming the file, and it is tested: pasted first, 036 stops
+  and builds nothing.
+- **Tested on the local Docker copy from a clean reset with 034, 035 and 036
+  in the structure: 473 of 473**, 28 new, including the ordering refusal. The
+  whole existing suite and the 20-phone `pgbench` storm ran against the
+  re-issued `update_invoice`, `cancel_invoice`, `adjust_stock` and
+  `mark_invoice_delivered`. Proved end to end: a top-up logs 0 → 120; making
+  the bill moves nothing; delivering logs 120 → 70 naming the bill; a second
+  tap logs nothing; 50 bags becoming 60 logs one −10; cancelling returns all
+  60; changing a rate logs nothing; editing or deleting a line changes
+  nothing; another supplier sees none of it; and every material's stock still
+  agrees with its own last log line.
+- **The screen was driven with its reads answered in flight** (no rows
+  written, none read): every filter, three languages, zero overflow at 360px,
+  and the three tabs fit one line (English widest, 311px of 328).
+- **Checked on live** after pasting, read-only: the table, its RLS, its one
+  policy and both keep-triggers are in place; `authenticated` holds select and
+  nothing else and `anon` holds nothing (both proved by real anonymous REST
+  calls — 42501 on select and on insert, 404 on `_log_stock`); one version of
+  each of the five functions, and their bodies carry what they should
+  (`mark_invoice_delivered` stamps *and* logs, `update_invoice` still prices
+  GST per material *and* logs); counts unchanged (52 bills / 103 payments / 95
+  allocations / 21 customers / 9 materials), 0 bills out of step, all three
+  guards and both `security_invoker` views intact.
 
 
 ## The admin panel

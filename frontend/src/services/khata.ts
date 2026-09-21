@@ -15,6 +15,8 @@ export interface KhataInvoice {
   created_at: string
   /** Marked delivered by the supplier; received_at set by the customer's own tap (migration 030). */
   delivered?: boolean
+  /** When it was marked delivered (migration 034); absent before it. */
+  delivered_at?: string | null
   received_at?: string | null
   /**
    * An online order produced this bill (migration 033). False means the shop

@@ -230,6 +230,21 @@ export interface Quotation {
   created_at: string
 }
 
+/** One change to a material's stock, written by the database itself (migration 036). */
+export interface StockLog {
+  id: string
+  supplier_id: string
+  material_id: string
+  qty_before: number
+  qty_after: number
+  delta: number
+  /** Where the change came from. 'other' is anything that moved stock without saying why. */
+  reason: 'added' | 'delivered' | 'bill_edited' | 'bill_cancelled' | 'other'
+  invoice_id: string | null
+  actor: string | null
+  created_at: string
+}
+
 export interface QuotationItem {
   id: string
   supplier_id: string
@@ -261,6 +276,8 @@ export interface Invoice {
   delivered: boolean
   kind: InvoiceKind
   /** When the customer tapped "Material received" on their khata link (migration 030). Only they can set it. */
+  /** When the supplier marked it delivered (migration 034). */
+  delivered_at: string | null
   received_at: string | null
   created_at: string
 }

@@ -23,6 +23,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { sanitizeDecimal } from '@/lib/numberInput'
 import { useFlash, flashId } from '@/lib/useFlash'
 import { TruckLoader } from '@/components/TruckLoader'
+import { StockLogs } from '@/components/StockLogs'
 
 const emptyForm = {
   name: '',
@@ -34,7 +35,7 @@ const emptyForm = {
   low_stock_threshold: '',
 }
 
-type View = 'mine' | 'catalog'
+type View = 'mine' | 'catalog' | 'logs'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
@@ -83,6 +84,7 @@ export default function Materials() {
     // catalog: that is where rates and units come filled in, and it already
     // carries "can't find it? add your own" for everything else.
     if (searchParams.get('view') === 'catalog') setView('catalog')
+    if (searchParams.get('view') === 'logs') setView('logs')
     if (searchParams.get('new') === '1' || searchParams.get('stock') === '1' || searchParams.get('view')) {
       setSearchParams({}, { replace: true })
     }
@@ -289,7 +291,7 @@ export default function Materials() {
         </div>
       )}
 
-      <div className="mb-4 flex gap-2">
+      <div className="mb-4 flex flex-wrap gap-2">
         <button
           onClick={() => setView('mine')}
           className={`rounded-full border px-3.5 py-2.5 text-xs font-medium ${view === 'mine' ? 'border-accent bg-accent-bg text-accent-text' : 'border-border text-muted'}`}
@@ -302,9 +304,17 @@ export default function Materials() {
         >
           {t('mat.catalog')}
         </button>
+        <button
+          onClick={() => setView('logs')}
+          className={`rounded-full border px-3.5 py-2.5 text-xs font-medium ${view === 'logs' ? 'border-accent bg-accent-bg text-accent-text' : 'border-border text-muted'}`}
+        >
+          {t('slog.tab')}
+        </button>
       </div>
 
-      {view === 'mine' ? (
+      {view === 'logs' ? (
+        <StockLogs materials={materials} />
+      ) : view === 'mine' ? (
         loading ? (
           <TruckLoader />
         ) : materials.length === 0 ? (

@@ -406,6 +406,33 @@ const STRINGS = {
   'gst.saveNone': { en: 'Change a GST % to save', hi: 'सेव करने के लिए कोई जीएसटी % बदलें', mr: 'सेव्ह करण्यासाठी एखादा जीएसटी % बदला' },
   'gst.saved': { en: '{count} materials updated', hi: '{count} मटेरियल अपडेट हुए', mr: '{count} मटेरियल अपडेट झाले' },
   'gst.material': { en: 'GST %', hi: 'जीएसटी %', mr: 'जीएसटी %' },
+  // Materials & Stock → Stock logs (migration 036).
+  'slog.tab': { en: 'Stock logs', hi: 'स्टॉक लॉग', mr: 'स्टॉक लॉग' },
+  'slog.from': { en: 'From', hi: 'से', mr: 'पासून' },
+  'slog.to': { en: 'To', hi: 'तक', mr: 'पर्यंत' },
+  'slog.allMaterials': { en: 'All materials', hi: 'सभी मटेरियल', mr: 'सर्व मटेरियल' },
+  'slog.dirAll': { en: 'All', hi: 'सभी', mr: 'सर्व' },
+  'slog.dirIn': { en: 'Added', hi: 'जोड़ा', mr: 'जोडले' },
+  'slog.dirOut': { en: 'Removed', hi: 'घटा', mr: 'कमी झाले' },
+  'slog.clear': { en: 'Clear', hi: 'हटाएँ', mr: 'काढा' },
+  'slog.wasNow': { en: 'Was {before}, now {after}', hi: 'पहले {before}, अब {after}', mr: 'पूर्वी {before}, आता {after}' },
+  'slog.added': { en: 'Stock added', hi: 'स्टॉक जोड़ा', mr: 'स्टॉक जोडला' },
+  'slog.delivered': { en: 'Delivered on a bill', hi: 'बिल पर डिलीवरी हुई', mr: 'बिलावर डिलिव्हरी झाली' },
+  'slog.billEdited': { en: 'Bill corrected', hi: 'बिल ठीक किया', mr: 'बिल दुरुस्त केले' },
+  'slog.billCancelled': { en: 'Bill cancelled', hi: 'बिल रद्द हुआ', mr: 'बिल रद्द केले' },
+  'slog.other': { en: 'Changed', hi: 'बदला', mr: 'बदलले' },
+  'slog.removedMaterial': { en: 'Material removed', hi: 'मटेरियल हटाया गया', mr: 'मटेरियल काढले' },
+  'slog.none': {
+    en: 'No stock changes yet. Adding stock, or delivering a bill, writes a line here.',
+    hi: 'अभी कोई स्टॉक बदलाव नहीं। स्टॉक जोड़ने या बिल डिलीवर करने पर यहाँ लाइन बनती है।',
+    mr: 'अजून कोणताही स्टॉक बदल नाही. स्टॉक जोडल्यावर किंवा बिल डिलिव्हर केल्यावर इथे ओळ तयार होते.',
+  },
+  'slog.noneMatch': { en: 'Nothing in this period.', hi: 'इस अवधि में कुछ नहीं।', mr: 'या कालावधीत काही नाही.' },
+  'slog.startsNote': {
+    en: 'The history starts when stock logs were switched on. Anything before that was never recorded.',
+    hi: 'यह हिस्ट्री स्टॉक लॉग चालू होने से शुरू होती है। उससे पहले का कुछ दर्ज नहीं था।',
+    mr: 'हा इतिहास स्टॉक लॉग सुरू झाल्यापासून आहे. त्याआधीचे कधीच नोंदवले गेले नव्हते.',
+  },
   'inv.grandTotal': { en: 'Grand Total', hi: 'कुल रकम', mr: 'एकूण रक्कम' },
   'inv.paymentNow': {
     en: 'Payment received now (optional)',
@@ -1298,6 +1325,13 @@ const STRINGS = {
   'khata.receivedAsk': { en: 'Material received?', hi: 'माल मिल गया?', mr: 'माल मिळाला?' },
   'khata.receivedYes': { en: 'Yes, received', hi: 'हाँ, मिल गया', mr: 'हो, मिळाला' },
   'khata.receivedOn': { en: 'Received ✓ {date}', hi: 'मिल गया ✓ {date}', mr: 'मिळाला ✓ {date}' },
+  // A delivery a day old that the customer never answered. Deliberately not
+  // worded as their confirmation — see lib/received.ts.
+  'inv.receivedAssumed': {
+    en: 'Delivered · taken as received, no reply in 24 hours',
+    hi: 'पहुँच गया · 24 घंटे कोई जवाब नहीं, मिला माना गया',
+    mr: 'पोहोचले · 24 तासांत उत्तर नाही, मिळाले असे धरले',
+  },
   'inv.customerReceived': {
     en: 'Customer confirmed received on {date}',
     hi: 'ग्राहक ने {date} को माल मिलने की पुष्टि की',
@@ -1566,6 +1600,11 @@ const STRINGS = {
   'tl.billDetail': { en: 'Bill {no} · {date}', hi: 'बिल {no} · {date}', mr: 'बिल {no} · {date}' },
   'tl.delivered': { en: 'Delivered', hi: 'डिलीवर हुआ', mr: 'डिलिव्हर झाले' },
   'tl.received': { en: 'Material received', hi: 'माल मिल गया', mr: 'माल मिळाला' },
+  'tl.receivedAssumed': {
+    en: 'Taken as received a day after delivery',
+    hi: 'डिलीवरी के एक दिन बाद मिला माना गया',
+    mr: 'डिलिव्हरीनंतर एक दिवसाने मिळाले असे धरले',
+  },
   // The khata link's bill and estimate PDFs, estimates and orders (migration 031).
   'khata.billPdf': { en: 'Bill PDF', hi: 'बिल PDF', mr: 'बिल PDF' },
   'khata.estimate': { en: 'Estimate {no}', hi: 'एस्टिमेट {no}', mr: 'एस्टिमेट {no}' },
