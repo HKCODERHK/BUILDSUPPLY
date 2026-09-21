@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Inbox, Languages, Lock, LogOut, Pencil, Percent, QrCode, ShieldCheck, Store, type LucideIcon } from 'lucide-react'
+import { ArrowLeft, Inbox, Languages, Lock, LogOut, Pencil, Percent, QrCode, ShieldCheck, Store, Type, type LucideIcon } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,10 +21,12 @@ import { ChangePasswordCard } from '@/components/ChangePasswordCard'
 import { OrderSettingsCard } from '@/components/OrderSettingsCard'
 import { UpiSettingsCard } from '@/components/UpiSettingsCard'
 import { MaterialGstCard } from '@/components/MaterialGstCard'
+import { DisplaySizeCard } from '@/components/DisplaySizeCard'
+import { readDisplaySize } from '@/lib/displaySize'
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
 import { orderPageUrl } from '@/services/orders'
 
-type Section = 'business' | 'orders' | 'upi' | 'gst' | 'language' | 'pin' | 'password'
+type Section = 'business' | 'orders' | 'upi' | 'gst' | 'language' | 'size' | 'pin' | 'password'
 
 interface Row {
   id: Section
@@ -119,6 +121,14 @@ export default function Settings() {
     ],
     [
       { id: 'language', icon: Languages, label: t('set.language'), detail: LANGUAGES.find((l) => l.code === lang)?.label },
+      {
+        id: 'size',
+        icon: Type,
+        label: t('set.sizeTitle'),
+        detail: t(
+          readDisplaySize() === 'small' ? 'set.sizeSmall' : readDisplaySize() === 'large' ? 'set.sizeLarge' : 'set.sizeMedium',
+        ),
+      },
       { id: 'pin', icon: ShieldCheck, label: t('pin.title'), detail: `${t(hasPin ? 'set.on' : 'set.off')} · ${t('set.pinSub')}` },
       { id: 'password', icon: Lock, label: t('set.pwTitle'), detail: t('set.pwSub') },
     ],
@@ -266,6 +276,7 @@ export default function Settings() {
         {section === 'orders' && <OrderSettingsCard />}
         {section === 'upi' && <UpiSettingsCard />}
         {section === 'gst' && <MaterialGstCard />}
+        {section === 'size' && <DisplaySizeCard />}
 
         {/* Documents stay in English on purpose: a bill goes to customers,
             engineers and banks who may not read Devanagari, and a supplier

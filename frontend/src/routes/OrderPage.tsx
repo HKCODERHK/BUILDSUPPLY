@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ChevronDown, ChevronRight, ChevronUp, MapPin, Minus, Navigation, Phone, Plus, Search, Send, Truck } from 'lucide-react'
+import { ChevronDown, ChevronRight, ChevronUp, MapPin, Minus, Navigation, Phone, Plus, Search, Send, Share2, Truck } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,6 +16,7 @@ import type { TranslationKey } from '@/lib/i18n'
 import { sanitizeDecimal } from '@/lib/numberInput'
 import { newRequestId } from '@/services/db'
 import { getOrderPage, orderStatusUrl, placeOrder, type OrderPage as OrderPageData } from '@/services/orders'
+import { shareOrderLinkText } from '@/lib/shareOrderLink'
 import { readKhata, rememberOrder, type KhataLink } from '@/lib/customerLinks'
 
 function formatINR(n: number) {
@@ -344,6 +345,19 @@ export default function OrderPage() {
                   </Button>
                 </a>
               )}
+              {/* Pass the shop on. The link is the only thing a new customer
+                  needs — no account, no searching for the shop in an app. */}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  shareOrderLinkText(
+                    t('order.shareText', { business: page.business_name, url: window.location.href.split('?')[0] }),
+                  )
+                }
+              >
+                <Share2 size={14} /> {t('order.shareShop')}
+              </Button>
             </div>
           </Card>
         )}

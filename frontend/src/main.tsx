@@ -5,9 +5,13 @@ import App from './App.tsx'
 import { dismissKeyboardOnScroll } from './lib/dismissKeyboardOnScroll'
 import { listenForInstall } from './lib/installPrompt'
 import { showScrollbarsWhileScrolling } from './lib/scrollbars'
+import { applyDisplaySize, readDisplaySize } from './lib/displaySize'
 
 // Before the first render: Chrome's "can be installed" arrives early, once.
 listenForInstall()
+
+// And the app's own size, so nothing resizes under the supplier a moment in.
+applyDisplaySize(readDisplaySize())
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

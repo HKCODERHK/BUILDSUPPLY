@@ -102,6 +102,27 @@ const STRINGS = {
   'cust.callName': { en: 'Call {name}', hi: '{name} को कॉल करें', mr: '{name} यांना कॉल करा' },
   'cust.ledgerShare': { en: 'Send ledger on WhatsApp', hi: 'खाता व्हाट्सएप पर भेजें', mr: 'खाते व्हॉट्सॲपवर पाठवा' },
   'pay.recordAdvance': { en: 'Record advance', hi: 'एडवांस दर्ज करें', mr: 'ॲडव्हान्स नोंदवा' },
+  // Money handed over while an estimate is written (2026-09-22). It is kept
+  // as the customer's advance; the bill made later uses it by itself.
+  'est.takeAdvance': { en: 'Money received now?', hi: 'अभी पैसे मिले?', mr: 'आता पैसे मिळाले?' },
+  'est.advanceNow': { en: 'Amount received (₹)', hi: 'मिली रकम (₹)', mr: 'मिळालेली रक्कम (₹)' },
+  'est.advanceTaken': { en: 'Received now', hi: 'अभी मिला', mr: 'आता मिळाले' },
+  'est.advanceLeft': { en: 'Left on this estimate', hi: 'इस एस्टिमेट में बाकी', mr: 'या एस्टिमेटमध्ये बाकी' },
+  'est.advanceHint': {
+    en: 'Kept as this customer’s advance. The bill you make from this estimate uses it by itself — no need to enter it again.',
+    hi: 'यह ग्राहक का एडवांस रहेगा। इस एस्टिमेट से बनने वाला बिल खुद यह लगा लेता है — दोबारा दर्ज करने की ज़रूरत नहीं।',
+    mr: 'ही रक्कम ग्राहकाचा ॲडव्हान्स म्हणून ठेवली जाते. या एस्टिमेटमधून बनणारे बिल ती आपोआप वापरते — पुन्हा नोंदवायची गरज नाही.',
+  },
+  'est.advanceFailed': {
+    en: 'The estimate was saved, but the money was not recorded. Press Save again to record it.',
+    hi: 'एस्टिमेट सेव हो गया, पर रकम दर्ज नहीं हुई। दर्ज करने के लिए फिर से सेव दबाएँ।',
+    mr: 'एस्टिमेट सेव्ह झाले, पण रक्कम नोंदली गेली नाही. नोंदवण्यासाठी पुन्हा सेव्ह दाबा.',
+  },
+  'est.advanceNotRecorded': {
+    en: 'The estimate was saved. The money was not recorded — the PIN was not entered.',
+    hi: 'एस्टिमेट सेव हो गया। रकम दर्ज नहीं हुई — पिन नहीं डाला गया।',
+    mr: 'एस्टिमेट सेव्ह झाले. रक्कम नोंदली गेली नाही — पिन टाकला नाही.',
+  },
   'pay.advanceIntro': {
     en: 'Nothing is owed right now. This is kept as their advance, and their next bill uses it automatically.',
     hi: 'अभी कुछ बाकी नहीं है। यह रकम इनके एडवांस में रहेगी, और अगले बिल में अपने-आप लग जाएगी।',
@@ -389,6 +410,21 @@ const STRINGS = {
   'inv.gst': { en: 'GST', hi: 'जीएसटी', mr: 'जीएसटी' },
   'inv.gstOn': { en: 'on {amount}', hi: '{amount} पर', mr: '{amount} वर' },
   'gst.title': { en: 'Material GST', hi: 'मटेरियल जीएसटी', mr: 'मटेरियल जीएसटी' },
+  // How big the app draws itself (2026-09-22).
+  'set.sizeTitle': { en: 'App size', hi: 'ऐप का आकार', mr: 'ॲपचा आकार' },
+  'set.sizeSmall': { en: 'Small', hi: 'छोटा', mr: 'लहान' },
+  'set.sizeMedium': { en: 'Medium', hi: 'मध्यम', mr: 'मध्यम' },
+  'set.sizeLarge': { en: 'Large', hi: 'बड़ा', mr: 'मोठे' },
+  'set.sizeIntro': {
+    en: 'Text, buttons and spacing all change together. Tap one to see it straight away.',
+    hi: 'टेक्स्ट, बटन और जगह सब साथ में बदलते हैं। दबाकर तुरंत देखें।',
+    mr: 'मजकूर, बटणे आणि जागा सगळे एकत्र बदलतात. दाबून लगेच पाहा.',
+  },
+  'set.sizeKept': {
+    en: 'Kept on this phone. Your phone’s own display settings still work too.',
+    hi: 'यह इसी फ़ोन पर याद रहता है। फ़ोन की अपनी डिस्प्ले सेटिंग भी चलती है।',
+    mr: 'हे याच फोनवर लक्षात ठेवले जाते. फोनची स्वतःची डिस्प्ले सेटिंगही चालू राहते.',
+  },
   'gst.rowSub': { en: 'GST % for each material', hi: 'हर मटेरियल का जीएसटी %', mr: 'प्रत्येक मटेरियलचा जीएसटी %' },
   'gst.intro': {
     en: 'Set it once for each material. Every new bill uses it by itself — bills already made keep the GST they were made with.',
@@ -434,6 +470,11 @@ const STRINGS = {
     mr: 'हा इतिहास स्टॉक लॉग सुरू झाल्यापासून आहे. त्याआधीचे कधीच नोंदवले गेले नव्हते.',
   },
   'inv.grandTotal': { en: 'Grand Total', hi: 'कुल रकम', mr: 'एकूण रक्कम' },
+  // The bill as a card on a phone, with the document one tap away.
+  'inv.itemCount': { en: '{count} items', hi: '{count} चीज़ें', mr: '{count} वस्तू' },
+  'inv.itemCountOne': { en: '1 item', hi: '1 चीज़', mr: '1 वस्तू' },
+  'inv.viewFull': { en: 'View full bill', hi: 'पूरा बिल देखें', mr: 'पूर्ण बिल पाहा' },
+  'inv.backToSummary': { en: 'Back', hi: 'वापस', mr: 'मागे' },
   'inv.paymentNow': {
     en: 'Payment received now (optional)',
     hi: 'अभी मिला पेमेंट (ज़रूरी नहीं)',
@@ -1613,6 +1654,10 @@ const STRINGS = {
     mr: 'डिलिव्हरीनंतर एक दिवसाने मिळाले असे धरले',
   },
   // The khata link's bill and estimate PDFs, estimates and orders (migration 031).
+  // The bill or estimate read in the page, rather than downloaded (2026-09-22).
+  'khata.billView': { en: 'View bill', hi: 'बिल देखें', mr: 'बिल पाहा' },
+  'khata.estimateView': { en: 'View estimate', hi: 'एस्टिमेट देखें', mr: 'एस्टिमेट पाहा' },
+  'khata.estimateNo': { en: 'Estimate {no}', hi: 'एस्टिमेट {no}', mr: 'एस्टिमेट {no}' },
   'khata.billPdf': { en: 'Bill PDF', hi: 'बिल PDF', mr: 'बिल PDF' },
   'khata.estimate': { en: 'Estimate {no}', hi: 'एस्टिमेट {no}', mr: 'एस्टिमेट {no}' },
   'khata.estOpen': { en: 'Open ({count})', hi: 'चालू ({count})', mr: 'चालू ({count})' },
@@ -1702,6 +1747,13 @@ const STRINGS = {
   // …and the customer's khata page.
   'upi.payTitle': { en: 'Pay by UPI', hi: 'UPI से भुगतान', mr: 'UPI ने पेमेंट' },
   // How the customer means to pay for an online order (migration 037).
+  // A customer passing the shop's order link to somebody else (2026-09-22).
+  'order.shareShop': { en: 'Share this shop', hi: 'यह दुकान शेयर करें', mr: 'हे दुकान शेअर करा' },
+  'order.shareText': {
+    en: 'Order building materials from {business} here: {url}',
+    hi: '{business} से बिल्डिंग मटेरियल यहाँ से मंगाएँ: {url}',
+    mr: '{business} यांच्याकडून बिल्डिंग मटेरियल इथून मागवा: {url}',
+  },
   'order.payHow': { en: 'How will you pay?', hi: 'भुगतान कैसे करेंगे?', mr: 'पेमेंट कसे करणार?' },
   'order.payCash': { en: 'Cash', hi: 'नकद', mr: 'रोख' },
   'order.payOnline': { en: 'Pay online (UPI)', hi: 'ऑनलाइन (UPI)', mr: 'ऑनलाइन (UPI)' },

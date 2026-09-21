@@ -1290,6 +1290,65 @@ the eight-feature list, in one migration because both are the order flow.
   `security_invoker` views intact.
 
 
+**Phase 29 — the last four of the eight (2026-09-22). No database change.**
+Items 4, 5, 8 and 1 of the list, built one after another on `estimate-advance`
+and reviewed together at the user's request ("move to next round, merge all at
+last").
+
+- **Money taken while an estimate is written** (New Estimate → "Money
+  received now?"). It is **not** a payment against the estimate: since 024
+  money attaches to *bills* through allocations, and an estimate has nothing
+  to pay off. It goes through `record_advance`, so it is that customer's
+  advance — deliberately only usable by bills raised *after* it, which is what
+  stops it quietly clearing somebody's older dues — and the bill made from the
+  estimate then uses it by itself. The totals read "Received now" and "Left on
+  this estimate", never "Balance": a quote that may never become a bill is not
+  a debt, and calling it one is how an argument about an unbilled figure
+  starts. Large amounts hit the same PIN gate as any payment.
+  **Its own request id**, so pressing Save again after the estimate saved but
+  the money did not records it exactly once — and on that retry
+  `approve_order` answers `already` and names no customer, so the order row is
+  read for it rather than the advance being skipped in silence.
+- **A bill opens as a card on a phone** (`InvoiceDetail`): customer, site,
+  item count, Total / Paid / Remaining and whether it arrived, with the whole
+  document behind **View full bill** at `?full=1` — a search param, not a
+  dialog, so the phone's back button closes it (the khata link's `?s=` rule).
+  From `lg` up there is room for the document itself and it is shown at once.
+  The actions did not move.
+- **The khata link shows a bill or estimate in the page** ("View bill" /
+  "View estimate", beside the PDF rather than instead of it): every line with
+  its quantity, rate and own GST percentage, the per-rate breakup, Grand
+  Total, Paid and Remaining. It reads `khata_document`, which already carried
+  all of it for the PDF (031, plus the per-line tax from 035), so this needed
+  no migration.
+- **"Share this shop"** on the khata page and the order page
+  (`shareOrderLinkText`, the supplier's own helper): the share sheet with
+  "Order building materials from ‹shop› here: ‹link›". Until now only the
+  supplier could pass their order link on, and a customer telling a friend
+  where they buy is how a shop actually gets new ones. Only while ordering is
+  on, since the khata page only gets `order_link` then.
+- **Settings → App size: Small, Medium, Large** (`lib/displaySize.ts`,
+  `components/DisplaySizeCard.tsx`). One number — the root font size, 15 / 16
+  / 18px — and text, buttons, spacing and rounding all follow, because
+  Tailwind sizes in `rem`. Applied in `main.tsx` **before the first render**,
+  so nothing resizes under the supplier a moment in, and **Medium removes the
+  override rather than writing `16px`**, so the browser's own default and the
+  phone's accessibility settings still decide. It matters more here than on an
+  ordinary site because this app turns pinch-zoom off (Phase 19), so a
+  supplier who finds the text small has nowhere else to go; Android's own
+  display-size setting still stacks on top.
+- **Verified** on the review harness (`review.html`, the real screens on
+  `review/mock.js`) and with the public pages' reads answered in flight,
+  nothing written: an estimate of ₹50,000 with ₹20,000 taken sent exactly
+  `create_quotation` then `record_advance`, and the bill converted from it read
+  Paid ₹20,000 / Remaining ₹30,000 / Partial with nobody entering the payment
+  again; card → full → back on the bill page; **nine screens at Large and five
+  at Small on a 360px phone with zero sideways overflow on every one**, and
+  `--tabbar-h` following from 63px to 72px by itself; the khata dialog showing
+  both lines with GST 28% and GST 5% and its Remaining; both Share buttons
+  sending the right text and URL through the share sheet.
+
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.
