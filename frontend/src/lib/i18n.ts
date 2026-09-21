@@ -410,6 +410,21 @@ const STRINGS = {
   'inv.gst': { en: 'GST', hi: 'जीएसटी', mr: 'जीएसटी' },
   'inv.gstOn': { en: 'on {amount}', hi: '{amount} पर', mr: '{amount} वर' },
   'gst.title': { en: 'Material GST', hi: 'मटेरियल जीएसटी', mr: 'मटेरियल जीएसटी' },
+  // How big the app draws itself (2026-09-22).
+  'set.sizeTitle': { en: 'App size', hi: 'ऐप का आकार', mr: 'ॲपचा आकार' },
+  'set.sizeSmall': { en: 'Small', hi: 'छोटा', mr: 'लहान' },
+  'set.sizeMedium': { en: 'Medium', hi: 'मध्यम', mr: 'मध्यम' },
+  'set.sizeLarge': { en: 'Large', hi: 'बड़ा', mr: 'मोठे' },
+  'set.sizeIntro': {
+    en: 'Text, buttons and spacing all change together. Tap one to see it straight away.',
+    hi: 'टेक्स्ट, बटन और जगह सब साथ में बदलते हैं। दबाकर तुरंत देखें।',
+    mr: 'मजकूर, बटणे आणि जागा सगळे एकत्र बदलतात. दाबून लगेच पाहा.',
+  },
+  'set.sizeKept': {
+    en: 'Kept on this phone. Your phone’s own display settings still work too.',
+    hi: 'यह इसी फ़ोन पर याद रहता है। फ़ोन की अपनी डिस्प्ले सेटिंग भी चलती है।',
+    mr: 'हे याच फोनवर लक्षात ठेवले जाते. फोनची स्वतःची डिस्प्ले सेटिंगही चालू राहते.',
+  },
   'gst.rowSub': { en: 'GST % for each material', hi: 'हर मटेरियल का जीएसटी %', mr: 'प्रत्येक मटेरियलचा जीएसटी %' },
   'gst.intro': {
     en: 'Set it once for each material. Every new bill uses it by itself — bills already made keep the GST they were made with.',
@@ -455,6 +470,11 @@ const STRINGS = {
     mr: 'हा इतिहास स्टॉक लॉग सुरू झाल्यापासून आहे. त्याआधीचे कधीच नोंदवले गेले नव्हते.',
   },
   'inv.grandTotal': { en: 'Grand Total', hi: 'कुल रकम', mr: 'एकूण रक्कम' },
+  // The bill as a card on a phone, with the document one tap away.
+  'inv.itemCount': { en: '{count} items', hi: '{count} चीज़ें', mr: '{count} वस्तू' },
+  'inv.itemCountOne': { en: '1 item', hi: '1 चीज़', mr: '1 वस्तू' },
+  'inv.viewFull': { en: 'View full bill', hi: 'पूरा बिल देखें', mr: 'पूर्ण बिल पाहा' },
+  'inv.backToSummary': { en: 'Back', hi: 'वापस', mr: 'मागे' },
   'inv.paymentNow': {
     en: 'Payment received now (optional)',
     hi: 'अभी मिला पेमेंट (ज़रूरी नहीं)',
@@ -1634,6 +1654,10 @@ const STRINGS = {
     mr: 'डिलिव्हरीनंतर एक दिवसाने मिळाले असे धरले',
   },
   // The khata link's bill and estimate PDFs, estimates and orders (migration 031).
+  // The bill or estimate read in the page, rather than downloaded (2026-09-22).
+  'khata.billView': { en: 'View bill', hi: 'बिल देखें', mr: 'बिल पाहा' },
+  'khata.estimateView': { en: 'View estimate', hi: 'एस्टिमेट देखें', mr: 'एस्टिमेट पाहा' },
+  'khata.estimateNo': { en: 'Estimate {no}', hi: 'एस्टिमेट {no}', mr: 'एस्टिमेट {no}' },
   'khata.billPdf': { en: 'Bill PDF', hi: 'बिल PDF', mr: 'बिल PDF' },
   'khata.estimate': { en: 'Estimate {no}', hi: 'एस्टिमेट {no}', mr: 'एस्टिमेट {no}' },
   'khata.estOpen': { en: 'Open ({count})', hi: 'चालू ({count})', mr: 'चालू ({count})' },
@@ -1723,6 +1747,13 @@ const STRINGS = {
   // …and the customer's khata page.
   'upi.payTitle': { en: 'Pay by UPI', hi: 'UPI से भुगतान', mr: 'UPI ने पेमेंट' },
   // How the customer means to pay for an online order (migration 037).
+  // A customer passing the shop's order link to somebody else (2026-09-22).
+  'order.shareShop': { en: 'Share this shop', hi: 'यह दुकान शेयर करें', mr: 'हे दुकान शेअर करा' },
+  'order.shareText': {
+    en: 'Order building materials from {business} here: {url}',
+    hi: '{business} से बिल्डिंग मटेरियल यहाँ से मंगाएँ: {url}',
+    mr: '{business} यांच्याकडून बिल्डिंग मटेरियल इथून मागवा: {url}',
+  },
   'order.payHow': { en: 'How will you pay?', hi: 'भुगतान कैसे करेंगे?', mr: 'पेमेंट कसे करणार?' },
   'order.payCash': { en: 'Cash', hi: 'नकद', mr: 'रोख' },
   'order.payOnline': { en: 'Pay online (UPI)', hi: 'ऑनलाइन (UPI)', mr: 'ऑनलाइन (UPI)' },

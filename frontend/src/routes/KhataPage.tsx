@@ -12,9 +12,13 @@ import {
   Phone,
   Receipt,
   ScrollText,
+  Share2,
   Truck,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
+import { Modal } from '@/components/ui/modal'
+import { formatRate, gstSlabs } from '@/lib/gst'
+import { shareOrderLinkText } from '@/lib/shareOrderLink'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { LanguageToggle } from '@/components/LanguageToggle'
@@ -34,6 +38,8 @@ import {
   confirmReceived,
   getKhata,
   getKhataDocument,
+  type KhataDocument,
+  type KhataDocumentLine,
   type KhataEstimate,
   type KhataInvoice,
   type KhataOrder,
@@ -165,6 +171,7 @@ export default function KhataPage() {
   const [downloading, setDownloading] = useState(false)
   // One bill's or estimate's PDF being made: "bill:INV-1024" or "estimate:QT-1003".
   const [docBusy, setDocBusy] = useState<string | null>(null)
+  const [viewing, setViewing] = useState<KhataDocument | null>(null)
   const [docFailed, setDocFailed] = useState(false)
   // "Material received" (migration 030): asked, then confirmed — two taps, so a
   // stray one can't record it.
@@ -338,6 +345,40 @@ export default function KhataPage() {
     }
   }
 
+  /**
+   * The document's own lines, shown in the page (2026-09-22). The PDF is
+   * still there beside it — this is for a customer on a phone who only wants
+   * to see what they were charged for, and would rather not download an A4
+   * sheet and pinch at it.
+   */
+  async function openDocument(kind: 'bill' | 'estimate', no: string) {
+    if (!found || docBusy) return
+    setDocBusy(`view:${kind}:${no}`)
+    setDocFailed(false)
+    try {
+      const doc = await getKhataDocument(token, kind, no)
+      if (!doc.found) throw new Error('not found')
+      setViewing(doc)
+    } catch {
+      setDocFailed(true)
+    } finally {
+      setDocBusy(null)
+    }
+  }
+
+  function viewButton(kind: 'bill' | 'estimate', no: string, label: string) {
+    return (
+      <button
+        type="button"
+        onClick={() => openDocument(kind, no)}
+        disabled={docBusy !== null}
+        className="inline-flex items-center gap-1 text-xs font-semibold text-accent disabled:opacity-60"
+      >
+        {docBusy === `view:${kind}:${no}` ? <LoaderCircle size={12} className="animate-spin" /> : <FileText size={12} />} {label}
+      </button>
+    )
+  }
+
   function pdfButton(kind: 'bill' | 'estimate', no: string, label: string) {
     return (
       <button
@@ -382,6 +423,7 @@ export default function KhataPage() {
         ) : state === 'assumed' ? (
           <span className="font-medium text-accent">{t('khata.ordDelivered')}</span>
         ) : null}
+        {hasDocuments && viewButton('bill', bill.invoice_no, t('khata.billView'))}
         {hasDocuments && pdfButton('bill', bill.invoice_no, t('khata.billPdf'))}
       </div>
     )
@@ -449,7 +491,10 @@ export default function KhataPage() {
             {formatDate(q.created_at)}
             {q.site ? ` · ${q.site}` : ''}
           </div>
-          <div className="mt-1">{pdfButton('estimate', q.quote_no, t('khata.estimatePdf'))}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+            {viewButton('estimate', q.quote_no, t('khata.estimateView'))}
+            {pdfButton('estimate', q.quote_no, t('khata.estimatePdf'))}
+          </div>
         </div>
         <div className="shrink-0 text-right">
           <div className="text-sm font-semibold text-ink">{formatINR(Number(q.total))}</div>
@@ -908,16 +953,123 @@ export default function KhataPage() {
                 same words the order page's own button carries. Only while the
                 supplier takes online orders (migration 031). */}
             {found.order_link && (
-              <Link to={`/order/${found.order_link}`} className="block">
-                <span className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-accent px-4 py-4 text-base font-bold text-white shadow-sm transition-colors hover:bg-accent-soft">
-                  <Truck size={20} className="shrink-0" />
-                  {t('order.startNow')}
-                </span>
-              </Link>
+              <>
+                <Link to={`/order/${found.order_link}`} className="block">
+                  <span className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-accent px-4 py-4 text-base font-bold text-white shadow-sm transition-colors hover:bg-accent-soft">
+                    <Truck size={20} className="shrink-0" />
+                    {t('order.startNow')}
+                  </span>
+                </Link>
+                {/* And pass the shop on. Until now only the supplier could
+                    share their own order link; a customer telling a friend
+                    where they buy is how a shop actually gets new ones. */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    shareOrderLinkText(
+                      t('order.shareText', {
+                        business: found.supplier.business_name,
+                        url: `${window.location.origin}/order/${found.order_link}`,
+                      }),
+                    )
+                  }
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border px-4 py-3 text-sm font-semibold text-accent"
+                >
+                  <Share2 size={16} className="shrink-0" />
+                  {t('order.shareShop')}
+                </button>
+              </>
             )}
           </>
         )}
       </main>
+
+      {/* The bill or estimate itself, read in the page. The same figures the
+          PDF carries, laid out for a phone rather than for A4. */}
+      {viewing && viewing.found && (
+        <Modal
+          title={viewing.kind === 'bill' ? t('khata.bill', { no: viewing.invoice_no }) : t('khata.estimateNo', { no: viewing.quote_no })}
+          onClose={() => setViewing(null)}
+        >
+          <div className="flex flex-col gap-3 text-sm">
+            <div className="text-xs text-muted">
+              {formatDate(viewing.created_at)}
+              {viewing.site ? ` · ${viewing.site}` : ''}
+            </div>
+            <div className="flex flex-col divide-y divide-border border-y border-border">
+              {viewing.items.map((line: KhataDocumentLine, i: number) => (
+                <div key={i} className="flex items-start justify-between gap-3 py-2.5">
+                  <div className="min-w-0">
+                    <div className="text-ink">{line.description}</div>
+                    <div className="text-xs text-muted">
+                      {Number(line.qty).toLocaleString('en-IN')} × {formatINR(Number(line.rate))}
+                      {line.gst_rate != null && Number(line.gst_rate) > 0
+                        ? ` · ${t('inv.gst')} ${formatRate(Number(line.gst_rate))}`
+                        : ''}
+                    </div>
+                  </div>
+                  <div className="shrink-0 font-medium text-ink">{formatINR(Number(line.amount))}</div>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex justify-between text-muted">
+                <span>{t('inv.subtotal')}</span>
+                <span>{formatINR(Number(viewing.subtotal))}</span>
+              </div>
+              {gstSlabs(viewing.items).length > 0 ? (
+                gstSlabs(viewing.items).map((slab) => (
+                  <div key={slab.rate} className="flex justify-between text-muted">
+                    <span>
+                      {t('inv.gst')} {formatRate(slab.rate)}
+                    </span>
+                    <span>{formatINR(slab.amount)}</span>
+                  </div>
+                ))
+              ) : Number(viewing.gst_amount) > 0 ? (
+                <div className="flex justify-between text-muted">
+                  <span>{t('inv.gst')}</span>
+                  <span>{formatINR(Number(viewing.gst_amount))}</span>
+                </div>
+              ) : null}
+              {Number(viewing.transport_labour_charge) > 0 && (
+                <div className="flex justify-between text-muted">
+                  <span>{t('inv.transportLabourShort')}</span>
+                  <span>{formatINR(Number(viewing.transport_labour_charge))}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t border-border pt-2 text-base font-bold text-ink">
+                <span>{t('inv.grandTotal')}</span>
+                <span>{formatINR(Number(viewing.total))}</span>
+              </div>
+              {viewing.kind === 'bill' && (
+                <>
+                  <div className="flex justify-between text-accent">
+                    <span>{t('common.paid')}</span>
+                    <span>{formatINR(Number(viewing.paid))}</span>
+                  </div>
+                  {Number(viewing.total) - Number(viewing.paid) > 0.005 && (
+                    <div className="flex justify-between font-semibold text-red-600 dark:text-red-400">
+                      <span>{t('inv.remaining')}</span>
+                      <span>{formatINR(Number(viewing.total) - Number(viewing.paid))}</span>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() =>
+                downloadDocument(viewing.kind, viewing.kind === 'bill' ? viewing.invoice_no : viewing.quote_no)
+              }
+              disabled={docBusy !== null}
+            >
+              <Download size={15} /> {t('khata.billPdf')}
+            </Button>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

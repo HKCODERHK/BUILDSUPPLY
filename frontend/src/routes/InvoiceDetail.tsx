@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate, Link, Navigate } from 'react-router-dom'
-import { Download, Printer, Ban, Pencil, Truck } from 'lucide-react'
+import { useParams, useNavigate, useSearchParams, Link, Navigate } from 'react-router-dom'
+import { ArrowLeft, Download, FileText, Printer, Ban, Pencil, Truck } from 'lucide-react'
 import { SendToDriverModal } from '@/components/SendToDriverModal'
 import { formatRate, gstSlabs } from '@/lib/gst'
 import { receivedState } from '@/lib/received'
@@ -28,6 +28,7 @@ function formatINR(n: number) {
 
 export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { supplier } = useAuth()
   const { t, mt } = useLanguage()
   const { confirmWithPin } = usePin()
@@ -134,6 +135,13 @@ export default function InvoiceDetail() {
   const slabs = gstSlabs(items)
   const taxedLines = slabs.length > 0
 
+  // On a phone the bill opens as a card a supplier can read at a glance —
+  // who, how much, how much left — with the whole document one tap away
+  // (?full=1, so back closes it). A computer has the room for the document
+  // itself, and gets it straight away.
+  const full = searchParams.get('full') === '1'
+  const itemCount = items.length
+
   return (
     <div>
       <PageHeader
@@ -183,7 +191,85 @@ export default function InvoiceDetail() {
         </Card>
       )}
 
-      <Card>
+      {!full && (
+        <Card className="lg:hidden">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="truncate text-base font-bold text-ink">
+                {customer ? (
+                  <Link to={`/customers/${customer.id}`} state={{ customerName: customer.name }} className="hover:text-accent">
+                    {customer.name}
+                  </Link>
+                ) : (
+                  t('inv.walkIn')
+                )}
+              </div>
+              {invoice.site && <div className="truncate text-sm text-muted">{invoice.site}</div>}
+              <div className="text-xs text-muted">
+                {itemCount === 1 ? t('inv.itemCountOne') : t('inv.itemCount', { count: itemCount })}
+              </div>
+            </div>
+            <Badge
+              tone={
+                invoice.status === 'Cancelled'
+                  ? 'neutral'
+                  : invoice.status === 'Paid'
+                    ? 'success'
+                    : invoice.status === 'Partial'
+                      ? 'warning'
+                      : 'danger'
+              }
+            >
+              {t(`status.${invoice.status}`)}
+            </Badge>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-1.5 border-t border-border pt-4 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted">{t('inv.grandTotal')}</span>
+              <span className="font-bold text-ink">{formatINR(invoice.total)}</span>
+            </div>
+            <div className="flex justify-between text-accent">
+              <span>{t('common.paid')}</span>
+              <span>{formatINR(invoice.paid)}</span>
+            </div>
+            {remaining > 0 && (
+              <div className="flex justify-between text-base font-bold text-red-600">
+                <span>{t('inv.remaining')}</span>
+                <span>{formatINR(remaining)}</span>
+              </div>
+            )}
+          </div>
+
+          {invoice.received_at ? (
+            <p className="mt-3 text-xs font-medium text-accent">
+              ✓ {t('inv.customerReceived', { date: new Date(invoice.received_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) })}
+            </p>
+          ) : receivedState(invoice) === 'assumed' ? (
+            <p className="mt-3 text-xs font-medium text-muted">✓ {t('inv.receivedAssumed')}</p>
+          ) : null}
+
+          <Button
+            variant="outline"
+            className="mt-4 w-full"
+            onClick={() => setSearchParams({ full: '1' }, { state: { fromBill: true } })}
+          >
+            <FileText size={15} /> {t('inv.viewFull')}
+          </Button>
+        </Card>
+      )}
+
+      {full && (
+        <button
+          type="button"
+          onClick={() => setSearchParams({})}
+          className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-accent lg:hidden"
+        >
+          <ArrowLeft size={16} /> {t('inv.backToSummary')}
+        </button>
+      )}
+
+      <Card className={full ? undefined : 'hidden lg:block'}>
         <div className="mb-6 flex flex-col gap-4 border-b border-border pb-6 min-[420px]:flex-row min-[420px]:items-start min-[420px]:justify-between">
           <div className="flex items-center gap-3">
             {supplier?.logo_url && (
