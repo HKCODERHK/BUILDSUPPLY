@@ -20,6 +20,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { QUOTATION_STATUS_TONE } from '@/lib/quotationStatus'
 import type { Quotation, QuotationItem, Customer, OrderRequest } from '@/lib/database.types'
+import { formatRate, gstSlabs } from '@/lib/gst'
 import { TruckLoader } from '@/components/TruckLoader'
 
 function formatINR(n: number) {
@@ -149,6 +150,9 @@ export default function QuotationDetail() {
     }
   }
 
+  // Empty on an estimate saved before 035 recorded a rate per line.
+  const slabs = gstSlabs(items)
+
   return (
     <div>
       <PageHeader
@@ -253,12 +257,23 @@ export default function QuotationDetail() {
               <span>{t('inv.subtotal')}</span>
               <span>{formatINR(quotation.subtotal)}</span>
             </div>
-            {quotation.gst_amount > 0 && (
+            {/* Per rate once the lines carry one (035); an estimate written
+                before that keeps the single figure it recorded. */}
+            {slabs.length > 0 ? (
+              slabs.map((slab) => (
+                <div key={slab.rate} className="flex justify-between text-muted">
+                  <span>
+                    {t('inv.gst')} {formatRate(slab.rate)}
+                  </span>
+                  <span>{formatINR(slab.amount)}</span>
+                </div>
+              ))
+            ) : quotation.gst_amount > 0 ? (
               <div className="flex justify-between text-muted">
                 <span>{t('inv.gst')}</span>
                 <span>{formatINR(quotation.gst_amount)}</span>
               </div>
-            )}
+            ) : null}
             {quotation.transport_labour_charge > 0 && (
               <div className="flex justify-between text-muted">
                 <span>{t('inv.transportLabourShort')}</span>

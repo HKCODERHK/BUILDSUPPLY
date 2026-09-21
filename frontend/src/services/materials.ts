@@ -17,9 +17,12 @@ export async function listMaterials(): Promise<Material[]> {
 
 export async function createMaterial(
   supplierId: string,
-  input: Omit<Material, 'id' | 'supplier_id' | 'created_at' | 'master_material_id' | 'low_stock_threshold' | 'stock_qty' | 'stock_unit'> & {
+  input: Omit<Material, 'id' | 'supplier_id' | 'created_at' | 'master_material_id' | 'low_stock_threshold' | 'stock_qty' | 'stock_unit' | 'gst_rate'> & {
     master_material_id?: string | null
     low_stock_threshold?: number | null
+    // Left out by the catalog path, where the database's own 18 applies
+    // until the supplier sets one in Settings → Material GST (035).
+    gst_rate?: number
     // Omitted entirely from the Add/Edit Material form — a new material
     // always starts at 0 stock; suppliers set actual quantity afterward via
     // "Add Stock" on the Stock page, not here.

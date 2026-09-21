@@ -16,6 +16,7 @@ import {
   drawParties,
   drawPageFooter,
 } from './pdfTheme'
+import { formatRate, gstSlabs } from './gst'
 
 // Layout comes from pdfTheme so this matches the estimate and the customer
 // ledger exactly — see that file. `logo` must already be loaded (via
@@ -42,22 +43,36 @@ function buildInvoicePdf(
 
   y = drawParties(doc, y, { supplier, customer, site: invoice.site })
 
+  // Lines saved from 035 onwards carry their own percentage, so the bill can
+  // print it material-wise — which is what a tax invoice carrying two rates
+  // has to do. Older bills have none recorded per line, and keep the single
+  // GST row under the totals, exactly as they always printed.
+  const slabs = gstSlabs(items)
+  const perLine = slabs.length > 0
+
   autoTable(doc, {
     startY: y,
-    head: [['#', 'Particulars', 'Qty', 'Rate', 'Amount']],
-    body: items.map((item, i) => [
-      String(i + 1),
-      item.description || '—',
-      String(item.qty),
-      formatINR(item.rate),
-      formatINR(item.amount),
-    ]),
-    columnStyles: {
-      0: { cellWidth: 10 },
-      2: { halign: 'right', cellWidth: 20 },
-      3: { halign: 'right', cellWidth: 30 },
-      4: { halign: 'right', cellWidth: 30 },
-    },
+    head: [perLine ? ['#', 'Particulars', 'Qty', 'Rate', 'GST', 'Amount'] : ['#', 'Particulars', 'Qty', 'Rate', 'Amount']],
+    body: items.map((item, i) => {
+      const row = [String(i + 1), item.description || '—', String(item.qty), formatINR(item.rate)]
+      if (perLine) row.push(item.gst_rate == null ? '—' : formatRate(Number(item.gst_rate)))
+      row.push(formatINR(item.amount))
+      return row
+    }),
+    columnStyles: perLine
+      ? {
+          0: { cellWidth: 10 },
+          2: { halign: 'right', cellWidth: 18 },
+          3: { halign: 'right', cellWidth: 26 },
+          4: { halign: 'right', cellWidth: 16 },
+          5: { halign: 'right', cellWidth: 28 },
+        }
+      : {
+          0: { cellWidth: 10 },
+          2: { halign: 'right', cellWidth: 20 },
+          3: { halign: 'right', cellWidth: 30 },
+          4: { halign: 'right', cellWidth: 30 },
+        },
     ...tableStyles,
     didDrawPage: () => drawPageFooter(doc, `${supplier.business_name}  ·  ${invoice.invoice_no}`),
   })
@@ -77,7 +92,13 @@ function buildInvoicePdf(
   }
 
   totalRow('Subtotal', formatINR(invoice.subtotal))
-  if (invoice.gst_amount > 0) totalRow('GST', formatINR(invoice.gst_amount))
+  if (perLine) {
+    for (const slab of slabs) {
+      totalRow(`GST ${formatRate(slab.rate)} on ${formatINR(slab.taxable)}`, formatINR(slab.amount))
+    }
+  } else if (invoice.gst_amount > 0) {
+    totalRow('GST', formatINR(invoice.gst_amount))
+  }
   if (invoice.transport_labour_charge > 0) totalRow('Transport + Labour', formatINR(invoice.transport_labour_charge))
   doc.setDrawColor(...LINE)
   doc.line(labelX, y - 3, totalsX, y - 3)

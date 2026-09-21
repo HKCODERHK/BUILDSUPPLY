@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link, Navigate } from 'react-router-dom'
 import { Download, Printer, Ban, Pencil, Truck } from 'lucide-react'
 import { SendToDriverModal } from '@/components/SendToDriverModal'
+import { formatRate, gstSlabs } from '@/lib/gst'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -125,6 +126,13 @@ export default function InvoiceDetail() {
     }
   }
 
+  // A bill saved from 035 onwards carries the percentage on every line, so it
+  // can be shown material-wise. One saved before it carries none at all — the
+  // tax it charged is only on the bill as a whole — so the old single row
+  // stays, rather than a column of dashes.
+  const slabs = gstSlabs(items)
+  const taxedLines = slabs.length > 0
+
   return (
     <div>
       <PageHeader
@@ -217,6 +225,7 @@ export default function InvoiceDetail() {
                 <th className="py-2 pr-3 font-medium">{t('inv.particulars')}</th>
                 <th className="py-2 pr-3 text-right font-medium">{t('common.qty')}</th>
                 <th className="py-2 pr-3 text-right font-medium">{t('common.rate')}</th>
+                {taxedLines && <th className="py-2 pr-3 text-right font-medium">{t('inv.gst')}</th>}
                 <th className="py-2 pr-3 text-right font-medium">{t('common.amount')}</th>
               </tr>
             </thead>
@@ -227,6 +236,11 @@ export default function InvoiceDetail() {
                   <td className="py-2.5 pr-3 text-ink">{mt(item.description)}</td>
                   <td className="py-2.5 pr-3 text-right">{item.qty}</td>
                   <td className="py-2.5 pr-3 text-right">{formatINR(item.rate)}</td>
+                  {taxedLines && (
+                    <td className="py-2.5 pr-3 text-right text-muted">
+                      {item.gst_rate == null ? '—' : formatRate(Number(item.gst_rate))}
+                    </td>
+                  )}
                   <td className="py-2.5 pr-3 text-right font-medium">{formatINR(item.amount)}</td>
                 </tr>
               ))}
@@ -240,12 +254,24 @@ export default function InvoiceDetail() {
               <span>{t('inv.subtotal')}</span>
               <span>{formatINR(invoice.subtotal)}</span>
             </div>
-            {invoice.gst_amount > 0 && (
+            {/* Per rate once the lines carry one (035); a bill written before
+                that keeps its single figure, which is all that was recorded. */}
+            {taxedLines ? (
+              slabs.map((slab) => (
+                <div key={slab.rate} className="flex justify-between text-muted">
+                  <span>
+                    {t('inv.gst')} {formatRate(slab.rate)}{' '}
+                    <span className="text-xs">{t('inv.gstOn', { amount: formatINR(slab.taxable) })}</span>
+                  </span>
+                  <span>{formatINR(slab.amount)}</span>
+                </div>
+              ))
+            ) : invoice.gst_amount > 0 ? (
               <div className="flex justify-between text-muted">
                 <span>{t('inv.gst')}</span>
                 <span>{formatINR(invoice.gst_amount)}</span>
               </div>
-            )}
+            ) : null}
             {invoice.transport_labour_charge > 0 && (
               <div className="flex justify-between text-muted">
                 <span>{t('inv.transportLabourShort')}</span>

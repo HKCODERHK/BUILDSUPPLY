@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Inbox, Languages, Lock, LogOut, Pencil, QrCode, ShieldCheck, Store, type LucideIcon } from 'lucide-react'
+import { ArrowLeft, Inbox, Languages, Lock, LogOut, Pencil, Percent, QrCode, ShieldCheck, Store, type LucideIcon } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,10 +20,11 @@ import { PinSettingsCard } from '@/components/PinSettingsCard'
 import { ChangePasswordCard } from '@/components/ChangePasswordCard'
 import { OrderSettingsCard } from '@/components/OrderSettingsCard'
 import { UpiSettingsCard } from '@/components/UpiSettingsCard'
+import { MaterialGstCard } from '@/components/MaterialGstCard'
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
 import { orderPageUrl } from '@/services/orders'
 
-type Section = 'business' | 'orders' | 'upi' | 'language' | 'pin' | 'password'
+type Section = 'business' | 'orders' | 'upi' | 'gst' | 'language' | 'pin' | 'password'
 
 interface Row {
   id: Section
@@ -106,6 +107,12 @@ export default function Settings() {
               icon: QrCode,
               label: t('upi.settingsTitle'),
               detail: supplier?.upi_id || t('set.notSet'),
+            },
+            {
+              id: 'gst' as const,
+              icon: Percent,
+              label: t('gst.title'),
+              detail: t('gst.rowSub'),
             },
           ]
         : []),
@@ -258,6 +265,7 @@ export default function Settings() {
 
         {section === 'orders' && <OrderSettingsCard />}
         {section === 'upi' && <UpiSettingsCard />}
+        {section === 'gst' && <MaterialGstCard />}
 
         {/* Documents stay in English on purpose: a bill goes to customers,
             engineers and banks who may not read Devanagari, and a supplier

@@ -22,8 +22,8 @@ import type { Customer, Material } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { sanitizeDigits, sanitizeDecimal } from '@/lib/numberInput'
+import { formatRate, gstSlabs, taxLines } from '@/lib/gst'
 
-const GST_RATE = 0.18
 
 interface LineItem extends NewInvoiceItem {
   key: string
@@ -177,7 +177,12 @@ export default function NewQuotation() {
   }
 
   const subtotal = items.reduce((sum, it) => sum + it.qty * it.rate, 0)
-  const gst = gstApplicable ? Math.round(subtotal * GST_RATE) : 0
+  // Each line at its own material's percentage (035), as on a bill.
+  const taxed = taxLines(items, materials, gstApplicable)
+  const gst = taxed.reduce((sum, line) => sum + line.gst, 0)
+  const gstByRate = gstSlabs(
+    taxed.map((line) => ({ amount: line.amount, gst_rate: line.rate, gst_amount: line.gst })),
+  )
   const transportLabourAmount = Number(transportLabour) || 0
   const total = subtotal + gst + transportLabourAmount
 
@@ -384,12 +389,15 @@ export default function NewQuotation() {
             <span className="text-muted">{t('inv.subtotal')}</span>
             <span>₹{subtotal.toLocaleString('en-IN')}</span>
           </div>
-          {gstApplicable && (
-            <div className="flex justify-between">
-              <span className="text-muted">{t('inv.gst')}</span>
-              <span>₹{gst.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
-            </div>
-          )}
+          {gstApplicable &&
+            gstByRate.map((slab) => (
+              <div key={slab.rate} className="flex justify-between">
+                <span className="text-muted">
+                  {t('inv.gst')} {formatRate(slab.rate)}
+                </span>
+                <span>₹{slab.amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+              </div>
+            ))}
           {transportLabourAmount > 0 && (
             <div className="flex justify-between">
               <span className="text-muted">{t('inv.transportLabourShort')}</span>
