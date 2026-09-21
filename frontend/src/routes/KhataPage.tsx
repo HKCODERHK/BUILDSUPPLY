@@ -44,6 +44,7 @@ import { forgetKhataCode, rememberKhataCode } from '@/lib/customerLinks'
 import { warmPdfKit } from '@/lib/pdfKit'
 import { QrCode } from '@/components/QrCode'
 import { upiPayUrl } from '@/lib/upi'
+import { receivedState } from '@/lib/received'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
@@ -365,15 +366,21 @@ export default function KhataPage() {
         </div>
       )
     }
-    if (!bill.received_at && !bill.delivered && !hasDocuments) return null
+    const state = receivedState(bill)
+    if (state === 'none' && !hasDocuments) return null
     return (
       <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-        {bill.received_at ? (
+        {/* Asked only while the answer still means something: a day after
+            delivery it counts as received either way (lib/received), so the
+            question goes and the line simply says it arrived. */}
+        {state === 'confirmed' && bill.received_at ? (
           <span className="font-medium text-accent">{t('khata.receivedOn', { date: formatDate(bill.received_at) })}</span>
-        ) : bill.delivered ? (
+        ) : state === 'waiting' ? (
           <button type="button" className="font-semibold text-accent" onClick={() => setAsking(bill.invoice_no)}>
             {t('khata.receivedAsk')}
           </button>
+        ) : state === 'assumed' ? (
+          <span className="font-medium text-accent">{t('khata.ordDelivered')}</span>
         ) : null}
         {hasDocuments && pdfButton('bill', bill.invoice_no, t('khata.billPdf'))}
       </div>
