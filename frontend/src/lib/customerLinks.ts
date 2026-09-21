@@ -43,25 +43,33 @@ export function rememberOrder(link: string, token: string, at: string = new Date
  * customer's order showed the first name over the second account. One store,
  * one customer.
  */
-export type KhataLink = { code: string; name: string | null }
+export type KhataLink = { code: string; name: string | null; phone: string | null; site: string | null }
+
+/** A string field as the shop has it, or null. */
+function text(value: unknown): string | null {
+  return typeof value === 'string' && value ? value : null
+}
 
 export function readKhata(link: string): KhataLink | null {
   try {
     const raw = localStorage.getItem(khataKey(link))
     if (!raw) return null
-    // Stored before the name was kept: the code on its own.
-    if (CODE.test(raw)) return { code: raw, name: null }
+    // Stored before anything but the code was kept: the code on its own.
+    if (CODE.test(raw)) return { code: raw, name: null, phone: null, site: null }
     const value = JSON.parse(raw)
     if (!value || !CODE.test(value.code)) return null
-    return { code: value.code, name: typeof value.name === 'string' && value.name ? value.name : null }
+    return { code: value.code, name: text(value.name), phone: text(value.phone), site: text(value.site) }
   } catch {
     return null
   }
 }
 
-export function rememberKhataCode(link: string, code: string, name?: string | null) {
+export function rememberKhataCode(link: string, code: string, customer?: { name?: string | null; phone?: string | null; site?: string | null }) {
   try {
-    localStorage.setItem(khataKey(link), JSON.stringify({ code, name: name ?? null }))
+    localStorage.setItem(
+      khataKey(link),
+      JSON.stringify({ code, name: customer?.name ?? null, phone: customer?.phone ?? null, site: customer?.site ?? null }),
+    )
   } catch {
     // Not remembered; the customer still has the link the supplier sent.
   }

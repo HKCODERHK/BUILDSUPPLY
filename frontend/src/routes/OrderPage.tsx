@@ -16,7 +16,7 @@ import type { TranslationKey } from '@/lib/i18n'
 import { sanitizeDecimal } from '@/lib/numberInput'
 import { newRequestId } from '@/services/db'
 import { getOrderPage, orderStatusUrl, placeOrder, type OrderPage as OrderPageData } from '@/services/orders'
-import { readKhata, rememberOrder } from '@/lib/customerLinks'
+import { readKhata, rememberOrder, type KhataLink } from '@/lib/customerLinks'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
@@ -49,6 +49,17 @@ function rememberLast(link: string, last: LastOrder) {
   }
 }
 
+/**
+ * Whether the last order this phone sent belongs to the customer whose khata
+ * it now holds. One phone can have opened one customer's khata and sent
+ * another's order — a shop's own phone, a shared one at a site — and then
+ * nothing of the one should be offered as the other's.
+ */
+function samePerson(khata: KhataLink | null, previous: LastOrder | null) {
+  if (!khata?.name || !previous?.name) return true
+  return khata.name.trim().toLowerCase() === previous.name.trim().toLowerCase()
+}
+
 // The server writes its refusals in English; show the customer's language.
 function errorKey(message: string): TranslationKey {
   if (/unavailable/i.test(message)) return 'order.unavailable'
@@ -75,14 +86,31 @@ export default function OrderPage() {
   const [loadFailed, setLoadFailed] = useState(false)
   const [qty, setQty] = useState<Record<string, string>>({})
   const [query, setQuery] = useState('')
+  // Their khata with this shop — the code and the customer it belongs to — if
+  // this phone has ever opened it (lib/customerLinks — on the phone only,
+  // never on the server).
+  const [khata] = useState(() => readKhata(link))
   const [form, setForm] = useState(() => {
     const previous = readLast(link)
-    return { name: previous?.name ?? '', phone: previous?.phone ?? '', site: previous?.site ?? '', date: '', note: '', trap: '' }
+    const mine = khata
+    // Who this phone is, to this shop: the khata's own customer when there is
+    // one — that is the shop's own record — and otherwise whoever sent the
+    // last order. Taking the name from one and the account from the other is
+    // exactly how the card once showed one customer's name over another's
+    // khata. The site stays the last order's: it is where the load goes, not
+    // who is asking.
+    return {
+      name: mine?.name ?? previous?.name ?? '',
+      phone: mine?.phone ?? previous?.phone ?? '',
+      // The last order's site only if the same person sent it — otherwise it
+      // is somebody else's site on this phone.
+      site: (samePerson(mine, previous) ? previous?.site : null) || mine?.site || '',
+      date: '',
+      note: '',
+      trap: '',
+    }
   })
   const [last, setLast] = useState<LastOrder | null>(() => readLast(link))
-  // Their khata with this shop — code and name together — if this phone has
-  // ever opened it (lib/customerLinks — on the phone only, never on the server).
-  const [khata] = useState(() => readKhata(link))
   // The materials and the form stay folded into one button until the customer
   // says they want to order (2026-09-20).
   const [ordering, setOrdering] = useState(false)
@@ -117,7 +145,7 @@ export default function OrderPage() {
       ? chosen.reduce((sum, c) => sum + c.qty * (c.material.price ?? 0), 0)
       : null
   // Only what the supplier still lists can be ordered again.
-  const lastAvailable = last ? last.items.filter((it) => materials.some((m) => m.id === it.material_id)) : []
+  const lastAvailable = last && samePerson(khata, last) ? last.items.filter((it) => materials.some((m) => m.id === it.material_id)) : []
   const lastMissing = last ? last.items.length - lastAvailable.length : 0
 
   function step(id: string, delta: number) {
@@ -133,7 +161,12 @@ export default function OrderPage() {
     // Their last order is put in for them: open the box so they can see it.
     setOrdering(true)
     setQty(Object.fromEntries(lastAvailable.map((it) => [it.material_id, String(it.qty)])))
-    setForm((f) => ({ ...f, name: f.name || last.name, phone: f.phone || last.phone, site: f.site || last.site }))
+    setForm((f) => ({
+      ...f,
+      name: f.name || khata?.name || last.name,
+      phone: f.phone || khata?.phone || last.phone,
+      site: f.site || last.site,
+    }))
     setError(null)
   }
 
