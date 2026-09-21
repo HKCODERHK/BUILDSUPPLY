@@ -81,6 +81,8 @@ export interface OrderRequest {
   /** The customer's answer to the estimate, from their status link (migration 030). */
   customer_response: 'accepted' | 'call_me' | null
   responded_at: string | null
+  /** What the customer said they would do about paying (migration 037). Never means the money arrived. */
+  payment_method?: 'cash' | 'online' | null
   created_at: string
   decided_at: string | null
 }

@@ -10,7 +10,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { cn } from '@/lib/utils'
 import type { Customer, OrderRequest, OrderStatus } from '@/lib/database.types'
 import { listCustomers } from '@/services/customers'
-import { listOrders, orderPageUrl } from '@/services/orders'
+import { acceptOrder, listOrders, orderPageUrl } from '@/services/orders'
 import { useAuth } from '@/context/AuthContext'
 import { Share2 } from 'lucide-react'
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
@@ -37,6 +37,7 @@ export default function Orders() {
     return asked && TABS.includes(asked) ? asked : 'pending'
   })
   const [rejecting, setRejecting] = useState<string | null>(null)
+  const [accepting, setAccepting] = useState<string | null>(null)
   const [shareOpen, setShareOpen] = useState(false)
 
   function load() {
@@ -44,6 +45,20 @@ export default function Orders() {
       setOrders(o)
       setByPhone(Object.fromEntries(c.filter((x) => x.phone).map((x) => [x.phone as string, x])))
     })
+  }
+
+  // Says yes and nothing more (037): the order turns Approved for the
+  // customer straight away, and the estimate is written when the supplier is
+  // ready, from the button that then takes its place.
+  async function accept(orderId: string) {
+    if (accepting) return
+    setAccepting(orderId)
+    try {
+      await acceptOrder(orderId)
+      await load()
+    } finally {
+      setAccepting(null)
+    }
   }
 
   useEffect(() => {
@@ -130,11 +145,19 @@ export default function Orders() {
                 </Link>
                 {order.status === 'pending' && (
                   <div className="mt-1 flex gap-2 border-t border-border pt-3">
-                    <Button size="sm" onClick={() => navigate(`/quotations/new?order=${order.id}`)}>
-                      {t('ord.approve')}
+                    {/* Says yes on the spot (037); the estimate comes after. */}
+                    <Button size="sm" onClick={() => accept(order.id)} disabled={accepting === order.id}>
+                      {accepting === order.id ? t('common.saving') : t('ord.approveNow')}
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => setRejecting(order.id)}>
                       {t('ord.reject')}
+                    </Button>
+                  </div>
+                )}
+                {order.status === 'approved' && !order.quotation_id && (
+                  <div className="mt-1 border-t border-border pt-3">
+                    <Button size="sm" onClick={() => navigate(`/quotations/new?order=${order.id}`)}>
+                      {t('ord.makeEstimate')}
                     </Button>
                   </div>
                 )}

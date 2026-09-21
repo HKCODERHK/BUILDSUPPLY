@@ -76,8 +76,11 @@ export default function NewQuotation() {
       setMaterials(m)
       setKnownSites(Array.from(new Set([...siteList, ...c.map((x) => x.site)].filter((s): s is string => !!s))).sort())
       if (fromOrder) {
-        // Already approved or rejected: show the order, never a second estimate.
-        if (fromOrder.status !== 'pending') {
+        // An order already priced, or rejected: show the order, never a second
+        // estimate. An order approved on the spot (037) has no estimate yet,
+        // and this screen is exactly where it gets one.
+        const priced = !!fromOrder.quotation_id
+        if (priced || (fromOrder.status !== 'pending' && fromOrder.status !== 'approved')) {
           navigate(`/orders/${fromOrder.id}`, { replace: true })
           return
         }
