@@ -1004,6 +1004,40 @@ a wall of options. Built one item at a time on `khata-structure`.
   response in flight (wrap `fetch`, then `pushState` to a *different* token so
   the effect refetches; a `?s=` change alone does not).
 
+**Send rate list, from the Dashboard (2026-09-21). No database change.** The
+user asked for a popup after a phone call ends — "was that call for building
+materials?" — that then opens the caller's WhatsApp with the rate list.
+**Checked before building: not possible, and not only here.** No browser API
+reports call state or the call log, and a web page cannot draw over another
+app. A native Android app could know a call *ended* (`READ_PHONE_STATE`), but
+**not who called**: that needs `READ_CALL_LOG`, which Google Play grants only
+to default dialer / assistant, caller ID and spam, backup-restore, enterprise
+management and connected-device sync (narrowed again in July 2026). A billing
+app does not qualify, so the permission buys the reminder and not the number;
+iOS gives neither at any price. Told the user, and built the manual version
+they asked for instead:
+
+- **A card on the Dashboard** under the rates reminder — "Send rate list / To
+  a customer who just called" — opening `components/SendRatesModal.tsx`: the
+  number (`PhoneInput`, or the phone's own contact picker on Android), a
+  preview of the exact message, and Send on WhatsApp. Only once a material has
+  a rate; the priced list comes out of the Dashboard's own materials read, so
+  the card costs no query.
+- **`wa.me` can open one number but cannot carry a file**, which is why this
+  is a written list and Materials & Stock keeps sending the letterhead PDF
+  through the share sheet. The message follows the app's language, as every
+  WhatsApp message does; the PDF stays English.
+- `rateListMaterials` moved to **`lib/rateList.ts`** (re-exported from
+  `lib/rateListPdf` so its callers are unchanged), so the Dashboard does not
+  pull `pdfTheme` in behind a card that only writes text. Verified: the built
+  Dashboard chunk contains no jsPDF.
+- Verified by mounting the real dialog through the dev graph on the sign-in
+  page (the recipe under the dev-tooling notes) with `window.open` captured:
+  the unpriced material is left out, the list is by name, an empty number is
+  refused, a pasted "+91 98200 11122" becomes `9820011122`, and Send opened
+  `https://wa.me/919820011122?text=…` carrying the whole message. The card
+  itself needs a signed-in session, so the user checked that on the preview.
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.

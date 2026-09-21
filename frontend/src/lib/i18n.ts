@@ -314,6 +314,25 @@ const STRINGS = {
   'mat.catalog': { en: 'Browse Catalog', hi: 'कैटलॉग देखें', mr: 'कॅटलॉग पहा' },
   'mat.searchPlaceholder': { en: 'Search materials…', hi: 'माल खोजें…', mr: 'माल शोधा…' },
   'mat.notFound': { en: 'No materials found.', hi: 'कोई माल नहीं मिला।', mr: 'माल सापडला नाही.' },
+  // Today's rates, sent to one number — the dashboard card and its dialog.
+  'dash.sendRates': { en: 'Send rate list', hi: 'रेट लिस्ट भेजें', mr: 'रेट लिस्ट पाठवा' },
+  'dash.sendRatesHint': {
+    en: 'To a customer who just called',
+    hi: 'जिस ग्राहक का अभी फ़ोन आया उसे',
+    mr: 'ज्या ग्राहकाचा आत्ता फोन आला त्याला',
+  },
+  'rates.number': { en: "Customer's mobile number", hi: 'ग्राहक का मोबाइल नंबर', mr: 'ग्राहकाचा मोबाईल नंबर' },
+  'rates.preview': {
+    en: 'What they will get ({count} materials)',
+    hi: 'उन्हें यह मिलेगा ({count} माल)',
+    mr: 'त्यांना हे मिळेल ({count} साहित्य)',
+  },
+  'rates.msgHeader': { en: 'Rate list — {date}', hi: 'रेट लिस्ट — {date}', mr: 'रेट लिस्ट — {date}' },
+  'rates.msgFooter': {
+    en: 'Rates may change. GST and transport extra where applicable.',
+    hi: 'दाम बदल सकते हैं। जहाँ लागू हो, GST और भाड़ा अलग।',
+    mr: 'दर बदलू शकतात. लागू असेल तिथे GST आणि वाहतूक वेगळी.',
+  },
   'mat.rateListEmpty': {
     en: 'Put a rate on at least one material first — a rate list with no rates helps nobody.',
     hi: 'पहले कम से कम एक माल का रेट डालें — बिना रेट की लिस्ट किसी काम की नहीं।',

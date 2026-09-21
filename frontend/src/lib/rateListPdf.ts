@@ -59,9 +59,9 @@ function buildRateListPdf(supplier: Supplier, materials: Material[], logo: LogoI
 }
 
 /** Materials worth putting on a customer-facing sheet — anything priced. */
-export function rateListMaterials(materials: Material[]): Material[] {
-  return materials.filter((m) => Number(m.rate) > 0).sort((a, b) => a.name.localeCompare(b.name))
-}
+// Kept exported here too: every caller that already asks this module for a
+// rate list keeps working, and the PDF and the message share one definition.
+export { rateListMaterials } from './rateList'
 
 function fileName(supplier: Supplier) {
   const date = new Date().toLocaleDateString('en-CA')

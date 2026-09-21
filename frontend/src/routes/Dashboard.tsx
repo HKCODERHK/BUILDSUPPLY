@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, AlertTriangle, Inbox, BadgeCheck, Tags } from 'lucide-react'
+import { Plus, AlertTriangle, ChevronRight, Inbox, BadgeCheck, Tags } from 'lucide-react'
 import { localDateKey } from '@/lib/localDate'
 import { UpdateRatesModal } from '@/components/UpdateRatesModal'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -27,6 +27,7 @@ import { DraftBanners } from '@/components/Drafts'
 import { TruckLoader } from '@/components/TruckLoader'
 import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
+import { SendRatesModal } from '@/components/SendRatesModal'
 
 // Jump straight into the create flow for each — no extra click on the
 // destination page. Customers/Payments/Stock read `?new=1` to auto-open
@@ -265,6 +266,10 @@ function SupplierDashboardView() {
   const [recentCustomers, setRecentCustomers] = useState<Customer[]>([])
   const [today, setToday] = useState({ bills: 0, sold: 0, collected: 0 })
   const [lowStock, setLowStock] = useState<Material[]>([])
+  // The priced ones, for "Send rate list" — out of the same read as the rest,
+  // so the card costs no extra query.
+  const [priced, setPriced] = useState<Material[]>([])
+  const [sendingRates, setSendingRates] = useState(false)
   // Any material with a rate — the daily "update today's rates?" card only
   // makes sense once there are rates to update.
   const [hasRates, setHasRates] = useState(false)
@@ -339,6 +344,7 @@ function SupplierDashboardView() {
         setToday(summariseToday(todaysBills, todaysPayments))
         setLowStock(materials.filter((m) => m.stock_qty <= (m.low_stock_threshold ?? 5)))
         setHasRates(materials.some((m) => Number(m.rate) > 0))
+        setPriced(materials.filter((m) => Number(m.rate) > 0))
         setSetup({ materials: materials.length > 0, customers: customers.length > 0, invoices: anyBill })
       })
       .finally(() => active && setLoading(false))
@@ -450,6 +456,24 @@ function SupplierDashboardView() {
 
           {hasRates && supplier && <RatesReminder supplierId={supplier.id} />}
 
+          {/* A customer rings to ask today's rates — the most-asked question
+              in this trade. This sends the list to their number while the
+              call is still in mind. Only once something has a rate. */}
+          {hasRates && supplier && (
+            <button
+              type="button"
+              onClick={() => setSendingRates(true)}
+              className="mb-4 flex w-full items-center gap-3 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:bg-surface"
+            >
+              <Tags size={20} className="shrink-0 text-muted" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-ink">{t('dash.sendRates')}</span>
+                <span className="block text-xs text-muted">{t('dash.sendRatesHint')}</span>
+              </span>
+              <ChevronRight size={18} className="shrink-0 text-muted" />
+            </button>
+          )}
+
           <Card className="mb-4">
             <div className="mb-2 text-xs font-semibold tracking-wide text-muted">{t('dash.today')}</div>
             {/* Content-width columns, not equal thirds. A bill count is two
@@ -546,6 +570,10 @@ function SupplierDashboardView() {
             </Card>
           </div>
         </>
+      )}
+
+      {sendingRates && supplier && (
+        <SendRatesModal supplier={supplier} materials={priced} onClose={() => setSendingRates(false)} />
       )}
     </div>
   )
