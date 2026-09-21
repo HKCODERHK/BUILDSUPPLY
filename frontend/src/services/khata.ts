@@ -16,6 +16,12 @@ export interface KhataInvoice {
   /** Marked delivered by the supplier; received_at set by the customer's own tap (migration 030). */
   delivered?: boolean
   received_at?: string | null
+  /**
+   * An online order produced this bill (migration 033). False means the shop
+   * took the order by phone or at the counter. Absent before 033, which is
+   * why "by phone" is only claimed when it is exactly false.
+   */
+  from_order?: boolean
 }
 
 export interface KhataPayment {
@@ -42,6 +48,8 @@ export interface KhataOrder {
   created_at: string
   delivery_date: string | null
   item_count: number
+  /** The bill this order became, once one exists (migration 033). */
+  bill?: string | null
 }
 
 export type KhataView =
