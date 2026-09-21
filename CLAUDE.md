@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `032`, run in order. **032 is the latest and is applied** (2026-09-16, pasted by the user — the order spam guard, see Phase 17). 031 (links and drivers, Phase 16), 030 (estimate answers and material received, Phase 13), 024 (money integrity, Phase 9), 025 (supplier row guard), 026 (online orders), 027 (reject reasons), 028 (khata link) and 029 (UPI) are applied too. (An unrelated storage-bucket 024 from Phase 8 was applied and removed again on 2026-09-11 and its file deleted.) (There is no `001` file; the base schema is `supabase/schema.sql`, which predates the migration folder.)
+- **Schema migrations**: `supabase/migrations/` — `002` through `033`, run in order. **033 is the latest and is applied** (2026-09-21, pasted by the user — every order on the khata link, see Phase 24). 032 (the order spam guard, Phase 17) is applied too. 031 (links and drivers, Phase 16), 030 (estimate answers and material received, Phase 13), 024 (money integrity, Phase 9), 025 (supplier row guard), 026 (online orders), 027 (reject reasons), 028 (khata link) and 029 (UPI) are applied too. (An unrelated storage-bucket 024 from Phase 8 was applied and removed again on 2026-09-11 and its file deleted.) (There is no `001` file; the base schema is `supabase/schema.sql`, which predates the migration folder.)
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -1037,6 +1037,44 @@ they asked for instead:
   refused, a pasted "+91 98200 11122" becomes `9820011122`, and Send opened
   `https://wa.me/919820011122?text=…` carrying the whole message. The card
   itself needs a signed-in session, so the user checked that on the preview.
+
+**Phase 24 — every order on the khata link (migration 033, 2026-09-21).
+Applied to live the same day.** "My orders" listed `order_requests` and
+nothing else, so a customer who had phoned the shop or walked in saw an empty
+list — their order was there, under My bills, wearing a bill number. Three of
+Shree Balaji's seven khata customers were in exactly that position.
+
+- **The page could not tell one from the other**, which is why this needed the
+  database: nothing in `customer_khata`'s payload said which bill an online
+  order became, or which bills came from no order. Two read-only fields, both
+  derived from what was already stored: each order gains **`bill`** (its
+  estimate's live bill, the link `order_status` already reports), and each
+  invoice gains **`from_order`** — false meaning the shop took that order by
+  phone or at the counter. Nothing else about the function changed: same
+  arguments, same security definer, same grants (`create or replace` keeps
+  them), no table touched, no row written, safe to run twice.
+- **My orders is two sections**, asked for in that shape: **Ordered online by
+  you** (anything still waiting for an answer first, each with its badge, its
+  status link and its bill number once billed) and **Taken at the shop or by
+  phone** (the bill it became — amount, site, delivered or received — and not
+  tappable, since there is no status page behind it). The headings carry the
+  origin, so the rows do not repeat it.
+- **`from_order` is only trusted when it is exactly `false`.** Before 033 the
+  field is absent, and an absent field must not make every bill look like a
+  phone order — so the page behaved as it always had until the SQL landed.
+- **Tested on the local Docker copy: 407/407 from a clean reset** (the
+  previous 396 plus 11 new, in `tests/98_all_orders.sql`), with 033 applied
+  as part of the structure so every existing khata, orders, links, spam, UPI
+  and tenant-isolation test ran against it. The loaded snapshot predates
+  online orders, so the new test builds its own fixture: a customer with a
+  khata link, one bill an online order produced, one the shop wrote, and an
+  order still waiting. Proved over a real anon REST call as well.
+- **Checked on live** after pasting, read-only: one version of the function,
+  still security definer; anonymous calls return the right split — toshan 3
+  phone orders and no online ones, himanshu 3 phone plus 2 app-ordered bills
+  whose orders name them (INV-1045, INV-1052), Dhruv 1 app order and no phone
+  ones; counts unchanged (52 bills / 103 payments / 95 allocations / 19
+  estimates / 13 orders / 21 customers), 0 bills out of step.
 
 ## The admin panel
 
