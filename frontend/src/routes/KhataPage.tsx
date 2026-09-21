@@ -271,6 +271,12 @@ export default function KhataPage() {
   const waitingOrders = orders.filter((o) => o.status === 'pending')
   const answeredOrders = orders.filter((o) => o.status !== 'pending')
   const ordersWaiting = waitingOrders.length
+  // An order the shop took by phone or at the counter: a bill that no online
+  // order produced. `from_order` is only false once migration 033 is in —
+  // before that it is absent, and none of these are claimed, so the list is
+  // exactly what it was.
+  const offlineOrders = billRows.filter((b) => b.kind === 'bill' && b.from_order === false)
+  const orderCount = orders.length + offlineOrders.length
 
   async function download() {
     if (!found || !ledger || downloading) return
@@ -462,6 +468,7 @@ export default function KhataPage() {
             {t('khata.orderItems', { count: o.item_count })}
             {o.delivery_date ? ` · ${t('order.deliveryOn', { date: formatDate(o.delivery_date) })}` : ''}
           </div>
+          {o.bill && <div className="text-xs text-muted">{t('khata.bill', { no: o.bill })}</div>}
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Badge tone={o.status === 'approved' ? 'success' : o.status === 'rejected' ? 'neutral' : 'warning'}>
@@ -470,6 +477,33 @@ export default function KhataPage() {
           <ChevronRight size={16} className="text-muted" />
         </div>
       </Link>
+    )
+  }
+
+  /**
+   * An order the shop took by phone or at the counter. There is no order to
+   * open — the bill is the whole record of it — so the row says what was
+   * billed and where it has got to, and does not pretend to be tappable.
+   */
+  function offlineOrderRow(b: KhataInvoice) {
+    return (
+      <div key={`offline-${b.invoice_no}`} className="flex items-start justify-between gap-3 p-4">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-ink">{formatDate(b.created_at)}</div>
+          <div className="text-xs text-muted">
+            {t('khata.bill', { no: b.invoice_no })}
+            {b.site ? ` · ${b.site}` : ''}
+          </div>
+        </div>
+        <div className="shrink-0 text-right">
+          <div className="text-sm font-semibold text-ink">{formatINR(Number(b.total))}</div>
+          {b.received_at ? (
+            <div className="text-[11px] font-medium text-accent">{t('khata.receivedOn', { date: formatDate(b.received_at) })}</div>
+          ) : b.delivered ? (
+            <div className="text-[11px] font-medium text-accent">{t('khata.ordDelivered')}</div>
+          ) : null}
+        </div>
+      </div>
     )
   }
 
@@ -679,14 +713,21 @@ export default function KhataPage() {
 
             {section === 'orders' && (
               <>
-                {orders.length === 0 && <Card className="text-sm text-muted">{t('khata.noOrders')}</Card>}
-                {/* Orders the shop has not answered yet are the ones a
-                    customer is waiting on, so they come first. */}
-                {waitingOrders.length > 0 && (
-                  <Group heading={t('khata.ordWaiting', { count: waitingOrders.length })}>{waitingOrders.map(orderRow)}</Group>
+                {orderCount === 0 && <Card className="text-sm text-muted">{t('khata.noOrders')}</Card>}
+                {/* Two sections, by how the order reached the shop — the ones
+                    the customer sent themselves, and the ones the shop wrote
+                    down for them. Each heading says which, so the rows
+                    underneath do not have to repeat it. Within the online
+                    ones, anything still waiting for an answer sits first. */}
+                {orders.length > 0 && (
+                  <Group heading={t('khata.ordOnline', { count: orders.length })}>
+                    {[...waitingOrders, ...answeredOrders].map(orderRow)}
+                  </Group>
                 )}
-                {answeredOrders.length > 0 && (
-                  <Group heading={t('khata.ordAnswered', { count: answeredOrders.length })}>{answeredOrders.map(orderRow)}</Group>
+                {offlineOrders.length > 0 && (
+                  <Group heading={t('khata.ordOffline', { count: offlineOrders.length })}>
+                    {offlineOrders.map(offlineOrderRow)}
+                  </Group>
                 )}
               </>
             )}
@@ -832,14 +873,14 @@ export default function KhataPage() {
                   onClick={() => openSection('estimates')}
                 />
               )}
-              {orders.length > 0 && (
+              {orderCount > 0 && (
                 <MenuRow
                   icon={Package}
                   title={t('khata.menuOrders')}
                   detail={
                     ordersWaiting > 0
-                      ? t('khata.ordersDetailWaiting', { count: orders.length, waiting: ordersWaiting })
-                      : t(orders.length === 1 ? 'khata.ordersDetailOne' : 'khata.ordersDetail', { count: orders.length })
+                      ? t('khata.ordersDetailWaiting', { count: orderCount, waiting: ordersWaiting })
+                      : t(orderCount === 1 ? 'khata.ordersDetailOne' : 'khata.ordersDetail', { count: orderCount })
                   }
                   onClick={() => openSection('orders')}
                 />
