@@ -602,6 +602,11 @@ const STRINGS = {
   'set.logo': { en: 'Business logo', hi: 'बिज़नेस का लोगो', mr: 'व्यवसायाचा लोगो' },
   'set.noLogo': { en: 'No logo', hi: 'लोगो नहीं', mr: 'लोगो नाही' },
   'set.uploadLogo': { en: 'Upload new logo', hi: 'नया लोगो डालें', mr: 'नवीन लोगो टाका' },
+  'set.logoRejected': {
+    en: 'Use a PNG, JPG or WebP image under 2 MB.',
+    hi: '2 MB से कम की PNG, JPG या WebP इमेज लगाएँ।',
+    mr: '2 MB पेक्षा कमी आकाराची PNG, JPG किंवा WebP इमेज वापरा.',
+  },
   'set.uploading': { en: 'Uploading…', hi: 'अपलोड हो रहा है…', mr: 'अपलोड होत आहे…' },
   'set.businessName': { en: 'Business name', hi: 'बिज़नेस का नाम', mr: 'व्यवसायाचे नाव' },
   'set.businessAddress': { en: 'Business address', hi: 'बिज़नेस का पता', mr: 'व्यवसायाचा पत्ता' },
