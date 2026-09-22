@@ -470,11 +470,11 @@ const STRINGS = {
     mr: 'हा इतिहास स्टॉक लॉग सुरू झाल्यापासून आहे. त्याआधीचे कधीच नोंदवले गेले नव्हते.',
   },
   'inv.grandTotal': { en: 'Grand Total', hi: 'कुल रकम', mr: 'एकूण रक्कम' },
-  // The bill as a card on a phone, with the document one tap away.
-  'inv.itemCount': { en: '{count} items', hi: '{count} चीज़ें', mr: '{count} वस्तू' },
-  'inv.itemCountOne': { en: '1 item', hi: '1 चीज़', mr: '1 वस्तू' },
-  'inv.viewFull': { en: 'View full bill', hi: 'पूरा बिल देखें', mr: 'पूर्ण बिल पाहा' },
-  'inv.backToSummary': { en: 'Back', hi: 'वापस', mr: 'मागे' },
+  // The bill shrunk to card size on a phone, and Zoom putting it back.
+  'inv.zoom': { en: 'Zoom', hi: 'बड़ा करें', mr: 'मोठे करा' },
+  'inv.zoomOut': { en: 'Fit', hi: 'छोटा करें', mr: 'लहान करा' },
+  'inv.cardHint': { en: 'Whole bill', hi: 'पूरा बिल', mr: 'पूर्ण बिल' },
+  'inv.zoomedHint': { en: 'Full size', hi: 'पूरे आकार में', mr: 'पूर्ण आकारात' },
   'inv.paymentNow': {
     en: 'Payment received now (optional)',
     hi: 'अभी मिला पेमेंट (ज़रूरी नहीं)',
@@ -602,6 +602,11 @@ const STRINGS = {
   'set.logo': { en: 'Business logo', hi: 'बिज़नेस का लोगो', mr: 'व्यवसायाचा लोगो' },
   'set.noLogo': { en: 'No logo', hi: 'लोगो नहीं', mr: 'लोगो नाही' },
   'set.uploadLogo': { en: 'Upload new logo', hi: 'नया लोगो डालें', mr: 'नवीन लोगो टाका' },
+  'set.logoRejected': {
+    en: 'Use a PNG, JPG or WebP image under 2 MB.',
+    hi: '2 MB से कम की PNG, JPG या WebP इमेज लगाएँ।',
+    mr: '2 MB पेक्षा कमी आकाराची PNG, JPG किंवा WebP इमेज वापरा.',
+  },
   'set.uploading': { en: 'Uploading…', hi: 'अपलोड हो रहा है…', mr: 'अपलोड होत आहे…' },
   'set.businessName': { en: 'Business name', hi: 'बिज़नेस का नाम', mr: 'व्यवसायाचे नाव' },
   'set.businessAddress': { en: 'Business address', hi: 'बिज़नेस का पता', mr: 'व्यवसायाचा पत्ता' },
@@ -1800,6 +1805,23 @@ const STRINGS = {
     en: '{name} will be added as a new customer when you save.',
     hi: 'सेव करने पर {name} नए ग्राहक के रूप में जुड़ेंगे।',
     mr: 'सेव्ह केल्यावर {name} नवीन ग्राहक म्हणून जोडले जातील.',
+  },
+  // The Dashboard's "finish this" notice for an order approved but not priced.
+  'dash.unpricedOne': {
+    en: 'One order is approved and still has no price.',
+    hi: 'एक ऑर्डर मंजूर है और अब तक कीमत नहीं लगी।',
+    mr: 'एक ऑर्डर मंजूर आहे आणि अजून किमत लावली नाही.',
+  },
+  'dash.unpricedMany': {
+    en: '{count} approved orders still have no price.',
+    hi: '{count} मंजूर ऑर्डर अब तक बिना कीमत के हैं।',
+    mr: '{count} मंजूर ऑर्डरसना अजून किमत लावलेली नाही.',
+  },
+  'ord.newFromOrder': { en: '{name} — new customer', hi: '{name} — नया ग्राहक', mr: '{name} — नवीन ग्राहक' },
+  'ord.matchedCustomer': {
+    en: 'This number is already {name}, so the estimate goes to them.',
+    hi: 'यह नंबर पहले से {name} का है, इसलिए एस्टिमेट उन्हीं को जाएगा।',
+    mr: 'हा नंबर आधीच {name} यांचा आहे, म्हणून एस्टिमेट त्यांनाच जाईल.',
   },
   'ord.orPickExisting': {
     en: 'Or pick an existing customer below.',

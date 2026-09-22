@@ -65,6 +65,7 @@ export default function Settings() {
   const [saved, setSaved] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [logoFailed, setLogoFailed] = useState(false)
+  const [logoRejected, setLogoRejected] = useState(false)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -83,10 +84,18 @@ export default function Settings() {
     const file = e.target.files?.[0]
     if (!file || !supplier) return
     setUploading(true)
+    // The bucket refuses anything that is not a PNG, JPG or WebP under 2 MB
+    // (migration 039). Until now an upload that failed said nothing at all —
+    // the spinner stopped and no logo appeared — so the refusal is worded.
+    setLogoRejected(false)
     try {
       await uploadLogo(supplier.id, file)
+    } catch {
+      setLogoRejected(true)
     } finally {
       setUploading(false)
+      // Let the same file be chosen again once it has been fixed.
+      e.target.value = ''
     }
   }
 
@@ -221,9 +230,18 @@ export default function Settings() {
                 )}
                 <label className="cursor-pointer text-sm font-semibold text-accent">
                   {uploading ? t('set.uploading') : t('set.uploadLogo')}
-                  <input type="file" accept="image/*" className="hidden" onChange={handleLogoChange} disabled={uploading} />
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={handleLogoChange}
+                    disabled={uploading}
+                  />
                 </label>
               </div>
+              {logoRejected && (
+                <p className="mt-2 text-xs font-medium text-red-600 dark:text-red-400">{t('set.logoRejected')}</p>
+              )}
             </Card>
 
             <Card className="max-w-lg">

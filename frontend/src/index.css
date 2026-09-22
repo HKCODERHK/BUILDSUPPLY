@@ -692,3 +692,20 @@ html[data-theme-flip='to-light']::view-transition-old(root) {
     clip-path: circle(0 at var(--flip-x) var(--flip-y));
   }
 }
+
+/* A bill shrunk to card size on a phone, with Zoom putting it back to its own
+   size (asked for 2026-09-22). `zoom` is what makes this the same document
+   rather than a second layout: it scales the text, the padding and the table
+   together and the box still fills the card's width, so the whole bill lands
+   on one screen. `transform: scale()` would leave the unscaled height behind
+   and push everything below it down a screen. A browser without `zoom` simply
+   shows the bill at its own size, which is what it always did. */
+.card-shrink {
+  zoom: 0.62;
+}
+@media (min-width: 1024px) {
+  /* A computer has the room; the bill is never shrunk there. */
+  .card-shrink {
+    zoom: 1;
+  }
+}

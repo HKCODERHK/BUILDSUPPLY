@@ -18,7 +18,7 @@ import {
 import { Card } from '@/components/ui/card'
 import { Modal } from '@/components/ui/modal'
 import { formatRate, gstSlabs } from '@/lib/gst'
-import { shareOrderLinkText } from '@/lib/shareOrderLink'
+import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { LanguageToggle } from '@/components/LanguageToggle'
@@ -172,6 +172,7 @@ export default function KhataPage() {
   // One bill's or estimate's PDF being made: "bill:INV-1024" or "estimate:QT-1003".
   const [docBusy, setDocBusy] = useState<string | null>(null)
   const [viewing, setViewing] = useState<KhataDocument | null>(null)
+  const [sharingShop, setSharingShop] = useState(false)
   const [docFailed, setDocFailed] = useState(false)
   // "Material received" (migration 030): asked, then confirmed — two taps, so a
   // stray one can't record it.
@@ -965,14 +966,7 @@ export default function KhataPage() {
                     where they buy is how a shop actually gets new ones. */}
                 <button
                   type="button"
-                  onClick={() =>
-                    shareOrderLinkText(
-                      t('order.shareText', {
-                        business: found.supplier.business_name,
-                        url: `${window.location.origin}/order/${found.order_link}`,
-                      }),
-                    )
-                  }
+                  onClick={() => setSharingShop(true)}
                   className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border px-4 py-3 text-sm font-semibold text-accent"
                 >
                   <Share2 size={16} className="shrink-0" />
@@ -983,6 +977,23 @@ export default function KhataPage() {
           </>
         )}
       </main>
+
+      {/* Link or QR, the same two steps the supplier's own Share order link
+          offers — a customer standing in the shop may want to photograph the
+          code, and one going home may want the link. Nobody is signed in
+          here, so the shop's own name and logo are handed in. */}
+      {sharingShop && found && found.order_link && (
+        <OrderLinkShareModal
+          url={`${window.location.origin}/order/${found.order_link}`}
+          business={found.supplier.business_name}
+          logoUrl={found.supplier.logo_url}
+          message={t('order.shareText', {
+            business: found.supplier.business_name,
+            url: `${window.location.origin}/order/${found.order_link}`,
+          })}
+          onClose={() => setSharingShop(false)}
+        />
+      )}
 
       {/* The bill or estimate itself, read in the page. The same figures the
           PDF carries, laid out for a phone rather than for A4. */}
