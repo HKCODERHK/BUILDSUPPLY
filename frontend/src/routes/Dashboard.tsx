@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, AlertTriangle, ChevronRight, Inbox, BadgeCheck, Tags } from 'lucide-react'
+import { Plus, AlertTriangle, ChevronRight, ClipboardList, Inbox, BadgeCheck, Tags } from 'lucide-react'
 import { localDateKey } from '@/lib/localDate'
 import { UpdateRatesModal } from '@/components/UpdateRatesModal'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,7 +16,7 @@ import {
 import { listRecentCustomers } from '@/services/customers'
 import { listPaymentsSince } from '@/services/payments'
 import { listMaterials } from '@/services/materials'
-import { acceptedEstimates, countPendingOrders, orderPageUrl } from '@/services/orders'
+import { acceptedEstimates, countPendingOrders, orderPageUrl, unpricedOrders } from '@/services/orders'
 import type { Customer, DashboardTotals, Invoice, Material, Payment } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -279,6 +279,9 @@ function SupplierDashboardView() {
   // Estimates a customer accepted from their status link, waiting for a bill (migration 030).
   // With just one, the banner opens that estimate straight away.
   const [accepted, setAccepted] = useState<{ count: number; quotationId: string | null }>({ count: 0, quotationId: null })
+  // Orders approved on the spot and not yet priced (037): the supplier said
+  // yes and stopped there, and the customer is waiting on a figure.
+  const [unpriced, setUnpriced] = useState<{ count: number; orderId: string | null }>({ count: 0, orderId: null })
   useEffect(() => {
     let active = true
     countPendingOrders()
@@ -286,6 +289,10 @@ function SupplierDashboardView() {
       .catch(() => {})
     acceptedEstimates()
       .then((a) => active && setAccepted(a))
+      .catch(() => {})
+    unpricedOrders()
+      .then((u) => active && setUnpriced(u))
+      // Before 037 there is nothing to count; the notice simply stays away.
       .catch(() => {})
     return () => {
       active = false
@@ -419,6 +426,22 @@ function SupplierDashboardView() {
                 </span>
               </div>
               <span className="shrink-0 text-xs font-semibold text-accent-text">{t('dash.reviewOrders')}</span>
+            </Link>
+          )}
+
+          {/* Finish what was started: approved, still no price. */}
+          {unpriced.count > 0 && (
+            <Link
+              to={unpriced.count === 1 && unpriced.orderId ? `/quotations/new?order=${unpriced.orderId}` : '/orders?tab=approved'}
+              className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950"
+            >
+              <div className="flex items-center gap-2.5">
+                <ClipboardList size={18} className="shrink-0 text-amber-700 dark:text-amber-400" />
+                <span className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                  {unpriced.count === 1 ? t('dash.unpricedOne') : t('dash.unpricedMany', { count: unpriced.count })}
+                </span>
+              </div>
+              <span className="shrink-0 text-xs font-semibold text-amber-800 dark:text-amber-300">{t('ord.makeEstimate')}</span>
             </Link>
           )}
 

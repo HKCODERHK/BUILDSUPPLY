@@ -16,7 +16,7 @@ import type { TranslationKey } from '@/lib/i18n'
 import { sanitizeDecimal } from '@/lib/numberInput'
 import { newRequestId } from '@/services/db'
 import { getOrderPage, orderStatusUrl, placeOrder, type OrderPage as OrderPageData } from '@/services/orders'
-import { shareOrderLinkText } from '@/lib/shareOrderLink'
+import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
 import { readKhata, rememberOrder, type KhataLink } from '@/lib/customerLinks'
 
 function formatINR(n: number) {
@@ -117,6 +117,7 @@ export default function OrderPage() {
   // The materials and the form stay folded into one button until the customer
   // says they want to order (2026-09-20).
   const [ordering, setOrdering] = useState(false)
+  const [sharingShop, setSharingShop] = useState(false)
   const [sending, setSending] = useState(false)
   const sendingRef = useRef(false)
   // One id per order: a double tap or a retry returns the same order.
@@ -347,15 +348,7 @@ export default function OrderPage() {
               )}
               {/* Pass the shop on. The link is the only thing a new customer
                   needs — no account, no searching for the shop in an app. */}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() =>
-                  shareOrderLinkText(
-                    t('order.shareText', { business: page.business_name, url: window.location.href.split('?')[0] }),
-                  )
-                }
-              >
+              <Button size="sm" variant="outline" onClick={() => setSharingShop(true)}>
                 <Share2 size={14} /> {t('order.shareShop')}
               </Button>
             </div>
@@ -630,6 +623,22 @@ export default function OrderPage() {
           </section>
         )}
       </main>
+
+      {/* Link or QR, the same two steps the supplier's own Share order link
+          offers. Nobody is signed in here, so the shop's name and logo are
+          handed in rather than read from an account. */}
+      {sharingShop && (
+        <OrderLinkShareModal
+          url={window.location.href.split('?')[0]}
+          business={page.business_name}
+          logoUrl={page.logo_url}
+          message={t('order.shareText', {
+            business: page.business_name,
+            url: window.location.href.split('?')[0],
+          })}
+          onClose={() => setSharingShop(false)}
+        />
+      )}
     </div>
   )
 }

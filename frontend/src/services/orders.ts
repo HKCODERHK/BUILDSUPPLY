@@ -281,6 +281,24 @@ export async function acceptedEstimates(): Promise<{ count: number; quotationId:
   return { count: count ?? 0, quotationId: (data?.[0]?.quotation_id as string | null | undefined) ?? null }
 }
 
+/**
+ * Orders said yes to that still have no estimate behind them (migration 037):
+ * the supplier approved on the spot and has not priced it yet, and the
+ * customer is waiting on a figure. With exactly one, the Dashboard opens that
+ * order's own estimate screen.
+ */
+export async function unpricedOrders(): Promise<{ count: number; orderId: string | null }> {
+  const { data, count, error } = await supabase
+    .from('order_requests')
+    .select('id', { count: 'exact' })
+    .eq('status', 'approved')
+    .is('quotation_id', null)
+    .order('decided_at', { ascending: true })
+    .limit(1)
+  if (error) throw error
+  return { count: count ?? 0, orderId: data?.[0]?.id ?? null }
+}
+
 /** The customer's note and wanted date, for bills made from online orders — the driver's list. */
 export async function listOrderNotesForQuotations(
   quotationIds: string[],

@@ -206,6 +206,9 @@ export default function NewQuotation() {
     taxed.map((line) => ({ amount: line.amount, gst_rate: line.rate, gst_amount: line.gst })),
   )
   const advanceAmount = takingAdvance ? Number(advanceNow) || 0 : 0
+  // The order's number, if the shop already has it. Without one the estimate
+  // creates the customer under the name they typed.
+  const phoneMatch = order ? (customers.find((c) => c.phone === order.phone) ?? null) : null
   const transportLabourAmount = Number(transportLabour) || 0
   const total = subtotal + gst + transportLabourAmount
 
@@ -311,10 +314,9 @@ export default function NewQuotation() {
       {order && (
         <div className="mb-4 rounded-xl bg-accent-bg p-3 text-sm text-accent-text">
           <div className="font-semibold">{t('ord.fromOrder', { name: order.customer_name, phone: order.phone })}</div>
-          {!customerId && (
-            <div className="mt-1 text-xs">
-              {t('ord.addAsNew', { name: order.customer_name })} {t('ord.orPickExisting')}
-            </div>
+          {!customerId && <div className="mt-1 text-xs">{t('ord.orPickExisting')}</div>}
+          {customerId && phoneMatch && (
+            <div className="mt-1 text-xs">{t('ord.matchedCustomer', { name: phoneMatch.name })}</div>
           )}
           {order.note && <div className="mt-1 text-xs italic">“{order.note}”</div>}
         </div>
@@ -341,7 +343,16 @@ export default function NewQuotation() {
               onChange={(e) => pickCustomer(e.target.value)}
               className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-accent"
             >
-              <option value="">{t('inv.selectCustomer')}</option>
+              {/* An online order from a number the shop does not have yet:
+                  the box reads the name the customer typed, already chosen,
+                  rather than "Select a customer" over a note. That customer
+                  is created with exactly that name when this saves
+                  (approve_order), and only then. */}
+              {order && !phoneMatch ? (
+                <option value="">{t('ord.newFromOrder', { name: order.customer_name })}</option>
+              ) : (
+                <option value="">{t('inv.selectCustomer')}</option>
+              )}
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}

@@ -28,20 +28,33 @@ export function OrderLinkShareModal({
   url,
   onClose,
   initialStep = 'choose',
+  business: businessProp,
+  logoUrl: logoProp,
+  message: messageProp,
 }: {
   url: string
   onClose: () => void
   /** 'qr': open straight on the QR — a long-press on the Dashboard's logo. */
   initialStep?: 'choose' | 'qr'
+  /**
+   * The shop's name and logo, and the words to send. The supplier's own
+   * screens leave these out and the signed-in account answers for them; the
+   * customer's khata and order pages pass them, because nobody is signed in
+   * there and the shop is whoever's link they are looking at.
+   */
+  business?: string
+  logoUrl?: string | null
+  message?: string
 }) {
   const { supplier } = useAuth()
   const { t } = useLanguage()
   const [step, setStep] = useState<'choose' | 'qr'>(initialStep)
   const [sharing, setSharing] = useState(false)
   const [logoFailed, setLogoFailed] = useState(false)
-  const business = supplier?.business_name ?? ''
-  const message = t('ord.shareMessage', { business, url })
-  const logo = !logoFailed ? supplier?.logo_url : null
+  const business = businessProp ?? supplier?.business_name ?? ''
+  const message = messageProp ?? t('ord.shareMessage', { business, url })
+  const sourceLogo = businessProp !== undefined ? (logoProp ?? null) : (supplier?.logo_url ?? null)
+  const logo = !logoFailed ? sourceLogo : null
   const shortUrl = url.replace(/^https?:\/\//, '')
 
   async function sendLink() {
@@ -57,7 +70,7 @@ export function OrderLinkShareModal({
       const file = await orderQrPngFile({
         url,
         business,
-        logoUrl: supplier?.logo_url ?? null,
+        logoUrl: sourceLogo,
         initialsKey: supplier?.id ?? business,
       })
       await shareDocumentOnWhatsApp({ file, message, title: 'Order QR' })

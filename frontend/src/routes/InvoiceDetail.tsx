@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate, useSearchParams, Link, Navigate } from 'react-router-dom'
-import { ArrowLeft, Download, FileText, Printer, Ban, Pencil, Truck } from 'lucide-react'
+import { useParams, useNavigate, Link, Navigate } from 'react-router-dom'
+import { Download, Printer, Ban, Pencil, Truck, ZoomIn, ZoomOut } from 'lucide-react'
 import { SendToDriverModal } from '@/components/SendToDriverModal'
 import { formatRate, gstSlabs } from '@/lib/gst'
 import { receivedState } from '@/lib/received'
@@ -21,6 +21,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { usePin } from '@/context/PinContext'
 import type { Invoice, InvoiceItem, Customer } from '@/lib/database.types'
 import { TruckLoader } from '@/components/TruckLoader'
+import { cn } from '@/lib/utils'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
@@ -28,7 +29,8 @@ function formatINR(n: number) {
 
 export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>()
-  const [searchParams, setSearchParams] = useSearchParams()
+  // The bill starts shrunk to a card on a phone; Zoom puts it at its own size.
+  const [zoomed, setZoomed] = useState(false)
   const { supplier } = useAuth()
   const { t, mt } = useLanguage()
   const { confirmWithPin } = usePin()
@@ -135,12 +137,6 @@ export default function InvoiceDetail() {
   const slabs = gstSlabs(items)
   const taxedLines = slabs.length > 0
 
-  // On a phone the bill opens as a card a supplier can read at a glance —
-  // who, how much, how much left — with the whole document one tap away
-  // (?full=1, so back closes it). A computer has the room for the document
-  // itself, and gets it straight away.
-  const full = searchParams.get('full') === '1'
-  const itemCount = items.length
 
   return (
     <div>
@@ -191,85 +187,20 @@ export default function InvoiceDetail() {
         </Card>
       )}
 
-      {!full && (
-        <Card className="lg:hidden">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="truncate text-base font-bold text-ink">
-                {customer ? (
-                  <Link to={`/customers/${customer.id}`} state={{ customerName: customer.name }} className="hover:text-accent">
-                    {customer.name}
-                  </Link>
-                ) : (
-                  t('inv.walkIn')
-                )}
-              </div>
-              {invoice.site && <div className="truncate text-sm text-muted">{invoice.site}</div>}
-              <div className="text-xs text-muted">
-                {itemCount === 1 ? t('inv.itemCountOne') : t('inv.itemCount', { count: itemCount })}
-              </div>
-            </div>
-            <Badge
-              tone={
-                invoice.status === 'Cancelled'
-                  ? 'neutral'
-                  : invoice.status === 'Paid'
-                    ? 'success'
-                    : invoice.status === 'Partial'
-                      ? 'warning'
-                      : 'danger'
-              }
-            >
-              {t(`status.${invoice.status}`)}
-            </Badge>
-          </div>
+      {/* The bill itself, shrunk to a card so the whole document is on one
+          screen, with Zoom above it. Zoom is not a different view — it is
+          the same bill at its own size, which the page then scrolls down and,
+          if the table is wider than the phone, across. A computer has the room
+          and never shrinks it. */}
+      <div className="mb-3 flex items-center justify-between gap-3 lg:hidden">
+        <span className="text-xs text-muted">{zoomed ? t('inv.zoomedHint') : t('inv.cardHint')}</span>
+        <Button size="sm" variant="outline" onClick={() => setZoomed((z) => !z)}>
+          {zoomed ? <ZoomOut size={15} /> : <ZoomIn size={15} />} {t(zoomed ? 'inv.zoomOut' : 'inv.zoom')}
+        </Button>
+      </div>
 
-          <div className="mt-4 flex flex-col gap-1.5 border-t border-border pt-4 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted">{t('inv.grandTotal')}</span>
-              <span className="font-bold text-ink">{formatINR(invoice.total)}</span>
-            </div>
-            <div className="flex justify-between text-accent">
-              <span>{t('common.paid')}</span>
-              <span>{formatINR(invoice.paid)}</span>
-            </div>
-            {remaining > 0 && (
-              <div className="flex justify-between text-base font-bold text-red-600">
-                <span>{t('inv.remaining')}</span>
-                <span>{formatINR(remaining)}</span>
-              </div>
-            )}
-          </div>
-
-          {invoice.received_at ? (
-            <p className="mt-3 text-xs font-medium text-accent">
-              ✓ {t('inv.customerReceived', { date: new Date(invoice.received_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) })}
-            </p>
-          ) : receivedState(invoice) === 'assumed' ? (
-            <p className="mt-3 text-xs font-medium text-muted">✓ {t('inv.receivedAssumed')}</p>
-          ) : null}
-
-          <Button
-            variant="outline"
-            className="mt-4 w-full"
-            onClick={() => setSearchParams({ full: '1' }, { state: { fromBill: true } })}
-          >
-            <FileText size={15} /> {t('inv.viewFull')}
-          </Button>
-        </Card>
-      )}
-
-      {full && (
-        <button
-          type="button"
-          onClick={() => setSearchParams({})}
-          className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-accent lg:hidden"
-        >
-          <ArrowLeft size={16} /> {t('inv.backToSummary')}
-        </button>
-      )}
-
-      <Card className={full ? undefined : 'hidden lg:block'}>
+      <div className={cn(!zoomed && 'card-shrink')}>
+      <Card>
         <div className="mb-6 flex flex-col gap-4 border-b border-border pb-6 min-[420px]:flex-row min-[420px]:items-start min-[420px]:justify-between">
           <div className="flex items-center gap-3">
             {supplier?.logo_url && (
@@ -409,6 +340,7 @@ export default function InvoiceDetail() {
           <p className="mt-3 text-xs font-medium text-muted">✓ {t('inv.receivedAssumed')}</p>
         ) : null}
       </Card>
+      </div>
 
       {driverOpen && <SendToDriverModal invoice={invoice} customer={customer} onClose={() => setDriverOpen(false)} />}
 
