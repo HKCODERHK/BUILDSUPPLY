@@ -99,8 +99,15 @@ function Export-Rows([string]$label, [string]$sql, [string]$target) {
             -RedirectStandardOutput $outFile -RedirectStandardError $errFile
   $cliExit = $proc.ExitCode
 
-  $raw = if (Test-Path $outFile) { Get-Content $outFile -Raw } else { '' }
-  $count = $raw | & node $Extractor $target
+  # The path, not the text. Reading the file into PowerShell and piping it to
+  # node put the CLI's UTF-8 output through two lossy conversions: Get-Content
+  # decodes with the ANSI codepage, and the pipe re-encodes with
+  # $OutputEncoding, which Windows PowerShell 5.1 defaults to ASCII. Under
+  # Task Scheduler that turned every em-dash and bullet into '?', silently, in
+  # every scheduled backup from 13 to 21 September 2026. Node opens the file
+  # as UTF-8 itself, so neither conversion happens.
+  if (-not (Test-Path $outFile)) { New-Item -ItemType File -Path $outFile -Force | Out-Null }
+  $count = & node $Extractor $target $outFile
 
   if ($LASTEXITCODE -ne 0) {
     $why = if (Test-Path $errFile) { (Get-Content $errFile -Raw).Trim() } else { '' }
@@ -127,6 +134,23 @@ try {
   if ($missing.Count -gt 0) {
     throw ('the table list came back without ' + ($missing -join ', ') + ' — got: ' + ($Tables -join ', '))
   }
+
+  # An encoding canary, through the very same export path the tables use: a
+  # string built by the database out of an em-dash (U+2014) and a bullet
+  # (U+2022), which must come back byte for byte. Built from chr() in SQL and
+  # from char codes here so this file stays pure ASCII -- PowerShell 5.1 reads
+  # a .ps1 without a BOM using the ANSI codepage, so a literal em-dash in this
+  # source would itself be mangled. A backup that cannot carry these
+  # characters is not a backup of this database, so the run stops.
+  $canaryFile = Join-Path $workDir '_canary.json'
+  $canarySql = "select json_agg(x) as data from (select 'M-Sand ' || chr(8212) || ' Tractor ' || chr(8226) || ' 400 CFT' as probe) x;"
+  Export-Rows 'the encoding canary' $canarySql $canaryFile | Out-Null
+  $expected = 'M-Sand ' + [char]0x2014 + ' Tractor ' + [char]0x2022 + ' 400 CFT'
+  $canaryBack = Get-Content $canaryFile -Raw -Encoding utf8
+  if ($canaryBack -notlike ('*' + $expected + '*')) {
+    throw ('the encoding check failed, so no backup was written. A known string came back as: ' + $canaryBack.Trim())
+  }
+  Remove-Item $canaryFile -Force
 
   Write-Log ('start — ' + $Tables.Count + ' tables')
   $rowTotal = 0

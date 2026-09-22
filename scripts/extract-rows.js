@@ -4,7 +4,15 @@
 // rules at once, and the closing marker has to sit at column zero, which is
 // easy to break and fails as a parse error rather than anything readable.
 //
+//   node extract-rows.js <output-path> <input-path>
 //   node extract-rows.js <output-path>          (CLI output on stdin)
+//
+// Prefer the two-argument form. Handing the file path over means Node reads
+// the CLI's UTF-8 bytes directly; routed through PowerShell instead, the text
+// passes through Get-Content's default codepage and then through the pipe's
+// $OutputEncoding, which is ASCII by default in Windows PowerShell 5.1 and
+// silently turns every em-dash and bullet into '?'. That is what corrupted
+// every scheduled backup between 13 and 21 September 2026.
 //
 // Prints the row count on success; exits non-zero with a message on failure,
 // so the caller can stop rather than write half a backup.
@@ -16,10 +24,9 @@ if (!outPath) {
   process.exit(2)
 }
 
-let raw = ''
-process.stdin.setEncoding('utf8')
-process.stdin.on('data', (chunk) => (raw += chunk))
-process.stdin.on('end', () => {
+const inPath = process.argv[3]
+
+function handle(raw) {
   try {
     // The payload may start with either bracket, and the CLI sometimes prints
     // a line of its own first, so find whichever comes first rather than
@@ -49,4 +56,14 @@ process.stdin.on('end', () => {
     console.error(err.message)
     process.exit(1)
   }
-})
+}
+
+if (inPath) {
+  // Read as UTF-8 regardless of the console's codepage.
+  handle(fs.existsSync(inPath) ? fs.readFileSync(inPath, 'utf8') : '')
+} else {
+  let raw = ''
+  process.stdin.setEncoding('utf8')
+  process.stdin.on('data', (chunk) => (raw += chunk))
+  process.stdin.on('end', () => handle(raw))
+}

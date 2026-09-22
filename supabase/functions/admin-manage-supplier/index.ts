@@ -68,6 +68,34 @@ Deno.serve(async (req) => {
 
   const action = body.action as string
 
+  /**
+   * Resolves the row an action names, and refuses anything that is not this
+   * platform's own supplier.
+   *
+   * `delete_supplier` has always done this. `reset_password` and `set_ban`
+   * did not: they passed the id straight to the Auth Admin API, which acts on
+   * **any** auth user — another admin's login included, and any auth account
+   * that has no supplier profile at all. With one admin that was unreachable;
+   * with two it is one admin taking the other's account, and the moment
+   * logins can exist without a supplier profile it is wider still. Found in
+   * the Phase 2 audit, 2026-09-22.
+   */
+  async function requireSupplierTarget(id: unknown) {
+    if (typeof id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      return { error: json({ error: 'supplier_id must be a supplier id' }, 400) }
+    }
+    const { data: target } = await adminClient
+      .from('suppliers')
+      .select('id, business_name, role')
+      .eq('id', id)
+      .single()
+    if (!target) return { error: json({ error: 'Supplier not found' }, 404) }
+    if (target.role === 'admin') {
+      return { error: json({ error: 'Admin accounts cannot be changed here.' }, 403) }
+    }
+    return { target }
+  }
+
   try {
     if (action === 'create_supplier') {
       const {
@@ -125,6 +153,9 @@ Deno.serve(async (req) => {
         return json({ error: 'supplier_id and new_password are required' }, 400)
       }
 
+      const checked = await requireSupplierTarget(supplier_id)
+      if (checked.error) return checked.error
+
       const { error } = await adminClient.auth.admin.updateUserById(supplier_id, {
         password: new_password,
       })
@@ -143,6 +174,9 @@ Deno.serve(async (req) => {
     if (action === 'set_ban') {
       const { supplier_id, banned } = body as Record<string, unknown>
       if (!supplier_id) return json({ error: 'supplier_id is required' }, 400)
+
+      const checked = await requireSupplierTarget(supplier_id)
+      if (checked.error) return checked.error
 
       const { error } = await adminClient.auth.admin.updateUserById(supplier_id as string, {
         ban_duration: banned ? '876000h' : 'none',
