@@ -295,6 +295,15 @@ function Update-BsHealth([switch]$Notify) {
       $task = Get-ScheduledTask -TaskName $t -ErrorAction SilentlyContinue
       if (-not $task) { $problems.Add('The scheduled task "' + $t + '" is missing. Run scripts\backup\install-backup.ps1 again.') }
       elseif ($task.State -eq 'Disabled') { $problems.Add('The scheduled task "' + $t + '" has been switched off (disabled) in Task Scheduler.') }
+      else {
+        # 0 = fine, 1 = ran and reported a problem (already listed above),
+        # 0x41301 = running now, 0x41303 = not run yet. Anything else means
+        # Windows could not even start it - the failure that shows nowhere else.
+        $r = (Get-ScheduledTaskInfo -TaskName $t).LastTaskResult
+        if (@(0, 1, 0x41301, 0x41303) -notcontains $r) {
+          $problems.Add(('The scheduled task "{0}" could not run last time (Windows result 0x{1:X}). Run scripts\backup\install-backup.ps1 again.' -f $t, $r))
+        }
+      }
     }
   }
   $legacy = Get-ScheduledTask -TaskName $script:TaskLegacy -ErrorAction SilentlyContinue

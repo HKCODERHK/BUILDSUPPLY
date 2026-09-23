@@ -137,8 +137,13 @@ $readme = 'BuildSupply Verified Backups' + $nl + $nl +
 if (-not $NoTasks) {
   $ps = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
   # conhost --headless runs PowerShell with no window at all, so nothing
-  # flashes up on screen twice a day.
-  $mk = { param($script) New-ScheduledTaskAction -Execute 'conhost.exe' -Argument ('--headless "' + $ps + '" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + (Join-Path $dest $script) + '"') -WorkingDirectory $dest }
+  # flashes up on screen twice a day. Full path, and deliberately NO "Start
+  # in" folder: with one set, Task Scheduler refused to launch the task at all
+  # (0x8007010B, "the directory name is invalid") although the folder exists -
+  # found on 2026-09-23 when all three tasks fired on time and none ran. The
+  # scripts find their own files from $PSScriptRoot and never need it.
+  $conhost = Join-Path $env:WINDIR 'System32\conhost.exe'
+  $mk = { param($script) New-ScheduledTaskAction -Execute $conhost -Argument ('--headless "' + $ps + '" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + (Join-Path $dest $script) + '"') }
   $who = New-ScheduledTaskPrincipal -UserId ($env:USERDOMAIN + '\' + $env:USERNAME) -LogonType Interactive -RunLevel Limited
   $common = @{ StartWhenAvailable = $true; AllowStartIfOnBatteries = $true; DontStopIfGoingOnBatteries = $true; MultipleInstances = 'IgnoreNew' }
 
@@ -159,6 +164,21 @@ if (-not $NoTasks) {
   Register-ScheduledTask -TaskName 'BuildSupply Backup Health Check' -Action (& $mk 'backup-health.ps1') -Principal $who -Settings $s -Force `
     -Trigger @($logon, $every4h) `
     -Description 'Warns if BuildSupply has had no verified backup for 48 hours, a drill failed, or a backup task was switched off.' | Out-Null
+
+  # Prove Windows can actually launch these tasks: start the health check
+  # through Task Scheduler (the same path a timed trigger takes) and read what
+  # it returned. 0 means healthy, 1 means it ran and found something to
+  # report; anything else means the task never started - and the installer
+  # says so instead of leaving tasks that look scheduled but can never run.
+  Start-ScheduledTask -TaskName 'BuildSupply Backup Health Check'
+  $deadline = (Get-Date).AddSeconds(90)
+  do { Start-Sleep -Seconds 2 } while ((Get-ScheduledTask -TaskName 'BuildSupply Backup Health Check').State -eq 'Running' -and (Get-Date) -lt $deadline)
+  Start-Sleep -Seconds 1
+  $launch = (Get-ScheduledTaskInfo -TaskName 'BuildSupply Backup Health Check').LastTaskResult
+  if ($launch -ne 0 -and $launch -ne 1) {
+    throw ('Task Scheduler could not run the health check (result 0x{0:X}). The tasks are registered but would not work - do not rely on them.' -f $launch)
+  }
+  Write-Host ('launch test    : Task Scheduler ran the health check (result ' + $launch + ')')
 }
 
 Write-Host ('installed to   : ' + $dest)
