@@ -52,13 +52,29 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 const args = process.argv.slice(2)
-const outAt = args.indexOf('--out')
-const outFile = outAt === -1 ? null : args[outAt + 1]
-const dir = args.find((a, i) => !a.startsWith('--') && (outAt === -1 || i !== outAt + 1))
-if (!dir || (outAt !== -1 && !outFile)) {
-  console.error('usage: node restore-from-backup.mjs <folder-with-the-json-files> [--out restore.sql]')
+const valueOf = (flag) => (args.indexOf(flag) === -1 ? null : args[args.indexOf(flag) + 1])
+const outFile = valueOf('--out')
+// --storage-url https://<new-ref>.supabase.co : after a disaster the files go
+// to a NEW project, and every stored link to an uploaded file (a supplier's
+// logo_url, a catalog image_url, ...) must point there instead of the old one.
+const newStorageUrl = valueOf('--storage-url')
+const flagValues = new Set([outFile, newStorageUrl].filter(Boolean))
+const dir = args.find((a) => !a.startsWith('--') && !flagValues.has(a))
+if (!dir || (args.includes('--out') && !outFile) || (args.includes('--storage-url') && !/^https?:\/\/[^/]+$/.test(newStorageUrl || ''))) {
+  console.error('usage: node restore-from-backup.mjs <folder-with-the-json-files> [--out restore.sql] [--storage-url https://<new-ref>.supabase.co]')
   process.exit(2)
 }
+let oldStorageBase = null
+if (newStorageUrl) {
+  const mf = path.join(dir, 'manifest.json')
+  const ref = fs.existsSync(mf) ? JSON.parse(fs.readFileSync(mf, 'utf8')).project_ref : null
+  if (!ref) {
+    console.error('--storage-url needs the backup manifest to know the old project')
+    process.exit(2)
+  }
+  oldStorageBase = `https://${ref}.supabase.co/storage/v1/object/`
+}
+let rewritten = 0
 
 // Collected and written once at the end, so --out produces one UTF-8 file.
 const out = []
@@ -128,7 +144,13 @@ function emit(table, rows) {
   }
   const held = CIRCULAR[table]
   const payload = held ? rows.map((r) => ({ ...r, [held]: null })) : rows
-  const json = sqlString(JSON.stringify(payload))
+  let text = JSON.stringify(payload)
+  if (oldStorageBase) {
+    const parts = text.split(oldStorageBase)
+    rewritten += parts.length - 1
+    text = parts.join(newStorageUrl + '/storage/v1/object/')
+  }
+  const json = sqlString(text)
 
   // Only the columns this backup actually carries. Anything a later migration
   // added is left out so its default applies; naming every column instead
@@ -204,6 +226,31 @@ for (const [table, column] of Object.entries(CIRCULAR)) {
   print('')
 }
 
+// Auto-counters (serial / identity columns): rows were inserted with their
+// original numbers, so each counter is moved past the highest one restored -
+// otherwise the first new record would collide with an old one. No table
+// has one today; this covers any a future migration adds, automatically.
+print('-- Every auto-counter moved past the highest number just restored.')
+print(`do $restore$
+declare r record; m bigint;
+begin
+  for r in
+    select s.oid::regclass::text as seq, c.relname as tbl, a.attname as col
+      from pg_class s
+      join pg_depend d on d.objid = s.oid and d.classid = 'pg_class'::regclass
+                      and d.refclassid = 'pg_class'::regclass and d.deptype in ('a', 'i')
+      join pg_class c on c.oid = d.refobjid
+      join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
+      join pg_attribute a on a.attrelid = c.oid and a.attnum = d.refobjsubid
+     where s.relkind = 'S'
+  loop
+    execute format('select max(%I)::bigint from public.%I', r.col, r.tbl) into m;
+    if m is not null then perform setval(r.seq, m, true); end if;
+  end loop;
+end
+$restore$;`)
+print('')
+
 print('-- Triggers back on before the transaction closes.')
 for (const table of present) print(`alter table public.${table} enable trigger user;`)
 print('')
@@ -211,6 +258,7 @@ print('commit;')
 print('')
 print(`-- restored: ${present.join(', ')}`)
 
+if (newStorageUrl) console.error(`note: ${rewritten} link(s) to uploaded files now point at ${newStorageUrl}`)
 const text = out.join('\n') + '\n'
 if (outFile) fs.writeFileSync(outFile, text, 'utf8')
 else process.stdout.write(text)

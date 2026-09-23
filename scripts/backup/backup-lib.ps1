@@ -21,6 +21,7 @@ function Initialize-Bs {
   $script:Here = $PSScriptRoot
   $cfg = @{
     ProjectRef        = 'pefarymejlfdsmwusbbq'
+    ProjectUrl        = $null   # defaults to https://<ProjectRef>.supabase.co
     OutputRoot        = (Join-Path $env:USERPROFILE 'OneDrive\BuildSupply Verified Backups')
     DrillImage        = 'public.ecr.aws/supabase/postgres:17.6.1.167'
     NodePath          = 'node'
@@ -30,6 +31,7 @@ function Initialize-Bs {
     StaleHours        = 48
     DrillStaleDays    = 14
     SizeWarnMB        = 2048
+    Notifications     = $true   # Windows notifications; only a test copy turns them off
   }
   $cfgFile = Join-Path $script:Here 'config.json'
   if (Test-Path $cfgFile) {
@@ -81,7 +83,8 @@ function Get-BsLastHistory([string]$kind) {
   $lines = [System.IO.File]::ReadAllLines($script:History, [System.Text.Encoding]::UTF8)
   for ($i = $lines.Length - 1; $i -ge 0; $i--) {
     $m = [regex]::Match($lines[$i], '^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)  (\S+)\s+(\S+)\s+(.*)$')
-    if ($m.Success -and $m.Groups[2].Value -eq $kind -and $m.Groups[3].Value -ne 'SKIPPED' -and $m.Groups[3].Value -ne 'NOTDUE') {
+    # NOTICE lines follow a run's own result line, so they are not a result.
+    if ($m.Success -and $m.Groups[2].Value -eq $kind -and @('SKIPPED', 'NOTDUE', 'NOTICE') -notcontains $m.Groups[3].Value) {
       return [pscustomobject]@{
         At      = [datetime]::ParseExact($m.Groups[1].Value, 'yyyy-MM-dd HH:mm:ss', $script:Inv)
         Result  = $m.Groups[3].Value
@@ -236,6 +239,7 @@ function Get-BsLastDrill([string]$result) {
 }
 
 function Show-BsToast([string]$title, [string]$body) {
+  if (-not $script:Cfg.Notifications) { return $false }
   try {
     [void][Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime]
     [void][Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime]
@@ -274,6 +278,10 @@ function Update-BsHealth([switch]$Notify) {
   }
 
   $lastBackup = Get-BsLastHistory 'BACKUP'
+  if ($lastBackup -and $lastBackup.Result -eq 'INCOMPLETE') {
+    $what = ($lastBackup.Message -split '\| NOT COVERED: ', 2)[-1]
+    $problems.Add('The last backup (' + (Format-BsDate $lastBackup.At) + ') was saved but is INCOMPLETE - some data is not covered by it: ' + $what)
+  }
   if ($lastBackup -and $lastBackup.Result -eq 'FAILED') {
     $problems.Add('The last backup attempt failed on ' + (Format-BsDate $lastBackup.At) + ': ' + $lastBackup.Message)
   }
@@ -301,7 +309,8 @@ function Update-BsHealth([switch]$Notify) {
         # 0x41301 = running now, 0x41303 = not run yet. Anything else means
         # Windows could not even start it - the failure that shows nowhere else.
         $r = (Get-ScheduledTaskInfo -TaskName $t).LastTaskResult
-        if (@(0, 1, 0x41301, 0x41303) -notcontains $r) {
+        # 2 = the backup ran but was INCOMPLETE (reported above, from history).
+        if (@(0, 1, 2, 0x41301, 0x41303) -notcontains $r) {
           $problems.Add(('The scheduled task "{0}" could not run last time (Windows result 0x{1:X}). Run scripts\backup\install-backup.ps1 again.' -f $t, $r))
         }
       }
@@ -333,6 +342,22 @@ function Update-BsHealth([switch]$Notify) {
   if ($newest -and $newest.Manifest.accounts) {
     [void]$s.Append($nl + 'Accounts in the newest backup (each one is restorable):' + $nl)
     foreach ($a in $newest.Manifest.accounts) { [void]$s.Append('  - ' + $a.business_name + '  <' + $a.email + '>  ' + $a.role + ', ' + $a.status + $nl) }
+  }
+  # What the newest backup covers, from its own manifest.
+  if ($newest -and $newest.Manifest.PSObject.Properties['coverage']) {
+    $cov = @($newest.Manifest.coverage)
+    $n = { param($c) @($cov | Where-Object { $_.class -eq $c }).Count }
+    [void]$s.Append($nl + 'Coverage of the newest backup (every table in the database is accounted for):' + $nl)
+    [void]$s.Append('  - ' + (& $n 'backed_up') + ' app tables backed up in full - bills, payments, customers, drivers, estimates, orders, stock, catalog, logs and any table added in future' + $nl)
+    if ($newest.Manifest.storage) {
+      [void]$s.Append('  - ' + $newest.Manifest.storage.files + ' uploaded files backed up (' + [math]::Round($newest.Manifest.storage.bytes / 1KB) + ' KB, buckets: ' + (@($newest.Manifest.storage.buckets) -join ', ') + ')' + $nl)
+    }
+    [void]$s.Append('  - ' + $newest.Manifest.logins.recoverable + ' logins recoverable with their original ids (no passwords stored)' + $nl)
+    [void]$s.Append('  - ' + @($newest.Manifest.cron_jobs).Count + ' scheduled jobs, recreated by the migrations and checked by the drill' + $nl)
+    [void]$s.Append('  - ' + ((& $n 'transient') + (& $n 'empty') + (& $n 'handled')) + ' Supabase system tables checked: nothing in them needs backing up' + $nl)
+    $pr = @($newest.Manifest.problems)
+    if ($pr.Count) { [void]$s.Append('  - NOT COVERED (' + $pr.Count + '): ' + ($pr -join ' | ') + $nl) }
+    else { [void]$s.Append('  - Not covered: nothing' + $nl) }
   }
   # The only tables deliberately left out, by the owner's decision - named
   # here so nobody mistakes them for business data that went missing.

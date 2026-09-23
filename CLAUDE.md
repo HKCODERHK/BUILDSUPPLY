@@ -1530,6 +1530,31 @@ prove the rollback held.
 
 ## Working conventions established in this project
 
+- **PERMANENT, HIGHEST PRIORITY — backup coverage (the user's rule,
+  2026-09-23).** ALL real BuildSupply data — admin, suppliers, customers,
+  drivers, bills, payments, estimates, requests, deliveries, stock, uploaded
+  files, logs, and anything a future feature stores — must stay recoverable.
+  Before shipping any feature that stores data:
+  - **Keep business data in `public` tables and uploaded files in public
+    Storage buckets.** Both are covered automatically: a new `public` table is
+    backed up, restored and checked by the drill with no one listing it.
+  - **Anything else is flagged, not silently missed**: a new schema, a
+    private bucket, a foreign table, a non-empty unknown Supabase table, a
+    non-email sign-in method, or data kept outside Supabase makes the nightly
+    backup **INCOMPLETE** and warns the user. If a feature needs one of
+    these, extend `scripts/backup/coverage.js` and the restore/drill to
+    genuinely cover it, and prove it with a drill, **before** it ships.
+  - **Never** add a table to `EXCLUDED` (backup-tool.js) or to `TRANSIENT` /
+    `HANDLED` (coverage.js) to make a warning go away. `EXCLUDED` holds only
+    the two security secrets the user approved.
+  - A table with an auto-counter, or one the restore order does not know, is
+    handled automatically — but add it to `ORDER` in `restore-from-backup.mjs`
+    if it has foreign keys, and to a category in `coverage.js`.
+  - After merging a migration, re-run `scripts/backup/install-backup.ps1
+    -NoTasks` so the drill builds the new structure.
+  - Test backup changes against isolated copies only — never by running a
+    real backup or touching production data. See `DISASTER-RECOVERY.md`.
+
 - **There are live suppliers on this now, so `main` is not a workspace.** A push
   to `main` deploys to production, where people are part-way through billing a
   customer. Do the work on a branch and push that — Vercel builds a preview at
@@ -1619,8 +1644,20 @@ confusable names, and the run silently did nothing here.
      `--network none`, as the non-superuser `postgres` role (as on hosted
      Supabase), and compares 73 checks. First run 2026-09-23: 73/73.
    - `backup-health.ps1`: STATUS.txt, PROBLEM-READ-ME.txt and a Windows toast
-     for: no verified backup in 48h, failed backup/drill, a checksum
-     mismatch, a task missing or disabled, installed files changed.
+     for: no verified backup in 48h, failed or INCOMPLETE backup, failed
+     drill, a checksum mismatch, a task missing, disabled or unable to
+     launch, installed files changed.
+   - **Coverage (A–F, 2026-09-23)**: `coverage.js` classifies every table in
+     every schema each night (live: 64 relations, 0 problems); uploaded
+     files are downloaded by public URL into the zip (`_file_NNNNNN.bin`,
+     `_storage.json`) and every storage link in the data is checked;
+     `restore-files.mjs` puts them back; `restore-from-backup.mjs
+     --storage-url` rewrites links for a new project and resets any
+     auto-counter; the drill compares every column of every row
+     (jsonb `except all`), files, cron jobs and counters — 97/97 on the
+     isolated test. A backup with a coverage problem is saved but recorded
+     INCOMPLETE (exit 2). Storage object names cannot contain Unicode or
+     `#` (Supabase refuses them), so files are named by index in the zip.
    - All data handling is in Node (`backup-tool.js`). **PowerShell never
      touches row data as text** and the `.ps1` files must stay pure ASCII.
    - **Exactly two tables are excluded, by the user's decision (2026-09-23):**

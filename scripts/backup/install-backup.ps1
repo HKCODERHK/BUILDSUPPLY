@@ -39,7 +39,7 @@ $previous = Join-Path $base 'program-previous'
 $outRoot = Join-Path $env:USERPROFILE 'OneDrive\BuildSupply Verified Backups'
 
 $scripts = @('backup-lib.ps1', 'run-backup.ps1', 'restore-drill.ps1', 'backup-health.ps1',
-             'backup-tool.js', 'restore-from-backup.mjs', 'restore-logins.mjs', 'drill-shim.sql')
+             'backup-tool.js', 'coverage.js', 'restore-from-backup.mjs', 'restore-logins.mjs', 'restore-files.mjs', 'drill-shim.sql')
 foreach ($f in $scripts) { if (-not (Test-Path (Join-Path $src $f))) { throw ('missing ' + $f + ' next to the installer') } }
 foreach ($f in @('supabase\schema.sql', 'supabase\migrations', 'supabase\config.toml', 'supabase\.temp\project-ref')) {
   if (-not (Test-Path (Join-Path $repo $f))) { throw ('missing ' + $f + ' in the project - run this from the BuildSupply repo') }

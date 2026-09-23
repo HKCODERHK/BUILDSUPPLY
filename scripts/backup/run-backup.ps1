@@ -6,12 +6,17 @@
 # scripts\backup\install-backup.ps1.
 #
 # What one run does, in order, stopping at the first thing that is wrong:
-#   1. Reads the list of tables and columns from the live database.
+#   1. Reads what the database holds: every table in every schema, the
+#      logins' shape, the uploaded files and the scheduled jobs.
 #   2. Reads every table in ONE read-only statement - one consistent moment.
 #      Postgres itself refuses any write inside it.
 #   3. Checks that a string of special characters (em-dash, bullet, rupee,
 #      Devanagari) survived the trip byte for byte.
-#   4. Writes one file per table plus a manifest with row counts and SHA-256s.
+#   4. Downloads every uploaded file, then writes one file per table plus a
+#      manifest with row counts, SHA-256s and the COVERAGE of every data
+#      source (coverage.js). Anything not covered makes the backup INCOMPLETE:
+#      still saved, but recorded as such, notified and raised by the health
+#      check - never a clean success.
 #   5. Verifies the files, zips them, unzips the zip again and verifies THAT.
 #   6. Copies the zip into OneDrive under a temporary name, checks the copy's
 #      SHA-256, and only then gives it its real name, with its .sha256 and
@@ -49,15 +54,10 @@ try {
   if ($bad.Count) { throw ('installed files have changed since they were installed: ' + ($bad -join ', ')) }
   $work = New-BsTempDir 'run'
 
-  # 1. The tables and their columns.
+  # 1. What the database holds: every table in every schema, the logins'
+  #    shape, the uploaded files and the scheduled jobs - one read-only query.
   $catSql = Join-Path $work 'catalog.sql'
-  [System.IO.File]::WriteAllText($catSql, (
-    "set transaction read only;`n" +
-    "select json_build_object(" +
-    "'tables', (select coalesce(json_agg(table_name::text order by table_name), '[]'::json) from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE'), " +
-    "'columns', (select coalesce(json_agg(json_build_object('table', c.table_name, 'column', c.column_name, 'type', c.data_type) order by c.table_name, c.ordinal_position), '[]'::json) " +
-    "from information_schema.columns c join information_schema.tables t on t.table_schema = c.table_schema and t.table_name = c.table_name and t.table_type = 'BASE TABLE' where c.table_schema = 'public'), " +
-    "'pg', current_setting('server_version')) as data;`n"))
+  Invoke-BsTool $work @('catalog-sql', $catSql) | Out-Null
   Invoke-BsQuery $catSql (Join-Path $work 'catalog.out') 'the table list'
   $catalog = Join-Path $work 'catalog.json'
   Invoke-BsTool $work @('catalog', (Join-Path $work 'catalog.out'), $catalog) | Out-Null
@@ -67,8 +67,11 @@ try {
   Invoke-BsTool $work @('snapshot-sql', $catalog, $snapSql) | Out-Null
   Invoke-BsQuery $snapSql (Join-Path $work 'snapshot.out') 'the tables'
 
-  # 4. One file per table and the manifest.
+  # 4. Every uploaded file, downloaded by its public address (a read), then
+  #    one file per table, the manifest and the coverage of every data source.
   $data = Join-Path $work 'data'
+  $projectUrl = if ($script:Cfg.ProjectUrl) { $script:Cfg.ProjectUrl } else { 'https://' + $script:Cfg.ProjectRef + '.supabase.co' }
+  Invoke-BsTool $work @('files', $catalog, $data, $projectUrl) | Out-Null
   $summary = Invoke-BsTool $work @('split', (Join-Path $work 'snapshot.out'), $catalog, $data, $script:Cfg.ProjectRef)
   Remove-Item -LiteralPath (Join-Path $work 'snapshot.out') -Force
 
@@ -84,7 +87,9 @@ try {
   # The backup before this one, for the comparison below.
   $previous = @(Get-BsVerifiedBackups) | Select-Object -First 1
 
-  # 6. Into OneDrive, under a name nothing else has.
+  # 6. Into OneDrive, under a name nothing else has. A backup with coverage
+  #    problems is still saved - what it does cover is protected, and losing
+  #    that too would help nobody - but it is recorded as INCOMPLETE below.
   $stamp = (Get-Date).ToString('yyyy-MM-dd-HHmm', $script:Inv)
   $destDir = Join-Path $script:BackupsDir ((Get-Date).ToString('yyyy-MM', $script:Inv))
   if (-not (Test-Path $destDir)) { New-Item -ItemType Directory -Force -Path $destDir | Out-Null }
@@ -102,32 +107,54 @@ try {
   [System.IO.File]::WriteAllText(($final + '.sha256'), ($hash + '  ' + $name + "`n"))
   Copy-Item -LiteralPath (Join-Path $data 'manifest.json') -Destination ([System.IO.Path]::ChangeExtension($final, '.manifest.json'))
 
+  $now = [System.IO.File]::ReadAllText((Join-Path $data 'manifest.json'), [System.Text.Encoding]::UTF8) | ConvertFrom-Json
   $kb = [math]::Round((Get-Item $final).Length / 1KB)
-  Write-BsHistory 'BACKUP' 'OK' (($summary -replace '^OK ', '') + ', ' + $kb + ' KB, ' + ($verified -replace '^OK ', '') + ' -> ' + $name)
+  $line = ($summary -replace '^OK ', '') + ', ' + $kb + ' KB, ' + ($verified -replace '^OK ', '') + ' -> ' + $name
+  $problems = @($now.problems)
+  if ($problems.Count) {
+    # Coverage problems: something in the database is not protected. Saved,
+    # but never recorded as a clean success - the health check raises it.
+    $exitCode = 2
+    Write-BsHistory 'BACKUP' 'INCOMPLETE' ($line + ' | NOT COVERED: ' + ($problems -join ' | '))
+    [void](Show-BsToast 'BuildSupply backup is INCOMPLETE' ($problems[0]))
+  } else {
+    Write-BsHistory 'BACKUP' 'OK' $line
+  }
 
-  # Records in these tables are never supposed to vanish in normal use: bills
-  # are cancelled rather than deleted, receipts are kept forever. Fewer of
-  # them than last time is exactly the kind of loss that goes unnoticed for
-  # weeks, so it is said out loud now, while every older backup still holds
-  # them. (client_requests is deliberately absent: the app clears it after
-  # 7 days by design.) It can be legitimate - deleting a test customer, or the
-  # admin removing a whole supplier - so it is a notice, not an alarm.
+  # Changes worth saying out loud, compared with the previous backup:
+  #  - records going DOWN in tables whose rows are never supposed to vanish
+  #    in normal use (bills are cancelled, receipts kept forever). Fewer of
+  #    them is exactly the kind of loss that goes unnoticed for weeks; it can
+  #    be legitimate - deleting a test customer, or the admin removing a whole
+  #    supplier - so it is a notice, not an alarm. (client_requests is left
+  #    out: the app clears it after 7 days by design.)
+  #  - uploaded files going down, and tables appearing or disappearing.
   if ($previous) {
-    $now = [System.IO.File]::ReadAllText((Join-Path $data 'manifest.json'), [System.Text.Encoding]::UTF8) | ConvertFrom-Json
     $watch = @('suppliers', 'customers', 'invoices', 'invoice_items', 'payments', 'payment_allocations',
-               'quotations', 'quotation_items', 'materials', 'order_requests', 'stock_logs')
+               'quotations', 'quotation_items', 'materials', 'order_requests', 'stock_logs', 'drivers')
     $drops = @()
     foreach ($t in $watch) {
       $was = $previous.Manifest.tables.$t
       $is = $now.tables.$t
       if ($was -and $is -and $is.rows -lt $was.rows) { $drops += ($t + ' ' + $was.rows + ' -> ' + $is.rows) }
-      elseif ($was -and -not $is) { $drops += ($t + ' is gone entirely') }
+    }
+    foreach ($p in $previous.Manifest.tables.PSObject.Properties) {
+      if (-not $now.tables.($p.Name)) { $drops += ($p.Name + ' is gone entirely') }
+    }
+    if ($previous.Manifest.PSObject.Properties['storage'] -and $previous.Manifest.storage -and $now.storage -and
+        $now.storage.files -lt $previous.Manifest.storage.files) {
+      $drops += ('uploaded files ' + $previous.Manifest.storage.files + ' -> ' + $now.storage.files)
     }
     if ($drops.Count) {
       $msg = 'fewer records than the backup of ' + (Format-BsDate $previous.TakenAt) + ': ' + ($drops -join ', ') +
              '. If nobody deleted these on purpose, the earlier backups still hold them - do not restore anything yourself, ask first.'
       Write-BsHistory 'BACKUP' 'NOTICE' $msg
       [void](Show-BsToast 'BuildSupply: records went down since the last backup' ($drops -join ', '))
+    }
+    $added = @($now.tables.PSObject.Properties.Name | Where-Object { -not $previous.Manifest.tables.$_ })
+    if ($added.Count) {
+      Write-BsHistory 'BACKUP' 'NOTICE' ('new table(s) found and now backed up automatically: ' + ($added -join ', ') +
+        '. The weekly restore drill will prove they restore; if they need a place in the restore order, add them to restore-from-backup.mjs.')
     }
   }
 }

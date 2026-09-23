@@ -50,20 +50,52 @@ away that the last attempt failed.
    saves nothing. (Every backup made before 22 September 2026 had silently
    damaged these characters. This is the check that makes that impossible to
    miss again.)
-4. Saves one file per table and a **manifest**: how many rows each table has
-   and a SHA-256 fingerprint of every file.
-5. Re-checks every file, zips them, **unzips the zip again and re-checks
+4. **Downloads every uploaded file** — supplier logos, catalog images, and
+   anything a future feature uploads — checks each against the size and
+   checksum storage recorded for it, and keeps it in the backup.
+5. Saves one file per table and a **manifest**: how many rows each table has,
+   a SHA-256 fingerprint of every file, and the **coverage** — how every table
+   and data source in the database is protected (see
+   [Coverage](#coverage-nothing-is-left-out-silently)).
+6. Re-checks every file, zips them, **unzips the zip again and re-checks
    that**, then copies it to OneDrive under a temporary name, checks the copy's
    fingerprint, and only then gives it its real name.
-6. Compares the row counts with the previous backup. If bills, payments,
-   customers, estimates, materials or orders **went down**, you get a
-   notification — that is how an accidental deletion gets noticed while the
-   older backups still have the records.
-7. **Deletes its working folder** — which holds plaintext customer data —
+7. Compares with the previous backup. If bills, payments, customers,
+   estimates, materials, drivers, orders or uploaded files **went down**, you
+   get a notification — that is how an accidental deletion gets noticed while
+   the older backups still have the records. A **new table** is reported too,
+   and is already in the backup.
+8. **Deletes its working folder** — which holds plaintext customer data —
    whether the run succeeded or failed.
 
 A backup only counts as a backup when its `.zip` has both a `.sha256` and a
 `.manifest.json` beside it. A half-written file can never pass for a good one.
+
+### Coverage: nothing is left out silently
+
+Every backup lists **every table in every part of the database** and decides
+how each one is protected. The rules (in `scripts/backup/coverage.js`):
+
+| Where the data is | How it is protected |
+|---|---|
+| The app's own tables (`public`) — today 23 | **All backed up automatically**, including any table a future feature adds. The only exceptions are the two security secrets below. |
+| Logins (`auth.users`, `auth.identities`) | Recreated with their original ids by `restore-logins.mjs`. Every backup checks each login has an account row with the same email, and that they all sign in by email. |
+| Uploaded files (`storage`) | Every file downloaded into the backup and fingerprinted. Every link to a file in the data (a logo, a catalog image) is checked to be in the backup. |
+| Scheduled jobs (`cron.job`) | Saved in the backup; the drill checks the migrations recreate every one. |
+| Login features a recovery cannot recreate — two-factor, passkeys, single sign-on, OAuth clients — and the vault of secrets | **Must be empty.** Checked every backup. |
+| Supabase's own short-lived bookkeeping (sessions, tokens, audit logs, migration history) | Nothing a restore needs. |
+| **Anything else** — a new schema, a foreign table, a private file bucket, a table Supabase adds that is not empty, a non-email sign-in method, a login with no account | **The backup is saved but marked INCOMPLETE**, you get a notification, and `STATUS.txt` and `PROBLEM-READ-ME.txt` name exactly what is not covered. It never reports a clean success. |
+
+Why saved and not refused: what an incomplete backup *does* cover is still
+protected, and throwing it away would leave you with less. Only damage
+(text that did not survive, a checksum that does not match) stops a backup
+from being saved at all.
+
+On 23 September 2026 the live database classified with **no problems**: 21
+app tables backed up, 2 secret tables deliberately excluded, 3 uploaded files,
+4 logins, 2 scheduled jobs, 16 must-be-empty tables confirmed empty, and 20
+bookkeeping tables. In testing, the guard caught — unprompted — a leftover
+test schema with 18 tables and a stray login in the local test database.
 
 ### What one restore drill does
 
@@ -74,14 +106,20 @@ A backup only counts as a backup when its `.zip` has both a `.sha256` and a
 4. Recreates every account's login with its original id.
 5. Restores every row, as the ordinary `postgres` role — the same limited role
    a real restore into Supabase would use.
-6. Compares the result with the backup: every table's row count, the exact set
-   of row ids, names and sites character for character, the money totals to
-   the paisa, and the app's own integrity rules (no bill paid past its total,
-   every payment's split adding up, no data crossing between suppliers).
-7. Destroys the database and everything in it, and writes a report to
-   `drills\`.
+6. Compares the result with the backup: for **every table, every column of
+   every row** (compared as typed values, so it works for tables added in
+   future too), plus the exact set of row ids, names and sites character for
+   character, the money totals to the paisa, the app's own integrity rules
+   (no bill paid past its total, every payment's split adding up, no data
+   crossing between suppliers), every uploaded file's fingerprint, every
+   scheduled job, and that every auto-counter is ahead of the restored data.
+7. Writes a report to `drills\` with a plain line per business category —
+   admin and suppliers, customers, bills, payments, estimates, orders,
+   drivers, stock, catalog, logs — and any new table under its own heading.
+8. Destroys the database and everything in it.
 
-The first drill, on 23 September 2026, passed **73 of 73 checks**.
+The first drill, on 23 September 2026, passed 73 of 73 checks; with full
+coverage the drill on a test backup passed **97 of 97**.
 
 Drills need Docker Desktop. If it is not running, the drill starts it; if it
 will not start, the drill is skipped (not failed), and you are warned only if
@@ -91,6 +129,7 @@ no drill has passed for 14 days.
 
 - No verified backup for **48 hours**.
 - The last backup attempt failed (with the reason).
+- The last backup is **INCOMPLETE**: some data is not covered — named exactly.
 - A backup no longer matches its fingerprint — changed or damaged on disk.
 - No restore drill has passed for 14 days, or the last one failed.
 - One of the three scheduled tasks has been switched off or deleted.
@@ -234,47 +273,57 @@ newest verified backup, and the project files from GitHub.
    Then the same command with `--apply`. It prints a **temporary password**
    for each account — shown once, saved nowhere. Suspended or deactivated
    suppliers come back banned, as they were.
-6. **Restore the data:**
+6. **Put the uploaded files back** (logos, catalog images) — again a dry run
+   first, then `--apply`. It creates any missing bucket, uploads each file,
+   downloads it again to prove it arrived intact, and never overwrites a file
+   that is already there:
    ```
-   node scripts\backup\restore-from-backup.mjs C:\restore\data --out C:\restore\restore.sql
+   node scripts\backup\restore-files.mjs --backup C:\restore\data --url https://<new-ref>.supabase.co
+   ```
+7. **Restore the data.** `--storage-url` points every stored link to a file
+   (a supplier's logo, a catalog image) at the new project:
+   ```
+   node scripts\backup\restore-from-backup.mjs C:\restore\data --storage-url https://<new-ref>.supabase.co --out C:\restore\restore.sql
    docker run --rm -v C:\restore:/w public.ecr.aws/supabase/postgres:17.6.1.167 psql "<connection string>" -v ON_ERROR_STOP=1 -f /w/restore.sql
    ```
    It runs in one transaction: it either all goes in, or none of it does.
-7. **Check it** the way the drill does:
+   Afterwards it moves every auto-counter past the highest number restored, so
+   new records can never collide with old ones.
+8. **Check it** the way the drill does:
    ```
    node scripts\backup\backup-tool.js expect-sql C:\restore\data C:\restore\checks.sql
    docker run --rm -v C:\restore:/w public.ecr.aws/supabase/postgres:17.6.1.167 psql "<connection string>" -f /w/checks.sql
    ```
    Each line reads `check|t|expected|actual`. Every one must have `t` (true)
    in the second position.
-8. **Point the app at the new project:** on Vercel, change
+9. **Point the app at the new project:** on Vercel, change
    `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` and redeploy; update
    `frontend/.env`; deploy the Edge Function
    (`npx supabase functions deploy admin-manage-supplier --project-ref <new-ref>`);
    in the new project's Auth settings, set the site URL and redirect URLs as
    the old project had them.
-9. **Give everyone their temporary password** on WhatsApp and ask them to
+10. **Give everyone their temporary password** on WhatsApp and ask them to
    change it in Settings.
-10. **Re-install the backup** against the new project: update
+11. **Re-install the backup** against the new project: update
     `supabase/.temp/project-ref` (run `npx supabase link --project-ref <new-ref>`),
     then run `scripts\backup\install-backup.ps1`.
-11. **Re-establish confirmation PINs.** `STATUS.txt` (or the backup's
+12. **Re-establish confirmation PINs.** `STATUS.txt` (or the backup's
     `.manifest.json`, under `pin_accounts`) names the accounts that had one.
     Ask each to set a new PIN in Settings. Nothing asks for a PIN until they
     do. The spam-guard key needs nothing: step 4 already made a fresh one.
-12. Delete `C:\restore` — it holds plaintext customer data.
+13. Delete `C:\restore` — it holds plaintext customer data.
 
 **What a restore does not bring back:**
 
-- **Supplier logos.** They are files in Supabase Storage, which a database
-  backup does not include. Suppliers upload them again in Settings.
+- **Uploaded files in backups made before 23 September 2026 evening.** Those
+  backups did not carry the files; every backup since does (step 6).
 - **Passwords.** Deliberately — see below.
 - **Confirmation PINs and the spam-guard key.** Deliberately — see
   [Deliberately NOT in backups](#deliberately-not-in-backups-this-is-intended-not-missing-data).
 - Supabase project settings (auth URLs, email templates, Edge Function
   secrets). Steps 8 and 10 cover the ones this app uses.
 
-Steps 5–7 are exactly what the weekly drill does, and were tested against a
+Steps 5, 7 and 8 are exactly what the weekly drill does, and were tested against a
 local Supabase on 23 September 2026 (all four accounts recreated with their
 original ids and able to sign in). Restoring into a *hosted* project has not
 been rehearsed end to end, since that needs a second Supabase project; the

@@ -92,13 +92,14 @@ try {
   $data = Join-Path $work 'data'
   Step 'unpacked the backup and re-verified every file' {
     [System.IO.Compression.ZipFile]::ExtractToDirectory($backup.Zip, $data)
-    Invoke-BsTool $work @('verify', $data) | Out-Null
+    $script:verifiedLine = Invoke-BsTool $work @('verify', $data)
     $restore = Join-Path $work 'restore.sql'
     $o = Join-Path $work '_gen.out'; $e = Join-Path $work '_gen.err'
     $code = Invoke-BsNative $script:Cfg.NodePath @((Join-Path $script:Here 'restore-from-backup.mjs'), $data, '--out', $restore) $o $e $null
     if ($code -ne 0) { throw ('could not generate the restore script: ' + (Read-BsSmallText $e)) }
     Invoke-BsTool $work @('logins-sql', $data, (Join-Path $work 'logins.sql')) | Out-Null
     Invoke-BsTool $work @('expect-sql', $data, (Join-Path $work 'checks.sql')) | Out-Null
+    Invoke-BsTool $work @('categories', $data, (Join-Path $work 'categories.json')) | Out-Null
   } | Out-Null
 
   # A fresh container with no network. A leftover one from an interrupted
@@ -164,6 +165,16 @@ try {
     if ($first -like '*schema*') { throw ('the drill database is missing columns the backup carries - its copy of the migrations is older than production. Run scripts\backup\install-backup.ps1 again. ' + $first) }
     throw ($failed.ToString() + ' of ' + $checkLines.Count + ' checks failed; first: ' + $first)
   }
+  # A plain summary per business category: a category passes only if every
+  # check naming one of its tables passed. Tables in no category (new ones)
+  # are listed under their own heading, never left out.
+  $cats = [System.IO.File]::ReadAllText((Join-Path $work 'categories.json')) | ConvertFrom-Json
+  $script:categoryLines = foreach ($c in $cats.PSObject.Properties) {
+    $tbls = @($c.Value)
+    $mine = @($checkLines | Where-Object { $line = $_; @($tbls | Where-Object { $line -match (' ' + [regex]::Escape($_) + '([ .]|$)') }).Count -gt 0 })
+    $bad = @($mine | Where-Object { $_.StartsWith('  [FAIL]') }).Count
+    '  [{0}] {1}: {2} ({3} checks)' -f $(if ($bad) { 'FAIL' } else { ' ok ' }), $c.Name, ($tbls -join ', '), $mine.Count
+  }
   $result = 'PASSED'
 }
 catch {
@@ -200,6 +211,12 @@ if ($backup) {
 [void]$r.Append('                was destroyed afterwards' + $(if ($gone) { ' (confirmed).' } else { ' - COULD NOT CONFIRM, check Docker.' }) + $nl + $nl)
 if ($steps.Count) { [void]$r.Append('Steps:' + $nl); foreach ($s in $steps) { [void]$r.Append($s + $nl) }; [void]$r.Append($nl) }
 if ($result -ne 'PASSED') { [void]$r.Append('Why it ' + $(if ($result -eq 'SKIPPED') { 'was skipped' } else { 'failed' }) + ': ' + $reason + $nl + $nl) }
+if ($script:verifiedLine) { [void]$r.Append('Backup contents : ' + ($script:verifiedLine -replace '^OK ', '') + ' - every file matched its SHA-256' + $nl + $nl) }
+if ($script:categoryLines) {
+  [void]$r.Append('Business data restored, by category:' + $nl)
+  foreach ($c in $script:categoryLines) { [void]$r.Append($c + $nl) }
+  [void]$r.Append($nl)
+}
 if ($checkLines.Count) {
   $passedCount = @($checkLines | Where-Object { $_.StartsWith('  [ ok ]') }).Count
   [void]$r.Append('Checks (' + $passedCount + ' of ' + $checkLines.Count + ' passed):' + $nl)
