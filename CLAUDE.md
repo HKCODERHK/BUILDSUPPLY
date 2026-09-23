@@ -1592,7 +1592,12 @@ confusable names, and the run silently did nothing here.
    archive it had made before 22 Sep was corrupt (`?` or mojibake for every
    em-dash and bullet). It is superseded by `scripts/backup/`:
    - `install-backup.ps1` copies the scripts, `schema.sql` + migrations and
-     the CLI's project link into `%LOCALAPPDATA%\BuildSupply\backup` —
+     the CLI's project link into `%USERPROFILE%\BuildSupply Backup System\program`
+     (**never `%LOCALAPPDATA%`**: run from the Claude desktop app, which is an
+     MSIX package, Windows redirects writes there into the app's private
+     storage and Task Scheduler cannot see them — every scheduled run failed
+     that way on 2026-09-23; and **never `conhost --headless`** as the task
+     launcher: it reports 0 to Task Scheduler whatever the script did) —
      **outside the repo** — records a SHA-256 of every file, and registers
      three tasks: **BuildSupply Backup** (13:00 + 21:00), **BuildSupply
      Restore Drill** (Sun 21:30), **BuildSupply Backup Health Check** (every

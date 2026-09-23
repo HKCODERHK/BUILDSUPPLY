@@ -4,8 +4,8 @@
 #
 # Copies the backup scripts, the database structure (schema.sql and every
 # migration, for the restore drill) and the Supabase CLI's link to the live
-# project into %LOCALAPPDATA%\BuildSupply\backup - OUTSIDE the Git working
-# tree. The scheduled tasks run that copy, so checking out another branch,
+# project into C:\Users\<you>\BuildSupply Backup System\program - OUTSIDE the
+# Git working tree. The scheduled tasks run that copy, so checking out another branch,
 # editing a script or pulling a change can never alter what runs tonight.
 # Only running this installer again does, and it records the SHA-256 of every
 # file it copies so any later change is reported by the health check.
@@ -27,10 +27,15 @@ $ErrorActionPreference = 'Stop'
 $Inv = [System.Globalization.CultureInfo]::InvariantCulture
 $src  = $PSScriptRoot
 $repo = (Resolve-Path (Join-Path $src '..\..')).Path
-$base = Join-Path $env:LOCALAPPDATA 'BuildSupply'
-$dest = Join-Path $base 'backup'
-$staging = Join-Path $base ('backup-installing-' + (Get-Date).ToString('yyyyMMddHHmmss', $Inv))
-$previous = Join-Path $base 'backup-previous'
+# Deliberately NOT under %LOCALAPPDATA%. Installed from inside a packaged
+# (MSIX) app - such as a terminal in the Claude desktop app - Windows quietly
+# redirects writes there into the app's private storage: the files looked
+# installed, but Task Scheduler could not see them at all, and every scheduled
+# run failed (found 2026-09-23). The user profile folder is not redirected.
+$base = Join-Path $env:USERPROFILE 'BuildSupply Backup System'
+$dest = Join-Path $base 'program'
+$staging = Join-Path $base ('program-installing-' + (Get-Date).ToString('yyyyMMddHHmmss', $Inv))
+$previous = Join-Path $base 'program-previous'
 $outRoot = Join-Path $env:USERPROFILE 'OneDrive\BuildSupply Verified Backups'
 
 $scripts = @('backup-lib.ps1', 'run-backup.ps1', 'restore-drill.ps1', 'backup-health.ps1',
@@ -136,21 +141,23 @@ $readme = 'BuildSupply Verified Backups' + $nl + $nl +
 
 if (-not $NoTasks) {
   $ps = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
-  # conhost --headless runs PowerShell with no window at all, so nothing
-  # flashes up on screen twice a day. Full path, and deliberately NO "Start
-  # in" folder: with one set, Task Scheduler refused to launch the task at all
-  # (0x8007010B, "the directory name is invalid") although the folder exists -
-  # found on 2026-09-23 when all three tasks fired on time and none ran. The
-  # scripts find their own files from $PSScriptRoot and never need it.
-  $conhost = Join-Path $env:WINDIR 'System32\conhost.exe'
-  $mk = { param($script) New-ScheduledTaskAction -Execute $conhost -Argument ('--headless "' + $ps + '" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + (Join-Path $dest $script) + '"') }
+  # Plain powershell.exe with a hidden window, full path, and NO "Start in"
+  # folder. Both alternatives failed on 2026-09-23:
+  #   - conhost --headless (no window at all) reports success to Task
+  #     Scheduler whatever the script does - a probe script exiting 7 showed
+  #     as 0 - so a failing backup would have looked fine;
+  #   - with a "Start in" folder set, Task Scheduler refused to launch
+  #     (0x8007010B) when that folder was one it could not see.
+  # A console window may flash for a moment when a task starts. That is the
+  # price of Windows reporting failures truthfully.
+  $mk = { param($script) New-ScheduledTaskAction -Execute $ps -Argument ('-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + (Join-Path $dest $script) + '"') }
   $who = New-ScheduledTaskPrincipal -UserId ($env:USERDOMAIN + '\' + $env:USERNAME) -LogonType Interactive -RunLevel Limited
   $common = @{ StartWhenAvailable = $true; AllowStartIfOnBatteries = $true; DontStopIfGoingOnBatteries = $true; MultipleInstances = 'IgnoreNew' }
 
   $s = New-ScheduledTaskSettingsSet @common -ExecutionTimeLimit (New-TimeSpan -Minutes 30) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 15)
   Register-ScheduledTask -TaskName 'BuildSupply Backup' -Action (& $mk 'run-backup.ps1') -Principal $who -Settings $s -Force `
     -Trigger @((New-ScheduledTaskTrigger -Daily -At '13:00'), (New-ScheduledTaskTrigger -Daily -At '21:00')) `
-    -Description 'Verified backup of the BuildSupply live database into OneDrive. Read-only against the database. Installed copy: %LOCALAPPDATA%\BuildSupply\backup' | Out-Null
+    -Description ('Verified backup of the BuildSupply live database into OneDrive. Read-only against the database. Installed copy: ' + $dest) | Out-Null
 
   $s = New-ScheduledTaskSettingsSet @common -ExecutionTimeLimit (New-TimeSpan -Minutes 45)
   Register-ScheduledTask -TaskName 'BuildSupply Restore Drill' -Action (& $mk 'restore-drill.ps1') -Principal $who -Settings $s -Force `
@@ -165,20 +172,24 @@ if (-not $NoTasks) {
     -Trigger @($logon, $every4h) `
     -Description 'Warns if BuildSupply has had no verified backup for 48 hours, a drill failed, or a backup task was switched off.' | Out-Null
 
-  # Prove Windows can actually launch these tasks: start the health check
-  # through Task Scheduler (the same path a timed trigger takes) and read what
-  # it returned. 0 means healthy, 1 means it ran and found something to
-  # report; anything else means the task never started - and the installer
-  # says so instead of leaving tasks that look scheduled but can never run.
+  # Prove Windows can actually run these tasks: start the health check
+  # through Task Scheduler (the same path a timed trigger takes) and check
+  # for an EFFECT - STATUS.txt rewritten after the start - not just the
+  # result code. On 2026-09-23 a result code of 0 came back from tasks that
+  # had never run at all.
+  $statusFile = Join-Path $outRoot 'STATUS.txt'
+  $before = if (Test-Path $statusFile) { (Get-Item $statusFile).LastWriteTimeUtc } else { [datetime]::MinValue }
+  Start-Sleep -Seconds 2
   Start-ScheduledTask -TaskName 'BuildSupply Backup Health Check'
   $deadline = (Get-Date).AddSeconds(90)
   do { Start-Sleep -Seconds 2 } while ((Get-ScheduledTask -TaskName 'BuildSupply Backup Health Check').State -eq 'Running' -and (Get-Date) -lt $deadline)
   Start-Sleep -Seconds 1
   $launch = (Get-ScheduledTaskInfo -TaskName 'BuildSupply Backup Health Check').LastTaskResult
-  if ($launch -ne 0 -and $launch -ne 1) {
-    throw ('Task Scheduler could not run the health check (result 0x{0:X}). The tasks are registered but would not work - do not rely on them.' -f $launch)
+  $after = if (Test-Path $statusFile) { (Get-Item $statusFile).LastWriteTimeUtc } else { [datetime]::MinValue }
+  if (($launch -ne 0 -and $launch -ne 1) -or $after -le $before) {
+    throw ('Task Scheduler did not really run the health check (result 0x{0:X}, STATUS.txt {1}). The tasks are registered but would not work - do not rely on them.' -f $launch, $(if ($after -gt $before) { 'updated' } else { 'NOT updated' }))
   }
-  Write-Host ('launch test    : Task Scheduler ran the health check (result ' + $launch + ')')
+  Write-Host ('launch test    : Task Scheduler ran the health check and it rewrote STATUS.txt (result ' + $launch + ')')
 }
 
 Write-Host ('installed to   : ' + $dest)

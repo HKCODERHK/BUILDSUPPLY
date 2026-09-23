@@ -1,7 +1,7 @@
 # BuildSupply - take one verified backup of the live database.
 #
 # Run by the scheduled task "BuildSupply Backup" from the INSTALLED copy in
-# %LOCALAPPDATA%\BuildSupply\backup, never from the Git working tree - so
+# C:\Users\<you>\BuildSupply Backup System\program, never from the Git tree - so
 # switching branches can never change what runs. Install or update with
 # scripts\backup\install-backup.ps1.
 #

@@ -48,7 +48,8 @@ function Initialize-Bs {
   $script:History    = Join-Path $script:Root 'history.log'
   $script:StatusFile = Join-Path $script:Root 'STATUS.txt'
   $script:Problem    = Join-Path $script:Root 'PROBLEM-READ-ME.txt'
-  $script:StateDir   = Join-Path $env:LOCALAPPDATA 'BuildSupply\backup-state'
+  # Not under %LOCALAPPDATA% - see install-backup.ps1 for why.
+  $script:StateDir   = Join-Path $env:USERPROFILE 'BuildSupply Backup System\state'
   foreach ($d in @($script:Root, $script:BackupsDir, $script:DrillsDir, $script:StateDir)) {
     if (-not (Test-Path $d)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
   }

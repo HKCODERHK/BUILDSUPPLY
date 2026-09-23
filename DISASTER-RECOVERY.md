@@ -26,6 +26,10 @@ Written 23 September 2026. Read the first section if nothing else.
 | Every Sunday, 21:30 | A restore drill on the newest backup | `BuildSupply Restore Drill` |
 | Every 4 hours, and 10 min after you sign in | A health check that warns you if anything is wrong | `BuildSupply Backup Health Check` |
 
+A black window may flash for a moment when a task starts. That is expected:
+the way of starting the tasks with no window at all turned out to hide
+failures from Windows, so it is not used.
+
 If the laptop is off or asleep at those times, the missed run happens as soon
 as it is next on and you are signed in. A backup that hits a network blip
 tries again by itself, three times over about a minute and a half; if it
@@ -138,7 +142,7 @@ If a backup file itself is deleted by mistake, OneDrive keeps deleted files
 in its recycle bin (onedrive.live.com → Recycle bin) for 30 days.
 
 **The installed backup program** lives in
-`%LOCALAPPDATA%\BuildSupply\backup`, outside the project's Git folder, so
+`C:\Users\Himan\BuildSupply Backup System\program`, outside the project's Git folder, so
 switching branches, editing the code or pulling changes never alters what the
 scheduled tasks run. Only running the installer again does.
 
@@ -307,7 +311,7 @@ long history Pro does not.
   Until then the old installed copy keeps running, unchanged.
 - **If the Supabase CLI login expires**, backups fail and you are warned.
   Fix: `npx supabase login` in a terminal, then run
-  `powershell -ExecutionPolicy Bypass -File "%LOCALAPPDATA%\BuildSupply\backup\run-backup.ps1"`
+  `powershell -ExecutionPolicy Bypass -File "%USERPROFILE%\BuildSupply Backup System\program\run-backup.ps1"`
   once to confirm.
 - **Run a backup or drill now** (optional; they run by themselves): right-click
   the task in Task Scheduler → Run.
