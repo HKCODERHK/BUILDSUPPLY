@@ -1,3 +1,6 @@
+// SUPERSEDED (2026-09-23) by scripts/backup/backup-tool.js. Used only by the
+// old scripts/backup.ps1, kept while its disabled task still exists.
+//
 // Pulls the row array out of a `supabase db query` response and writes it as
 // JSON. Lives in its own file rather than inline in the PowerShell script:
 // embedding JavaScript in a here-string means fighting two sets of quoting

@@ -1,3 +1,8 @@
+# SUPERSEDED (2026-09-23) by scripts/backup/ - see DISASTER-RECOVERY.md.
+# Kept only because the old, disabled task "BuildSupply Daily Backup" still
+# points here. Do not re-enable that task or re-register it: this script does
+# not verify its backups and it deletes all but the newest 14 archives.
+#
 # BuildSupply — daily database backup.
 #
 # Exports every public table as JSON, verifies each file parses, zips the lot

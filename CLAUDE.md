@@ -33,13 +33,24 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 the public internet where that login is the front door to every supplier's
 subscription. Ask the user if you need it; it lives in their password manager.
 
-Only three accounts exist — verified against `auth.users`, not assumed:
+**Four accounts as of 2026-09-23 — and don't trust this list.** An earlier
+version of this file said three, while a real supplier (Rahul Traders) had
+been on the platform since 2026-09-11. Discover the accounts from the data:
+every verified backup's `.manifest.json` lists them, and so does
+`STATUS.txt` in `OneDrive\BuildSupply Verified Backups`.
 
 | Account | Email | Notes |
 |---|---|---|
 | **Admin** | `himanshukhalatkar6@gmail.com` | Password in the user's password manager |
-| **KALYANI TRADERS** | `gajendrakhalatkar6@gmail.com` | The user's own real account and real data — **don't touch** |
-| **Shree Balaji Building Materials** | `shreebalaji@buildsupply.test` | The only surviving test supplier; safe to click through |
+| **KALYANI TRADERS** | `gajendrakhalatkar6@gmail.com` | Real supplier data — **don't touch** |
+| **Rahul Traders** | `nimbalkar.rahul96@gmail.com` | Real supplier, created 2026-09-11 — **don't touch** |
+| **Shree Balaji Building Materials** | `shreebalaji@buildsupply.test` | The user's test account; safe to click through, never to delete or reset |
+
+**The user's data rule (2026-09-23):** every supplier's and customer's data is
+production-critical. Anything that deletes, resets, truncates, overwrites or
+migrates production data needs the user's explicit approval first, every
+time. Shree Balaji is the test account, but it is protected the same way, and
+it is **never** a justification for touching anyone else's data.
 
 The other test suppliers named in earlier sessions — `ganeshhardware`,
 `omsaitraders`, `krishnasupplies`, `laxmimaterials` and `ashirwad` — no longer
@@ -52,10 +63,11 @@ passwords this file used to carry authenticates on any account any more. They
 are not repeated here, because a password that is dead in this project may
 still be alive somewhere the user reused it.
 
-**Shree Balaji was deliberately kept rather than deleted.** It holds 7
-customers, 18 invoices, 25 payments, 5 quotations and ₹236,822 of billing,
-and it is the only dataset in this project that is safe to experiment on —
-the alternative is KALYANI TRADERS, which is the user's real business. That
+**Shree Balaji was deliberately kept rather than deleted.** It held 7
+customers and 18 invoices when this was written; by 2026-09-23 it held 22
+customers, 56 bills and 105 payments — nearly all of the database. It is the
+only dataset in this project that is safe to click through; the others are
+real businesses. It is still never deleted or reset without asking. That
 data is what caught the INV-1008 overpayment, proved the payment cap trims
 splits in order, and exposed the UTC/IST ledger drift. Rotating its password
 closed the same hole deleting it would have, and cost nothing. Don't delete
@@ -1574,38 +1586,49 @@ the **project-scoped** link, `https://supabase.com/dashboard/project/<ref>/sql/n
 confusable names, and the run silently did nothing here.
 
 ### Still to do
-1. **Backups now run by themselves, nightly (superseding the note below).**
-   `scripts/backup.ps1`, registered by `scripts/install-backup-task.ps1` as
-   the Windows task "BuildSupply Daily Backup", exports every table at 9 PM
-   into `OneDrive\BuildSupply Backups` and keeps 14 archives. Since
-   2026-09-11 it reads the table list from the database each run — a
-   hand-typed list had silently missed `payment_allocations` and
-   `client_requests` after migration 024 — and refuses to call a run OK if a
-   core table is absent. A failed run leaves `BACKUP-FAILED-READ-ME.txt`
-   there. Earlier decision, for history:
-   **Backups are manual and weekly — decided on 2026-09-09.** The free tier
-   automates none, and the database holds real businesses. The user takes one
-   weekly and keeps a single archive per week in Google Drive, plus one before
-   any risky change. **Just take one when asked** — it is about two minutes and
-   there is no reason to talk them out of an extra.
-
-   `supabase db dump` needs Docker, which is installed on this machine but
-   usually not running. The working method exports each table as JSON through
-   the same authenticated CLI connection everything else uses, so the database
-   password never has to move:
-   ```
-   select coalesce(json_agg(t),'[]'::json) as data from public.<table> t;
-   ```
-   over all 15 public tables into `backups/<timestamp>/`, then verify each file
-   parses and diff the row counts against the previous backup — the diff is
-   what shows the user why cadence matters. `backups/` is gitignored, and must
-   stay that way: those files hold customer names, phone numbers, every invoice
-   and payment, and the bcrypt PIN hashes, with no access control at all.
-
-   **The real fix is Supabase Pro** ($25/mo, 7-day automatic backups), which
-   retires the ritual entirely. The user knows and plans to buy it once this
-   earns; a weekly manual habit is what they can actually sustain until then.
-   Don't nag about it.
+1. **Backups: automatic, verified, drilled — see `DISASTER-RECOVERY.md`
+   (rebuilt 2026-09-23).** The old nightly task "BuildSupply Daily Backup"
+   was found **disabled since 2026-09-21 22:24 with no warning**, and every
+   archive it had made before 22 Sep was corrupt (`?` or mojibake for every
+   em-dash and bullet). It is superseded by `scripts/backup/`:
+   - `install-backup.ps1` copies the scripts, `schema.sql` + migrations and
+     the CLI's project link into `%LOCALAPPDATA%\BuildSupply\backup` —
+     **outside the repo** — records a SHA-256 of every file, and registers
+     three tasks: **BuildSupply Backup** (13:00 + 21:00), **BuildSupply
+     Restore Drill** (Sun 21:30), **BuildSupply Backup Health Check** (every
+     4h + at sign-in). A branch switch cannot change what runs. **Re-run the
+     installer after changing `scripts/backup/` or merging a migration**,
+     or the drill reports its schema is behind production.
+   - `run-backup.ps1`: every table in **one** `set transaction read only`
+     statement (one consistent snapshot; Postgres refuses writes), an
+     encoding canary (em-dash, bullet, ₹, Devanagari), per-table files plus
+     `manifest.json` with SHA-256s, verify → zip → unzip → verify, copy as
+     `.partial`, hash-check, rename. Output:
+     `OneDrive\BuildSupply Verified Backups\backups\YYYY-MM\buildsupply-*.zip`
+     with `.sha256` and `.manifest.json`. **Nothing ever deletes a verified
+     backup.** A drop in money/customer/bill rows versus the previous backup
+     raises a notice. The working folder in `%TEMP%` is always deleted.
+   - `restore-drill.ps1`: restores the newest backup into a throwaway
+     `public.ecr.aws/supabase/postgres:17.6.1.167` container with
+     `--network none`, as the non-superuser `postgres` role (as on hosted
+     Supabase), and compares 73 checks. First run 2026-09-23: 73/73.
+   - `backup-health.ps1`: STATUS.txt, PROBLEM-READ-ME.txt and a Windows toast
+     for: no verified backup in 48h, failed backup/drill, a checksum
+     mismatch, a task missing or disabled, installed files changed.
+   - All data handling is in Node (`backup-tool.js`). **PowerShell never
+     touches row data as text** and the `.ps1` files must stay pure ASCII.
+   - **Logins:** `restore-logins.mjs` recreates every account with its
+     **original id** through the Auth Admin API, which accepts an `id`
+     (tested locally 2026-09-23 — an earlier report here said it did not;
+     that was wrong). So backups never carry password hashes; after a
+     disaster each account gets a temporary password. Dry-run by default,
+     create-only, refuses the live ref without `--allow-live-project`.
+   - The old `scripts/backup.ps1`, `install-backup-task.ps1` and
+     `extract-rows.js` are marked superseded and kept only because the
+     disabled legacy task points at them. Don't re-enable that task.
+   - **Supabase Pro** ($25/mo: daily backups kept 7 days; PITR ~$100/mo
+     more) is the real fix for "everything depends on one laptop". The user
+     knows. Don't nag about it.
 2. **No custom SMTP — deliberately deferred on 2026-09-09, not an oversight.**
    Auth email goes through Supabase's built-in sender, which is a few messages
    per hour and documented as testing-only, so a supplier using "Forgot

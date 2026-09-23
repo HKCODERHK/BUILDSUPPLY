@@ -1,7 +1,11 @@
 // Turns a BuildSupply backup into a SQL script that will actually load.
 //
-//   node scripts/restore-from-backup.mjs <folder-with-the-json-files> > restore.sql
+//   node scripts/backup/restore-from-backup.mjs <folder-with-the-json-files> --out restore.sql
 //   psql "<connection string>" -v ON_ERROR_STOP=1 -f restore.sql
+//
+// Use --out rather than redirecting stdout on Windows: PowerShell's `>` and
+// `|` re-encode text, which is exactly how the September 2026 backups lost
+// their em-dashes. With --out, Node writes the UTF-8 bytes itself.
 //
 // Written after the Phase 2 audit (2026-09-22) found that the archives could
 // not be restored at all. Loading the JSON files in any order fails, for three
@@ -37,20 +41,28 @@
 //      `select *` load of any older archive. Every insert names only the
 //      columns the backup carries, so anything added later takes its default.
 //
-// What this does NOT restore: `auth.users`. Logins are not in the backup at
-// all — see the recovery note in CLAUDE.md. The accounts have to exist, with
-// the same ids, before this script runs, or every `suppliers` row fails its
-// foreign key.
+// What this does NOT restore: `auth.users`. Password hashes are deliberately
+// not in the backup. The logins have to exist, with the same ids, before this
+// script runs, or every `suppliers` row fails its foreign key - run
+// restore-logins.mjs first, which recreates them from suppliers.json. See
+// DISASTER-RECOVERY.md.
 //
 // Nothing here writes to a database. It prints SQL; you choose where to run it.
 import fs from 'node:fs'
 import path from 'node:path'
 
-const dir = process.argv[2]
-if (!dir) {
-  console.error('usage: node restore-from-backup.mjs <folder-with-the-json-files>')
+const args = process.argv.slice(2)
+const outAt = args.indexOf('--out')
+const outFile = outAt === -1 ? null : args[outAt + 1]
+const dir = args.find((a, i) => !a.startsWith('--') && (outAt === -1 || i !== outAt + 1))
+if (!dir || (outAt !== -1 && !outFile)) {
+  console.error('usage: node restore-from-backup.mjs <folder-with-the-json-files> [--out restore.sql]')
   process.exit(2)
 }
+
+// Collected and written once at the end, so --out produces one UTF-8 file.
+const out = []
+const print = (line) => out.push(line)
 
 // Parents first. A table absent from the archive is skipped, so an older
 // backup (one taken before `stock_logs` existed, say) still restores.
@@ -80,6 +92,24 @@ const ORDER = [
   'activity_log',
 ]
 
+// A table the backup holds but ORDER has never heard of - one a later
+// migration added - is restored too, after everything above, rather than
+// silently left out. If it needs a parent that comes later, the restore stops
+// with a foreign-key error, which the restore drill reports: loud, not lost.
+// Files starting with `_` (the encoding check, the column list) and the
+// manifest are not tables.
+const known = new Set(ORDER)
+const unknown = fs
+  .readdirSync(dir)
+  .filter((f) => f.endsWith('.json') && !f.startsWith('_') && f !== 'manifest.json')
+  .map((f) => f.slice(0, -5))
+  .filter((t) => !known.has(t))
+  .sort()
+if (unknown.length) {
+  console.error(`note: restoring ${unknown.join(', ')} after the known tables - add them to ORDER in restore-from-backup.mjs`)
+}
+const TABLES = [...ORDER, ...unknown]
+
 // The two the migrations seed. Their backed-up row replaces the seeded one.
 const SEEDED = new Set(['platform_settings', 'order_guard_secret'])
 
@@ -90,7 +120,7 @@ const sqlString = (s) => `'${String(s).replace(/'/g, "''")}'`
 
 function emit(table, rows) {
   if (!rows.length) {
-    console.log(`-- ${table}: nothing in the backup`)
+    print(`-- ${table}: nothing in the backup`)
     return
   }
   const held = CIRCULAR[table]
@@ -105,50 +135,50 @@ function emit(table, rows) {
   const columns = [...new Set(rows.flatMap((r) => Object.keys(r)))]
   const list = columns.join(', ')
 
-  console.log(`-- ${table}: ${rows.length} row(s), ${columns.length} column(s)${held ? ` (${held} filled in at the end)` : ''}`)
-  console.log(`insert into public.${table} (${list})
+  print(`-- ${table}: ${rows.length} row(s), ${columns.length} column(s)${held ? ` (${held} filled in at the end)` : ''}`)
+  print(`insert into public.${table} (${list})
   select ${list} from jsonb_populate_recordset(null::public.${table}, ${json}::jsonb)`)
   if (SEEDED.has(table)) {
     // The migrations already put a row here, so the backup's row replaces it
     // rather than colliding. Re-running the script stays harmless.
-    console.log('  on conflict (id) do update set')
+    print('  on conflict (id) do update set')
     const sets = columns.filter((c) => c !== 'id')
     for (let i = 0; i < sets.length; i++) {
-      console.log(`    ${sets[i]} = excluded.${sets[i]}${i < sets.length - 1 ? ',' : ';'}`)
+      print(`    ${sets[i]} = excluded.${sets[i]}${i < sets.length - 1 ? ',' : ';'}`)
     }
   } else {
-    console.log(';')
+    print(';')
   }
-  console.log('')
+  print('')
 }
 
-console.log(`-- BuildSupply restore, generated ${new Date().toISOString()}`)
-console.log(`-- from: ${path.resolve(dir)}`)
-console.log('--')
-console.log('-- Run against a database that already has the schema and every migration')
-console.log('-- applied, and whose auth.users rows already exist with the same ids.')
+print(`-- BuildSupply restore, generated ${new Date().toISOString()}`)
+print(`-- from: ${path.resolve(dir)}`)
+print('--')
+print('-- Run against a database that already has the schema and every migration')
+print('-- applied, and whose auth.users rows already exist with the same ids.')
 // psql decides how to read this file from its own client_encoding, which on
 // Windows is a legacy codepage unless told otherwise. Left alone it reads the
 // UTF-8 bytes as Windows-1252 and stores an em-dash as three characters -
 // silently, exactly the way the backups themselves were corrupted. Pinned
 // here so the restore cannot depend on whose shell runs it.
-console.log("set client_encoding = 'UTF8';")
-console.log('')
-console.log('begin;')
-console.log('')
+print("set client_encoding = 'UTF8';")
+print('')
+print('begin;')
+print('')
 
-const present = ORDER.filter((t) => fs.existsSync(path.join(dir, `${t}.json`)))
+const present = TABLES.filter((t) => fs.existsSync(path.join(dir, `${t}.json`)))
 
 // Off for the load, on again before commit. Without this the app's own
 // triggers rewrite what is being restored.
-console.log("-- The app triggers must not run while its own history is being put back.")
-for (const table of present) console.log(`alter table public.${table} disable trigger user;`)
-console.log('')
+print("-- The app triggers must not run while its own history is being put back.")
+for (const table of present) print(`alter table public.${table} disable trigger user;`)
+print('')
 
-for (const table of ORDER) {
+for (const table of TABLES) {
   const file = path.join(dir, `${table}.json`)
   if (!fs.existsSync(file)) {
-    console.log(`-- ${table}: not in this backup, skipped`)
+    print(`-- ${table}: not in this backup, skipped`)
     continue
   }
   emit(table, JSON.parse(fs.readFileSync(file, 'utf8')))
@@ -160,20 +190,24 @@ for (const [table, column] of Object.entries(CIRCULAR)) {
   if (!fs.existsSync(file)) continue
   const rows = JSON.parse(fs.readFileSync(file, 'utf8')).filter((r) => r[column])
   if (!rows.length) {
-    console.log(`-- ${table}.${column}: nothing to fill in`)
+    print(`-- ${table}.${column}: nothing to fill in`)
     continue
   }
   const pairs = rows.map((r) => ({ id: r.id, [column]: r[column] }))
-  console.log(`-- ${table}.${column}: ${rows.length} row(s), now that invoices exist`)
-  console.log(`update public.${table} t set ${column} = v.${column}
+  print(`-- ${table}.${column}: ${rows.length} row(s), now that invoices exist`)
+  print(`update public.${table} t set ${column} = v.${column}
   from jsonb_to_recordset(${sqlString(JSON.stringify(pairs))}::jsonb) as v(id uuid, ${column} uuid)
   where t.id = v.id;`)
-  console.log('')
+  print('')
 }
 
-console.log('-- Triggers back on before the transaction closes.')
-for (const table of present) console.log(`alter table public.${table} enable trigger user;`)
-console.log('')
-console.log('commit;')
-console.log('')
-console.log(`-- restored: ${present.join(', ')}`)
+print('-- Triggers back on before the transaction closes.')
+for (const table of present) print(`alter table public.${table} enable trigger user;`)
+print('')
+print('commit;')
+print('')
+print(`-- restored: ${present.join(', ')}`)
+
+const text = out.join('\n') + '\n'
+if (outFile) fs.writeFileSync(outFile, text, 'utf8')
+else process.stdout.write(text)
