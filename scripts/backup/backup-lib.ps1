@@ -328,7 +328,7 @@ function Update-BsHealth([switch]$Notify) {
   if ($passed) { [void]$s.Append('Last restore drill     : PASSED ' + (Format-BsDate $passed.At) + ' (' + (Format-BsAge $passed.At) + ') - drills\' + $passed.Name + $nl) }
   else { [void]$s.Append('Last restore drill     : none has passed yet' + $nl) }
   [void]$s.Append('Folder size            : ' + $sizeMB + ' MB' + $nl + $nl)
-  [void]$s.Append('Schedule: backups every day at 13:00 and 21:00; a restore drill every Sunday at 21:30;' + $nl)
+  [void]$s.Append('Schedule: a backup every day at 21:00; a restore drill every Sunday at 21:30;' + $nl)
   [void]$s.Append('this check every 4 hours and at sign-in. Runs missed while the laptop was off happen when it is next on.' + $nl)
   if ($newest -and $newest.Manifest.accounts) {
     [void]$s.Append($nl + 'Accounts in the newest backup (each one is restorable):' + $nl)

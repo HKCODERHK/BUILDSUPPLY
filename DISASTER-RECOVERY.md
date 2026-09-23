@@ -4,7 +4,7 @@ Written 23 September 2026. Read the first section if nothing else.
 
 ## The short version
 
-- **The live database is backed up automatically, twice a day**, from this
+- **The live database is backed up automatically, every day at 9 PM**, from this
   laptop into OneDrive. You do not need to do anything.
 - **Every backup checks itself** before it is kept, and **once a week one is
   restored** into a throwaway test database to prove it really works.
@@ -22,7 +22,7 @@ Written 23 September 2026. Read the first section if nothing else.
 
 | When | What | Task in Task Scheduler |
 |---|---|---|
-| Every day, 13:00 and 21:00 | A verified backup of the whole live database | `BuildSupply Backup` |
+| Every day, 21:00 | A verified backup of the whole live database | `BuildSupply Backup` |
 | Every Sunday, 21:30 | A restore drill on the newest backup | `BuildSupply Restore Drill` |
 | Every 4 hours, and 10 min after you sign in | A health check that warns you if anything is wrong | `BuildSupply Backup Health Check` |
 
@@ -133,7 +133,7 @@ site, every bill and payment, and the hashed confirmation PINs. They do
 anyone.
 
 **How long they are kept:** forever. Nothing deletes a verified backup. Each
-is about 200 KB today, so two a day is roughly 150 MB a year against
+is about 200 KB today, so one a day is roughly 75 MB a year against
 OneDrive's free 5 GB. `STATUS.txt` warns once the folder passes 2 GB; at that
 point a retention rule should be agreed — it will not be introduced without
 your approval.
@@ -283,7 +283,7 @@ The free setup above is solid for what it is. Its limits are real, though:
 | Depends on this laptop being on and signed in | **Yes** | No |
 | Logins and passwords restored | No — new temporary passwords | The whole database is backed up, so logins should come back with their passwords (Supabase's backup page does not spell this out; confirm before relying on it) |
 | Restore | A person following the steps above, about an hour | A button in the dashboard, onto the same project (the app is offline while it runs) |
-| Most you can lose | Up to ~12 hours, longer if the laptop is off | Up to 24 hours |
+| Most you can lose | Up to ~24 hours, longer if the laptop is off | Up to 24 hours |
 | Project paused after a week idle | Yes | No |
 
 Point-in-time recovery — back to any second, losing at most about 2 minutes —

@@ -1599,7 +1599,8 @@ confusable names, and the run silently did nothing here.
      that way on 2026-09-23; and **never `conhost --headless`** as the task
      launcher: it reports 0 to Task Scheduler whatever the script did) —
      **outside the repo** — records a SHA-256 of every file, and registers
-     three tasks: **BuildSupply Backup** (13:00 + 21:00), **BuildSupply
+     three tasks: **BuildSupply Backup** (daily 21:00 only — the user's
+     choice, 2026-09-23), **BuildSupply
      Restore Drill** (Sun 21:30), **BuildSupply Backup Health Check** (every
      4h + at sign-in). A branch switch cannot change what runs. **Re-run the
      installer after changing `scripts/backup/` or merging a migration**,

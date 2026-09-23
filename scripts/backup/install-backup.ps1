@@ -12,7 +12,7 @@
 #
 # Registers three tasks, running as you, only while you are signed in (so no
 # password is stored anywhere):
-#   BuildSupply Backup               daily 13:00 and 21:00
+#   BuildSupply Backup               daily 21:00
 #   BuildSupply Restore Drill        Sundays 21:30
 #   BuildSupply Backup Health Check  every 4 hours, and 10 minutes after sign-in
 # "Run as soon as possible after a missed start" is on for all three, so a
@@ -130,7 +130,7 @@ $nl = [Environment]::NewLine
 $readme = 'BuildSupply Verified Backups' + $nl + $nl +
   'Open STATUS.txt to see whether everything is fine. If something is wrong, PROBLEM-READ-ME.txt appears here' + $nl +
   'and Windows shows a notification.' + $nl + $nl +
-  'backups\   one verified copy of the whole live database per run, twice a day. Each .zip has a .sha256' + $nl +
+  'backups\   one verified copy of the whole live database, every day at 21:00. Each .zip has a .sha256' + $nl +
   '           (its fingerprint) and a .manifest.json (what is inside) beside it. Nothing here is ever' + $nl +
   '           deleted automatically.' + $nl +
   'drills\    the weekly proof that the newest backup really restores.' + $nl +
@@ -156,7 +156,7 @@ if (-not $NoTasks) {
 
   $s = New-ScheduledTaskSettingsSet @common -ExecutionTimeLimit (New-TimeSpan -Minutes 30) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 15)
   Register-ScheduledTask -TaskName 'BuildSupply Backup' -Action (& $mk 'run-backup.ps1') -Principal $who -Settings $s -Force `
-    -Trigger @((New-ScheduledTaskTrigger -Daily -At '13:00'), (New-ScheduledTaskTrigger -Daily -At '21:00')) `
+    -Trigger (New-ScheduledTaskTrigger -Daily -At '21:00') `
     -Description ('Verified backup of the BuildSupply live database into OneDrive. Read-only against the database. Installed copy: ' + $dest) | Out-Null
 
   $s = New-ScheduledTaskSettingsSet @common -ExecutionTimeLimit (New-TimeSpan -Minutes 45)
