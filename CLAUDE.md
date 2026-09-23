@@ -1623,6 +1623,14 @@ confusable names, and the run silently did nothing here.
      mismatch, a task missing or disabled, installed files changed.
    - All data handling is in Node (`backup-tool.js`). **PowerShell never
      touches row data as text** and the `.ps1` files must stay pure ASCII.
+   - **Exactly two tables are excluded, by the user's decision (2026-09-23):**
+     `supplier_pins` (4-digit PIN hashes — crackable in seconds) and
+     `order_guard_secret` (the spam guard's HMAC key). `EXCLUDED` in
+     `backup-tool.js` is the only place a table may be left out; the
+     snapshot reads only their row counts and which accounts had a PIN.
+     After a restore, suppliers set new PINs; migration 032 makes a fresh
+     key. The drill checks both. **Never add a business table to
+     `EXCLUDED`.** Backups before that evening still hold both — left as is.
    - **Logins:** `restore-logins.mjs` recreates every account with its
      **original id** through the Auth Admin API, which accepts an `id`
      (tested locally 2026-09-23 — an earlier report here said it did not;

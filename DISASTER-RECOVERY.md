@@ -127,10 +127,31 @@ BuildSupply Verified Backups\
 - Microsoft, as OneDrive's host.
 
 The files are **not encrypted**. They hold every customer's name, phone and
-site, every bill and payment, and the hashed confirmation PINs. They do
-**not** hold any login password or password hash — on purpose, see
-[Logins](#logins-after-a-restore). Do not share the folder or send a backup to
-anyone.
+site, and every bill and payment. They do **not** hold any login password or
+password hash — on purpose, see [Logins](#logins-after-a-restore) — nor, since
+23 September 2026, the two security secrets below. (Backups made before that
+evening, including the older folders, still contain the confirmation PIN
+hashes and the spam-guard key; they are left exactly as they are.) Do not
+share the folder or send a backup to anyone.
+
+## Deliberately NOT in backups (this is intended, not missing data)
+
+Exactly two tables are left out of every backup, by the owner's decision on
+23 September 2026. They are **security secrets, not business data**: no bill,
+payment, customer, supplier, driver, estimate, order or any other record
+refers to them, so leaving them out loses no business data. Every other
+table — and any table added in future — is in every backup.
+
+| Table | What it holds | Why it is left out | What happens after a restore |
+|---|---|---|---|
+| `supplier_pins` | The confirmation PIN of each account that set one, scrambled | A 4-digit PIN has only 10,000 possibilities, so anyone with a backup could work the PIN out in seconds. | The restored app has **no PINs**, so it asks for none until each supplier sets a new one in **Settings → Confirmation PIN** (no old PIN is needed when none is on record). The backup records **which** accounts had a PIN, and `STATUS.txt` names them, so the admin knows whom to ask. |
+| `order_guard_secret` | The private key that anonymises customers' internet addresses for the order spam limit | It is a key; a backup does not need it. | **A fresh random key is created automatically** when the database is rebuilt from the migrations (032). The only effect: the "5 orders an hour per device" limit starts counting again. |
+
+Each backup's `.manifest.json` lists both under `excluded`, with the number
+of rows each had in production and the reason. `STATUS.txt` shows the same.
+The weekly restore drill checks both outcomes: no PIN hashes after the
+restore, and exactly one fresh spam-guard key. A backup that ever contained
+either table's contents would fail its own verification.
 
 **How long they are kept:** forever. Nothing deletes a verified backup. Each
 is about 200 KB today, so one a day is roughly 75 MB a year against
@@ -237,13 +258,19 @@ newest verified backup, and the project files from GitHub.
 10. **Re-install the backup** against the new project: update
     `supabase/.temp/project-ref` (run `npx supabase link --project-ref <new-ref>`),
     then run `scripts\backup\install-backup.ps1`.
-11. Delete `C:\restore` — it holds plaintext customer data.
+11. **Re-establish confirmation PINs.** `STATUS.txt` (or the backup's
+    `.manifest.json`, under `pin_accounts`) names the accounts that had one.
+    Ask each to set a new PIN in Settings. Nothing asks for a PIN until they
+    do. The spam-guard key needs nothing: step 4 already made a fresh one.
+12. Delete `C:\restore` — it holds plaintext customer data.
 
 **What a restore does not bring back:**
 
 - **Supplier logos.** They are files in Supabase Storage, which a database
   backup does not include. Suppliers upload them again in Settings.
 - **Passwords.** Deliberately — see below.
+- **Confirmation PINs and the spam-guard key.** Deliberately — see
+  [Deliberately NOT in backups](#deliberately-not-in-backups-this-is-intended-not-missing-data).
 - Supabase project settings (auth URLs, email templates, Edge Function
   secrets). Steps 8 and 10 cover the ones this app uses.
 

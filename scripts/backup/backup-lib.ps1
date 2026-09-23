@@ -334,6 +334,20 @@ function Update-BsHealth([switch]$Notify) {
     [void]$s.Append($nl + 'Accounts in the newest backup (each one is restorable):' + $nl)
     foreach ($a in $newest.Manifest.accounts) { [void]$s.Append('  - ' + $a.business_name + '  <' + $a.email + '>  ' + $a.role + ', ' + $a.status + $nl) }
   }
+  # The only tables deliberately left out, by the owner's decision - named
+  # here so nobody mistakes them for business data that went missing.
+  if ($newest -and $newest.Manifest.PSObject.Properties['excluded'] -and $newest.Manifest.excluded) {
+    $ex = @($newest.Manifest.excluded.PSObject.Properties)
+    if ($ex.Count) {
+      [void]$s.Append($nl + 'Deliberately NOT in backups - security secrets, not business data (this is intended):' + $nl)
+      foreach ($e in $ex) { [void]$s.Append('  - ' + $e.Name + ': ' + $e.Value.reason + $nl) }
+      $pins = @($newest.Manifest.pin_accounts)
+      if ($pins.Count) {
+        [void]$s.Append('  After a restore, ask these accounts to set their confirmation PIN again: ' + (($pins | ForEach-Object { $_.business_name.Trim() }) -join ', ') + $nl)
+      }
+      [void]$s.Append('  Every other table - business data - is in every backup.' + $nl)
+    }
+  }
   # Drops in records reported by a backup in the last 7 days.
   if (Test-Path $script:History) {
     foreach ($l in [System.IO.File]::ReadAllLines($script:History, [System.Text.Encoding]::UTF8)) {

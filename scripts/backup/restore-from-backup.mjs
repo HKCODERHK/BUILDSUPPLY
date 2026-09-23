@@ -111,6 +111,9 @@ if (unknown.length) {
 const TABLES = [...ORDER, ...unknown]
 
 // The two the migrations seed. Their backed-up row replaces the seeded one.
+// Backups made since 2026-09-23 deliberately leave out order_guard_secret
+// (and supplier_pins), so for those the fresh key the migration made stays.
+// Older backups still carry it and it is restored as before.
 const SEEDED = new Set(['platform_settings', 'order_guard_secret'])
 
 // Held back on the way in and filled by an UPDATE once invoices exist.

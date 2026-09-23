@@ -35,6 +35,20 @@ const MUST_HAVE = ['suppliers', 'customers', 'invoices', 'invoice_items', 'payme
 
 const SAFE_NAME = /^[a-z_][a-z0-9_]{0,62}$/
 
+// The ONLY tables deliberately left out of backups (the user's decision,
+// 2026-09-23): security secrets, not business data. Nothing references
+// either of them. Every other table - including any added in future - is
+// backed up. The manifest and STATUS.txt name these two, so nobody later
+// mistakes them for data that went missing by accident.
+const EXCLUDED = {
+  supplier_pins:
+    'confirmation PIN hashes. A 4-digit PIN has only 10,000 possibilities, so a stored hash is as good as the PIN. ' +
+    'After a restore, suppliers simply set a new PIN in Settings; until then nothing asks for one.',
+  order_guard_secret:
+    'the spam guard\'s private key. Rebuilding the database from the migrations (032) creates a fresh random key by itself; ' +
+    'the only effect is that the one-hour per-device order limit starts counting again.',
+}
+
 function fail(msg) {
   console.log('ERROR ' + String(msg).replace(/[^\x20-\x7e]/g, '?').slice(0, 600))
   process.exit(1)
@@ -85,10 +99,21 @@ const commands = {
   // Postgres itself refuse any write, whatever this file contains.
   'snapshot-sql'([catalogFile, outFile]) {
     const cat = readJson(catalogFile)
-    const parts = cat.tables.map((t) => {
-      if (!SAFE_NAME.test(t)) fail('unsafe table name ' + t)
-      return `'${JSON.stringify(t)}:' || coalesce((select json_agg(x) from public."${t}" x)::text, '[]')`
-    })
+    const parts = cat.tables
+      .filter((t) => !EXCLUDED[t])
+      .map((t) => {
+        if (!SAFE_NAME.test(t)) fail('unsafe table name ' + t)
+        return `'${JSON.stringify(t)}:' || coalesce((select json_agg(x) from public."${t}" x)::text, '[]')`
+      })
+    // For an excluded table only its row count is read, never its contents;
+    // for the PIN table, also which accounts have a PIN (so they can be asked
+    // to set it again after a restore) - never the hash.
+    for (const t of cat.tables.filter((x) => EXCLUDED[x])) {
+      parts.push(`'${JSON.stringify('_count_' + t)}:' || (select count(*) from public."${t}")::text`)
+    }
+    if (cat.tables.includes('supplier_pins')) {
+      parts.push(`'"_pin_accounts":' || coalesce((select json_agg(supplier_id order by supplier_id) from public.supplier_pins)::text, '[]')`)
+    }
     const sql =
       'set transaction read only;\n' +
       `select ('{"_taken_at":' || to_json(now())::text || ',"_canary":' || to_json(${CANARY_SQL})::text || ',' ||\n  ` +
@@ -111,7 +136,13 @@ const commands = {
     fs.mkdirSync(dir, { recursive: true })
     const tables = {}
     let total = 0
+    const excluded = {}
+    for (const t of cat.tables.filter((x) => EXCLUDED[x])) {
+      if (t in snap) fail('the snapshot contains the contents of ' + t + ', which must never be backed up')
+      excluded[t] = { reason: EXCLUDED[t], rows_in_production: Number(snap['_count_' + t]) }
+    }
     for (const t of cat.tables) {
+      if (EXCLUDED[t]) continue
       const rows = snap[t]
       if (!Array.isArray(rows)) fail('table ' + t + ' is missing from the snapshot')
       const body = Buffer.from(JSON.stringify(rows, null, 1), 'utf8')
@@ -137,21 +168,29 @@ const commands = {
       role: s.role,
       status: s.status,
     }))
+    // Which accounts had a confirmation PIN - names only - so the admin knows
+    // whom to ask to set one again after a restore.
+    const pinIds = new Set(Array.isArray(snap._pin_accounts) ? snap._pin_accounts : [])
+    const pinAccounts = accounts.filter((a) => pinIds.has(a.id)).map((a) => ({ id: a.id, business_name: a.business_name }))
     const manifest = {
       format: FORMAT,
       project_ref: projectRef,
       taken_at: snap._taken_at,
       created_at: new Date().toISOString(),
       postgres: cat.pg,
-      table_count: cat.tables.length,
+      table_count: Object.keys(tables).length,
+      tables_in_production: cat.tables.length,
       total_rows: total,
       canary: 'passed',
       tables,
       files,
+      excluded,
+      pin_accounts: pinAccounts,
       accounts,
     }
     fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify(manifest, null, 1))
-    console.log('OK ' + total + ' rows ' + cat.tables.length + ' tables ' + accounts.length + ' accounts')
+    console.log('OK ' + total + ' rows ' + Object.keys(tables).length + ' tables ' + accounts.length + ' accounts ' +
+      Object.keys(excluded).length + ' secret tables excluded')
   },
 
   // Re-reads a folder of backup files from disk and checks each against the
@@ -162,6 +201,10 @@ const commands = {
     if (!fs.existsSync(mf)) fail('manifest.json is missing')
     const m = readJson(mf)
     if (m.format !== FORMAT) fail('unknown manifest format ' + m.format)
+    // A secret table's file must never be in a backup that says it excluded it.
+    for (const t of Object.keys(m.excluded || {})) {
+      if (fs.existsSync(path.join(dir, t + '.json'))) fail(t + '.json is in the backup although it must be excluded (it holds secrets)')
+    }
     const expected = new Set(['manifest.json', ...Object.keys(m.tables).map((t) => t + '.json'), ...Object.keys(m.files)])
     const extra = fs.readdirSync(dir).filter((f) => !expected.has(f))
     if (extra.length) fail('unexpected files in the backup: ' + extra.join(', '))
@@ -298,6 +341,19 @@ const commands = {
         "where n.nspname = 'public' and not tg.tgisinternal and tg.tgenabled = 'D'",
     )
     add('logins: every account has its login row', m.accounts.length, 'select count(*) from public.suppliers s join auth.users u on u.id = s.id')
+
+    // The two deliberately excluded secret tables come back in the state a
+    // real recovery needs: no PIN hashes at all (each supplier sets a new
+    // PIN; until then the app asks for none), and exactly one fresh spam
+    // guard key, made by the migrations while the database was rebuilt.
+    const ex = m.excluded || {}
+    if (ex.supplier_pins) {
+      add('excluded secret: no PIN hashes restored (suppliers set new PINs)', 0, 'select count(*) from public.supplier_pins')
+    }
+    if (ex.order_guard_secret) {
+      add('excluded secret: a fresh spam-guard key exists', 1,
+        "select count(*) from public.order_guard_secret where id and length(secret) = 64 and secret ~ '^[0-9a-f]+$'")
+    }
 
     const sql =
       "\\pset format unaligned\n\\pset tuples_only on\n\\pset fieldsep '|'\n" + schemaSql + checks.join(';\n') + ';\n'
