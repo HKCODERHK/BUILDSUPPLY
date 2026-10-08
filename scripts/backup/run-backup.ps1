@@ -139,7 +139,10 @@ try {
       if ($was -and $is -and $is.rows -lt $was.rows) { $drops += ($t + ' ' + $was.rows + ' -> ' + $is.rows) }
     }
     foreach ($p in $previous.Manifest.tables.PSObject.Properties) {
-      if (-not $now.tables.($p.Name)) { $drops += ($p.Name + ' is gone entirely') }
+      # A table deliberately excluded now (a security secret) is not "gone":
+      # it is still in production and simply no longer copied.
+      $isExcluded = $now.PSObject.Properties['excluded'] -and $now.excluded -and $now.excluded.PSObject.Properties[$p.Name]
+      if (-not $now.tables.($p.Name) -and -not $isExcluded) { $drops += ($p.Name + ' is gone entirely') }
     }
     if ($previous.Manifest.PSObject.Properties['storage'] -and $previous.Manifest.storage -and $now.storage -and
         $now.storage.files -lt $previous.Manifest.storage.files) {
