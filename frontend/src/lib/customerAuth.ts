@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 /**
- * The customer's own login (migration 038) — a second Supabase client, kept
+ * The customer's own login (migration 041) — a second Supabase client, kept
  * entirely apart from the supplier/admin one in `lib/supabase.ts`.
  *
  * Its session lives under its own storage key, so a customer signing in or

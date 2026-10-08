@@ -1720,7 +1720,7 @@ const STRINGS = {
   'order.materialsHeading': { en: 'Materials', hi: 'सामान', mr: 'साहित्य' },
   'order.add': { en: 'Add', hi: 'जोड़ें', mr: 'जोडा' },
   'order.review': { en: 'Review', hi: 'देखें', mr: 'पहा' },
-  // The customer's own account (migration 038).
+  // The customer's own account (migration 041).
   'acct.title': { en: 'My BuildSupply', hi: 'मेरा BuildSupply', mr: 'माझे BuildSupply' },
   'acct.saveTitle': {
     en: 'Save this shop to my BuildSupply',

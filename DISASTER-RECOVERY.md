@@ -79,12 +79,13 @@ how each one is protected. The rules (in `scripts/backup/coverage.js`):
 | Where the data is | How it is protected |
 |---|---|
 | The app's own tables (`public`) — today 23 | **All backed up automatically**, including any table a future feature adds. The only exceptions are the two security secrets below. |
-| Logins (`auth.users`, `auth.identities`) | Recreated with their original ids by `restore-logins.mjs`. Every backup checks each login has an account row with the same email, and that they all sign in by email. |
+| Logins (`auth.users`, `auth.identities`) | Suppliers and the admin: recreated with their original ids by `restore-logins.mjs`. Every backup checks each login has an account row with the same email, and that they all sign in by email. |
+| Customers' own logins (anonymous, migration 041) | **Not recreated — by design** (approved 2026-10-08). Every customer, every bill, payment, estimate and order, and every customer's **khata link** is restored; the customer opens their khata link and taps **Save** once, which makes a new login and relinks it to their restored record. Counted in each backup's manifest as `customer_logins_relinked_by_khata_link`. See [Customers after a restore](#customers-after-a-restore). |
 | Uploaded files (`storage`) | Every file downloaded into the backup and fingerprinted. Every link to a file in the data (a logo, a catalog image) is checked to be in the backup. |
 | Scheduled jobs (`cron.job`) | Saved in the backup; the drill checks the migrations recreate every one. |
 | Login features a recovery cannot recreate — two-factor, passkeys, single sign-on, OAuth clients — and the vault of secrets | **Must be empty.** Checked every backup. |
 | Supabase's own short-lived bookkeeping (sessions, tokens, audit logs, migration history) | Nothing a restore needs. |
-| **Anything else** — a new schema, a foreign table, a private file bucket, a table Supabase adds that is not empty, a non-email sign-in method, a login with no account | **The backup is saved but marked INCOMPLETE**, you get a notification, and `STATUS.txt` and `PROBLEM-READ-ME.txt` name exactly what is not covered. It never reports a clean success. |
+| **Anything else** — a new schema, a foreign table, a private file bucket, a table Supabase adds that is not empty, a non-email sign-in method, a login that is neither a supplier account nor an anonymous customer login | **The backup is saved but marked INCOMPLETE**, you get a notification, and `STATUS.txt` and `PROBLEM-READ-ME.txt` name exactly what is not covered. It never reports a clean success. |
 
 Why saved and not refused: what an incomplete backup *does* cover is still
 protected, and throwing it away would leave you with less. Only damage
@@ -311,13 +312,25 @@ newest verified backup, and the project files from GitHub.
     `.manifest.json`, under `pin_accounts`) names the accounts that had one.
     Ask each to set a new PIN in Settings. Nothing asks for a PIN until they
     do. The spam-guard key needs nothing: step 4 already made a fresh one.
-13. Delete `C:\restore` — it holds plaintext customer data.
+13. **Customers relink themselves.** Nothing to run: their khata links came
+    back in step 7. A customer who used *My BuildSupply* (`/me`) finds it
+    empty on their phone; they open the khata link the shop sent them on
+    WhatsApp and tap **Save** once per shop. If a customer has lost the link,
+    the shop sends it again from the customer page → ⋯ → Share khata link
+    (it is the same link as before the disaster).
+14. Delete `C:\restore` — it holds plaintext customer data.
 
 **What a restore does not bring back:**
 
 - **Uploaded files in backups made before 23 September 2026 evening.** Those
   backups did not carry the files; every backup since does (step 6).
 - **Passwords.** Deliberately — see below.
+- **Customers' anonymous logins, and which phone held which customer
+  account.** Deliberately — they relink with Save on their restored khata
+  link (step 13). `restore-from-backup.mjs` puts `customer_accounts` and
+  `customer_connections` rows back only where their login still exists, so a
+  restore into the *same* project keeps them and a new project skips them,
+  saying so in the script.
 - **Confirmation PINs and the spam-guard key.** Deliberately — see
   [Deliberately NOT in backups](#deliberately-not-in-backups-this-is-intended-not-missing-data).
 - Supabase project settings (auth URLs, email templates, Edge Function
@@ -347,6 +360,61 @@ The app reads nothing else from the login records.
 
 If Google sign-in is added later, recovery gets easier, not harder: a
 supplier who signs in with Google has no password to lose.
+
+## Customers after a restore
+
+A customer's login in *My BuildSupply* (`/me`, migration 041) is an
+**anonymous** Supabase login: no password, no email, no phone. What proves who
+the customer is, is their personal khata link, which the shop sent to their
+own WhatsApp number. Supabase's Admin API cannot recreate a login that has
+neither an email nor a phone (tested 2026-10-08: *"Cannot create a user without
+either an email or phone"*), so these logins are not recreated. They do not
+need to be:
+
+- Every customer record, with its **khata link code**, and every bill,
+  payment, estimate and order is restored exactly.
+- After the restore the customer opens their khata link and taps **Save**.
+  That makes a brand-new login and connects it to *their* restored record —
+  the same function, `connect_khata`, that connected them the first time,
+  which only ever finds the one customer that link belongs to.
+- The old login is not needed and is never reused.
+
+**Proved on 2026-10-08** on the local test copy, end to end. A real backup was
+taken (OK, 0 coverage problems, 2 customer logins counted). Then the database
+and **every** login were wiped, and recovery followed exactly the steps above.
+Results:
+
+- the 2 supplier logins came back with their original ids;
+- all 3 customers came back with their khata links;
+- 4 bills (₹86,488), the payment and the estimate were restored;
+- 0 customer device links came back, because their logins were gone;
+- in the real app, Save on Ramesh's two restored links made a new login
+  holding his two shops with the right figures;
+- Suresh, relinked on another phone, could not read Ramesh's khata, nor
+  Ramesh his.
+
+The weekly drill now proves the same on every real backup that holds customer
+accounts:
+
+- no device link restored without its login;
+- every linked customer restored with the same khata link;
+- Save on a restored link makes a new connection that reads exactly that
+  customer's khata and nothing else;
+- the old login is not needed;
+- a wrong code connects nothing;
+- another customer's login cannot read the khata or open its documents.
+
+**Limits, plainly:**
+
+- After a disaster, a customer who has lost their khata link must ask the
+  shop to send it again before they can relink. The shop's QR alone never
+  relinks — by design, it is not proof of who the customer is.
+- If SMS sign-in is added later, those customers will have a phone number to
+  sign in with, and `coverage.js` will flag them until their recovery is
+  designed and drilled — the backup check treats any customer login that is
+  not anonymous as not covered.
+- Restoring into a *hosted* project has still not been rehearsed end to end
+  (see above); the local test copy runs the same Auth, database and roles.
 
 ## What the free setup cannot do — and Supabase Pro
 

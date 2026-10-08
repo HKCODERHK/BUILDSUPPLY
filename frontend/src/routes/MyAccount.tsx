@@ -13,7 +13,7 @@ import { disconnectShop, myShops, readCurrentShop, rememberCurrentShop, type MyS
 import KhataPage from './KhataPage'
 
 /**
- * /me — the customer's own BuildSupply (migration 038). Once a khata link has
+ * /me — the customer's own BuildSupply (migration 041). Once a khata link has
  * been saved on this phone, this is where the customer comes back to: every
  * shop on their account, one at a time, read by who is signed in rather than
  * by a link. With several shops a switcher sits on top; each shop's khata,

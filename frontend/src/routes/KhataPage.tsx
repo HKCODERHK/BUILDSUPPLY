@@ -149,7 +149,7 @@ export default function KhataPage({
 }: {
   /**
    * Set on /me: the khata is read through the customer's own account
-   * (migration 038) instead of the link's code. Everything else is the same.
+   * (migration 041) instead of the link's code. Everything else is the same.
    */
   connection?: string
   /** The shop switcher, above the page, on /me. */
@@ -180,7 +180,7 @@ export default function KhataPage({
   // Fixed when the page opens, so a re-render never moves the line.
   const [cutoff] = useState(() => Date.now() - RECENT_MS)
 
-  // Saving this khata to the customer's account (migration 038): only on the
+  // Saving this khata to the customer's account (migration 041): only on the
   // link, never on /me, where it is already the account.
   const [saved, setSaved] = useState<'unknown' | 'no' | 'saving' | 'yes'>('unknown')
   const [saveFailed, setSaveFailed] = useState(false)
@@ -1085,7 +1085,7 @@ export default function KhataPage({
               </SoftCard>
             )}
 
-            {/* The one-time connection (migration 038): save this shop to
+            {/* The one-time connection (migration 041): save this shop to
                 the customer's own BuildSupply, and next time they open it
                 straight — no link to find. The link itself keeps working. */}
             {!connection && saved !== 'unknown' && (

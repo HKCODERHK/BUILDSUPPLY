@@ -100,7 +100,7 @@ const router = createBrowserRouter([
   { path: '/order/:link', element: <Page><OrderPage /></Page> },
   { path: '/order-status/:token', element: <Page><OrderStatus /></Page> },
   { path: '/khata/:token', element: <Page><KhataPage /></Page> },
-  // The customer's own account (migration 038) — never the supplier's session.
+  // The customer's own account (migration 041) — never the supplier's session.
   { path: '/me', element: <Page><MyAccount /></Page> },
   { path: '/dashboard', element: <Protected><Dashboard /></Protected> },
   { path: '/customers', element: <Protected supplierOnly><Customers /></Protected> },

@@ -153,7 +153,7 @@ export default function OrderPage() {
       .catch(() => setLoadFailed(true))
   }, [link])
 
-  // The customer's own account (migration 038), if this phone has one and this
+  // The customer's own account (migration 041), if this phone has one and this
   // shop is on it: the shop's record of who they are fills the form, and the
   // tabs lead back to /me. The order itself is placed exactly as before.
   const [account, setAccount] = useState<MyShop | null>(null)

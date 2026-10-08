@@ -1,7 +1,7 @@
 import { customerClient, ensureCustomerSession, hasCustomerSession } from '@/lib/customerAuth'
 import type { KhataDocument, KhataView } from './khata'
 
-// The customer's account (migration 038): which shops it is connected to,
+// The customer's account (migration 041): which shops it is connected to,
 // and each shop's khata read by who is signed in rather than by a link.
 // Every read here goes through the same database functions the khata link
 // uses, so the two always show the same figures.
@@ -27,9 +27,9 @@ async function call<T>(fn: string, args: Record<string, unknown> = {}): Promise<
 
 let available: Promise<boolean> | null = null
 /**
- * Whether this database has customer accounts (migration 038). Asked signed
+ * Whether this database has customer accounts (migration 041). Asked signed
  * out: the function exists and refuses (permission), or does not exist at all
- * (PGRST202). A build reaching a database without 038 hides "Save" instead of
+ * (PGRST202). A build reaching a database without 041 hides "Save" instead of
  * offering something that cannot work.
  */
 export function accountsAvailable(): Promise<boolean> {

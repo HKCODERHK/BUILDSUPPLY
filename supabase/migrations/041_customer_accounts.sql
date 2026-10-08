@@ -1,4 +1,4 @@
--- 038 — customer accounts: a one-time connection instead of a link every time.
+-- 041 — customer accounts: a one-time connection instead of a link every time.
 --
 -- Until now a customer had no login at all. Their supplier sends them a
 -- personal khata link on WhatsApp (028), and whoever holds that code sees that
@@ -30,7 +30,7 @@
 do $$
 begin
   if not exists (select 1 from pg_proc where proname = 'accept_order' and pronamespace = 'public'::regnamespace) then
-    raise exception '038 needs migration 037 first. Nothing was changed.';
+    raise exception '041 needs migration 037 first. Nothing was changed.';
   end if;
 end $$;
 
