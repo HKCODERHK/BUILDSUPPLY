@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
+  BookmarkCheck,
+  BookmarkPlus,
   ChevronRight,
   CreditCard,
   Download,
@@ -63,6 +65,14 @@ import {
   type QuickAction,
 } from '@/components/CustomerHome'
 import { TINTS, greetingKey } from '@/lib/customerHome'
+import {
+  accountsAvailable,
+  connectKhata,
+  khataConnected,
+  myConfirmReceived,
+  myKhata,
+  myKhataDocument,
+} from '@/services/customerAccount'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
@@ -131,7 +141,24 @@ function Group({
  * bill's own PDF, their estimates (with PDFs) and their online orders — shown
  * only once the database has 031, so the page works either way.
  */
-export default function KhataPage() {
+export default function KhataPage({
+  connection,
+  accountTop,
+  accountFooter,
+  onGone,
+}: {
+  /**
+   * Set on /me: the khata is read through the customer's own account
+   * (migration 038) instead of the link's code. Everything else is the same.
+   */
+  connection?: string
+  /** The shop switcher, above the page, on /me. */
+  accountTop?: ReactNode
+  /** Remove this shop / sign out, at the foot of the home screen, on /me. */
+  accountFooter?: ReactNode
+  /** The account's connection stopped answering (the shop stopped the link). */
+  onGone?: () => void
+} = {}) {
   const { token = '' } = useParams()
   const { t } = useLanguage()
   const navigate = useNavigate()
@@ -153,7 +180,49 @@ export default function KhataPage() {
   // Fixed when the page opens, so a re-render never moves the line.
   const [cutoff] = useState(() => Date.now() - RECENT_MS)
 
+  // Saving this khata to the customer's account (migration 038): only on the
+  // link, never on /me, where it is already the account.
+  const [saved, setSaved] = useState<'unknown' | 'no' | 'saving' | 'yes'>('unknown')
+  const [saveFailed, setSaveFailed] = useState(false)
   useEffect(() => {
+    if (connection || !token) return
+    let live = true
+    accountsAvailable()
+      .then((ok) => (ok ? khataConnected(token) : null))
+      .then((r) => live && r && setSaved(r.connected ? 'yes' : 'no'))
+      .catch(() => live && setSaved('no'))
+    return () => {
+      live = false
+    }
+  }, [token, connection])
+  async function saveToAccount() {
+    if (saved === 'saving') return
+    setSaved('saving')
+    setSaveFailed(false)
+    try {
+      const r = await connectKhata(token)
+      setSaved(r.ok ? 'yes' : 'no')
+      if (!r.ok) setSaveFailed(true)
+    } catch {
+      setSaved('no')
+      setSaveFailed(true)
+    }
+  }
+
+  const load = () => (connection ? myKhata(connection) : getKhata(token))
+
+  useEffect(() => {
+    if (connection) {
+      setView(null)
+      myKhata(connection)
+        .then((v) => {
+          setView(v)
+          if (!v.found) onGone?.()
+          if (v.found) void warmPdfKit()
+        })
+        .catch(() => setFailed(true))
+      return
+    }
     getKhata(token)
       .then((v) => {
         setView(v)
@@ -165,7 +234,9 @@ export default function KhataPage() {
         if (v.found) void warmPdfKit()
       })
       .catch(() => setFailed(true))
-  }, [token])
+    // onGone is the parent's callback; a new function each render must not refetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, connection])
 
   // The shop's band rising into the bar (the supplier's own Profile screen
   // does the same with their name). A frame is asked for per scroll burst
@@ -345,7 +416,7 @@ export default function KhataPage() {
     setDocBusy(`${kind}:${no}`)
     setDocFailed(false)
     try {
-      const doc = await getKhataDocument(token, kind, no)
+      const doc = connection ? await myKhataDocument(connection, kind, no) : await getKhataDocument(token, kind, no)
       if (!doc.found) throw new Error('not found')
       const supplier = found.supplier as unknown as Supplier
       const customer = found.customer as unknown as Customer
@@ -366,9 +437,10 @@ export default function KhataPage() {
     setConfirming(true)
     setConfirmFailed(false)
     try {
-      await confirmReceived(token, invoiceNo)
+      if (connection) await myConfirmReceived(connection, invoiceNo)
+      else await confirmReceived(token, invoiceNo)
       setAsking(null)
-      setView(await getKhata(token))
+      setView(await load())
     } catch {
       setConfirmFailed(true)
     } finally {
@@ -397,7 +469,7 @@ export default function KhataPage() {
     setDocBusy(`view:${kind}:${no}`)
     setDocFailed(false)
     try {
-      const doc = await getKhataDocument(token, kind, no)
+      const doc = connection ? await myKhataDocument(connection, kind, no) : await getKhataDocument(token, kind, no)
       if (!doc.found) throw new Error('not found')
       setViewing(doc)
     } catch {
@@ -671,6 +743,7 @@ export default function KhataPage() {
         {/* The shop, large, where the page begins — this is what rises into
             the bar. Measured, not guessed: `shopUp` turns on the moment this
             block's last pixel passes under the bar. */}
+        {accountTop}
         {found && section && (
           <div ref={bandRef} className="flex items-center gap-3">
             {found.supplier.logo_url ? (
@@ -887,7 +960,7 @@ export default function KhataPage() {
                 into the bar as the page scrolls. The round button is the
                 shop's phone, where the reference keeps its bell. */}
             <div ref={bandRef} className="flex items-center gap-3 pt-1">
-              <CustomerAvatar id={token} name={found.customer.name} size={48} />
+              <CustomerAvatar id={token || connection || ''} name={found.customer.name} size={48} />
               <div className="min-w-0 flex-1">
                 <div className="text-xs text-muted">{t(greetingKey())}</div>
                 <div className="line-clamp-2 break-words text-xl font-bold leading-tight text-ink">
@@ -1012,6 +1085,38 @@ export default function KhataPage() {
               </SoftCard>
             )}
 
+            {/* The one-time connection (migration 038): save this shop to
+                the customer's own BuildSupply, and next time they open it
+                straight — no link to find. The link itself keeps working. */}
+            {!connection && saved !== 'unknown' && (
+              <SoftCard className="flex items-center gap-3 p-4">
+                <span
+                  className={cn(
+                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
+                    saved === 'yes' ? TINTS.green : 'bg-accent-bg text-accent-text',
+                  )}
+                >
+                  {saved === 'yes' ? <BookmarkCheck size={19} /> : <BookmarkPlus size={19} />}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold text-ink">
+                    {saved === 'yes' ? t('acct.savedTitle') : t('acct.saveTitle')}
+                  </div>
+                  <div className="text-xs text-muted">{saved === 'yes' ? t('acct.savedHint') : t('acct.saveHint')}</div>
+                  {saveFailed && <div className="mt-1 text-xs text-red-600 dark:text-red-400">{t('error.generic')}</div>}
+                </div>
+                {saved === 'yes' ? (
+                  <Link to="/me" className="shrink-0 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-accent">
+                    {t('acct.open')}
+                  </Link>
+                ) : (
+                  <Button size="sm" className="shrink-0 rounded-full px-4" onClick={saveToAccount} disabled={saved === 'saving'}>
+                    {saved === 'saving' ? <LoaderCircle size={14} className="animate-spin" /> : t('acct.save')}
+                  </Button>
+                )}
+              </SoftCard>
+            )}
+
             <QuickActions actions={quickActions} />
 
             {/* The account, as tiles. A tile with nothing behind it is left out. */}
@@ -1115,6 +1220,7 @@ export default function KhataPage() {
                 </SoftCard>
               </>
             )}
+            {accountFooter}
           </>
         )}
       </main>

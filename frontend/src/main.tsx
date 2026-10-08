@@ -7,6 +7,13 @@ import { listenForInstall } from './lib/installPrompt'
 import { showScrollbarsWhileScrolling } from './lib/scrollbars'
 import { applyDisplaySize, readDisplaySize } from './lib/displaySize'
 
+// A customer's pages carry their own manifest, so "Add to Home screen" there
+// opens their account (/me) rather than the supplier's sign-in. Swapped before
+// anything renders, which is before Chrome reads it.
+if (/^\/(me$|khata\/|order\/|order-status\/)/.test(window.location.pathname)) {
+  document.querySelector('link[rel="manifest"]')?.setAttribute('href', '/manifest-customer.webmanifest')
+}
+
 // Before the first render: Chrome's "can be installed" arrives early, once.
 listenForInstall()
 

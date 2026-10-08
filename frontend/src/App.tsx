@@ -39,13 +39,19 @@ const AdminPlatformSettings = lazy(screens.AdminPlatformSettings)
 const OrderPage = lazy(screens.OrderPage)
 const OrderStatus = lazy(screens.OrderStatus)
 const KhataPage = lazy(screens.KhataPage)
+const MyAccount = lazy(screens.MyAccount)
 const Orders = lazy(screens.Orders)
 const OrderDetail = lazy(screens.OrderDetail)
 
 // A supplier's public order page and a customer's status link: open to
 // anyone, no sign-in, and no BuildSupply splash in front of them.
 function isPublicOrderPath(path: string) {
-  return path.startsWith('/order/') || path.startsWith('/order-status/') || path.startsWith('/khata/')
+  return (
+    path.startsWith('/order/') ||
+    path.startsWith('/order-status/') ||
+    path.startsWith('/khata/') ||
+    path === '/me'
+  )
 }
 
 function Protected({
@@ -94,6 +100,8 @@ const router = createBrowserRouter([
   { path: '/order/:link', element: <Page><OrderPage /></Page> },
   { path: '/order-status/:token', element: <Page><OrderStatus /></Page> },
   { path: '/khata/:token', element: <Page><KhataPage /></Page> },
+  // The customer's own account (migration 038) — never the supplier's session.
+  { path: '/me', element: <Page><MyAccount /></Page> },
   { path: '/dashboard', element: <Protected><Dashboard /></Protected> },
   { path: '/customers', element: <Protected supplierOnly><Customers /></Protected> },
   { path: '/customers/:id', element: <Protected supplierOnly><CustomerProfile /></Protected> },

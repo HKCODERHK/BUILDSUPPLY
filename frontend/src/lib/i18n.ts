@@ -1720,6 +1720,56 @@ const STRINGS = {
   'order.materialsHeading': { en: 'Materials', hi: 'सामान', mr: 'साहित्य' },
   'order.add': { en: 'Add', hi: 'जोड़ें', mr: 'जोडा' },
   'order.review': { en: 'Review', hi: 'देखें', mr: 'पहा' },
+  // The customer's own account (migration 038).
+  'acct.title': { en: 'My BuildSupply', hi: 'मेरा BuildSupply', mr: 'माझे BuildSupply' },
+  'acct.saveTitle': {
+    en: 'Save this shop to my BuildSupply',
+    hi: 'यह दुकान मेरे BuildSupply में सेव करें',
+    mr: 'हे दुकान माझ्या BuildSupply मध्ये सेव्ह करा',
+  },
+  'acct.saveHint': {
+    en: 'Next time, open BuildSupply straight — no link needed.',
+    hi: 'अगली बार सीधे BuildSupply खोलें — लिंक की ज़रूरत नहीं।',
+    mr: 'पुढच्या वेळी थेट BuildSupply उघडा — लिंकची गरज नाही.',
+  },
+  'acct.save': { en: 'Save', hi: 'सेव करें', mr: 'सेव्ह करा' },
+  'acct.savedTitle': { en: 'Saved to your BuildSupply', hi: 'आपके BuildSupply में सेव है', mr: 'तुमच्या BuildSupply मध्ये सेव्ह आहे' },
+  'acct.savedHint': {
+    en: 'Open My BuildSupply any time — no link needed.',
+    hi: 'कभी भी मेरा BuildSupply खोलें — लिंक की ज़रूरत नहीं।',
+    mr: 'कधीही माझे BuildSupply उघडा — लिंकची गरज नाही.',
+  },
+  'acct.open': { en: 'Open', hi: 'खोलें', mr: 'उघडा' },
+  'acct.emptyTitle': { en: 'No shops on this phone yet', hi: 'इस फ़ोन पर अभी कोई दुकान नहीं', mr: 'या फोनवर अजून कोणतेही दुकान नाही' },
+  'acct.emptyBody': {
+    en: 'Open the khata link your shop sent you on WhatsApp and tap “Save”. After that the shop opens here, without the link.',
+    hi: 'आपकी दुकान ने WhatsApp पर जो खाता लिंक भेजा है उसे खोलें और “सेव करें” दबाएँ। उसके बाद दुकान यहीं खुलेगी, बिना लिंक के।',
+    mr: 'तुमच्या दुकानाने WhatsApp वर पाठवलेली खाते लिंक उघडा आणि “सेव्ह करा” दाबा. त्यानंतर दुकान इथेच उघडेल, लिंकशिवाय.',
+  },
+  'acct.qrNote': {
+    en: 'A shop’s QR code lets you order, but only your own khata link adds the shop here.',
+    hi: 'दुकान के QR से आप ऑर्डर कर सकते हैं, पर दुकान यहाँ सिर्फ़ आपके अपने खाता लिंक से जुड़ती है।',
+    mr: 'दुकानाच्या QR ने तुम्ही ऑर्डर करू शकता, पण दुकान इथे फक्त तुमच्या स्वतःच्या खाते लिंकने जोडले जाते.',
+  },
+  'acct.shops': { en: 'Your shops', hi: 'आपकी दुकानें', mr: 'तुमची दुकाने' },
+  'acct.remove': { en: 'Remove this shop', hi: 'यह दुकान हटाएँ', mr: 'हे दुकान काढा' },
+  'acct.removeConfirm': {
+    en: 'Remove {shop} from My BuildSupply? Your khata link can add it again.',
+    hi: '{shop} को मेरे BuildSupply से हटाएँ? आपका खाता लिंक इसे फिर जोड़ सकता है।',
+    mr: '{shop} माझ्या BuildSupply मधून काढायचे? तुमची खाते लिंक ते पुन्हा जोडू शकते.',
+  },
+  'acct.signOut': { en: 'Sign out on this phone', hi: 'इस फ़ोन पर साइन आउट करें', mr: 'या फोनवर साइन आउट करा' },
+  'acct.signOutConfirm': {
+    en: 'Sign out? To come back, open your khata link again and tap Save.',
+    hi: 'साइन आउट करें? वापस आने के लिए अपना खाता लिंक फिर खोलें और सेव करें दबाएँ।',
+    mr: 'साइन आउट करायचे? परत येण्यासाठी तुमची खाते लिंक पुन्हा उघडा आणि सेव्ह करा दाबा.',
+  },
+  'acct.yes': { en: 'Yes', hi: 'हाँ', mr: 'हो' },
+  'acct.gone': {
+    en: 'A shop is no longer on your account — the shop stopped your link. Ask them to send it again.',
+    hi: 'एक दुकान अब आपके खाते में नहीं है — दुकान ने आपका लिंक बंद कर दिया। उनसे फिर भेजने को कहें।',
+    mr: 'एक दुकान आता तुमच्या खात्यात नाही — दुकानाने तुमची लिंक बंद केली. त्यांना पुन्हा पाठवायला सांगा.',
+  },
   // UPI (migration 029): Settings…
   'upi.settingsTitle': { en: 'UPI payments', hi: 'UPI भुगतान', mr: 'UPI पेमेंट' },
   'upi.settingsHint': {

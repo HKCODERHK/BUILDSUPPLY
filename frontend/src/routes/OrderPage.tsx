@@ -38,6 +38,7 @@ import { readKhata, rememberOrder, type KhataLink } from '@/lib/customerLinks'
 import { CustomerTabBar, QuickActions, SectionHeading, SoftCard, type QuickAction } from '@/components/CustomerHome'
 import { TINTS, greetingKey, tintFor } from '@/lib/customerHome'
 import { cn } from '@/lib/utils'
+import { myShops, rememberCurrentShop, type MyShop } from '@/services/customerAccount'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
@@ -150,6 +151,32 @@ export default function OrderPage() {
     getOrderPage(link)
       .then(setPage)
       .catch(() => setLoadFailed(true))
+  }, [link])
+
+  // The customer's own account (migration 038), if this phone has one and this
+  // shop is on it: the shop's record of who they are fills the form, and the
+  // tabs lead back to /me. The order itself is placed exactly as before.
+  const [account, setAccount] = useState<MyShop | null>(null)
+  useEffect(() => {
+    let live = true
+    myShops()
+      .then((shops) => {
+        const mine = shops.find((s) => s.order_link === link)
+        if (!live || !mine) return
+        setAccount(mine)
+        setForm((f) => ({
+          ...f,
+          name: f.name || mine.customer_name,
+          phone: f.phone || mine.customer_phone || '',
+          site: f.site || mine.customer_site || '',
+        }))
+      })
+      .catch(() => {
+        // No account, or it can't be reached: the page is the public one.
+      })
+    return () => {
+      live = false
+    }
   }, [link])
 
   const open = page && page.found && page.open ? page : null
@@ -337,7 +364,7 @@ export default function OrderPage() {
 
   // Who this phone is to this shop, for the greeting: the khata's own
   // customer, or whoever sent the last order. Nobody known: no greeting.
-  const knownName = khata?.name ?? last?.name ?? null
+  const knownName = account?.customer_name ?? khata?.name ?? last?.name ?? null
   const quickActions: QuickAction[] = [
     ...(page.address
       ? [
@@ -350,13 +377,29 @@ export default function OrderPage() {
         ]
       : []),
     ...(lastAvailable.length > 0 ? [{ key: 'again', icon: RotateCcw, label: t('order.tileAgain'), onClick: fillLast }] : []),
-    ...(khata ? [{ key: 'khata', icon: BookOpen, label: t('order.tileKhata'), to: `/khata/${khata.code}` }] : []),
+    ...(account
+      ? [{ key: 'khata', icon: BookOpen, label: t('order.tileKhata'), onClick: () => openAccount('') }]
+      : khata
+        ? [{ key: 'khata', icon: BookOpen, label: t('order.tileKhata'), to: `/khata/${khata.code}` }]
+        : []),
     { key: 'share', icon: Share2, label: t('khata.tileShare'), onClick: () => setSharingShop(true) },
   ]
   // The same tabs as the khata link's, once this phone knows the customer's
   // khata — the two pages are one app to them. A first-time visitor has no
   // account to switch to, so no tab bar, only the order.
-  const tabs = khata
+  function openAccount(search: string) {
+    if (!account) return
+    rememberCurrentShop(account.connection)
+    navigate(`/me${search}`)
+  }
+  const tabs = account
+    ? [
+        { key: 'home', icon: House, label: t('khata.tabHome'), active: false, onClick: () => openAccount('') },
+        { key: 'materials', icon: ShoppingBag, label: t('khata.tabMaterials'), active: true, onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
+        { key: 'bills', icon: Receipt, label: t('khata.tabBills'), active: false, onClick: () => openAccount('?s=bills') },
+        { key: 'orders', icon: Package, label: t('khata.tabOrders'), active: false, onClick: () => openAccount('?s=orders') },
+      ]
+    : khata
     ? [
         { key: 'home', icon: House, label: t('khata.tabHome'), active: false, onClick: () => navigate(`/khata/${khata.code}`) },
         { key: 'materials', icon: ShoppingBag, label: t('khata.tabMaterials'), active: true, onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
