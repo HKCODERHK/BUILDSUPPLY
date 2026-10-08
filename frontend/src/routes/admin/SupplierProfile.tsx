@@ -204,7 +204,10 @@ export default function SupplierProfile() {
       const rows = Object.values(result.deleted).reduce((sum, n) => sum + n, 0)
       navigate('/admin/suppliers', {
         replace: true,
-        state: { deleted: `${result.business_name} was deleted, along with ${rows} record${rows === 1 ? '' : 's'}.` },
+        state: {
+          deleted: `${result.business_name} was deleted, along with ${rows} record${rows === 1 ? '' : 's'}.` +
+            (result.warning ? ` ${result.warning}` : ''),
+        },
       })
     } catch (err) {
       setActionError(describeError(err))

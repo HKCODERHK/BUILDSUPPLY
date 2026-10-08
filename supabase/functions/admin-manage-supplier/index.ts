@@ -9,19 +9,42 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
+// Which web pages may call this function from a browser (F6, Phase 2 audit).
+// It used to answer `*` - any site. Not exploitable, since the caller's login
+// travels as a bearer token rather than a cookie, but broader than the app
+// needs. Allowed: the live site, this project's own Vercel previews, and a
+// local dev server. ALLOWED_ORIGINS (comma-separated, set as a function
+// secret) adds more - the custom domain, once one is bought.
+const EXTRA_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+function originAllowed(origin: string | null): boolean {
+  if (!origin) return false
+  return (
+    origin === 'https://buildsupplyin.vercel.app' ||
+    EXTRA_ORIGINS.includes(origin) ||
+    /^https:\/\/buildsupplyin-[a-z0-9-]+-hkcoderhk\.vercel\.app$/.test(origin) ||
+    /^http:\/\/(localhost|127\.0\.0\.1)(:\d{2,5})?$/.test(origin)
+  )
 }
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('Origin')
+  const corsHeaders: Record<string, string> = {
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    Vary: 'Origin',
+  }
+  if (originAllowed(origin)) corsHeaders['Access-Control-Allow-Origin'] = origin!
+
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+
+  // F5 (Phase 2 audit): the raw error text of an upstream service - a
+  // database constraint name, an internal Auth message - goes to the function
+  // log, never back to the browser. The admin gets a plain sentence.
+  const fail = (publicMessage: string, status: number, detail?: unknown) => {
+    if (detail !== undefined) console.error(publicMessage, '|', detail instanceof Error ? detail.message : JSON.stringify(detail))
+    return json({ error: publicMessage }, status)
+  }
+
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   const authHeader = req.headers.get('Authorization')
@@ -113,7 +136,14 @@ Deno.serve(async (req) => {
         email_confirm: true,
       })
       if (createError || !created.user) {
-        return json({ error: createError?.message ?? 'Failed to create auth user' }, 400)
+        const msg = createError?.message ?? ''
+        if (/already (been )?registered|already exists/i.test(msg)) {
+          return fail('An account with this email already exists.', 400, createError)
+        }
+        // A password rule refusal is about what the admin typed, so it is
+        // shown as Auth worded it ("Password should be at least ...").
+        if (/password/i.test(msg)) return fail(msg, 400)
+        return fail('Could not create the login. Nothing was saved.', 400, createError)
       }
 
       const { error: insertError } = await adminClient.from('suppliers').insert({
@@ -132,8 +162,12 @@ Deno.serve(async (req) => {
 
       if (insertError) {
         // Roll back the auth user so we don't leave an orphaned login.
-        await adminClient.auth.admin.deleteUser(created.user.id)
-        return json({ error: insertError.message }, 400)
+        const { error: rollbackError } = await adminClient.auth.admin.deleteUser(created.user.id)
+        if (rollbackError) {
+          return fail(`Could not save the supplier, and the new login for ${email} could not be removed again - ` +
+            'remove it under Authentication in the Supabase dashboard.', 500, { insertError, rollbackError })
+        }
+        return fail('Could not save the supplier. The new login was removed again, so nothing was saved.', 400, insertError)
       }
 
       await adminClient.from('activity_log').insert({
@@ -159,7 +193,10 @@ Deno.serve(async (req) => {
       const { error } = await adminClient.auth.admin.updateUserById(supplier_id, {
         password: new_password,
       })
-      if (error) return json({ error: error.message }, 400)
+      if (error) {
+        if (/password/i.test(error.message)) return fail(error.message, 400)
+        return fail('Could not reset the password. It is unchanged.', 400, error)
+      }
 
       await adminClient.from('activity_log').insert({
         actor_id: caller.id,
@@ -181,7 +218,7 @@ Deno.serve(async (req) => {
       const { error } = await adminClient.auth.admin.updateUserById(supplier_id as string, {
         ban_duration: banned ? '876000h' : 'none',
       })
-      if (error) return json({ error: error.message }, 400)
+      if (error) return fail(banned ? 'Could not block the login. It is unchanged.' : 'Could not unblock the login. It is unchanged.', 400, error)
 
       await adminClient.from('activity_log').insert({
         actor_id: caller.id,
@@ -232,24 +269,16 @@ Deno.serve(async (req) => {
         deleted[table] = count ?? 0
       }
 
-      // Logged before the rows go, because activity_log cascades away with
-      // the supplier — this entry is written against the admin instead, so
-      // it survives as the record that the deletion happened.
-      await adminClient.from('activity_log').insert({
-        actor_id: caller.id,
-        actor_role: 'admin',
-        supplier_id: caller.id,
-        action: 'supplier_deleted',
-        details: { business_name: target.business_name, deleted_rows: deleted },
-      })
-
-      // Their uploaded logo, which no cascade would reach.
-      const { data: logoFiles } = await adminClient.storage.from('logos').list(supplier_id)
-      if (logoFiles?.length) {
-        await adminClient.storage
-          .from('logos')
-          .remove(logoFiles.map((f: { name: string }) => `${supplier_id}/${f.name}`))
-      }
+      // Every activity_log entry here is written against the ADMIN, because
+      // the supplier's own entries cascade away with them.
+      const record = (action: string, details: Record<string, unknown>) =>
+        adminClient.from('activity_log').insert({
+          actor_id: caller.id,
+          actor_role: 'admin',
+          supplier_id: caller.id,
+          action,
+          details: { business_name: target.business_name, ...details },
+        })
 
       // Deleting the login is what actually does it. suppliers.id references
       // auth.users(id) ON DELETE CASCADE, and every business table cascades
@@ -258,20 +287,50 @@ Deno.serve(async (req) => {
       // the confirmation PIN all go with it, in one transaction.
       const { error: authError } = await adminClient.auth.admin.deleteUser(supplier_id)
       if (authError && !/not found/i.test(authError.message)) {
-        return json({ error: `Could not delete the login: ${authError.message}` }, 400)
+        // F8 (Phase 2 audit): this used to be logged as done BEFORE the
+        // delete ran, so a failed delete still read as a deletion. Now a
+        // failure is recorded as a failure.
+        await record('supplier_delete_failed', { reason: authError.message })
+        return fail('Could not delete this supplier. Nothing was deleted.', 400, authError)
       }
 
       // Normally a no-op, because the cascade above already took the row.
       // Kept as a backstop for the one case it wouldn't: a profile row whose
       // auth user had already been removed by some other route.
       const { error: rowError } = await adminClient.from('suppliers').delete().eq('id', supplier_id)
-      if (rowError) return json({ error: rowError.message }, 400)
+      if (rowError) {
+        await record('supplier_delete_failed', { reason: rowError.message, login_deleted: true })
+        return fail('The login was deleted, but the supplier record could not be removed. Ask for help before retrying.', 500, rowError)
+      }
 
-      return json({ ok: true, business_name: target.business_name, deleted })
+      // Their uploaded logo, which no cascade would reach. F7 (Phase 2
+      // audit): this used to run before the delete with every error ignored,
+      // so a storage hiccup left the file in a public bucket for good, with
+      // nobody told. It runs after the delete now - so a failure can never
+      // cost a supplier who was NOT deleted their logo - and a failure is
+      // reported to the admin and recorded, never swallowed.
+      let logoProblem: string | null = null
+      const { data: logoFiles, error: listError } = await adminClient.storage.from('logos').list(supplier_id)
+      if (listError) {
+        logoProblem = 'could not check for a logo'
+      } else if (logoFiles?.length) {
+        const paths = logoFiles.map((f: { name: string }) => `${supplier_id}/${f.name}`)
+        const { error: removeError } = await adminClient.storage.from('logos').remove(paths)
+        if (removeError) logoProblem = `could not remove ${paths.length} logo file(s) under logos/${supplier_id}/`
+      }
+      if (logoProblem) console.error('delete_supplier logo:', logoProblem, listError ?? '')
+
+      // F8: written only now that the deletion has actually happened.
+      await record('supplier_deleted', { deleted_rows: deleted, logo_removed: !logoProblem })
+
+      const warning = logoProblem
+        ? `The supplier was deleted, but the logo ${logoProblem}. Remove it under Storage > logos in the Supabase dashboard.`
+        : undefined
+      return json({ ok: true, business_name: target.business_name, deleted, ...(warning ? { warning } : {}) })
     }
 
-    return json({ error: `Unknown action: ${action}` }, 400)
+    return json({ error: 'Unknown action.' }, 400)
   } catch (err) {
-    return json({ error: err instanceof Error ? err.message : 'Unexpected error' }, 500)
+    return fail('Something went wrong on the server. The details are in the function log.', 500, err)
   }
 })

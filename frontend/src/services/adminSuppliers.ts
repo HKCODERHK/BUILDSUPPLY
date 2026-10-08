@@ -62,6 +62,8 @@ export interface DeleteSupplierResult {
   ok: true
   business_name: string
   deleted: Record<string, number>
+  /** Set when the supplier was deleted but their logo could not be removed. */
+  warning?: string
 }
 
 /**
