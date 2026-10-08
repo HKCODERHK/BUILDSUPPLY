@@ -1,6 +1,23 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { ChevronDown, ChevronRight, ChevronUp, MapPin, Minus, Navigation, Phone, Plus, Search, Send, Share2, Truck } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import {
+  BookOpen,
+  ChevronRight,
+  House,
+  MapPin,
+  Minus,
+  Navigation,
+  Package,
+  Phone,
+  Plus,
+  Receipt,
+  RotateCcw,
+  Search,
+  Send,
+  Share2,
+  ShoppingBag,
+  Truck,
+} from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,6 +35,9 @@ import { newRequestId } from '@/services/db'
 import { getOrderPage, orderStatusUrl, placeOrder, type OrderPage as OrderPageData } from '@/services/orders'
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
 import { readKhata, rememberOrder, type KhataLink } from '@/lib/customerLinks'
+import { CustomerTabBar, QuickActions, SectionHeading, SoftCard, type QuickAction } from '@/components/CustomerHome'
+import { TINTS, greetingKey, tintFor } from '@/lib/customerHome'
+import { cn } from '@/lib/utils'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
@@ -83,6 +103,7 @@ function errorKey(message: string): TranslationKey {
 export default function OrderPage() {
   const { link = '' } = useParams()
   const { t } = useLanguage()
+  const navigate = useNavigate()
   const [page, setPage] = useState<OrderPageData | null>(null)
   const [loadFailed, setLoadFailed] = useState(false)
   const [qty, setQty] = useState<Record<string, string>>({})
@@ -114,9 +135,7 @@ export default function OrderPage() {
   const [last, setLast] = useState<LastOrder | null>(() => readLast(link))
   // Cash unless the customer says otherwise — which is nearly every order.
   const [payment, setPayment] = useState<'cash' | 'online'>('cash')
-  // The materials and the form stay folded into one button until the customer
-  // says they want to order (2026-09-20).
-  const [ordering, setOrdering] = useState(false)
+  const summaryRef = useRef<HTMLDivElement>(null)
   const [sharingShop, setSharingShop] = useState(false)
   const [sending, setSending] = useState(false)
   const sendingRef = useRef(false)
@@ -153,7 +172,6 @@ export default function OrderPage() {
       : null
   // Only what the supplier still lists can be ordered again.
   const lastAvailable = last && samePerson(khata, last) ? last.items.filter((it) => materials.some((m) => m.id === it.material_id)) : []
-  const lastMissing = last ? last.items.length - lastAvailable.length : 0
 
   function step(id: string, delta: number) {
     setQty((prev) => {
@@ -165,8 +183,6 @@ export default function OrderPage() {
 
   function fillLast() {
     if (!last) return
-    // Their last order is put in for them: open the box so they can see it.
-    setOrdering(true)
     setQty(Object.fromEntries(lastAvailable.map((it) => [it.material_id, String(it.qty)])))
     setForm((f) => ({
       ...f,
@@ -221,7 +237,6 @@ export default function OrderPage() {
   }
 
   function startAgain() {
-    setOrdering(true)
     setQty({})
     setForm((f) => ({ ...f, date: '', note: '', trap: '' }))
     requestId.current = newRequestId()
@@ -239,15 +254,27 @@ export default function OrderPage() {
   }
 
   const header = (
-    <header className="bg-shell px-4 pb-4 pt-[calc(1rem_+_var(--safe-top))] text-white">
-      <div className="mx-auto flex max-w-lg items-center gap-3">
-        {open?.logo_url ? (
-          <img src={open.logo_url} alt="" className="h-11 w-11 shrink-0 rounded-xl bg-white object-cover" />
-        ) : null}
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-lg font-bold">{open?.business_name ?? 'BuildSupply'}</div>
-          <div className="text-xs text-sidebar-text">{t('order.title')}</div>
-        </div>
+    <header className="sticky top-0 z-30 bg-shell px-4 pb-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white">
+      <div className="mx-auto flex h-11 max-w-lg items-center gap-3">
+        {/* The platform's name, as on the khata link — the shop has its own
+            card on the page, so the bar no longer repeats it cut short. */}
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#35A85D"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="shrink-0"
+        >
+          <path d="M3 21h18" />
+          <path d="M5 21V8l5-4v17" />
+          <path d="M10 21V11l6 3v7" />
+          <path d="M16 21v-4l3 1.5V21" />
+        </svg>
+        <span className="min-w-0 flex-1 truncate text-lg font-bold">BuildSupply</span>
         <div className="flex shrink-0 items-center gap-2">
           <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
           <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
@@ -282,7 +309,7 @@ export default function OrderPage() {
       <div className="min-h-screen bg-surface">
         {header}
         <main className="mx-auto flex max-w-lg flex-col gap-4 p-4">
-          <Card className="flex flex-col gap-4">
+          <SoftCard className="flex flex-col gap-4 p-5">
             <SuccessHeader title={t('order.sentTitle')} />
             <p className="text-sm text-ink">{t('order.sentBody', { business: page.business_name })}</p>
             {sentToken && (
@@ -302,241 +329,218 @@ export default function OrderPage() {
             <Button variant="outline" onClick={startAgain}>
               {t('order.another')}
             </Button>
-          </Card>
+          </SoftCard>
         </main>
       </div>
     )
   }
 
+  // Who this phone is to this shop, for the greeting: the khata's own
+  // customer, or whoever sent the last order. Nobody known: no greeting.
+  const knownName = khata?.name ?? last?.name ?? null
+  const quickActions: QuickAction[] = [
+    ...(page.address
+      ? [
+          {
+            key: 'directions',
+            icon: Navigation,
+            label: t('order.tileDirections'),
+            href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${page.business_name}, ${page.address}`)}`,
+          },
+        ]
+      : []),
+    ...(lastAvailable.length > 0 ? [{ key: 'again', icon: RotateCcw, label: t('order.tileAgain'), onClick: fillLast }] : []),
+    ...(khata ? [{ key: 'khata', icon: BookOpen, label: t('order.tileKhata'), to: `/khata/${khata.code}` }] : []),
+    { key: 'share', icon: Share2, label: t('khata.tileShare'), onClick: () => setSharingShop(true) },
+  ]
+  // The same tabs as the khata link's, once this phone knows the customer's
+  // khata — the two pages are one app to them. A first-time visitor has no
+  // account to switch to, so no tab bar, only the order.
+  const tabs = khata
+    ? [
+        { key: 'home', icon: House, label: t('khata.tabHome'), active: false, onClick: () => navigate(`/khata/${khata.code}`) },
+        { key: 'materials', icon: ShoppingBag, label: t('khata.tabMaterials'), active: true, onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
+        { key: 'bills', icon: Receipt, label: t('khata.tabBills'), active: false, onClick: () => navigate(`/khata/${khata.code}?s=bills`) },
+        { key: 'orders', icon: Package, label: t('khata.tabOrders'), active: false, onClick: () => navigate(`/khata/${khata.code}?s=orders`) },
+      ]
+    : null
+  const chosenCount = chosen.length
+
   return (
     <div className="min-h-screen bg-surface">
       {header}
-      <main className="mx-auto flex max-w-lg flex-col gap-4 p-4 pb-10">
-        <p className="text-sm text-muted">{t('order.intro')}</p>
-
-        {/* The shop's address, with directions in the phone's maps app, and a
-            call — for a customer who would rather come by or ask first. */}
-        {(page.address || page.phone) && (
-          <Card className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1">
-              <div className="text-base font-semibold text-ink">{page.business_name}</div>
-              {page.address && (
-                <div className="flex items-start gap-2 text-sm text-ink">
-                  <MapPin size={16} className="mt-0.5 shrink-0 text-muted" />
-                  <span className="min-w-0">{page.address}</span>
-                </div>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {page.address && (
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${page.business_name}, ${page.address}`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Button size="sm" variant="outline">
-                    <Navigation size={14} /> {t('order.directions')}
-                  </Button>
-                </a>
-              )}
-              {page.phone && (
-                <a href={`tel:${page.phone}`}>
-                  <Button size="sm" variant="outline">
-                    <Phone size={14} /> {t('khata.call')}
-                  </Button>
-                </a>
-              )}
-              {/* Pass the shop on. The link is the only thing a new customer
-                  needs — no account, no searching for the shop in an app. */}
-              <Button size="sm" variant="outline" onClick={() => setSharingShop(true)}>
-                <Share2 size={14} /> {t('order.shareShop')}
-              </Button>
-            </div>
-          </Card>
-        )}
-        {lastAvailable.length > 0 && chosen.length === 0 && (
-          <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-ink">{t('order.againTitle')}</div>
-              <div className="text-xs text-muted">
-                {t('order.againHint', { count: lastAvailable.length })}
-                {lastMissing > 0 ? ` ${t('order.againMissing')}` : ''}
+      <main className={cn('mx-auto flex max-w-lg flex-col gap-4 p-4', tabs ? 'pb-44' : 'pb-28')}>
+        {knownName && (
+          <div className="flex items-center gap-3 pt-1">
+            <CustomerAvatar id={khata?.code ?? link} name={knownName} size={44} />
+            <div className="min-w-0 flex-1">
+              <div className="text-xs text-muted">{t(greetingKey())}</div>
+              <div className="line-clamp-2 break-words text-lg font-bold leading-tight text-ink">
+                {t('khata.hello', { name: knownName })}
               </div>
             </div>
-            <Button size="sm" onClick={fillLast} className="shrink-0">
-              {t('order.againButton')}
-            </Button>
-          </Card>
+          </div>
         )}
 
-        {/* Someone who has ordered here before is not a stranger: their own
-            name, from the last order this phone sent, and their khata a tap
-            away when this phone knows the code. Both come off the phone, so
-            a shared link still shows nothing about anybody. */}
-        {khata ? (
-          <Link to={`/khata/${khata.code}`}>
-            <Card className="flex items-center gap-3">
-              <CustomerAvatar id={khata.code} name={khata.name ?? t('order.myKhata')} size={44} />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-bold text-ink">{khata.name ?? t('order.myKhata')}</span>
-                <span className="block truncate text-xs text-muted">{t('order.myKhataHint')}</span>
-              </span>
-              <ChevronRight size={18} className="shrink-0 text-muted" />
-            </Card>
-          </Link>
-        ) : last?.name ? (
-          <Card className="flex items-center gap-3">
-            <CustomerAvatar id={link} name={last.name} size={44} />
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-bold text-ink">{last.name}</span>
-              <span className="block truncate text-xs text-muted">
-                {[last.phone, last.site].filter(Boolean).join(' · ')}
-              </span>
+        {/* The shop: who, where, and its phone on the round button. */}
+        <SoftCard className="flex items-center gap-3 p-4">
+          {page.logo_url ? (
+            <img src={page.logo_url} alt="" className="h-14 w-14 shrink-0 rounded-2xl bg-white object-cover" />
+          ) : (
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-accent-bg text-accent-text">
+              <Truck size={26} strokeWidth={1.8} />
             </span>
-          </Card>
-        ) : null}
-
-        {/* The page a customer lands on stays short — the shop, where it is,
-            and one button. The materials and the form come out of that same
-            button, and fold back into it. */}
-        {!ordering && (
-          <button
-            type="button"
-            onClick={() => setOrdering(true)}
-            aria-expanded={false}
-            className="flex w-full items-center gap-3 rounded-2xl bg-accent px-4 py-4 text-left text-white shadow-sm transition-colors hover:bg-accent-soft"
-          >
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/15">
-              <Truck size={22} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-base font-bold leading-tight">{t('order.startNow')}</span>
-              <span className="block truncate text-xs text-white/85">{page.business_name}</span>
-            </span>
-            <ChevronDown size={20} className="shrink-0 text-white/80" />
-          </button>
-        )}
-
-        {ordering && (
-          <section className="overflow-hidden rounded-2xl border border-border bg-card">
-            <button
-              type="button"
-              onClick={() => setOrdering(false)}
-              aria-expanded={true}
-              className="flex w-full items-center gap-3 border-b border-border bg-accent-bg px-4 py-3 text-left"
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="break-words text-base font-bold leading-tight text-ink">{page.business_name}</div>
+            {page.address ? (
+              <div className="mt-0.5 flex items-start gap-1 text-xs text-muted">
+                <MapPin size={13} className="mt-px shrink-0" />
+                <span className="line-clamp-2 min-w-0 break-words">{page.address}</span>
+              </div>
+            ) : (
+              <div className="text-xs text-muted">{t('order.title')}</div>
+            )}
+          </div>
+          {page.phone && (
+            <a
+              href={`tel:${page.phone}`}
+              aria-label={t('khata.call')}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-white shadow"
             >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-white">
-                <Truck size={20} />
-              </span>
-              <span className="min-w-0 flex-1 text-sm font-bold leading-tight text-accent-text">{page.business_name}</span>
-              <ChevronUp size={18} className="shrink-0 text-muted" />
-            </button>
+              <Phone size={18} />
+            </a>
+          )}
+        </SoftCard>
 
-            <div className="flex flex-col gap-3 p-4 sm:p-5">
-              {showSearch && (
-                <div className="relative">
-                  <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-                  <Input placeholder={t('order.search')} value={query} onChange={(e) => setQuery(e.target.value)} className="pl-9" />
+        <QuickActions actions={quickActions} />
+
+        <SectionHeading title={t('order.materialsHeading')} />
+        <p className="-mt-2 px-1 text-xs text-muted">{t('order.intro')}</p>
+        {showSearch && (
+          <div className="relative">
+            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+            <Input
+              placeholder={t('order.search')}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="rounded-2xl pl-9"
+            />
+          </div>
+        )}
+        {materials.length === 0 && <SoftCard className="p-4 text-sm text-muted">{t('order.noMaterials')}</SoftCard>}
+
+        {/* Every material a tile: a tinted icon, its name, its price or unit,
+            and Add — which becomes − qty + once it is in the order. The
+            quantity box still takes typing, for 250 bags or 1.5 brass. */}
+        <div className="grid grid-cols-2 gap-3">
+          {visible.map((m) => {
+            const value = qty[m.id] ?? ''
+            const inOrder = Number(value) > 0
+            return (
+              <div
+                key={m.id}
+                className={cn(
+                  'flex min-w-0 flex-col gap-2 rounded-2xl border bg-card p-3 shadow-[0_2px_10px_rgba(10,36,39,0.04)]',
+                  inOrder ? 'border-accent' : 'border-border',
+                )}
+              >
+                <span className={cn('flex h-10 w-10 items-center justify-center rounded-xl', TINTS[tintFor(m.category ?? m.name)])}>
+                  <Package size={19} strokeWidth={1.9} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="line-clamp-2 break-words text-sm font-semibold leading-snug text-ink">{m.name}</div>
+                  <div className="truncate text-xs text-muted">
+                    {page.show_prices
+                      ? m.price != null
+                        ? `${formatINR(m.price)}${m.unit ? ` / ${m.unit}` : ''}`
+                        : t('order.priceOnRequest')
+                      : m.unit}
+                  </div>
                 </div>
-              )}
-              {materials.length === 0 && <p className="text-sm text-muted">{t('order.noMaterials')}</p>}
-              <div className="flex flex-col divide-y divide-border">
-                {visible.map((m) => {
-                  const value = qty[m.id] ?? ''
-                  return (
-                    <div key={m.id} className="flex items-center gap-3 py-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium text-ink">{m.name}</div>
-                        <div className="text-xs text-muted">
-                          {page.show_prices
-                            ? m.price != null
-                              ? `${formatINR(m.price)}${m.unit ? ` / ${m.unit}` : ''}`
-                              : t('order.priceOnRequest')
-                            : m.unit}
-                        </div>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-1">
-                        <button
-                          type="button"
-                          aria-label={t('order.less', { name: m.name })}
-                          onClick={() => step(m.id, -1)}
-                          disabled={!Number(value)}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-ink disabled:opacity-40"
-                        >
-                          <Minus size={15} />
-                        </button>
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          aria-label={t('order.qtyOf', { name: m.name })}
-                          placeholder="0"
-                          value={value}
-                          onChange={(e) => {
-                            setQty((prev) => ({ ...prev, [m.id]: sanitizeDecimal(e.target.value).slice(0, 8) }))
-                            setError(null)
-                          }}
-                          className="h-9 w-16 rounded-lg border border-border bg-card text-center text-sm text-ink outline-none focus:border-accent"
-                        />
-                        <button
-                          type="button"
-                          aria-label={t('order.more', { name: m.name })}
-                          onClick={() => step(m.id, 1)}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-accent"
-                        >
-                          <Plus size={15} />
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
+                {inOrder ? (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      aria-label={t('order.less', { name: m.name })}
+                      onClick={() => step(m.id, -1)}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface text-ink"
+                    >
+                      <Minus size={15} />
+                    </button>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      aria-label={t('order.qtyOf', { name: m.name })}
+                      value={value}
+                      onChange={(e) => {
+                        setQty((prev) => ({ ...prev, [m.id]: sanitizeDecimal(e.target.value).slice(0, 8) }))
+                        setError(null)
+                      }}
+                      className="h-9 w-full min-w-0 rounded-xl border border-border bg-card text-center text-sm font-semibold text-ink outline-none focus:border-accent"
+                    />
+                    <button
+                      type="button"
+                      aria-label={t('order.more', { name: m.name })}
+                      onClick={() => step(m.id, 1)}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent text-white"
+                    >
+                      <Plus size={15} />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    aria-label={t('order.more', { name: m.name })}
+                    onClick={() => step(m.id, 1)}
+                    className="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-accent-bg text-sm font-semibold text-accent-text"
+                  >
+                    <Plus size={15} /> {t('order.add')}
+                  </button>
+                )}
               </div>
-            </div>
+            )
+          })}
+        </div>
 
-            {/* What has been added, in words and in rupees, between the
-                materials and the form — the customer reads it where they are
-                adding, and the figure is the size of the decision it is. */}
-            {chosen.length > 0 && (
-              <div className="border-t border-border bg-surface p-4 sm:p-5">
-                <div className="mb-3 flex items-baseline justify-between gap-3">
-                  <span className="text-sm font-bold text-ink">{t('order.summaryTitle')}</span>
-                  <span className="shrink-0 text-xs font-medium text-muted">
-                    {t('order.selectedCount', { count: chosen.length })}
-                  </span>
-                </div>
-                <ul className="flex flex-col gap-2.5">
+        {/* What has been added, in words and in rupees, then who it is for. */}
+        <div ref={summaryRef} className="flex scroll-mt-20 flex-col gap-4">
+          {chosen.length > 0 && (
+            <>
+              <SectionHeading title={t('order.summaryTitle')} />
+              <SoftCard className="p-4">
+                <ul className="flex flex-col divide-y divide-border">
                   {chosen.map((c) => (
-                    <li key={c.material.id} className="flex items-start justify-between gap-3">
+                    <li key={c.material.id} className="flex items-start justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
                       <span className="min-w-0">
-                        <span className="block text-sm font-medium text-ink">{c.material.name}</span>
+                        <span className="block break-words text-sm font-medium text-ink">{c.material.name}</span>
                         <span className="block text-xs text-muted">
                           {c.qty} {c.material.unit}
                           {page.show_prices && c.material.price != null ? ` × ${formatINR(c.material.price)}` : ''}
                         </span>
                       </span>
                       {page.show_prices && c.material.price != null && (
-                        <span className="shrink-0 text-sm font-semibold text-ink">
-                          {formatINR(c.qty * c.material.price)}
-                        </span>
+                        <span className="shrink-0 text-sm font-semibold text-ink">{formatINR(c.qty * c.material.price)}</span>
                       )}
                     </li>
                   ))}
                 </ul>
                 {estimatedTotal != null && (
-                  <div className="mt-4 rounded-xl border border-accent/30 bg-accent-bg px-4 py-3">
+                  <div className="mt-4 rounded-2xl bg-accent-bg px-4 py-3">
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-sm font-semibold text-accent-text">{t('order.estimatedLabel')}</span>
-                      <span className="shrink-0 text-2xl font-bold leading-none text-accent-text">
-                        {formatINR(estimatedTotal)}
-                      </span>
+                      <span className="shrink-0 text-2xl font-bold leading-none text-accent-text">{formatINR(estimatedTotal)}</span>
                     </div>
                     <p className="mt-1.5 text-xs text-muted">{t('order.estimatedNote')}</p>
                   </div>
                 )}
-              </div>
-            )}
+              </SoftCard>
+            </>
+          )}
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4 border-t border-border p-4 sm:p-5">
-              <div className="text-sm font-semibold text-ink">{t('order.yourDetails')}</div>
+          <SectionHeading title={t('order.yourDetails')} />
+          <SoftCard className="p-4">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div>
                 <Label htmlFor="order-name" required>{t('order.name')}</Label>
                 <Input id="order-name" autoComplete="name" value={form.name} maxLength={60} onChange={(e) => setForm({ ...form, name: e.target.value })} />
@@ -577,9 +581,7 @@ export default function OrderPage() {
                       </button>
                     ))}
                   </div>
-                  <p className="mt-1.5 text-xs text-muted">
-                    {t(payment === 'cash' ? 'order.payCashHint' : 'order.payOnlineHint')}
-                  </p>
+                  <p className="mt-1.5 text-xs text-muted">{t(payment === 'cash' ? 'order.payCashHint' : 'order.payOnlineHint')}</p>
                 </div>
               )}
               <div>
@@ -599,16 +601,14 @@ export default function OrderPage() {
                 <label htmlFor="order-website">Website</label>
                 <input id="order-website" tabIndex={-1} autoComplete="off" value={form.trap} onChange={(e) => setForm({ ...form, trap: e.target.value })} />
               </div>
-              {error && (
-                <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>
-              )}
+              {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>}
               {/* Big, and wrapping rather than clipped: a long business name
                   must still read as one sentence with the button's word. */}
               <Button
                 type="submit"
                 size="lg"
                 disabled={sending}
-                className="h-auto w-full whitespace-normal rounded-xl py-4 text-base leading-snug shadow-sm"
+                className="h-auto w-full whitespace-normal rounded-2xl py-4 text-base leading-snug shadow-sm"
               >
                 {sending ? (
                   t('order.placing')
@@ -620,9 +620,40 @@ export default function OrderPage() {
                 )}
               </Button>
             </form>
-          </section>
-        )}
+          </SoftCard>
+        </div>
       </main>
+
+      {/* The cart, floating above the tab bar once something is in it: how
+          many materials, the estimate if prices show, and a tap down to the
+          summary and the form. */}
+      {chosenCount > 0 && (
+        <div
+          className={cn(
+            'fixed inset-x-0 z-30 px-3',
+            tabs ? 'bottom-[calc(4.75rem_+_var(--safe-bottom))]' : 'bottom-[calc(0.5rem_+_var(--safe-bottom))]',
+          )}
+        >
+          <button
+            type="button"
+            onClick={() => summaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            className="mx-auto flex w-full max-w-md items-center gap-3 rounded-2xl bg-accent px-4 py-3 text-left text-white shadow-[0_6px_24px_rgba(10,36,39,0.25)]"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15">
+              <ShoppingBag size={18} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-bold">{t('order.selectedCount', { count: chosenCount })}</span>
+              {estimatedTotal != null && <span className="block truncate text-xs text-white/85">{formatINR(estimatedTotal)}</span>}
+            </span>
+            <span className="flex shrink-0 items-center gap-1 text-sm font-semibold">
+              {t('order.review')} <ChevronRight size={16} />
+            </span>
+          </button>
+        </div>
+      )}
+
+      {tabs && <CustomerTabBar tabs={tabs} />}
 
       {/* Link or QR, the same two steps the supplier's own Share order link
           offers. Nobody is signed in here, so the shop's name and logo are

@@ -1712,6 +1712,14 @@ const STRINGS = {
   'khata.tabBills': { en: 'Bills', hi: 'बिल', mr: 'बिले' },
   'khata.tabOrders': { en: 'Orders', hi: 'ऑर्डर', mr: 'ऑर्डर' },
   'khata.tabPayments': { en: 'Payments', hi: 'भुगतान', mr: 'पेमेंट' },
+  'khata.tabMaterials': { en: 'Materials', hi: 'सामान', mr: 'साहित्य' },
+  // The order page in the same style (2026-10-08).
+  'order.tileDirections': { en: 'Directions', hi: 'रास्ता', mr: 'रस्ता' },
+  'order.tileAgain': { en: 'Repeat', hi: 'फिर से', mr: 'पुन्हा' },
+  'order.tileKhata': { en: 'My khata', hi: 'मेरा खाता', mr: 'माझे खाते' },
+  'order.materialsHeading': { en: 'Materials', hi: 'सामान', mr: 'साहित्य' },
+  'order.add': { en: 'Add', hi: 'जोड़ें', mr: 'जोडा' },
+  'order.review': { en: 'Review', hi: 'देखें', mr: 'पहा' },
   // UPI (migration 029): Settings…
   'upi.settingsTitle': { en: 'UPI payments', hi: 'UPI भुगतान', mr: 'UPI पेमेंट' },
   'upi.settingsHint': {

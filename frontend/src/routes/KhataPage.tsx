@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
   ChevronRight,
@@ -14,6 +14,7 @@ import {
   Receipt,
   ScrollText,
   Share2,
+  ShoppingBag,
   Truck,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
@@ -133,6 +134,7 @@ function Group({
 export default function KhataPage() {
   const { token = '' } = useParams()
   const { t } = useLanguage()
+  const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const [view, setView] = useState<KhataView | null>(null)
   const [failed, setFailed] = useState(false)
@@ -289,6 +291,17 @@ export default function KhataPage() {
 
   const tabs = [
     { key: 'home', icon: House, label: t('khata.tabHome'), active: section === null, onClick: closeSection },
+    ...(found?.order_link
+      ? [
+          {
+            key: 'materials',
+            icon: ShoppingBag,
+            label: t('khata.tabMaterials'),
+            active: false,
+            onClick: () => navigate(`/order/${found.order_link}`),
+          },
+        ]
+      : []),
     { key: 'bills', icon: Receipt, label: t('khata.tabBills'), active: section === 'bills', onClick: () => openSection('bills') },
     ...(orderCount > 0 || found?.order_link
       ? [
@@ -301,13 +314,17 @@ export default function KhataPage() {
           },
         ]
       : []),
-    {
-      key: 'payments',
-      icon: IndianRupee,
-      label: t('khata.tabPayments'),
-      active: section === 'payments',
-      onClick: () => openSection('payments'),
-    },
+    ...(found?.order_link
+      ? []
+      : [
+          {
+            key: 'payments',
+            icon: IndianRupee,
+            label: t('khata.tabPayments'),
+            active: section === 'payments',
+            onClick: () => openSection('payments'),
+          },
+        ]),
   ]
 
   async function download() {

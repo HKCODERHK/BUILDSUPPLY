@@ -19,3 +19,11 @@ export const TINTS = {
   slate: 'bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300',
 } as const
 export type Tint = keyof typeof TINTS
+
+/** A material's tint, steady per category, so cement is always the same colour. */
+export function tintFor(key: string): Tint {
+  const order: Tint[] = ['amber', 'sky', 'violet', 'rose', 'green', 'slate']
+  let n = 0
+  for (const ch of key.toLowerCase()) n = (n * 31 + ch.charCodeAt(0)) >>> 0
+  return order[n % order.length]
+}
