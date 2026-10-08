@@ -1741,6 +1741,7 @@ store where Avast's CA lives. Never `NODE_TLS_REJECT_UNAUTHORIZED=0`.
 - The second Supabase project `rnuiiymyhrvafwkfubqs` **no longer exists** (found gone 2026-09-11; only the live project is listed). Test risky SQL in a local Supabase in Docker instead — see Phase 9.
 - Bundle (since Phase 18, 2026-09-16): the entry chunk is 346 kB (**109 kB gzip**, was 1,499 kB / 428 kB), a shared chunk 386 kB (99 kB gzip), each screen its own small chunk, and jsPDF (130 kB gzip), autotable, `html2canvas`, `index.es` and `purify.es` load only when a PDF is made. Vite may still warn about the shared chunk.
 - **Free-tier Supabase pauses after ~7 days idle.** Deploy, then leave it a week, and the app looks broken when it isn't.
+- **Access tokens last 15 minutes, not Supabase's default hour** (`JWT_EXP=900`, Authentication → Sessions, set by the user 2026-10-08). Sign-out revokes the refresh token on every device, but an already-issued access token keeps working until it expires — so a copied token now dies within 15 minutes. The app renews tokens in the background; nothing else changed.
 - **iOS evicts `localStorage`** after extended non-use, which silently signs the supplier out. Expected, not a bug.
 - Contrast: the white-on-green primary button measures **4.41** against WCAG AA's 4.5. Darkening `--color-accent` (#198a45 → #147a3a) would fix it, but it is a brand decision and was left to the user.
 - `components/ui/modal.tsx` has no `role="dialog"`, `aria-modal` or focus trap.
