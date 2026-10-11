@@ -1,11 +1,14 @@
-import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
+  BookmarkCheck,
+  BookmarkPlus,
   ChevronRight,
   CreditCard,
   Download,
   FileText,
+  House,
   IndianRupee,
   LoaderCircle,
   Package,
@@ -13,6 +16,7 @@ import {
   Receipt,
   ScrollText,
   Share2,
+  ShoppingBag,
   Truck,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
@@ -51,6 +55,24 @@ import { warmPdfKit } from '@/lib/pdfKit'
 import { QrCode } from '@/components/QrCode'
 import { upiPayUrl } from '@/lib/upi'
 import { receivedState } from '@/lib/received'
+import {
+  CustomerTabBar,
+  DeliveryStrip,
+  QuickActions,
+  SectionHeading,
+  SoftCard,
+  SoftTile,
+  type QuickAction,
+} from '@/components/CustomerHome'
+import { TINTS, greetingKey } from '@/lib/customerHome'
+import {
+  accountsAvailable,
+  connectKhata,
+  khataConnected,
+  myConfirmReceived,
+  myKhata,
+  myKhataDocument,
+} from '@/services/customerAccount'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
@@ -61,7 +83,8 @@ function formatDate(iso: string) {
 }
 
 /** The last three months show straight away; older lines wait behind "Show older". */
-const RECENT_MS = 90 * 24 * 60 * 60 * 1000
+const DAY_MS = 24 * 60 * 60 * 1000
+const RECENT_MS = 90 * DAY_MS
 
 /**
  * The page answers one question at a time. A customer arriving on this link
@@ -71,6 +94,11 @@ const RECENT_MS = 90 * 24 * 60 * 60 * 1000
  * a short menu, and each row opens only itself (`?s=`, so the phone's back
  * button returns to the menu).
  */
+type LiveItem =
+  | { kind: 'arrived'; bill: KhataInvoice }
+  | { kind: 'pending'; bill: KhataInvoice }
+  | { kind: 'order'; order: KhataOrder }
+
 const SECTIONS = ['pay', 'bills', 'payments', 'estimates', 'orders', 'statement'] as const
 type Section = (typeof SECTIONS)[number]
 
@@ -105,54 +133,6 @@ function Group({
   )
 }
 
-/** One row of the menu. Plain outline icon, a title and a line saying what is inside. */
-function MenuRow({
-  icon: Icon,
-  title,
-  detail,
-  onClick,
-  to,
-  href,
-}: {
-  icon: ComponentType<{ size?: number; strokeWidth?: number; className?: string }>
-  title: string
-  detail?: string | null
-  onClick?: () => void
-  to?: string
-  href?: string
-}) {
-  const className = 'flex w-full items-start gap-4 rounded-xl px-2 py-3.5 text-left transition-colors hover:bg-surface active:bg-surface'
-  const inner = (
-    <>
-      <Icon size={24} strokeWidth={1.75} className="mt-0.5 shrink-0 text-muted" />
-      <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-medium text-ink">{title}</span>
-        {detail && <span className="mt-0.5 block break-words text-sm text-muted">{detail}</span>}
-      </span>
-      <ChevronRight size={18} className="mt-1 shrink-0 text-muted" />
-    </>
-  )
-  if (to) {
-    return (
-      <Link to={to} className={className}>
-        {inner}
-      </Link>
-    )
-  }
-  if (href) {
-    return (
-      <a href={href} className={className}>
-        {inner}
-      </a>
-    )
-  }
-  return (
-    <button type="button" onClick={onClick} className={className}>
-      {inner}
-    </button>
-  )
-}
-
 /**
  * /khata/<code> — a customer's own account, from the link their supplier
  * shared (migration 028). Read-only: every live bill and payment, the balance
@@ -161,9 +141,27 @@ function MenuRow({
  * bill's own PDF, their estimates (with PDFs) and their online orders — shown
  * only once the database has 031, so the page works either way.
  */
-export default function KhataPage() {
+export default function KhataPage({
+  connection,
+  accountTop,
+  accountFooter,
+  onGone,
+}: {
+  /**
+   * Set on /me: the khata is read through the customer's own account
+   * (migration 041) instead of the link's code. Everything else is the same.
+   */
+  connection?: string
+  /** The shop switcher, above the page, on /me. */
+  accountTop?: ReactNode
+  /** Remove this shop / sign out, at the foot of the home screen, on /me. */
+  accountFooter?: ReactNode
+  /** The account's connection stopped answering (the shop stopped the link). */
+  onGone?: () => void
+} = {}) {
   const { token = '' } = useParams()
   const { t } = useLanguage()
+  const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const [view, setView] = useState<KhataView | null>(null)
   const [failed, setFailed] = useState(false)
@@ -182,7 +180,49 @@ export default function KhataPage() {
   // Fixed when the page opens, so a re-render never moves the line.
   const [cutoff] = useState(() => Date.now() - RECENT_MS)
 
+  // Saving this khata to the customer's account (migration 041): only on the
+  // link, never on /me, where it is already the account.
+  const [saved, setSaved] = useState<'unknown' | 'no' | 'saving' | 'yes'>('unknown')
+  const [saveFailed, setSaveFailed] = useState(false)
   useEffect(() => {
+    if (connection || !token) return
+    let live = true
+    accountsAvailable()
+      .then((ok) => (ok ? khataConnected(token) : null))
+      .then((r) => live && r && setSaved(r.connected ? 'yes' : 'no'))
+      .catch(() => live && setSaved('no'))
+    return () => {
+      live = false
+    }
+  }, [token, connection])
+  async function saveToAccount() {
+    if (saved === 'saving') return
+    setSaved('saving')
+    setSaveFailed(false)
+    try {
+      const r = await connectKhata(token)
+      setSaved(r.ok ? 'yes' : 'no')
+      if (!r.ok) setSaveFailed(true)
+    } catch {
+      setSaved('no')
+      setSaveFailed(true)
+    }
+  }
+
+  const load = () => (connection ? myKhata(connection) : getKhata(token))
+
+  useEffect(() => {
+    if (connection) {
+      setView(null)
+      myKhata(connection)
+        .then((v) => {
+          setView(v)
+          if (!v.found) onGone?.()
+          if (v.found) void warmPdfKit()
+        })
+        .catch(() => setFailed(true))
+      return
+    }
     getKhata(token)
       .then((v) => {
         setView(v)
@@ -194,7 +234,9 @@ export default function KhataPage() {
         if (v.found) void warmPdfKit()
       })
       .catch(() => setFailed(true))
-  }, [token])
+    // onGone is the parent's callback; a new function each render must not refetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, connection])
 
   // The shop's band rising into the bar (the supplier's own Profile screen
   // does the same with their name). A frame is asked for per scroll burst
@@ -287,6 +329,75 @@ export default function KhataPage() {
   const offlineOrders = billRows.filter((b) => b.kind === 'bill' && b.from_order === false)
   const orderCount = orders.length + offlineOrders.length
 
+  // The delivery card: the one thing in motion, most urgent first — a
+  // delivery waiting for "did it arrive?", then a recent bill not delivered
+  // yet, then an online order waiting, or accepted and not billed. Old bills
+  // a supplier never marked delivered are not "pending": only the last week
+  // counts, and orders only the last month.
+  const opened = cutoff + RECENT_MS
+  const liveItems: LiveItem[] = [
+    ...billRows
+      .filter((b) => b.kind === 'bill' && receivedState(b) === 'waiting')
+      .map((bill) => ({ kind: 'arrived' as const, bill })),
+    ...billRows
+      .filter((b) => b.kind === 'bill' && !b.delivered && opened - new Date(b.created_at).getTime() <= 7 * DAY_MS)
+      .map((bill) => ({ kind: 'pending' as const, bill })),
+    ...[...waitingOrders, ...answeredOrders.filter((o) => o.status === 'approved' && !o.bill)]
+      .filter((o) => opened - new Date(o.created_at).getTime() <= 30 * DAY_MS)
+      .map((order) => ({ kind: 'order' as const, order })),
+  ]
+  const live = liveItems[0] ?? null
+  const liveMore = liveItems.length - (live ? 1 : 0)
+
+  const quickActions: QuickAction[] = [
+    ...(found?.order_link
+      ? [{ key: 'order', icon: Truck, label: t('khata.tileOrder'), to: `/order/${found.order_link}` }]
+      : []),
+    ...(upiUrl ? [{ key: 'pay', icon: CreditCard, label: t('khata.tilePay'), onClick: () => openSection('pay') }] : []),
+    { key: 'statement', icon: ScrollText, label: t('khata.tileStatement'), onClick: () => openSection('statement') },
+    ...(found?.order_link
+      ? [{ key: 'share', icon: Share2, label: t('khata.tileShare'), onClick: () => setSharingShop(true) }]
+      : []),
+  ]
+
+  const tabs = [
+    { key: 'home', icon: House, label: t('khata.tabHome'), active: section === null, onClick: closeSection },
+    ...(found?.order_link
+      ? [
+          {
+            key: 'materials',
+            icon: ShoppingBag,
+            label: t('khata.tabMaterials'),
+            active: false,
+            onClick: () => navigate(`/order/${found.order_link}`),
+          },
+        ]
+      : []),
+    { key: 'bills', icon: Receipt, label: t('khata.tabBills'), active: section === 'bills', onClick: () => openSection('bills') },
+    ...(orderCount > 0 || found?.order_link
+      ? [
+          {
+            key: 'orders',
+            icon: Package,
+            label: t('khata.tabOrders'),
+            active: section === 'orders',
+            onClick: () => openSection('orders'),
+          },
+        ]
+      : []),
+    ...(found?.order_link
+      ? []
+      : [
+          {
+            key: 'payments',
+            icon: IndianRupee,
+            label: t('khata.tabPayments'),
+            active: section === 'payments',
+            onClick: () => openSection('payments'),
+          },
+        ]),
+  ]
+
   async function download() {
     if (!found || !ledger || downloading) return
     setDownloading(true)
@@ -305,7 +416,7 @@ export default function KhataPage() {
     setDocBusy(`${kind}:${no}`)
     setDocFailed(false)
     try {
-      const doc = await getKhataDocument(token, kind, no)
+      const doc = connection ? await myKhataDocument(connection, kind, no) : await getKhataDocument(token, kind, no)
       if (!doc.found) throw new Error('not found')
       const supplier = found.supplier as unknown as Supplier
       const customer = found.customer as unknown as Customer
@@ -326,9 +437,10 @@ export default function KhataPage() {
     setConfirming(true)
     setConfirmFailed(false)
     try {
-      await confirmReceived(token, invoiceNo)
+      if (connection) await myConfirmReceived(connection, invoiceNo)
+      else await confirmReceived(token, invoiceNo)
       setAsking(null)
-      setView(await getKhata(token))
+      setView(await load())
     } catch {
       setConfirmFailed(true)
     } finally {
@@ -357,7 +469,7 @@ export default function KhataPage() {
     setDocBusy(`view:${kind}:${no}`)
     setDocFailed(false)
     try {
-      const doc = await getKhataDocument(token, kind, no)
+      const doc = connection ? await myKhataDocument(connection, kind, no) : await getKhataDocument(token, kind, no)
       if (!doc.found) throw new Error('not found')
       setViewing(doc)
     } catch {
@@ -627,11 +739,12 @@ export default function KhataPage() {
           </div>
         </div>
       </header>
-      <main className="mx-auto flex max-w-lg flex-col gap-4 p-4">
+      <main className={cn('mx-auto flex max-w-lg flex-col gap-4 p-4', found && 'pb-28')}>
         {/* The shop, large, where the page begins — this is what rises into
             the bar. Measured, not guessed: `shopUp` turns on the moment this
             block's last pixel passes under the bar. */}
-        {found && (
+        {accountTop}
+        {found && section && (
           <div ref={bandRef} className="flex items-center gap-3">
             {found.supplier.logo_url ? (
               <img src={found.supplier.logo_url} alt="" className="h-14 w-14 shrink-0 rounded-2xl bg-white object-cover" />
@@ -782,6 +895,14 @@ export default function KhataPage() {
                     {offlineOrders.map(offlineOrderRow)}
                   </Group>
                 )}
+                {found.order_link && (
+                  <Link to={`/order/${found.order_link}`} className="block">
+                    <span className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-accent px-4 py-4 text-base font-bold text-white shadow-sm transition-colors hover:bg-accent-soft">
+                      <Truck size={20} className="shrink-0" />
+                      {t('order.startNow')}
+                    </span>
+                  </Link>
+                )}
               </>
             )}
 
@@ -835,148 +956,276 @@ export default function KhataPage() {
           </>
         ) : (
           <>
-            <Card className="flex flex-col gap-3">
-              {/* One figure, not three. The bills owe one amount and any
-                  advance sits against it, and the statement's own running
-                  balance already nets the two — so showing both at the top
-                  and a third number at the bottom of the list was the most
-                  confusing thing on this page. The parts are spelled out
-                  underneath when there is an advance to explain. */}
-              {/* Their name, their initials and their own details: the page
-                  belongs to the customer, under the shop's roof above. */}
-              <div className="flex items-center gap-3">
-                <CustomerAvatar id={token} name={found.customer.name} size={52} />
-                <div className="min-w-0">
-                  <div className="truncate text-lg font-bold leading-tight text-ink">{found.customer.name}</div>
-                  <div className="truncate text-xs text-muted">
-                    {[found.customer.phone, found.customer.site].filter(Boolean).join(' · ') ||
-                      t('khata.yourAccountWith', { business: found.supplier.business_name })}
-                  </div>
+            {/* The greeting, the way an app greets its user — and what rises
+                into the bar as the page scrolls. The round button is the
+                shop's phone, where the reference keeps its bell. */}
+            <div ref={bandRef} className="flex items-center gap-3 pt-1">
+              <CustomerAvatar id={token || connection || ''} name={found.customer.name} size={48} />
+              <div className="min-w-0 flex-1">
+                <div className="text-xs text-muted">{t(greetingKey())}</div>
+                <div className="line-clamp-2 break-words text-xl font-bold leading-tight text-ink">
+                  {t('khata.hello', { name: found.customer.name })}
+                </div>
+                <div className="truncate text-xs text-muted">
+                  {t('khata.yourAccountWith', { business: found.supplier.business_name })}
                 </div>
               </div>
-              <div className="border-t border-border pt-3">
-                {/* Paying sits against the figure it settles, not down among
-                    the lists. It wraps to its own line only where the two
-                    cannot share a row — a 320px phone in Hindi or Marathi. */}
-                <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-2">
-                  <div className="min-w-0">
-                    <div className="text-xs font-medium text-muted">
-                      {net > 0.005 ? t('khata.youOwe') : net < -0.005 ? t('khata.advance') : ''}
-                    </div>
-                    {net > 0.005 ? (
-                      <div className="text-4xl font-bold leading-none text-red-600 dark:text-red-400">{formatINR(net)}</div>
-                    ) : net < -0.005 ? (
-                      <div className="text-4xl font-bold leading-none text-accent">{formatINR(-net)}</div>
-                    ) : (
-                      <div className="text-lg font-bold text-accent">{t('khata.settled')}</div>
-                    )}
+              {found.supplier.phone && (
+                <a
+                  href={`tel:${found.supplier.phone}`}
+                  aria-label={t('khata.menuCall')}
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-card text-accent shadow-sm"
+                >
+                  <Phone size={18} />
+                </a>
+              )}
+            </div>
+
+            {/* One figure, not three (Phase 23): the bills' dues less any
+                advance, with the parts spelled out when there is an advance. */}
+            <SoftCard className="p-5">
+              <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-3">
+                <div className="min-w-0">
+                  <div className="text-xs font-medium text-muted">
+                    {net > 0.005 ? t('khata.youOwe') : net < -0.005 ? t('khata.advance') : ''}
                   </div>
-                  {upiUrl && (
-                    <Button size="sm" className="ml-auto shrink-0" onClick={() => openSection('pay')}>
-                      <CreditCard size={15} /> {t('khata.menuPay')}
-                    </Button>
+                  {net > 0.005 ? (
+                    <div className="text-4xl font-bold leading-none text-red-600 dark:text-red-400">{formatINR(net)}</div>
+                  ) : net < -0.005 ? (
+                    <div className="text-4xl font-bold leading-none text-accent">{formatINR(-net)}</div>
+                  ) : (
+                    <div className="text-lg font-bold text-accent">{t('khata.settled')}</div>
                   )}
                 </div>
-                {found.pending > 0.005 && found.advance > 0.005 && (
-                  <p className="mt-2 text-xs text-muted">
-                    {t('khata.netNote', {
-                      bills: formatINR(Number(found.pending)),
-                      advance: formatINR(Number(found.advance)),
-                    })}
-                  </p>
+                {upiUrl && (
+                  <Button size="sm" className="ml-auto shrink-0 rounded-full px-4" onClick={() => openSection('pay')}>
+                    <CreditCard size={15} /> {t('khata.menuPay')}
+                  </Button>
                 )}
               </div>
-            </Card>
-
-            {/* One row per thing a customer might have come here for. A row a
-                customer has nothing behind — no estimates, no orders, a shop
-                with no UPI — is not shown at all. */}
-            <Card className="divide-y divide-border p-2">
-              {billRows.length > 0 && (
-                <MenuRow
-                  icon={Receipt}
-                  title={t('khata.menuBills')}
-                  detail={
-                    leftToPay > 0.005
-                      ? t(billCount === 1 ? 'khata.billsDetailOne' : 'khata.billsDetail', {
-                          count: billCount,
-                          amount: formatINR(leftToPay),
-                        })
-                      : t(billCount === 1 ? 'khata.billsDetailOnePaid' : 'khata.billsDetailPaid', { count: billCount })
-                  }
-                  onClick={() => openSection('bills')}
-                />
-              )}
-              {payments.length > 0 && (
-                <MenuRow
-                  icon={IndianRupee}
-                  title={t('khata.menuPayments')}
-                  detail={t(payments.length === 1 ? 'khata.paymentsDetailOne' : 'khata.paymentsDetail', {
-                    count: payments.length,
-                    date: formatDate(payments[0].created_at),
+              {found.pending > 0.005 && found.advance > 0.005 && (
+                <p className="mt-2 text-xs text-muted">
+                  {t('khata.netNote', {
+                    bills: formatINR(Number(found.pending)),
+                    advance: formatINR(Number(found.advance)),
                   })}
-                  onClick={() => openSection('payments')}
-                />
+                </p>
               )}
-              {estimates.length > 0 && (
-                <MenuRow
-                  icon={FileText}
-                  title={t('khata.menuEstimates')}
-                  detail={t(estimates.length === 1 ? 'khata.estimatesDetailOne' : 'khata.estimatesDetail', { count: estimates.length })}
-                  onClick={() => openSection('estimates')}
-                />
-              )}
-              {orderCount > 0 && (
-                <MenuRow
-                  icon={Package}
-                  title={t('khata.menuOrders')}
-                  detail={
-                    ordersWaiting > 0
-                      ? t('khata.ordersDetailWaiting', { count: orderCount, waiting: ordersWaiting })
-                      : t(orderCount === 1 ? 'khata.ordersDetailOne' : 'khata.ordersDetail', { count: orderCount })
-                  }
-                  onClick={() => openSection('orders')}
-                />
-              )}
-              <MenuRow
-                icon={ScrollText}
-                title={t('khata.menuStatement')}
-                detail={t('khata.statementDetail')}
-                onClick={() => openSection('statement')}
-              />
-              {found.supplier.phone && (
-                <MenuRow icon={Phone} title={t('khata.menuCall')} detail={found.supplier.phone} href={`tel:${found.supplier.phone}`} />
-              )}
-            </Card>
+            </SoftCard>
 
-            {/* The page ends on the one thing a customer might want to DO
-                rather than look up. A green button, not a menu row, and the
-                same words the order page's own button carries. Only while the
-                supplier takes online orders (migration 031). */}
-            {found.order_link && (
-              <>
-                <Link to={`/order/${found.order_link}`} className="block">
-                  <span className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-accent px-4 py-4 text-base font-bold text-white shadow-sm transition-colors hover:bg-accent-soft">
-                    <Truck size={20} className="shrink-0" />
-                    {t('order.startNow')}
-                  </span>
-                </Link>
-                {/* And pass the shop on. Until now only the supplier could
-                    share their own order link; a customer telling a friend
-                    where they buy is how a shop actually gets new ones. */}
-                <button
-                  type="button"
-                  onClick={() => setSharingShop(true)}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border px-4 py-3 text-sm font-semibold text-accent"
+            {live && (
+              <SoftCard className="overflow-hidden">
+                <DeliveryStrip at={live.kind === 'arrived' ? 'site' : 'shop'} />
+                <div className="flex items-center gap-3 p-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[11px] font-medium text-muted">
+                      {live.kind === 'order' ? t('khata.liveOrder') : t('khata.liveDelivery')}
+                    </div>
+                    <div className="text-base font-bold leading-snug text-ink">
+                      {live.kind === 'arrived'
+                        ? t('khata.liveArrived')
+                        : live.kind === 'pending'
+                          ? t('khata.livePending')
+                          : t(`order.status.${live.order.status}`)}
+                    </div>
+                    <div className="truncate text-xs text-muted">
+                      {live.kind === 'order'
+                        ? `${formatDate(live.order.created_at)} · ${t('khata.orderItems', { count: live.order.item_count })}`
+                        : `${t('khata.bill', { no: live.bill.invoice_no })}${live.bill.site ? ` · ${live.bill.site}` : ''}`}
+                    </div>
+                  </div>
+                  {live.kind === 'order' ? (
+                    <Link
+                      to={`/order-status/${live.order.code}`}
+                      aria-label={t(`order.status.${live.order.status}`)}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-white shadow"
+                    >
+                      <ChevronRight size={20} />
+                    </Link>
+                  ) : found.supplier.phone ? (
+                    <a
+                      href={`tel:${found.supplier.phone}`}
+                      aria-label={t('khata.menuCall')}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-white shadow"
+                    >
+                      <Phone size={18} />
+                    </a>
+                  ) : null}
+                </div>
+                {/* The one thing this card can settle: "did it arrive?" —
+                    still two taps, so a stray one can't record it. */}
+                {live.kind === 'arrived' && (
+                  <div className="flex flex-wrap gap-2 px-4 pb-4">
+                    {asking === live.bill.invoice_no ? (
+                      <>
+                        <Button size="sm" onClick={() => received(live.bill.invoice_no)} disabled={confirming}>
+                          {confirming ? t('common.saving') : t('khata.receivedYes')}
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setAsking(null)} disabled={confirming}>
+                          {t('ord.cancel')}
+                        </Button>
+                      </>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={() => setAsking(live.bill.invoice_no)}>
+                        {t('khata.receivedAsk')}
+                      </Button>
+                    )}
+                  </div>
+                )}
+                {confirmFailed && <div className="px-4 pb-4">{problem(t('error.generic'))}</div>}
+                {liveMore > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => openSection(live.kind === 'order' ? 'orders' : 'bills')}
+                    className="w-full border-t border-border px-4 py-2.5 text-left text-xs font-semibold text-accent"
+                  >
+                    {t('khata.liveMore', { count: liveMore })}
+                  </button>
+                )}
+              </SoftCard>
+            )}
+
+            {/* The one-time connection (migration 041): save this shop to
+                the customer's own BuildSupply, and next time they open it
+                straight — no link to find. The link itself keeps working. */}
+            {!connection && saved !== 'unknown' && (
+              <SoftCard className="flex items-center gap-3 p-4">
+                <span
+                  className={cn(
+                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
+                    saved === 'yes' ? TINTS.green : 'bg-accent-bg text-accent-text',
+                  )}
                 >
-                  <Share2 size={16} className="shrink-0" />
-                  {t('order.shareShop')}
-                </button>
+                  {saved === 'yes' ? <BookmarkCheck size={19} /> : <BookmarkPlus size={19} />}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold text-ink">
+                    {saved === 'yes' ? t('acct.savedTitle') : t('acct.saveTitle')}
+                  </div>
+                  <div className="text-xs text-muted">{saved === 'yes' ? t('acct.savedHint') : t('acct.saveHint')}</div>
+                  {saveFailed && <div className="mt-1 text-xs text-red-600 dark:text-red-400">{t('error.generic')}</div>}
+                </div>
+                {saved === 'yes' ? (
+                  <Link to="/me" className="shrink-0 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-accent">
+                    {t('acct.open')}
+                  </Link>
+                ) : (
+                  <Button size="sm" className="shrink-0 rounded-full px-4" onClick={saveToAccount} disabled={saved === 'saving'}>
+                    {saved === 'saving' ? <LoaderCircle size={14} className="animate-spin" /> : t('acct.save')}
+                  </Button>
+                )}
+              </SoftCard>
+            )}
+
+            <QuickActions actions={quickActions} />
+
+            {/* The account, as tiles. A tile with nothing behind it is left out. */}
+            {(billRows.length > 0 || payments.length > 0 || estimates.length > 0 || orderCount > 0) && (
+              <>
+                <SectionHeading title={t('khata.accountHeading')} />
+                <div className="grid grid-cols-2 gap-3">
+                  {billRows.length > 0 && (
+                    <SoftTile
+                      icon={Receipt}
+                      tint="amber"
+                      title={t('khata.tabBills')}
+                      detail={
+                        leftToPay > 0.005
+                          ? t(billCount === 1 ? 'khata.billsDetailOne' : 'khata.billsDetail', {
+                              count: billCount,
+                              amount: formatINR(leftToPay),
+                            })
+                          : t(billCount === 1 ? 'khata.billsDetailOnePaid' : 'khata.billsDetailPaid', { count: billCount })
+                      }
+                      onClick={() => openSection('bills')}
+                    />
+                  )}
+                  {payments.length > 0 && (
+                    <SoftTile
+                      icon={IndianRupee}
+                      tint="green"
+                      title={t('khata.tabPayments')}
+                      detail={t(payments.length === 1 ? 'khata.paymentsDetailOne' : 'khata.paymentsDetail', {
+                        count: payments.length,
+                        date: formatDate(payments[0].created_at),
+                      })}
+                      onClick={() => openSection('payments')}
+                    />
+                  )}
+                  {estimates.length > 0 && (
+                    <SoftTile
+                      icon={FileText}
+                      tint="sky"
+                      title={t('khata.tileEstimates')}
+                      detail={t(estimates.length === 1 ? 'khata.estimatesDetailOne' : 'khata.estimatesDetail', {
+                        count: estimates.length,
+                      })}
+                      onClick={() => openSection('estimates')}
+                    />
+                  )}
+                  {orderCount > 0 && (
+                    <SoftTile
+                      icon={Package}
+                      tint="violet"
+                      title={t('khata.tabOrders')}
+                      detail={
+                        ordersWaiting > 0
+                          ? t('khata.ordersDetailWaiting', { count: orderCount, waiting: ordersWaiting })
+                          : t(orderCount === 1 ? 'khata.ordersDetailOne' : 'khata.ordersDetail', { count: orderCount })
+                      }
+                      onClick={() => openSection('orders')}
+                    />
+                  )}
+                </div>
               </>
             )}
+
+            {/* The last few lines of the statement, newest first. */}
+            {newestFirst.length > 0 && (
+              <>
+                <SectionHeading
+                  title={t('khata.recentHeading')}
+                  action={t('khata.seeAll')}
+                  onAction={() => openSection('statement')}
+                />
+                <SoftCard className="p-2">
+                  <div className="flex flex-col divide-y divide-border">
+                    {newestFirst.slice(0, 3).map((e, i) => {
+                      const d = describe(e)
+                      const Icon = e.type === 'Invoice' ? Receipt : e.type === 'Opening' ? ScrollText : IndianRupee
+                      return (
+                        <div key={i} className="flex items-center gap-3 px-2 py-3">
+                          <span
+                            className={cn(
+                              'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',
+                              e.credit > 0 ? TINTS.green : e.type === 'Opening' ? TINTS.slate : TINTS.amber,
+                            )}
+                          >
+                            <Icon size={17} strokeWidth={1.9} />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-medium text-ink">{d.title}</div>
+                            <div className="truncate text-xs text-muted">
+                              {formatDate(e.date)}
+                              {d.sub ? ` · ${d.sub}` : ''}
+                            </div>
+                          </div>
+                          <div className={cn('shrink-0 text-sm font-semibold', e.credit > 0 ? 'text-accent' : 'text-ink')}>
+                            {e.credit > 0 ? `− ${formatINR(e.credit)}` : formatINR(e.debit)}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </SoftCard>
+              </>
+            )}
+            {accountFooter}
           </>
         )}
       </main>
+
+      {found && <CustomerTabBar tabs={tabs} />}
 
       {/* Link or QR, the same two steps the supplier's own Share order link
           offers — a customer standing in the shop may want to photograph the

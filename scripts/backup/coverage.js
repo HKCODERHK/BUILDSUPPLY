@@ -8,6 +8,11 @@
 //                     any table a future migration adds - except the two
 //                     security secrets in EXCLUDED (backup-tool.js)
 //   auth              users + identities -> login recovery (restore-logins.mjs);
+//                     a customer's anonymous login (migration 041) is NOT
+//                     recreated: the customer opens their own khata link
+//                     and taps Save, which makes a new login and relinks it
+//                     to their restored record (approved by the user,
+//                     2026-10-08). Any OTHER customer login is a problem;
 //                     short-lived session/token/log tables -> not needed;
 //                     ANY other auth table must be empty (passkeys, SSO, MFA,
 //                     OAuth clients... cannot be recreated by login recovery)
@@ -47,7 +52,9 @@ const TRANSIENT = {
 }
 
 const HANDLED = {
-  'auth.users': 'logins: recreated with their original ids by restore-logins.mjs (no passwords are stored)',
+  'auth.users':
+    'logins: suppliers and the admin recreated with their original ids by restore-logins.mjs (no passwords are stored); ' +
+    "customers' anonymous logins are not recreated - each customer taps Save once on their restored khata link",
   'auth.identities': 'logins: which sign-in method each account uses; checked every backup',
   'storage.buckets': 'uploaded files: bucket settings saved in _storage.json',
   'storage.objects': 'uploaded files: every file downloaded into the backup and fingerprinted',
@@ -67,6 +74,10 @@ const CATEGORIES = [
   ['Materials and stock', ['materials', 'stock_logs']],
   ['Material catalog', ['material_categories', 'material_types', 'brands', 'master_material_variants']],
   ['Activity and safety logs', ['activity_log', 'client_requests']],
+  // Which phone holds which customer's account (041). Kept in every backup,
+  // but restored only for logins that exist: after a disaster the customer
+  // relinks by tapping Save on their khata link, which the restore keeps.
+  ['Customer accounts (relinked from the khata link)', ['customer_accounts', 'customer_connections']],
 ]
 
 function categoryOf(table) {
@@ -125,7 +136,7 @@ function classify(cat, excluded) {
 function loginProblems(auth) {
   const p = []
   if (!auth) return ['the login summary is missing from the catalog']
-  if (auth.without_account.length) p.push(`${auth.without_account.length} login(s) have no account row, so login recovery would not recreate them: ${auth.without_account.join(', ')}`)
+  if (auth.without_account.length) p.push(`${auth.without_account.length} login(s) are neither a supplier account nor an anonymous customer login, so no recovery covers them: ${auth.without_account.join(', ')}`)
   if (auth.account_without_login.length) p.push(`${auth.account_without_login.length} account(s) have no login: ${auth.account_without_login.join(', ')}`)
   if (auth.email_mismatch.length) p.push(`${auth.email_mismatch.length} login email(s) differ from the account's email, so recovery would recreate the wrong address: ${auth.email_mismatch.join(', ')}`)
   if (auth.no_email.length) p.push(`${auth.no_email.length} account(s) have no email to recreate a login with: ${auth.no_email.join(', ')}`)

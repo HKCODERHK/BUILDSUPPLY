@@ -106,6 +106,8 @@ const ORDER = [
   'client_requests',
   'stock_logs',
   'activity_log',
+  'customer_accounts',
+  'customer_connections',
 ]
 
 // A table the backup holds but ORDER has never heard of - one a later
@@ -131,6 +133,18 @@ const TABLES = [...ORDER, ...unknown]
 // (and supplier_pins), so for those the fresh key the migration made stays.
 // Older backups still carry it and it is restored as before.
 const SEEDED = new Set(['platform_settings', 'order_guard_secret'])
+
+// Which phone holds which customer's account (migration 041). Their logins
+// are anonymous and are deliberately not recreated after a disaster, so a
+// row comes back only if its login still exists - restoring into the same
+// project keeps them, a new project skips them. Either way every customer
+// and their khata link is restored, and the customer relinks by opening that
+// link and tapping Save (approved 2026-10-08; see DISASTER-RECOVERY.md).
+const RELINKED = {
+  customer_accounts: 'exists (select 1 from auth.users u where u.id = x.user_id)',
+  customer_connections:
+    'exists (select 1 from auth.users u where u.id = x.user_id) and exists (select 1 from public.customer_accounts a where a.user_id = x.user_id)',
+}
 
 // Held back on the way in and filled by an UPDATE once invoices exist.
 const CIRCULAR = { quotations: 'converted_invoice_id' }
@@ -161,8 +175,9 @@ function emit(table, rows) {
   const list = columns.join(', ')
 
   print(`-- ${table}: ${rows.length} row(s), ${columns.length} column(s)${held ? ` (${held} filled in at the end)` : ''}`)
+  if (RELINKED[table]) print(`-- ${table}: restored only where the customer's login exists; otherwise they relink with Save on their khata link`)
   print(`insert into public.${table} (${list})
-  select ${list} from jsonb_populate_recordset(null::public.${table}, ${json}::jsonb)`)
+  select ${list} from jsonb_populate_recordset(null::public.${table}, ${json}::jsonb) x${RELINKED[table] ? `\n  where ${RELINKED[table]}` : ''}`)
   if (SEEDED.has(table)) {
     // The migrations already put a row here, so the backup's row replaces it
     // rather than colliding. Re-running the script stays harmless.

@@ -138,8 +138,12 @@ select json_build_object(
  'auth', json_build_object(
     'users', (select count(*) from auth.users),
     'providers', (select coalesce(json_object_agg(provider, n), '{}'::json) from (select provider, count(*) n from auth.identities group by 1) x),
+    -- A customer's anonymous login (041) is covered by relinking from the
+    -- khata link, not by recreating it, so it is not "without an account".
     'without_account', (select coalesce(json_agg(u.id order by u.id), '[]'::json) from auth.users u
-       where not exists (select 1 from public.suppliers s where s.id = u.id)),
+       where not exists (select 1 from public.suppliers s where s.id = u.id) and not coalesce(u.is_anonymous, false)),
+    'customer_logins', (select count(*) from auth.users u where coalesce(u.is_anonymous, false)
+       and not exists (select 1 from public.suppliers s where s.id = u.id)),
     'account_without_login', (select coalesce(json_agg(s.id order by s.id), '[]'::json) from public.suppliers s
        where not exists (select 1 from auth.users u where u.id = s.id)),
     'email_mismatch', (select coalesce(json_agg(s.id order by s.id), '[]'::json) from public.suppliers s join auth.users u on u.id = s.id
@@ -377,7 +381,13 @@ select json_build_object(
       excluded,
       pin_accounts: pinAccounts,
       accounts,
-      logins: { users: cat.auth.users, providers: cat.auth.providers, recoverable: accounts.length },
+      logins: {
+        users: cat.auth.users,
+        providers: cat.auth.providers,
+        recoverable: accounts.length,
+        // Not recreated after a disaster: each customer taps Save on their khata link.
+        customer_logins_relinked_by_khata_link: Number(cat.auth.customer_logins || 0),
+      },
       storage: storage
         ? { buckets: storage.buckets.map((b) => b.id), files: storage.objects.length, bytes: storage.objects.reduce((s, o) => s + o.size, 0) }
         : null,
@@ -501,7 +511,26 @@ select json_build_object(
       : 'select null::text'
     const schemaSql = `select 'schema: drill has every column the backup carries', (${missingCols}) is null, '', coalesce((${missingCols}), '');\n`
 
+    // Which phone holds which customer's account (041). The logins behind
+    // these rows are anonymous and are not recreated, so the rows come back
+    // only where their login exists - in a drill, none. What must come back
+    // is every linked customer with the same khata link, so Save relinks.
+    const RELINKED = new Set(['customer_accounts', 'customer_connections'])
+    if (m.tables.customer_connections) {
+      const conns = readJson(path.join(dir, 'customer_connections.json'))
+      const customers = readJson(path.join(dir, 'customers.json'))
+      const linked = customers.filter((c) => conns.some((x) => x.customer_id === c.id && !x.revoked_at) && c.khata_token)
+      add('customer_connections - no device link restored without its login', 0,
+        'select count(*) from public.customer_connections cc where not exists (select 1 from auth.users u where u.id = cc.user_id)')
+      if (linked.length) {
+        const v = linked.map((c) => `(${q(c.id)}::uuid, ${q(c.khata_token)})`).join(',')
+        add('customer_connections - every linked customer restored with the same khata link', linked.length,
+          `select count(*) from (values ${v}) v(id, tok) join public.customers c on c.id = v.id and c.khata_token = v.tok`)
+      }
+    }
+
     for (const [t, info] of Object.entries(m.tables)) {
+      if (RELINKED.has(t)) continue
       add(`rows ${t}`, info.rows, `select count(*) from public."${t}"`)
       const rows = readJson(path.join(dir, t + '.json'))
       if (rows.length) {
@@ -590,7 +619,52 @@ select json_build_object(
         "select count(*) from public.order_guard_secret where id and length(secret) = 64 and secret ~ '^[0-9a-f]+$'")
     }
 
-    const sql = "\\pset format unaligned\n\\pset tuples_only on\n\\pset fieldsep '|'\n" + schemaSql + checks.join(';\n') + ';\n'
+    // The relink itself, on the restored copy: a brand-new customer login
+    // (not the backed-up one) taps Save on a restored khata link and gets
+    // exactly that customer's account; a second customer's login cannot read
+    // it; a wrong code connects nothing. Run last, inside a transaction that
+    // is rolled back, so nothing above is affected. Only once production has
+    // customer accounts (the backup carries customer_connections).
+    let probe = ''
+    if (m.tables.customer_connections) {
+      const customers = readJson(path.join(dir, 'customers.json'))
+      const suppliers = readJson(path.join(dir, 'suppliers.json'))
+      const active = new Set(suppliers.filter((s) => s.status === 'active').map((s) => s.id))
+      const withLink = customers.filter((c) => c.khata_token && active.has(c.supplier_id)).sort(byId)
+      if (withLink.length) {
+        const x = withLink[0]
+        const y = withLink.find((c) => c.id !== x.id)
+        const oldIds = readJson(path.join(dir, 'customer_connections.json')).map((c) => c.id)
+        const A = '00000000-0000-4000-8000-0000000000a1', Bu = '00000000-0000-4000-8000-0000000000b2'
+        const as = (u) => `set local role authenticated;\nset local request.jwt.claim.sub = ${q(u)};\n` +
+          `set local request.jwt.claims = ${q(JSON.stringify({ sub: u, role: 'authenticated' }))};\n`
+        const line = (name, cond, expected, actual) => `select ${q(name)}, (${cond}), ${q(expected)}, (${actual})::text;\n`
+        probe += 'begin;\n'
+        probe += `insert into auth.users (id, instance_id, aud, role) values (${q(A)}, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated'), ` +
+          `(${q(Bu)}, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated');\n`
+        probe += as(A)
+        probe += `select coalesce(public.connect_khata(${q(x.khata_token)}) ->> 'connection', '') as relink_a \\gset\n`
+        probe += line('relink customer_connections - Save on a restored khata link makes a new connection', `:'relink_a' <> ''`, 'true', `:'relink_a' <> ''`)
+        probe += line('relink customer_connections - the old login and its connection were not needed',
+          `:'relink_a' <> all (${q('{' + oldIds.join(',') + '}')}::text[])`, 'true', `:'relink_a' <> all (${q('{' + oldIds.join(',') + '}')}::text[])`)
+        probe += line("relink customer_accounts - the new account reads exactly that customer's khata",
+          `public.my_khata(nullif(:'relink_a', '')::uuid) = public.customer_khata(${q(x.khata_token)})`, 'true',
+          `public.my_khata(nullif(:'relink_a', '')::uuid) = public.customer_khata(${q(x.khata_token)})`)
+        probe += line('relink customer_accounts - the new account holds that one shop and no other', `jsonb_array_length(public.my_shops()) = 1`, '1', `jsonb_array_length(public.my_shops())`)
+        probe += line('relink customer_connections - a wrong code connects nothing', `(public.connect_khata(md5('not a khata link')) ->> 'ok') = 'false'`, 'false',
+          `public.connect_khata(md5('not a khata link')) ->> 'ok'`)
+        probe += 'reset role;\n' + as(Bu)
+        if (y) probe += `select public.connect_khata(${q(y.khata_token)}) is not null as _b \\gset\n`
+        probe += line("relink customer_accounts - another customer's login cannot read that khata",
+          `(public.my_khata(nullif(:'relink_a', '')::uuid) ->> 'found') = 'false'`, 'false', `public.my_khata(nullif(:'relink_a', '')::uuid) ->> 'found'`)
+        probe += line("relink customer_accounts - another customer's login cannot open its documents",
+          `(public.my_khata_document(nullif(:'relink_a', '')::uuid, 'bill', 'INV-1001') ->> 'found') = 'false'`, 'false',
+          `public.my_khata_document(nullif(:'relink_a', '')::uuid, 'bill', 'INV-1001') ->> 'found'`)
+        probe += 'rollback;\n'
+      }
+    }
+
+    const sql = "\\pset format unaligned\n\\pset tuples_only on\n\\pset fieldsep '|'\n" + schemaSql + checks.join(';\n') + ';\n' + probe
     fs.writeFileSync(outFile, sql)
     console.log('OK ' + (checks.length + 1) + ' checks')
   },
