@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Inbox, Languages, Lock, LogOut, Pencil, Percent, QrCode, ShieldCheck, Store, Type, type LucideIcon } from 'lucide-react'
+import { ArrowLeft, Inbox, Languages, Lock, LogOut, Palette, Pencil, Percent, QrCode, ShieldCheck, Store, Type, type LucideIcon } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,11 +22,13 @@ import { OrderSettingsCard } from '@/components/OrderSettingsCard'
 import { UpiSettingsCard } from '@/components/UpiSettingsCard'
 import { MaterialGstCard } from '@/components/MaterialGstCard'
 import { DisplaySizeCard } from '@/components/DisplaySizeCard'
+import { ShopPageCard } from '@/components/ShopPageCard'
+import { shopPageAvailable } from '@/services/shopPage'
 import { readDisplaySize } from '@/lib/displaySize'
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
 import { orderPageUrl } from '@/services/orders'
 
-type Section = 'business' | 'orders' | 'upi' | 'gst' | 'language' | 'size' | 'pin' | 'password'
+type Section = 'business' | 'shop' | 'orders' | 'upi' | 'gst' | 'language' | 'size' | 'pin' | 'password'
 
 interface Row {
   id: Section
@@ -105,6 +107,11 @@ export default function Settings() {
   const groups: Row[][] = [
     [
       { id: 'business', icon: Store, label: t('set.title'), detail: t('set.rowBusinessSub') },
+      // The shop's page for customers (migration 042) — only where the
+      // database has it, so a build reaching an older one shows no dead row.
+      ...(isSupplier && shopPageAvailable(supplier)
+        ? [{ id: 'shop' as const, icon: Palette, label: t('shop.settingsTitle'), detail: t('shop.rowSub') }]
+        : []),
       ...(isSupplier
         ? [
             {
@@ -291,6 +298,7 @@ export default function Settings() {
           </>
         )}
 
+        {section === 'shop' && <ShopPageCard />}
         {section === 'orders' && <OrderSettingsCard />}
         {section === 'upi' && <UpiSettingsCard />}
         {section === 'gst' && <MaterialGstCard />}

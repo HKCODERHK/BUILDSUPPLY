@@ -44,6 +44,26 @@ export interface Supplier {
   // puts "Pay by UPI" on khata links; off by default.
   upi_id: string | null
   khata_upi_enabled: boolean
+  // The shop's own page for customers (migration 042). Absent on a database
+  // without 042, hence optional.
+  cover_url?: string | null
+  brand_color?: string | null
+  about?: string | null
+  whatsapp?: string | null
+  hours?: Record<string, unknown> | null
+  delivery_info?: string | null
+  social?: Record<string, string> | null
+  created_at: string
+}
+
+/** An offer on the shop's page (migration 042). */
+export interface SupplierOffer {
+  id: string
+  supplier_id: string
+  title: string
+  details: string | null
+  valid_until: string | null
+  active: boolean
   created_at: string
 }
 
@@ -212,6 +232,8 @@ export interface Material {
   low_stock_threshold: number | null
   /** GST percentage charged on this material (migration 035). 18 by default. */
   gst_rate: number
+  /** The shop's own photo of it (migration 042); absent before 042. */
+  photo_url?: string | null
   created_at: string
 }
 

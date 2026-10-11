@@ -17,6 +17,7 @@ import {
   ScrollText,
   Share2,
   ShoppingBag,
+  Store,
   Truck,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
@@ -65,6 +66,9 @@ import {
   type QuickAction,
 } from '@/components/CustomerHome'
 import { TINTS, greetingKey } from '@/lib/customerHome'
+import { brandAttr } from '@/lib/shopPage'
+import { getMyShopProfile, getShopProfile, type ShopProfile } from '@/services/shopPage'
+import { ShopAbout, ShopDelivery, ShopHero, ShopOffers } from '@/components/ShopProfileView'
 import {
   accountsAvailable,
   connectKhata,
@@ -99,7 +103,7 @@ type LiveItem =
   | { kind: 'pending'; bill: KhataInvoice }
   | { kind: 'order'; order: KhataOrder }
 
-const SECTIONS = ['pay', 'bills', 'payments', 'estimates', 'orders', 'statement'] as const
+const SECTIONS = ['pay', 'bills', 'payments', 'estimates', 'orders', 'statement', 'shop'] as const
 type Section = (typeof SECTIONS)[number]
 
 /**
@@ -210,6 +214,19 @@ export default function KhataPage({
   }
 
   const load = () => (connection ? myKhata(connection) : getKhata(token))
+
+  // The shop's own page (migration 042): its colour on this page, and a Shop
+  // screen. Nothing on a database without 042.
+  const [shop, setShop] = useState<ShopProfile | null>(null)
+  useEffect(() => {
+    let live = true
+    ;(connection ? getMyShopProfile(connection) : token ? getShopProfile({ khata: token }) : Promise.resolve(null))
+      .then((p) => live && setShop(p))
+      .catch(() => undefined)
+    return () => {
+      live = false
+    }
+  }, [token, connection])
 
   useEffect(() => {
     if (connection) {
@@ -355,6 +372,7 @@ export default function KhataPage({
       : []),
     ...(upiUrl ? [{ key: 'pay', icon: CreditCard, label: t('khata.tilePay'), onClick: () => openSection('pay') }] : []),
     { key: 'statement', icon: ScrollText, label: t('khata.tileStatement'), onClick: () => openSection('statement') },
+    ...(shop ? [{ key: 'shop', icon: Store, label: t('khata.tileShop'), onClick: () => openSection('shop') }] : []),
     ...(found?.order_link
       ? [{ key: 'share', icon: Share2, label: t('khata.tileShare'), onClick: () => setSharingShop(true) }]
       : []),
@@ -679,6 +697,7 @@ export default function KhataPage({
     estimates: t('khata.menuEstimates'),
     orders: t('khata.menuOrders'),
     statement: t('khata.menuStatement'),
+    shop: t('shop.aboutTitle'),
   }
 
   const problem = (message: string) => (
@@ -686,7 +705,7 @@ export default function KhataPage({
   )
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen bg-surface" data-brand={brandAttr(shop?.brand_color)}>
       {/* Two brands, one bar. At the top of a page it says BuildSupply, with
           the language and day/night buttons, and the shop's own logo and name
           sit under it on the page. Scroll, and the shop rises into the bar as
@@ -905,6 +924,18 @@ export default function KhataPage({
                 )}
               </>
             )}
+
+            {section === 'shop' &&
+              (shop ? (
+                <>
+                  <ShopHero shop={shop} />
+                  <ShopOffers shop={shop} />
+                  <ShopDelivery shop={shop} />
+                  <ShopAbout shop={shop} />
+                </>
+              ) : (
+                <Card className="text-sm text-muted">{t('error.generic')}</Card>
+              ))}
 
             {section === 'statement' && (
               <>

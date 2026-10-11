@@ -17,6 +17,7 @@ import {
   Share2,
   ShoppingBag,
   Truck,
+  MessageCircle,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -39,6 +40,9 @@ import { CustomerTabBar, QuickActions, SectionHeading, SoftCard, type QuickActio
 import { TINTS, greetingKey, tintFor } from '@/lib/customerHome'
 import { cn } from '@/lib/utils'
 import { myShops, rememberCurrentShop, type MyShop } from '@/services/customerAccount'
+import { getShopProfile, type ShopProfile } from '@/services/shopPage'
+import { ShopAbout, ShopDelivery, ShopHero, ShopOffers } from '@/components/ShopProfileView'
+import { brandAttr, shopWhatsapp } from '@/lib/shopPage'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
@@ -151,6 +155,17 @@ export default function OrderPage() {
     getOrderPage(link)
       .then(setPage)
       .catch(() => setLoadFailed(true))
+  }, [link])
+
+  // The shop's own page (migration 042): cover, colour, offers, photos and the
+  // rest. Absent on a database without 042, and the page is as before.
+  const [shop, setShop] = useState<ShopProfile | null>(null)
+  useEffect(() => {
+    let live = true
+    getShopProfile({ link }).then((p) => live && setShop(p))
+    return () => {
+      live = false
+    }
   }, [link])
 
   // The customer's own account (migration 041), if this phone has one and this
@@ -376,6 +391,7 @@ export default function OrderPage() {
           },
         ]
       : []),
+    ...(shopWhatsapp(shop) ? [{ key: 'wa', icon: MessageCircle, label: t('shop.tileWhatsapp'), href: shopWhatsapp(shop)! }] : []),
     ...(lastAvailable.length > 0 ? [{ key: 'again', icon: RotateCcw, label: t('order.tileAgain'), onClick: fillLast }] : []),
     ...(account
       ? [{ key: 'khata', icon: BookOpen, label: t('order.tileKhata'), onClick: () => openAccount('') }]
@@ -410,7 +426,7 @@ export default function OrderPage() {
   const chosenCount = chosen.length
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen bg-surface" data-brand={brandAttr(shop?.brand_color)}>
       {header}
       <main className={cn('mx-auto flex max-w-lg flex-col gap-4 p-4', tabs ? 'pb-44' : 'pb-28')}>
         {knownName && (
@@ -425,8 +441,26 @@ export default function OrderPage() {
           </div>
         )}
 
+        {/* The shop: its own page (042) when it has one, the plain card otherwise. */}
+        {shop ? (
+          <ShopHero
+            shop={shop}
+            action={
+              page.phone ? (
+                <a
+                  href={`tel:${page.phone}`}
+                  aria-label={t('khata.call')}
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-white shadow"
+                >
+                  <Phone size={18} />
+                </a>
+              ) : undefined
+            }
+          />
+        ) : (
+          <>
         {/* The shop: who, where, and its phone on the round button. */}
-        <SoftCard className="flex items-center gap-3 p-4">
+            <SoftCard className="flex items-center gap-3 p-4">
           {page.logo_url ? (
             <img src={page.logo_url} alt="" className="h-14 w-14 shrink-0 rounded-2xl bg-white object-cover" />
           ) : (
@@ -456,7 +490,13 @@ export default function OrderPage() {
           )}
         </SoftCard>
 
+          </>
+        )}
+
         <QuickActions actions={quickActions} />
+
+        {shop && <ShopOffers shop={shop} />}
+        {shop && <ShopDelivery shop={shop} />}
 
         <SectionHeading title={t('order.materialsHeading')} />
         <p className="-mt-2 px-1 text-xs text-muted">{t('order.intro')}</p>
@@ -488,9 +528,13 @@ export default function OrderPage() {
                   inOrder ? 'border-accent' : 'border-border',
                 )}
               >
-                <span className={cn('flex h-10 w-10 items-center justify-center rounded-xl', TINTS[tintFor(m.category ?? m.name)])}>
-                  <Package size={19} strokeWidth={1.9} />
-                </span>
+                {shop?.photos[m.id] ? (
+                  <img src={shop.photos[m.id]} alt="" loading="lazy" className="aspect-[4/3] w-full rounded-xl bg-surface object-cover" />
+                ) : (
+                  <span className={cn('flex h-10 w-10 items-center justify-center rounded-xl', TINTS[tintFor(m.category ?? m.name)])}>
+                    <Package size={19} strokeWidth={1.9} />
+                  </span>
+                )}
                 <div className="min-w-0 flex-1">
                   <div className="line-clamp-2 break-words text-sm font-semibold leading-snug text-ink">{m.name}</div>
                   <div className="truncate text-xs text-muted">
@@ -665,6 +709,8 @@ export default function OrderPage() {
             </form>
           </SoftCard>
         </div>
+
+        {shop && <ShopAbout shop={shop} showContact={false} />}
       </main>
 
       {/* The cart, floating above the tab bar once something is in it: how

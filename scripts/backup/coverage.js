@@ -71,6 +71,9 @@ const CATEGORIES = [
   ['Estimates', ['quotations', 'quotation_items']],
   ['Customer orders and requests', ['order_requests', 'order_request_clients', 'order_blocked_phones']],
   ['Drivers and deliveries', ['drivers']],
+  // The shop's own page for customers (042). Its pictures (cover, product
+  // photos) are uploaded files and travel with the file backup.
+  ['Shop page and offers', ['supplier_offers']],
   ['Materials and stock', ['materials', 'stock_logs']],
   ['Material catalog', ['material_categories', 'material_types', 'brands', 'master_material_variants']],
   ['Activity and safety logs', ['activity_log', 'client_requests']],
