@@ -1719,6 +1719,7 @@ const STRINGS = {
   'order.tileKhata': { en: 'My khata', hi: 'मेरा खाता', mr: 'माझे खाते' },
   'order.materialsHeading': { en: 'Materials', hi: 'सामान', mr: 'साहित्य' },
   'order.add': { en: 'Add', hi: 'जोड़ें', mr: 'जोडा' },
+  'order.tileMore': { en: 'Order more', hi: 'और मंगाएँ', mr: 'आणखी मागवा' },
   'order.review': { en: 'Review', hi: 'देखें', mr: 'पहा' },
   // The customer's own account (migration 041).
   'acct.title': { en: 'My BuildSupply', hi: 'मेरा BuildSupply', mr: 'माझे BuildSupply' },

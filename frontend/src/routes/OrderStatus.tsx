@@ -1,11 +1,19 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { Check, ChevronRight } from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { BookOpen, Check, House, Package, Receipt, ShoppingBag } from 'lucide-react'
 import { readKhata, rememberOrder } from '@/lib/customerLinks'
-import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { LanguageToggle } from '@/components/LanguageToggle'
+import { ThemeToggle } from '@/components/ThemeToggle'
+import {
+  CustomerTabBar,
+  DeliveryStrip,
+  QuickActions,
+  SectionHeading,
+  SoftCard,
+  type QuickAction,
+} from '@/components/CustomerHome'
+import { myShops, rememberCurrentShop, type MyShop } from '@/services/customerAccount'
 import { TruckLoader } from '@/components/TruckLoader'
 import { useLanguage } from '@/context/LanguageContext'
 import { getOrderStatus, respondToEstimate, type OrderStatusView } from '@/services/orders'
@@ -34,6 +42,7 @@ function formatINR(n: number) {
 export default function OrderStatus() {
   const { token = '' } = useParams()
   const { t } = useLanguage()
+  const navigate = useNavigate()
   const [view, setView] = useState<OrderStatusView | null>(null)
   const [failed, setFailed] = useState(false)
   const [answering, setAnswering] = useState<'accepted' | 'call_me' | null>(null)
@@ -41,6 +50,8 @@ export default function OrderStatus() {
   // Their khata code with this shop, if this phone has ever opened it
   // (lib/customerLinks — kept on the phone, never on the server).
   const [khataCode, setKhataCode] = useState<string | null>(null)
+  // The customer's own account (migration 041), when this shop is on it.
+  const [account, setAccount] = useState<MyShop | null>(null)
 
   useEffect(() => {
     getOrderStatus(token)
@@ -49,8 +60,14 @@ export default function OrderStatus() {
         // Opened from WhatsApp, say: the supplier's order page lists it under
         // this customer's recent orders from now on (on this phone only).
         if (v.found && v.order_link) {
-          rememberOrder(v.order_link, token, v.created_at)
-          setKhataCode(readKhata(v.order_link)?.code ?? null)
+          const link = v.order_link
+          rememberOrder(link, token, v.created_at)
+          setKhataCode(readKhata(link)?.code ?? null)
+          myShops()
+            .then((shops) => setAccount(shops.find((s) => s.order_link === link) ?? null))
+            .catch(() => {
+              // No account on this phone: the page is the public one.
+            })
         }
       })
       .catch(() => setFailed(true))
@@ -136,47 +153,175 @@ export default function OrderStatus() {
     }
   }
 
+  // Where this customer's account lives on this phone: their own BuildSupply
+  // (/me) if the shop is on it, otherwise the khata link they have opened here.
+  const home = account ? '/me' : khataCode ? `/khata/${khataCode}` : null
+  function go(to: string) {
+    if (account) rememberCurrentShop(account.connection)
+    navigate(to)
+  }
+  const quickActions: QuickAction[] = [
+    ...(found?.order_link
+      ? [{ key: 'more', icon: ShoppingBag, label: t('order.tileMore'), to: `/order/${found.order_link}` }]
+      : []),
+    ...(home ? [{ key: 'khata', icon: BookOpen, label: t('order.tileKhata'), onClick: () => go(home) }] : []),
+  ]
+  // The same four tabs as the khata link and the order page, once this phone
+  // knows whose account it is. This page is an order, so Orders is lit.
+  const tabs = home
+    ? [
+        { key: 'home', icon: House, label: t('khata.tabHome'), active: false, onClick: () => go(home) },
+        ...(found?.order_link
+          ? [
+              {
+                key: 'materials',
+                icon: ShoppingBag,
+                label: t('khata.tabMaterials'),
+                active: false,
+                onClick: () => navigate(`/order/${found.order_link}`),
+              },
+            ]
+          : []),
+        { key: 'bills', icon: Receipt, label: t('khata.tabBills'), active: false, onClick: () => go(`${home}?s=bills`) },
+        { key: 'orders', icon: Package, label: t('khata.tabOrders'), active: true, onClick: () => go(`${home}?s=orders`) },
+      ]
+    : null
+  // The truck stands at the shop until the goods are delivered, at the site
+  // after — never a live position (there is no tracking in this app).
+  const arrived = !!bill && (bill.delivered || !!bill.received_at)
+  // Once a bill exists the order has moved past its estimate, so the title
+  // says how far it has got — the furthest step ticked on the timeline.
+  const progress = bill && steps ? [...steps].reverse().find((st) => st.done) ?? null : null
+
   return (
     <div className="min-h-screen bg-surface">
-      <header className="bg-shell px-4 pb-4 pt-[calc(1rem_+_var(--safe-top))] text-white">
-        <div className="mx-auto flex max-w-lg items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-lg font-bold">{found?.business_name ?? 'BuildSupply'}</div>
-            <div className="text-xs text-sidebar-text">{t('order.statusTitle')}</div>
-          </div>
+      <header className="sticky top-0 z-30 bg-shell px-4 pb-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white">
+        <div className="mx-auto flex h-11 max-w-lg items-center gap-3">
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#35A85D"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="shrink-0"
+          >
+            <path d="M3 21h18" />
+            <path d="M5 21V8l5-4v17" />
+            <path d="M10 21V11l6 3v7" />
+            <path d="M16 21v-4l3 1.5V21" />
+          </svg>
+          <span className="min-w-0 flex-1 truncate text-lg font-bold">BuildSupply</span>
           <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
+          <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
         </div>
       </header>
-      <main className="mx-auto flex max-w-lg flex-col gap-4 p-4">
+      <main className={cn('mx-auto flex max-w-lg flex-col gap-4 p-4', tabs && 'pb-28')}>
         {!view && !failed ? (
           <TruckLoader />
         ) : !found ? (
-          <Card className="text-center text-sm text-ink">{failed ? t('error.generic') : t('order.statusNotFound')}</Card>
+          <SoftCard className="p-5 text-center text-sm text-ink">{failed ? t('error.generic') : t('order.statusNotFound')}</SoftCard>
         ) : (
           <>
-            <Card className="flex flex-col gap-4">
-              <div>
+            {/* The order, the way the khata link shows a delivery: the truck
+                strip, what has happened, and the shop it is with. */}
+            <SoftCard className="overflow-hidden">
+              {found.status !== 'rejected' && <DeliveryStrip at={arrived ? 'site' : 'shop'} />}
+              <div className="flex flex-col gap-2 p-4">
+                <div className="text-[11px] font-medium text-muted">
+                  {t('khata.liveOrder')} · {found.business_name}
+                </div>
                 {/* Approved reads "Estimate ready" only once there is one; an
                     order said yes to on the spot (037) says so instead. */}
-                <Badge tone={tone}>{t(`order.status.${statusKey}`)}</Badge>
-                <p className="mt-3 text-sm text-ink">{t(`order.status.${statusKey}Body`, { business: found.business_name })}</p>
+                <div
+                  className={cn(
+                    'text-lg font-bold leading-snug',
+                    tone === 'success' ? 'text-accent-text' : tone === 'neutral' ? 'text-muted' : 'text-ink',
+                  )}
+                >
+                  {progress ? progress.label : t(`order.status.${statusKey}`)}
+                </div>
+                <p className="text-sm text-ink">
+                  {progress && bill
+                    ? t('tl.billDetail', { no: bill.invoice_no, date: formatDate(bill.created_at) })
+                    : t(`order.status.${statusKey}Body`, { business: found.business_name })}
+                </p>
                 {found.status === 'rejected' && rejectReasonText(found, t) && (
-                  <p className="mt-2 rounded-lg bg-surface p-3 text-sm font-medium text-ink">
+                  <p className="rounded-2xl bg-surface p-3 text-sm font-medium text-ink">
                     {t('ord.rejectedReason', { reason: rejectReasonText(found, t) ?? '' })}
                   </p>
                 )}
               </div>
-              <div className="flex flex-col divide-y divide-border border-t border-border text-sm">
+            </SoftCard>
+
+            {/* Only for a customer who said they would pay online, and only
+                once there is a real figure — the bill's if there is one, the
+                estimate's until then. The money goes straight to the shop;
+                nothing here records it. */}
+            {upiUrl && found.upi_id && (
+              <SoftCard className="flex flex-col items-center gap-3 p-5 text-center">
+                <div className="text-sm font-semibold text-ink">{t('upi.payTitle')}</div>
+                <div className="rounded-2xl bg-white p-2">
+                  <QrCode text={upiUrl} size={200} label={t('upi.payTitle')} />
+                </div>
+                <div className="text-xs text-muted">{found.upi_id}</div>
+                <a href={upiUrl} className="w-full">
+                  <Button className="w-full rounded-2xl">{t('upi.openApp', { amount: formatINR(found.due ?? 0) })}</Button>
+                </a>
+                <p className="text-xs text-muted">{t('upi.payHint')}</p>
+              </SoftCard>
+            )}
+
+            <QuickActions actions={quickActions} />
+
+            {steps && (
+              <>
+                <SectionHeading title={t('tl.title')} />
+                <SoftCard className="p-4">
+                  <ol className="flex flex-col">
+                    {steps.map((s, i) => {
+                      const current = !s.done && (i === 0 || steps[i - 1].done)
+                      const next = steps[i + 1]
+                      return (
+                        <li key={s.key} className="flex gap-3">
+                          <div className="flex flex-col items-center">
+                            <span
+                              className={cn(
+                                'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2',
+                                s.done ? 'border-accent bg-accent text-white' : current ? 'border-accent bg-card' : 'border-border bg-card',
+                              )}
+                            >
+                              {s.done ? <Check size={14} strokeWidth={3} /> : current ? <span className="h-2 w-2 rounded-full bg-accent" /> : null}
+                            </span>
+                            {next && <span className={cn('min-h-4 w-0.5 flex-1', next.done ? 'bg-accent' : 'bg-border')} />}
+                          </div>
+                          <div className={cn('min-w-0', next && 'pb-4')}>
+                            <div className={cn('text-sm leading-6', s.done || current ? 'font-semibold text-ink' : 'text-muted')}>{s.label}</div>
+                            {s.detail && <div className="text-xs text-muted">{s.detail}</div>}
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ol>
+                </SoftCard>
+              </>
+            )}
+
+            <SectionHeading title={t('order.materialsHeading')} />
+            <SoftCard className="p-4">
+              <div className="flex flex-col divide-y divide-border text-sm">
                 {found.items.map((item, i) => (
-                  <div key={i} className="flex justify-between gap-3 py-2">
-                    <span className="text-ink">{item.name}</span>
+                  <div key={i} className="flex justify-between gap-3 py-2 first:pt-0 last:pb-0">
+                    <span className="min-w-0 break-words text-ink">{item.name}</span>
                     <span className="shrink-0 font-medium text-ink">
                       {Number(item.qty).toLocaleString('en-IN')} {item.unit}
                     </span>
                   </div>
                 ))}
               </div>
-              <div className="flex flex-col gap-1 text-xs text-muted">
+              <div className="mt-3 flex flex-col gap-1 border-t border-border pt-3 text-xs text-muted">
                 <span>{t('order.placedOn', { date: formatDate(found.created_at) })}</span>
                 {found.delivery_date && <span>{t('order.deliveryOn', { date: formatDate(found.delivery_date) })}</span>}
                 {found.payment_method && (
@@ -187,158 +332,90 @@ export default function OrderStatus() {
                   </span>
                 )}
               </div>
-            </Card>
-
-            {/* Only for a customer who said they would pay online, and only
-                once there is a real figure — the bill's if there is one, the
-                estimate's until then. The money goes straight to the shop;
-                nothing here records it. */}
-            {upiUrl && found.upi_id && (
-              <Card className="flex flex-col items-center gap-3 text-center">
-                <div className="text-sm font-semibold text-ink">{t('upi.payTitle')}</div>
-                <QrCode text={upiUrl} size={200} label={t('upi.payTitle')} />
-                <div className="text-xs text-muted">{found.upi_id}</div>
-                <a href={upiUrl} className="w-full">
-                  <Button className="w-full">{t('upi.openApp', { amount: formatINR(found.due ?? 0) })}</Button>
-                </a>
-                <p className="text-xs text-muted">{t('upi.payHint')}</p>
-              </Card>
-            )}
-
-            {steps && (
-              <Card>
-                <div className="mb-3 text-sm font-semibold text-ink">{t('tl.title')}</div>
-                <ol className="flex flex-col">
-                  {steps.map((s, i) => {
-                    const current = !s.done && (i === 0 || steps[i - 1].done)
-                    const next = steps[i + 1]
-                    return (
-                      <li key={s.key} className="flex gap-3">
-                        <div className="flex flex-col items-center">
-                          <span
-                            className={cn(
-                              'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2',
-                              s.done ? 'border-accent bg-accent text-white' : current ? 'border-accent bg-card' : 'border-border bg-card',
-                            )}
-                          >
-                            {s.done ? <Check size={14} strokeWidth={3} /> : current ? <span className="h-2 w-2 rounded-full bg-accent" /> : null}
-                          </span>
-                          {next && <span className={cn('min-h-4 w-0.5 flex-1', next.done ? 'bg-accent' : 'bg-border')} />}
-                        </div>
-                        <div className={cn('min-w-0', next && 'pb-4')}>
-                          <div className={cn('text-sm leading-6', s.done || current ? 'font-semibold text-ink' : 'text-muted')}>{s.label}</div>
-                          {s.detail && <div className="text-xs text-muted">{s.detail}</div>}
-                        </div>
-                      </li>
-                    )
-                  })}
-                </ol>
-              </Card>
-            )}
+            </SoftCard>
 
             {estimate && (
-              <Card className="flex flex-col gap-3">
-                <div className="text-sm font-semibold text-ink">{t('est.title', { no: estimate.quote_no })}</div>
-                <div className="flex flex-col divide-y divide-border border-y border-border text-sm">
-                  {estimate.items.map((item, i) => (
-                    <div key={i} className="flex justify-between gap-3 py-2">
-                      <span className="min-w-0 text-ink">
-                        {item.description}
-                        <span className="block text-xs text-muted">
-                          {Number(item.qty).toLocaleString('en-IN')} × {formatINR(item.rate)}
+              <>
+                <SectionHeading title={t('est.title', { no: estimate.quote_no })} />
+                <SoftCard className="flex flex-col gap-3 p-4">
+                  <div className="flex flex-col divide-y divide-border text-sm">
+                    {estimate.items.map((item, i) => (
+                      <div key={i} className="flex justify-between gap-3 py-2 first:pt-0">
+                        <span className="min-w-0 break-words text-ink">
+                          {item.description}
+                          <span className="block text-xs text-muted">
+                            {Number(item.qty).toLocaleString('en-IN')} × {formatINR(item.rate)}
+                          </span>
                         </span>
-                      </span>
-                      <span className="shrink-0 font-medium text-ink">{formatINR(item.amount)}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex flex-col gap-1 text-sm text-ink">
-                  {(estimate.gst_amount > 0 || estimate.transport_labour_charge > 0) && (
-                    <div className="flex justify-between">
-                      <span>{t('est.subtotal')}</span>
-                      <span>{formatINR(estimate.subtotal)}</span>
-                    </div>
-                  )}
-                  {estimate.gst_amount > 0 && (
-                    <div className="flex justify-between">
-                      <span>GST</span>
-                      <span>{formatINR(estimate.gst_amount)}</span>
-                    </div>
-                  )}
-                  {estimate.transport_labour_charge > 0 && (
-                    <div className="flex justify-between">
-                      <span>{t('est.transport')}</span>
-                      <span>{formatINR(estimate.transport_labour_charge)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-base font-bold">
-                    <span>{t('est.total')}</span>
-                    <span>{formatINR(estimate.total)}</span>
+                        <span className="shrink-0 font-medium text-ink">{formatINR(item.amount)}</span>
+                      </div>
+                    ))}
                   </div>
-                </div>
-
-                {estimate.status === 'Converted' ? (
-                  <p className="rounded-lg bg-accent-bg p-3 text-sm font-medium text-accent-text">{t('est.converted')}</p>
-                ) : estimate.status === 'Expired' ? (
-                  <p className="text-sm text-muted">{t('est.expired', { business: found.business_name })}</p>
-                ) : (
-                  <>
-                    {found.response && found.responded_at ? (
-                      <p className="rounded-lg bg-surface p-3 text-sm font-medium text-ink">
-                        {found.response === 'accepted'
-                          ? t('est.accepted', { date: formatDate(found.responded_at) })
-                          : t('est.calledFor', { business: found.business_name, date: formatDate(found.responded_at) })}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-muted">{t('est.askHint', { business: found.business_name })}</p>
+                  <div className="flex flex-col gap-1 border-t border-border pt-3 text-sm text-ink">
+                    {(estimate.gst_amount > 0 || estimate.transport_labour_charge > 0) && (
+                      <div className="flex justify-between">
+                        <span>{t('est.subtotal')}</span>
+                        <span>{formatINR(estimate.subtotal)}</span>
+                      </div>
                     )}
-                    {answerFailed && (
-                      <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{t('error.generic')}</p>
+                    {estimate.gst_amount > 0 && (
+                      <div className="flex justify-between">
+                        <span>GST</span>
+                        <span>{formatINR(estimate.gst_amount)}</span>
+                      </div>
                     )}
-                    <div className="flex flex-wrap gap-2">
-                      {found.response !== 'accepted' && (
-                        <Button onClick={() => answer('accepted')} disabled={answering !== null}>
-                          {answering === 'accepted' ? t('common.saving') : t('est.accept')}
-                        </Button>
-                      )}
-                      {found.response !== 'call_me' && (
-                        <Button variant="outline" onClick={() => answer('call_me')} disabled={answering !== null}>
-                          {answering === 'call_me' ? t('common.saving') : t('est.callMe')}
-                        </Button>
-                      )}
+                    {estimate.transport_labour_charge > 0 && (
+                      <div className="flex justify-between">
+                        <span>{t('est.transport')}</span>
+                        <span>{formatINR(estimate.transport_labour_charge)}</span>
+                      </div>
+                    )}
+                    <div className="mt-1 flex items-center justify-between rounded-2xl bg-accent-bg px-4 py-3 text-accent-text">
+                      <span className="text-sm font-semibold">{t('est.total')}</span>
+                      <span className="text-xl font-bold leading-none">{formatINR(estimate.total)}</span>
                     </div>
-                  </>
-                )}
-              </Card>
-            )}
-
-            {/* An old order link is often the only one a customer still has.
-                From here their whole account is one tap away — the code comes
-                from their own phone, so nothing about it travels with the
-                order's status. */}
-            {khataCode && (
-              <Link to={`/khata/${khataCode}`}>
-                <Card className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold text-ink">{t('order.myKhata')}</div>
-                    <div className="text-xs text-muted">{t('order.myKhataHint')}</div>
                   </div>
-                  <ChevronRight size={18} className="shrink-0 text-muted" />
-                </Card>
-              </Link>
-            )}
 
-            {/* Only while the supplier takes orders (migration 031). */}
-            {found.order_link && (
-              <Link to={`/order/${found.order_link}`}>
-                <Button variant="outline" className="w-full">
-                  {t('order.orderMore')}
-                </Button>
-              </Link>
+                  {estimate.status === 'Converted' ? (
+                    <p className="rounded-2xl bg-accent-bg p-3 text-sm font-medium text-accent-text">{t('est.converted')}</p>
+                  ) : estimate.status === 'Expired' ? (
+                    <p className="text-sm text-muted">{t('est.expired', { business: found.business_name })}</p>
+                  ) : (
+                    <>
+                      {found.response && found.responded_at ? (
+                        <p className="rounded-2xl bg-surface p-3 text-sm font-medium text-ink">
+                          {found.response === 'accepted'
+                            ? t('est.accepted', { date: formatDate(found.responded_at) })
+                            : t('est.calledFor', { business: found.business_name, date: formatDate(found.responded_at) })}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-muted">{t('est.askHint', { business: found.business_name })}</p>
+                      )}
+                      {answerFailed && (
+                        <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{t('error.generic')}</p>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {found.response !== 'accepted' && (
+                          <Button className="rounded-full px-5" onClick={() => answer('accepted')} disabled={answering !== null}>
+                            {answering === 'accepted' ? t('common.saving') : t('est.accept')}
+                          </Button>
+                        )}
+                        {found.response !== 'call_me' && (
+                          <Button variant="outline" className="rounded-full px-5" onClick={() => answer('call_me')} disabled={answering !== null}>
+                            {answering === 'call_me' ? t('common.saving') : t('est.callMe')}
+                          </Button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </SoftCard>
+              </>
             )}
           </>
         )}
       </main>
+
+      {tabs && <CustomerTabBar tabs={tabs} />}
     </div>
   )
 }

@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `037`, run in order. **037 is the latest and is applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
+- **Schema migrations**: `supabase/migrations/` — `002` through `041`, run in order. **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; a read-only check on 2026-10-08 found 039 and 040 applied on live but 038 apparently **not** (live's `place_order` still has the ten-minute duplicate rule 038 removes) — the user's call. **041 (customer accounts, Phase 30) is on the `customer-home-design` branch and not applied anywhere but the local test copy.** Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -1359,6 +1359,92 @@ last").
   `--tabbar-h` following from 63px to 72px by itself; the khata dialog showing
   both lines with GST 28% and GST 5% and its Remaining; both Share buttons
   sending the right text and URL through the share sheet.
+
+
+**Phase 30 — the customer side as one app, and customer accounts
+(migration 041, 2026-10-08/11). Built on `customer-home-design`, not merged.**
+From a delivery-app screenshot the user shared ("make this type of thing in
+customer side"), then a one-time connection instead of a link every visit.
+
+- **The look** (`components/CustomerHome.tsx`, `lib/customerHome.ts`): soft
+  rounded cards, a row of quick actions, tinted tiles, a delivery card and a
+  floating tab bar, shared by the three customer pages. **The user chose
+  tinted icon tiles here, against the Phase 15/23 "no boxed icons" rule — on
+  the customer pages only.** The delivery card is a drawn street strip with
+  the app's tipper: at the shop until delivered, at the site after. **Never a
+  map or a live position** — there is no driver GPS and the user agreed the
+  card must not pretend.
+  - Khata link home: greeting + call, the one figure with Pay, the delivery
+    card (a delivery waiting for "did it arrive?", then a bill from the last
+    week not delivered, then an order from the last month waiting or
+    accepted — older undelivered bills are not "pending"), quick actions,
+    account tiles, the last 3 statement lines, tabs Home / Materials / Bills /
+    Orders (Payments instead of Materials while ordering is off).
+  - Order page: no fold any more — shop card, quick actions (Directions,
+    Repeat, My khata, Share), every material a tile with Add → − qty +, a
+    floating cart bar with the estimate that scrolls to the summary and form.
+    Placing an order is unchanged.
+  - Order status: the delivery card titled by how far the order has got
+    (once billed, the furthest timeline step), the timeline, items, estimate
+    with Accept / Call me, the UPI card; tabs only when the phone knows the
+    customer.
+- **Customer accounts (041)** — `customer_accounts`, `customer_connections`
+  (RLS: own rows, select only; every write through functions):
+  - The **personal khata link is the proof**: `connect_khata(code)` connects
+    the signed-in customer to that one customer record. **The shop's QR /
+    order link never connects anyone** — it only identifies the shop.
+  - The login is **anonymous Supabase Auth** (free) on a **separate client**
+    (`lib/customerAuth.ts`, storage key `buildsupply-customer-auth`), so it
+    never mixes with a supplier/admin session and AuthContext never sees it.
+    Made only when the customer taps **Save** — opening a page never makes
+    one. SMS OTP can be added to the same login later (`customer_accounts.phone`
+    / `phone_verified_at`, `method = 'sms_otp'`) without rebuilding anything.
+  - `/me` (`routes/MyAccount.tsx`): every saved shop, a switcher, each shop
+    read through `my_khata` / `my_khata_document` / `my_confirm_received`,
+    which call the khata link's own functions — the two can never differ.
+    Remove this shop; sign out on this phone. The order and status pages fill
+    in from the account and their tabs lead back to `/me`.
+  - **A supplier stopping a khata link revokes every account connected
+    through it** (trigger `customers_khata_link_changed`); a re-sent link
+    reconnects with one Save. A shop or admin login is refused by every
+    customer function (`_customer_caller`).
+  - **Two gaps closed for non-supplier logins**: activity-log inserts and
+    logo uploads now need a supplier row. Nothing else changed — a snapshot
+    of all 180 existing functions/policies/triggers/grants/views before and
+    after showed only those four policies moved.
+  - The customer pages use a customer manifest (`manifest-customer.webmanifest`,
+    `start_url /me`, swapped in `main.tsx`), so a customer's home-screen icon
+    opens their account, not the supplier sign-in.
+  - Save stays **hidden on a database without 041** (`accountsAvailable`), so
+    a preview build against live shows no broken button.
+- **Backups (approved by the user 2026-10-08):** anonymous customer logins are
+  **not recreated** after a disaster — Supabase's Admin API refuses a login
+  with no email or phone. Every customer, bill, payment, estimate, order and
+  **khata link** is restored, and the customer taps Save once on their link.
+  `coverage.js` counts them as covered and still flags any *other*
+  non-supplier login; `restore-from-backup.mjs` restores the two tables only
+  where the login exists; the drill adds 9 checks, including a fresh login
+  relinking through Save and another customer failing to read it.
+  `DISASTER-RECOVERY.md` → "Customers after a restore".
+- **Tested on the local Docker copy** (structure from `schema.sql` + 002→041
+  in order; anonymous sign-in switched on in the local config only):
+  - 61 of 61 security checks over the real local API: isolation, the QR not
+    connecting, stopped links, sign-out, expiry, a new device, and shop/admin
+    logins refused.
+  - A real backup of the local copy through an isolated copy of the backup
+    system (`config.json`: own output folder, notifications off, a stand-in
+    CLI answering read-only queries from the local DB) — OK, 0 coverage
+    problems; a stray non-supplier login made it INCOMPLETE, as it should.
+  - The restore drill: 74 of 74.
+  - A full simulated disaster (database and every login wiped, recovered by
+    the documented steps): Save on the restored links relinked in the real
+    app with the right figures, and two customers could not read each other.
+  - All three pages in English, Hindi and Marathi, light and dark, at 320 and
+    360px: zero sideways overflow.
+- **Still to do before it ships** (the user's approval each): merge; the
+  user pastes 041 and switches on Authentication → "Allow anonymous
+  sign-ins"; then `install-backup.ps1 -NoTasks` so the drill builds 041.
+  Until then live keeps working exactly as before.
 
 
 ## The admin panel
