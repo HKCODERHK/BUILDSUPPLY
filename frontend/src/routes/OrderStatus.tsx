@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { BookOpen, Check, House, Package, Receipt, ShoppingBag } from 'lucide-react'
+import { BookOpen, Check, House, MessageCircle, Package, Receipt, ShoppingBag } from 'lucide-react'
 import { readKhata, rememberOrder } from '@/lib/customerLinks'
 import { Button } from '@/components/ui/button'
 import { LanguageToggle } from '@/components/LanguageToggle'
@@ -14,6 +14,8 @@ import {
   type QuickAction,
 } from '@/components/CustomerHome'
 import { myShops, rememberCurrentShop, type MyShop } from '@/services/customerAccount'
+import { getShopProfile, type ShopProfile } from '@/services/shopPage'
+import { brandAttr, shopWhatsapp } from '@/lib/shopPage'
 import { TruckLoader } from '@/components/TruckLoader'
 import { useLanguage } from '@/context/LanguageContext'
 import { getOrderStatus, respondToEstimate, type OrderStatusView } from '@/services/orders'
@@ -52,6 +54,8 @@ export default function OrderStatus() {
   const [khataCode, setKhataCode] = useState<string | null>(null)
   // The customer's own account (migration 041), when this shop is on it.
   const [account, setAccount] = useState<MyShop | null>(null)
+  // The shop's own colour and WhatsApp (migration 042), through its order link.
+  const [shop, setShop] = useState<ShopProfile | null>(null)
 
   useEffect(() => {
     getOrderStatus(token)
@@ -63,6 +67,7 @@ export default function OrderStatus() {
           const link = v.order_link
           rememberOrder(link, token, v.created_at)
           setKhataCode(readKhata(link)?.code ?? null)
+          getShopProfile({ link }).then(setShop)
           myShops()
             .then((shops) => setAccount(shops.find((s) => s.order_link === link) ?? null))
             .catch(() => {
@@ -165,6 +170,7 @@ export default function OrderStatus() {
       ? [{ key: 'more', icon: ShoppingBag, label: t('order.tileMore'), to: `/order/${found.order_link}` }]
       : []),
     ...(home ? [{ key: 'khata', icon: BookOpen, label: t('order.tileKhata'), onClick: () => go(home) }] : []),
+    ...(shopWhatsapp(shop) ? [{ key: 'wa', icon: MessageCircle, label: t('shop.tileWhatsapp'), href: shopWhatsapp(shop)! }] : []),
   ]
   // The same four tabs as the khata link and the order page, once this phone
   // knows whose account it is. This page is an order, so Orders is lit.
@@ -194,7 +200,7 @@ export default function OrderStatus() {
   const progress = bill && steps ? [...steps].reverse().find((st) => st.done) ?? null : null
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen bg-surface" data-brand={brandAttr(shop?.brand_color)}>
       <header className="sticky top-0 z-30 bg-shell px-4 pb-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white">
         <div className="mx-auto flex h-11 max-w-lg items-center gap-3">
           <svg

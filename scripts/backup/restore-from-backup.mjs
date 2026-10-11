@@ -102,6 +102,7 @@ const ORDER = [
   'order_request_clients',
   'order_blocked_phones',
   'drivers',
+  'supplier_offers',
   'supplier_pins',
   'client_requests',
   'stock_logs',

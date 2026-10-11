@@ -709,3 +709,28 @@ html[data-theme-flip='to-light']::view-transition-old(root) {
     zoom: 1;
   }
 }
+
+/* A shop's own colour on the customer pages (migration 042). The page's root
+ * carries data-brand="<name>" and everything inside that reads the accent
+ * tokens follows. One of nine fixed colours (green is the default and needs
+ * nothing): white button text keeps at least 5:1 contrast on every one, and
+ * the tinted backgrounds keep their own text above 6.8:1, light and dark.
+ * The button colour stays the same in dark mode so white text stays legible. */
+[data-brand="teal"] { --color-accent: #0f766e; --color-accent-soft: #0d9488; --color-accent-bg: #f0fdfa; --color-accent-text: #115e59; }
+[data-brand="blue"] { --color-accent: #1d4ed8; --color-accent-soft: #2563eb; --color-accent-bg: #eff6ff; --color-accent-text: #1e40af; }
+[data-brand="indigo"] { --color-accent: #4338ca; --color-accent-soft: #4f46e5; --color-accent-bg: #eef2ff; --color-accent-text: #3730a3; }
+[data-brand="violet"] { --color-accent: #6d28d9; --color-accent-soft: #7c3aed; --color-accent-bg: #f5f3ff; --color-accent-text: #5b21b6; }
+[data-brand="pink"] { --color-accent: #be185d; --color-accent-soft: #db2777; --color-accent-bg: #fdf2f8; --color-accent-text: #9d174d; }
+[data-brand="red"] { --color-accent: #b91c1c; --color-accent-soft: #dc2626; --color-accent-bg: #fef2f2; --color-accent-text: #991b1b; }
+[data-brand="orange"] { --color-accent: #c2410c; --color-accent-soft: #ea580c; --color-accent-bg: #fff7ed; --color-accent-text: #9a3412; }
+[data-brand="brown"] { --color-accent: #92400e; --color-accent-soft: #b45309; --color-accent-bg: #fffbeb; --color-accent-text: #78350f; }
+[data-brand="slate"] { --color-accent: #334155; --color-accent-soft: #475569; --color-accent-bg: #f1f5f9; --color-accent-text: #1e293b; }
+.dark [data-brand="teal"] { --color-accent: #0f766e; --color-accent-soft: #0d9488; --color-accent-bg: #042f2e; --color-accent-text: #5eead4; }
+.dark [data-brand="blue"] { --color-accent: #1d4ed8; --color-accent-soft: #2563eb; --color-accent-bg: #172554; --color-accent-text: #93c5fd; }
+.dark [data-brand="indigo"] { --color-accent: #4338ca; --color-accent-soft: #4f46e5; --color-accent-bg: #1e1b4b; --color-accent-text: #a5b4fc; }
+.dark [data-brand="violet"] { --color-accent: #6d28d9; --color-accent-soft: #7c3aed; --color-accent-bg: #2e1065; --color-accent-text: #c4b5fd; }
+.dark [data-brand="pink"] { --color-accent: #be185d; --color-accent-soft: #db2777; --color-accent-bg: #500724; --color-accent-text: #f9a8d4; }
+.dark [data-brand="red"] { --color-accent: #b91c1c; --color-accent-soft: #dc2626; --color-accent-bg: #450a0a; --color-accent-text: #fca5a5; }
+.dark [data-brand="orange"] { --color-accent: #c2410c; --color-accent-soft: #ea580c; --color-accent-bg: #431407; --color-accent-text: #fdba74; }
+.dark [data-brand="brown"] { --color-accent: #92400e; --color-accent-soft: #b45309; --color-accent-bg: #451a03; --color-accent-text: #fcd34d; }
+.dark [data-brand="slate"] { --color-accent: #334155; --color-accent-soft: #475569; --color-accent-bg: #0f172a; --color-accent-text: #cbd5e1; }
