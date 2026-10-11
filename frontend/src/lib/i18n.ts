@@ -1772,6 +1772,8 @@ const STRINGS = {
     mr: 'एक दुकान आता तुमच्या खात्यात नाही — दुकानाने तुमची लिंक बंद केली. त्यांना पुन्हा पाठवायला सांगा.',
   },
   // The shop's own page for customers (migration 042).
+  'shop.viewLogo': { en: 'Show the logo larger', hi: 'लोगो बड़ा देखें', mr: 'लोगो मोठा पाहा' },
+  'shop.viewCover': { en: 'Show the cover photo larger', hi: 'कवर फ़ोटो बड़ी देखें', mr: 'कव्हर फोटो मोठा पाहा' },
   'shop.settingsTitle': { en: 'Shop page', hi: 'दुकान पेज', mr: 'दुकान पेज' },
   'shop.rowSub': { en: 'Cover, colour, photos, hours, offers', hi: 'कवर, रंग, फ़ोटो, समय, ऑफ़र', mr: 'कव्हर, रंग, फोटो, वेळ, ऑफर' },
   'shop.settingsHint': { en: 'What your customers see on your order page and khata links. Everything here is optional.', hi: 'आपके ग्राहक आपके ऑर्डर पेज और खाता लिंक पर यही देखते हैं। सब कुछ वैकल्पिक है।', mr: 'तुमचे ग्राहक तुमच्या ऑर्डर पेजवर आणि खाते लिंकवर हेच पाहतात. सर्व काही ऐच्छिक आहे.' },
