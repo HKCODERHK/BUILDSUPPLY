@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `041`, run in order. **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; a read-only check on 2026-10-08 found 039 and 040 applied on live but 038 apparently **not** (live's `place_order` still has the ten-minute duplicate rule 038 removes) — the user's call. **041 (customer accounts, Phase 30) is on the `customer-home-design` branch and not applied anywhere but the local test copy.** Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
+- **Schema migrations**: `supabase/migrations/` — `002` through `041`, run in order. **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; 039 and 040 were already on live; **038 was pasted by the user on 2026-10-12** (the ten-minute duplicate rule is gone from `place_order`, checked read-only). **041 (customer accounts, Phase 30) is the latest and is applied** (2026-10-12). Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -1362,7 +1362,8 @@ last").
 
 
 **Phase 30 — the customer side as one app, and customer accounts
-(migration 041, 2026-10-08/11). Built on `customer-home-design`, not merged.**
+(migration 041, 2026-10-08/12). Merged 2026-10-12 (1f1dc2d); 041 applied and
+anonymous sign-ins switched on by the user the same day.**
 From a delivery-app screenshot the user shared ("make this type of thing in
 customer side"), then a one-time connection instead of a link every visit.
 
@@ -1441,10 +1442,16 @@ customer side"), then a one-time connection instead of a link every visit.
     app with the right figures, and two customers could not read each other.
   - All three pages in English, Hindi and Marathi, light and dark, at 320 and
     360px: zero sideways overflow.
-- **Still to do before it ships** (the user's approval each): merge; the
-  user pastes 041 and switches on Authentication → "Allow anonymous
-  sign-ins"; then `install-backup.ps1 -NoTasks` so the drill builds 041.
-  Until then live keeps working exactly as before.
+- **Shipped 2026-10-12**, each step on the user's approval: merged (live
+  bundle checked to match the build), 041 pasted, anonymous sign-ins switched
+  on, 038 pasted, and `install-backup.ps1 -NoTasks` re-run so the drill builds
+  038–041. Checked on live read-only after 041: 2 tables with RLS, 10
+  functions (one version each), signed-out calls refused (401), customers
+  cannot write connections, activity-log and logo rules need a supplier,
+  counts unchanged (60 bills / 106 payments / 24 customers / 11 khata links),
+  0 bills out of step, both `security_invoker` views intact.
+- **Not yet judged on a real phone:** Save → `/me` on the live site, and a
+  customer adding `/me` to their home screen (the customer manifest).
 
 
 ## The admin panel
