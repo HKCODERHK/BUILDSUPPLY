@@ -24,7 +24,7 @@ export interface ShopProfile {
   /** Only while the shop takes online orders. */
   order_link: string | null
   offers: { title: string; details: string | null; valid_until: string | null }[]
-  /** material id → photo (the shop's own, or the catalog's). */
+  /** material id → photo. Before 043 this may also carry a catalog photo; MaterialPicture shows only the shop's own. */
   photos: Record<string, string>
 }
 
@@ -114,17 +114,11 @@ export async function setMaterialPhoto(materialId: string, url: string | null): 
   if (error) throw error
 }
 
-/** The supplier's materials with their own photo, and the catalog photo behind them. */
-export async function listMaterialPhotos(): Promise<(Pick<Material, 'id' | 'name' | 'photo_url'> & { catalog_photo: string | null })[]> {
-  const { data, error } = await supabase
-    .from('materials')
-    .select('id, name, photo_url, master_material_variants(image_url)')
-    .order('name')
+/** The supplier's materials with their own photo — the only photo customers see. */
+export async function listMaterialPhotos(): Promise<Pick<Material, 'id' | 'name' | 'photo_url'>[]> {
+  const { data, error } = await supabase.from('materials').select('id, name, photo_url').order('name')
   if (error) throw error
-  return (data ?? []).map((m: Record<string, unknown>) => {
-    const v = m.master_material_variants as { image_url: string | null } | null
-    return { id: m.id as string, name: m.name as string, photo_url: (m.photo_url as string | null) ?? null, catalog_photo: v?.image_url ?? null }
-  })
+  return (data ?? []).map((m) => ({ id: m.id, name: m.name, photo_url: m.photo_url ?? null }))
 }
 
 export async function listOffers(): Promise<SupplierOffer[]> {

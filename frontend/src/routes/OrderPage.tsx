@@ -37,11 +37,13 @@ import { getOrderPage, orderStatusUrl, placeOrder, type OrderPage as OrderPageDa
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
 import { readKhata, rememberOrder, type KhataLink } from '@/lib/customerLinks'
 import { CustomerTabBar, QuickActions, SectionHeading, SoftCard, type QuickAction } from '@/components/CustomerHome'
-import { TINTS, greetingKey, tintFor } from '@/lib/customerHome'
+import { greetingKey } from '@/lib/customerHome'
 import { cn } from '@/lib/utils'
 import { myShops, rememberCurrentShop, type MyShop } from '@/services/customerAccount'
 import { getShopProfile, type ShopProfile } from '@/services/shopPage'
 import { ShopAbout, ShopDelivery, ShopHero, ShopOffers } from '@/components/ShopProfileView'
+import { MaterialPicture } from '@/components/MaterialPicture'
+import { ImagePreview } from '@/components/ui/modal'
 import { brandAttr, shopWhatsapp } from '@/lib/shopPage'
 
 function formatINR(n: number) {
@@ -141,6 +143,7 @@ export default function OrderPage() {
   // Cash unless the customer says otherwise — which is nearly every order.
   const [payment, setPayment] = useState<'cash' | 'online'>('cash')
   const summaryRef = useRef<HTMLDivElement>(null)
+  const [logoPreview, setLogoPreview] = useState(false)
   const [sharingShop, setSharingShop] = useState(false)
   const [sending, setSending] = useState(false)
   const sendingRef = useRef(false)
@@ -462,7 +465,9 @@ export default function OrderPage() {
         {/* The shop: who, where, and its phone on the round button. */}
             <SoftCard className="flex items-center gap-3 p-4">
           {page.logo_url ? (
-            <img src={page.logo_url} alt="" className="h-14 w-14 shrink-0 rounded-2xl bg-white object-cover" />
+            <button type="button" aria-label={t('shop.viewLogo')} onClick={() => setLogoPreview(true)} className="shrink-0">
+              <img src={page.logo_url} alt="" className="h-14 w-14 rounded-2xl bg-white object-cover" />
+            </button>
           ) : (
             <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-accent-bg text-accent-text">
               <Truck size={26} strokeWidth={1.8} />
@@ -528,13 +533,8 @@ export default function OrderPage() {
                   inOrder ? 'border-accent' : 'border-border',
                 )}
               >
-                {shop?.photos[m.id] ? (
-                  <img src={shop.photos[m.id]} alt="" loading="lazy" className="aspect-[4/3] w-full rounded-xl bg-surface object-cover" />
-                ) : (
-                  <span className={cn('flex h-10 w-10 items-center justify-center rounded-xl', TINTS[tintFor(m.category ?? m.name)])}>
-                    <Package size={19} strokeWidth={1.9} />
-                  </span>
-                )}
+                {/* The shop's photo, the catalog's, or a drawing of the material. */}
+                <MaterialPicture name={m.name} category={m.category} photo={shop?.photos[m.id]} />
                 <div className="min-w-0 flex-1">
                   <div className="line-clamp-2 break-words text-sm font-semibold leading-snug text-ink">{m.name}</div>
                   <div className="truncate text-xs text-muted">
@@ -743,6 +743,10 @@ export default function OrderPage() {
       )}
 
       {tabs && <CustomerTabBar tabs={tabs} />}
+
+      {logoPreview && open?.logo_url && (
+        <ImagePreview src={open.logo_url} alt={open.business_name} onClose={() => setLogoPreview(false)} />
+      )}
 
       {/* Link or QR, the same two steps the supplier's own Share order link
           offers. Nobody is signed in here, so the shop's name and logo are

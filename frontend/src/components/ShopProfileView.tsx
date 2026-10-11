@@ -1,10 +1,11 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Clock, Globe, MapPin, MessageCircle, Navigation, Phone, Store, Tag, Truck } from 'lucide-react'
 import { useLanguage } from '@/context/LanguageContext'
 import { DAYS, formatTime, openState, readHours, safeLink, shopWhatsapp, SOCIAL_KEYS, type SocialKey } from '@/lib/shopPage'
 import { cn } from '@/lib/utils'
 import type { ShopProfile } from '@/services/shopPage'
 import { SectionHeading, SoftCard } from './CustomerHome'
+import { ImagePreview } from './ui/modal'
 
 /**
  * The shop's own page as its customers see it (migration 042): a cover with
@@ -41,22 +42,35 @@ export function OpenChip({ hours, className }: { hours: unknown; className?: str
 
 /** The cover, with the logo resting on its lower edge, the name, address and open state. */
 export function ShopHero({ shop, action }: { shop: ShopProfile; action?: ReactNode }) {
+  const { t } = useLanguage()
+  // Tapping the logo or the cover shows it large (2026-10-12).
+  const [preview, setPreview] = useState<string | null>(null)
   return (
     <SoftCard className="overflow-hidden">
       <div className="relative">
         {shop.cover_url ? (
-          <img src={shop.cover_url} alt="" className="aspect-[16/7] w-full object-cover" />
+          <button type="button" className="block w-full" aria-label={t('shop.viewCover')} onClick={() => setPreview(shop.cover_url)}>
+            <img src={shop.cover_url} alt="" className="aspect-[16/7] w-full object-cover" />
+          </button>
         ) : (
           <div className="aspect-[16/6] w-full bg-gradient-to-br from-accent to-accent-soft opacity-90" />
         )}
-        <span className="absolute -bottom-7 left-4 flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border-4 border-card bg-card shadow">
-          {shop.logo_url ? (
+        {shop.logo_url ? (
+          <button
+            type="button"
+            aria-label={t('shop.viewLogo')}
+            onClick={() => setPreview(shop.logo_url)}
+            className="absolute -bottom-7 left-4 flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border-4 border-card bg-card shadow"
+          >
             <img src={shop.logo_url} alt="" className="h-full w-full object-cover" />
-          ) : (
+          </button>
+        ) : (
+          <span className="absolute -bottom-7 left-4 flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border-4 border-card bg-card shadow">
             <Store size={28} strokeWidth={1.7} className="text-accent" />
-          )}
-        </span>
+          </span>
+        )}
       </div>
+      {preview && <ImagePreview src={preview} alt={shop.business_name} onClose={() => setPreview(null)} />}
       <div className="flex items-start gap-3 px-4 pb-4 pt-9">
         <div className="min-w-0 flex-1">
           <div className="break-words text-lg font-bold leading-tight text-ink">{shop.business_name}</div>

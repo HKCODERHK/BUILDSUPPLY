@@ -21,7 +21,7 @@ import {
   Truck,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
-import { Modal } from '@/components/ui/modal'
+import { ImagePreview, Modal } from '@/components/ui/modal'
 import { formatRate, gstSlabs } from '@/lib/gst'
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
 import { Badge } from '@/components/ui/badge'
@@ -175,6 +175,7 @@ export default function KhataPage({
   const [docBusy, setDocBusy] = useState<string | null>(null)
   const [viewing, setViewing] = useState<KhataDocument | null>(null)
   const [sharingShop, setSharingShop] = useState(false)
+  const [logoPreview, setLogoPreview] = useState(false)
   const [docFailed, setDocFailed] = useState(false)
   // "Material received" (migration 030): asked, then confirmed — two taps, so a
   // stray one can't record it.
@@ -766,7 +767,9 @@ export default function KhataPage({
         {found && section && (
           <div ref={bandRef} className="flex items-center gap-3">
             {found.supplier.logo_url ? (
-              <img src={found.supplier.logo_url} alt="" className="h-14 w-14 shrink-0 rounded-2xl bg-white object-cover" />
+              <button type="button" aria-label={t('shop.viewLogo')} onClick={() => setLogoPreview(true)} className="shrink-0">
+                <img src={found.supplier.logo_url} alt="" className="h-14 w-14 rounded-2xl bg-white object-cover" />
+              </button>
             ) : null}
             <div className="min-w-0">
               <div className="truncate text-xl font-bold leading-tight text-ink">{found.supplier.business_name}</div>
@@ -1273,6 +1276,10 @@ export default function KhataPage({
           })}
           onClose={() => setSharingShop(false)}
         />
+      )}
+
+      {logoPreview && found?.supplier.logo_url && (
+        <ImagePreview src={found.supplier.logo_url} alt={found.supplier.business_name} onClose={() => setLogoPreview(false)} />
       )}
 
       {/* The bill or estimate itself, read in the page. The same figures the

@@ -1772,6 +1772,8 @@ const STRINGS = {
     mr: 'एक दुकान आता तुमच्या खात्यात नाही — दुकानाने तुमची लिंक बंद केली. त्यांना पुन्हा पाठवायला सांगा.',
   },
   // The shop's own page for customers (migration 042).
+  'shop.viewLogo': { en: 'Show the logo larger', hi: 'लोगो बड़ा देखें', mr: 'लोगो मोठा पाहा' },
+  'shop.viewCover': { en: 'Show the cover photo larger', hi: 'कवर फ़ोटो बड़ी देखें', mr: 'कव्हर फोटो मोठा पाहा' },
   'shop.settingsTitle': { en: 'Shop page', hi: 'दुकान पेज', mr: 'दुकान पेज' },
   'shop.rowSub': { en: 'Cover, colour, photos, hours, offers', hi: 'कवर, रंग, फ़ोटो, समय, ऑफ़र', mr: 'कव्हर, रंग, फोटो, वेळ, ऑफर' },
   'shop.settingsHint': { en: 'What your customers see on your order page and khata links. Everything here is optional.', hi: 'आपके ग्राहक आपके ऑर्डर पेज और खाता लिंक पर यही देखते हैं। सब कुछ वैकल्पिक है।', mr: 'तुमचे ग्राहक तुमच्या ऑर्डर पेजवर आणि खाते लिंकवर हेच पाहतात. सर्व काही ऐच्छिक आहे.' },
@@ -1806,8 +1808,7 @@ const STRINGS = {
   'shop.preview': { en: 'See my shop page', hi: 'मेरा दुकान पेज देखें', mr: 'माझे दुकान पेज पहा' },
   'shop.previewNeedsOrders': { en: 'Your shop page opens from your order link — turn on online orders to see it.', hi: 'दुकान पेज आपके ऑर्डर लिंक से खुलता है — देखने के लिए ऑनलाइन ऑर्डर चालू करें।', mr: 'दुकान पेज तुमच्या ऑर्डर लिंकवरून उघडते — पाहण्यासाठी ऑनलाइन ऑर्डर सुरू करा.' },
   'shop.photos': { en: 'Product photos', hi: 'सामान की फ़ोटो', mr: 'साहित्याचे फोटो' },
-  'shop.photosHint': { en: 'A material added from the catalog shows the catalog photo until you add your own.', hi: 'कैटलॉग से जोड़ा गया सामान तब तक कैटलॉग की फ़ोटो दिखाएगा जब तक आप अपनी न लगाएँ।', mr: 'कॅटलॉगमधून जोडलेले साहित्य तुम्ही स्वतःचा फोटो लावेपर्यंत कॅटलॉगचा फोटो दाखवेल.' },
-  'shop.catalogPhoto': { en: 'Catalog photo', hi: 'कैटलॉग फ़ोटो', mr: 'कॅटलॉग फोटो' },
+  'shop.photosHint': { en: 'Customers see these photos on your order page. Use a clear photo of your own stock.', hi: 'ग्राहक ये फ़ोटो आपके ऑर्डर पेज पर देखते हैं। अपने माल की साफ़ फ़ोटो लगाएँ।', mr: 'ग्राहक हे फोटो तुमच्या ऑर्डर पेजवर पाहतात. तुमच्या मालाचा स्पष्ट फोटो लावा.' },
   'shop.ownPhoto': { en: 'Your photo', hi: 'आपकी फ़ोटो', mr: 'तुमचा फोटो' },
   'shop.noPhoto': { en: 'No photo', hi: 'फ़ोटो नहीं', mr: 'फोटो नाही' },
   'shop.noMaterials': { en: 'Add materials first.', hi: 'पहले सामान जोड़ें।', mr: 'आधी साहित्य जोडा.' },

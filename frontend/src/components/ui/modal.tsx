@@ -27,23 +27,12 @@ window.addEventListener('popstate', () => {
   top.close()
 })
 
-export function Modal({
-  title,
-  onClose,
-  children,
-  captureBack = true,
-}: {
-  title: string
-  onClose: () => void
-  children: ReactNode
-  /**
-   * Push a history entry so the back gesture closes this dialog. Turn it off
-   * for a dialog that is itself about navigation — the unsaved-work prompt
-   * appears *because* a navigation was blocked, and pushing more history
-   * underneath it just cancels the prompt.
-   */
-  captureBack?: boolean
-}) {
+/**
+ * What every dialog does besides drawing itself: back closes it (one history
+ * entry, unwound again if it closes another way), and Escape closes it — in
+ * both cases only the top one. Shared by Modal and ImagePreview.
+ */
+function useDialogBehaviour(onClose: () => void, captureBack: boolean) {
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
 
@@ -113,6 +102,27 @@ export function Modal({
     }
   }, [])
 
+}
+
+export function Modal({
+  title,
+  onClose,
+  children,
+  captureBack = true,
+}: {
+  title: string
+  onClose: () => void
+  children: ReactNode
+  /**
+   * Push a history entry so the back gesture closes this dialog. Turn it off
+   * for a dialog that is itself about navigation — the unsaved-work prompt
+   * appears *because* a navigation was blocked, and pushing more history
+   * underneath it just cancels the prompt.
+   */
+  captureBack?: boolean
+}) {
+  useDialogBehaviour(onClose, captureBack)
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
@@ -131,6 +141,44 @@ export function Modal({
         </div>
         {children}
       </div>
+    </div>
+  )
+}
+
+/**
+ * A picture shown large — the shop's logo or cover, tapped on a customer
+ * page. Fits the screen, keeps its shape, and closes on the ✕, a tap outside
+ * the picture, Escape or the back gesture (the same handling as Modal).
+ */
+export function ImagePreview({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+  useDialogBehaviour(onClose, true)
+  const closeRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    closeRef.current?.focus()
+  }, [])
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={alt}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 pt-[calc(1rem_+_var(--safe-top))] pb-[calc(1rem_+_var(--safe-bottom))]"
+      onClick={onClose}
+    >
+      <button
+        ref={closeRef}
+        type="button"
+        onClick={onClose}
+        aria-label="Close"
+        className="absolute right-3 top-[calc(0.75rem_+_var(--safe-top))] flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
+      >
+        <X size={22} />
+      </button>
+      <img
+        src={src}
+        alt={alt}
+        onClick={(e) => e.stopPropagation()}
+        className="vh-cap-85 max-w-full rounded-2xl object-contain shadow-2xl"
+      />
     </div>
   )
 }
