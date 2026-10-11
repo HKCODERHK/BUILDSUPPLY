@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link, Navigate } from 'react-router-dom'
-import { Download, Printer, Ban, Pencil, Truck, ZoomIn, ZoomOut } from 'lucide-react'
+import { Download, Printer, Ban, Pencil, SlidersHorizontal, Truck, ZoomIn, ZoomOut } from 'lucide-react'
 import { SendToDriverModal } from '@/components/SendToDriverModal'
 import { formatRate, gstSlabs } from '@/lib/gst'
 import { receivedState } from '@/lib/received'
@@ -21,6 +21,8 @@ import { useLanguage } from '@/context/LanguageContext'
 import { usePin } from '@/context/PinContext'
 import type { Invoice, InvoiceItem, Customer } from '@/lib/database.types'
 import { TruckLoader } from '@/components/TruckLoader'
+import { PrintOptionsModal } from '@/components/BillPrint'
+import { printedSupplier } from '@/lib/billPrint'
 import { cn } from '@/lib/utils'
 
 function formatINR(n: number) {
@@ -43,6 +45,7 @@ export default function InvoiceDetail() {
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [driverOpen, setDriverOpen] = useState(false)
+  const [printOpen, setPrintOpen] = useState(false)
 
   async function refresh() {
     if (!id) return
@@ -138,6 +141,8 @@ export default function InvoiceDetail() {
   const taxedLines = slabs.length > 0
 
 
+  const from = supplier ? printedSupplier(supplier, invoice) : null
+
   return (
     <div>
       <PageHeader
@@ -155,6 +160,10 @@ export default function InvoiceDetail() {
               items={[
                 { label: t('inv.download'), icon: <Download size={15} />, onSelect: handleDownload },
                 { label: t('inv.print'), icon: <Printer size={15} />, onSelect: handlePrint },
+                // Which business details this bill prints (migration 043).
+                ...(supplier && 'bill_print' in supplier
+                  ? [{ label: t('bp.menu'), icon: <SlidersHorizontal size={15} />, onSelect: () => setPrintOpen(true) }]
+                  : []),
                 ...(invoice.status !== 'Cancelled'
                   ? [
                       // The driver's WhatsApp chat with this delivery written out.
@@ -203,19 +212,21 @@ export default function InvoiceDetail() {
       <Card>
         <div className="mb-6 flex flex-col gap-4 border-b border-border pb-6 min-[420px]:flex-row min-[420px]:items-start min-[420px]:justify-between">
           <div className="flex items-center gap-3">
-            {supplier?.logo_url && (
+            {/* The business as this bill prints it: the details it was
+                issued with, and only those its print choices show. */}
+            {from?.logo_url && (
               <img
-                src={supplier.logo_url}
-                alt={`${supplier.business_name} logo`}
+                src={from.logo_url}
+                alt={`${from.business_name} logo`}
                 className="h-12 w-12 shrink-0 rounded-lg border border-border object-cover"
               />
             )}
             <div>
               <div className="text-xs font-semibold tracking-wide text-muted">FROM</div>
-              <div className="mt-1 font-bold text-ink">{supplier?.business_name}</div>
-              {supplier?.address && <div className="text-sm text-muted">{supplier.address}</div>}
-              {supplier?.gst_number && <div className="text-sm text-muted">GST: {supplier.gst_number}</div>}
-              {supplier?.phone && <div className="text-sm text-muted">{supplier.phone}</div>}
+              <div className="mt-1 font-bold text-ink">{from?.business_name}</div>
+              {from?.address && <div className="text-sm text-muted">{from.address}</div>}
+              {from?.gst_number && <div className="text-sm text-muted">GST: {from.gst_number}</div>}
+              {from?.phone && <div className="text-sm text-muted">{from.phone}</div>}
             </div>
           </div>
           <div className="min-[420px]:text-right">
@@ -343,6 +354,14 @@ export default function InvoiceDetail() {
       </div>
 
       {driverOpen && <SendToDriverModal invoice={invoice} customer={customer} onClose={() => setDriverOpen(false)} />}
+      {printOpen && supplier && (
+        <PrintOptionsModal
+          supplier={supplier}
+          invoice={invoice}
+          onClose={() => setPrintOpen(false)}
+          onSaved={(options) => setInvoice({ ...invoice, print_options: options })}
+        />
+      )}
 
       {confirmCancel && (
         <Modal title={t('inv.cancelTitle')} onClose={() => setConfirmCancel(false)}>

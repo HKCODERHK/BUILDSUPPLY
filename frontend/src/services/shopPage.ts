@@ -12,6 +12,8 @@ export interface ShopProfile {
   found: true
   business_name: string
   logo_url: string | null
+  /** The owner's photo, beside the shop's name (migration 043). */
+  owner_photo_url?: string | null
   phone: string | null
   address: string | null
   cover_url: string | null
@@ -81,12 +83,12 @@ function ownPath(url: string | null | undefined, supplierId: string): string | n
 export async function replaceShopImage(
   supplierId: string,
   file: File,
-  kind: 'cover' | `material-${string}`,
+  kind: 'cover' | 'owner' | `material-${string}`,
   replacing: string | null | undefined,
   save: (url: string) => Promise<void>,
 ): Promise<string> {
   if (!file.type.startsWith('image/')) throw new Error('not-image')
-  const small = await shrinkImage(file, kind === 'cover' ? 1600 : 900, kind === 'cover' ? 900 : 900)
+  const small = await shrinkImage(file, kind === 'cover' ? 1600 : 900, 900)
   const ext = small.type === 'image/webp' ? 'webp' : 'jpg'
   const path = `${supplierId}/${kind}-${Date.now()}.${ext}`
   const { error } = await supabase.storage.from('logos').upload(path, small, { contentType: small.type, upsert: false })
@@ -140,4 +142,24 @@ export async function setOfferActive(id: string, active: boolean): Promise<void>
 export async function deleteOffer(id: string): Promise<void> {
   const { error } = await supabase.from('supplier_offers').delete().eq('id', id)
   if (error) throw error
+}
+
+/** Your profile (migration 043). The mobile is private: customers never get it. */
+export async function saveOwnerProfile(id: string, input: Pick<Supplier, 'owner_name'> & Pick<Supplier, 'owner_mobile' | 'owner_photo_url'>): Promise<void> {
+  const { error } = await supabase.from('suppliers').update(input).eq('id', id)
+  if (error) {
+    if (error.code === '23514') throw new Error('owner-invalid')
+    throw error
+  }
+}
+
+/** The shop's defaults for what prints on new bills (migration 043). */
+export async function saveBillDefaults(id: string, options: import('@/lib/billPrint').PrintOptions | null): Promise<void> {
+  const { error } = await supabase.from('suppliers').update({ bill_print: options }).eq('id', id)
+  if (error) throw error
+}
+
+/** One bill's own choice of what prints; null puts it back on its recorded defaults. */
+export async function setInvoicePrintOptions(invoiceId: string, options: import('@/lib/billPrint').PrintOptions | null): Promise<void> {
+  await callRpc('set_invoice_print_options', { p_invoice: invoiceId, p_options: options })
 }

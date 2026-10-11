@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Modal } from '@/components/ui/modal'
 import {
   listSuppliersOverview,
+  getOwnerMobile,
   setSupplierStatus,
   resetSupplierPassword,
   updateSupplierSubscription,
@@ -55,6 +56,8 @@ export default function SupplierProfile() {
   const [busy, setBusy] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  // undefined: not available (a database without 043); null: not set.
+  const [ownerMobile, setOwnerMobile] = useState<string | null | undefined>(undefined)
 
   function describeError(err: unknown) {
     return err instanceof Error ? err.message : 'Something went wrong. Please try again.'
@@ -62,9 +65,10 @@ export default function SupplierProfile() {
 
   async function refresh() {
     if (!id) return
-    const [all, activityRows] = await Promise.all([listSuppliersOverview(), listSupplierActivityForAdmin(id)])
+    const [all, activityRows, mobile] = await Promise.all([listSuppliersOverview(), listSupplierActivityForAdmin(id), getOwnerMobile(id)])
     setSupplier(all.find((s) => s.id === id) ?? null)
     setActivity(activityRows)
+    setOwnerMobile(mobile)
   }
 
   useEffect(() => {
@@ -288,6 +292,8 @@ export default function SupplierProfile() {
             </CardHeader>
             <dl className="flex flex-col gap-2 text-sm">
               <Row label="Owner" value={supplier.owner_name ?? '—'} />
+              {/* The owner's own mobile (migration 043): for the admin only — customers never see it. */}
+              {ownerMobile !== undefined && <Row label="Owner's mobile" value={ownerMobile ?? '—'} />}
               <Row label="Phone" value={supplier.phone ?? '—'} />
               <Row label="Address" value={supplier.address ?? '—'} />
               <Row label="Registered" value={new Date(supplier.created_at).toLocaleString('en-IN')} />
