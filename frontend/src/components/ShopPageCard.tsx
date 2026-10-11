@@ -10,8 +10,6 @@ import { useLanguage } from '@/context/LanguageContext'
 import type { SupplierOffer } from '@/lib/database.types'
 import { BRAND_COLORS, DAYS, SOCIAL_KEYS, readHours, safeLink, type DayHours, type DayKey, type ShopHours, type SocialKey } from '@/lib/shopPage'
 import { cn } from '@/lib/utils'
-import { MaterialDrawing } from './MaterialArt'
-import { materialArtKey } from '@/lib/materialArt'
 import { orderPageUrl } from '@/services/orders'
 import {
   addOffer,
@@ -423,20 +421,16 @@ function ProductPhotos({ supplierId }: { supplierId: string }) {
       {rows && rows.length === 0 && <p className="text-sm text-muted">{t('shop.noMaterials')}</p>}
       <div className="flex flex-col divide-y divide-border">
         {rows?.map((r) => {
-          const shown = r.photo_url ?? r.catalog_photo
+          const shown = r.photo_url
           return (
             <div key={r.id} className="flex items-center gap-3 py-2.5">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-surface text-muted">
-                {shown ? (
-                  <img src={shown} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <MaterialDrawing kind={materialArtKey(r.name)} className="h-full rounded-none" />
-                )}
+                {shown ? <img src={shown} alt="" className="h-full w-full object-cover" /> : <ImagePlus size={18} />}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium text-ink">{r.name}</span>
                 <span className="block text-xs text-muted">
-                  {r.photo_url ? t('shop.ownPhoto') : r.catalog_photo ? t('shop.catalogPhoto') : t('shop.noPhoto')}
+                  {r.photo_url ? t('shop.ownPhoto') : t('shop.noPhoto')}
                 </span>
               </span>
               {busy === r.id ? (

@@ -42,7 +42,7 @@ import { cn } from '@/lib/utils'
 import { myShops, rememberCurrentShop, type MyShop } from '@/services/customerAccount'
 import { getShopProfile, type ShopProfile } from '@/services/shopPage'
 import { ShopAbout, ShopDelivery, ShopHero, ShopOffers } from '@/components/ShopProfileView'
-import { MaterialPicture } from '@/components/MaterialArt'
+import { MaterialPicture } from '@/components/MaterialPicture'
 import { ImagePreview } from '@/components/ui/modal'
 import { brandAttr, shopWhatsapp } from '@/lib/shopPage'
 
