@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Inbox, Languages, Lock, LogOut, Palette, Pencil, Percent, QrCode, ShieldCheck, Store, Type, type LucideIcon } from 'lucide-react'
+import { ArrowLeft, Inbox, Languages, Lock, LogOut, Palette, Pencil, Percent, QrCode, ShieldCheck, Store, Type, UserRound, type LucideIcon } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,12 +23,14 @@ import { UpiSettingsCard } from '@/components/UpiSettingsCard'
 import { MaterialGstCard } from '@/components/MaterialGstCard'
 import { DisplaySizeCard } from '@/components/DisplaySizeCard'
 import { ShopPageCard } from '@/components/ShopPageCard'
+import { YourProfileCard } from '@/components/YourProfileCard'
+import { BillPrintCard } from '@/components/BillPrint'
 import { shopPageAvailable } from '@/services/shopPage'
 import { readDisplaySize } from '@/lib/displaySize'
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
 import { orderPageUrl } from '@/services/orders'
 
-type Section = 'business' | 'shop' | 'orders' | 'upi' | 'gst' | 'language' | 'size' | 'pin' | 'password'
+type Section = 'business' | 'me' | 'shop' | 'orders' | 'upi' | 'gst' | 'language' | 'size' | 'pin' | 'password'
 
 interface Row {
   id: Section
@@ -107,6 +109,11 @@ export default function Settings() {
   const groups: Row[][] = [
     [
       { id: 'business', icon: Store, label: t('set.title'), detail: t('set.rowBusinessSub') },
+      // The owner, apart from the business (migration 043) — only where the
+      // database has it.
+      ...(isSupplier && supplier && 'owner_mobile' in supplier
+        ? [{ id: 'me' as const, icon: UserRound, label: t('me.title'), detail: t('me.rowSub') }]
+        : []),
       // The shop's page for customers (migration 042) — only where the
       // database has it, so a build reaching an older one shows no dead row.
       ...(isSupplier && shopPageAvailable(supplier)
@@ -295,8 +302,11 @@ export default function Settings() {
                 </div>
               </form>
             </Card>
+            {/* What prints on new bills (migration 043). */}
+            <BillPrintCard />
           </>
         )}
+        {section === 'me' && <YourProfileCard />}
 
         {section === 'shop' && <ShopPageCard />}
         {section === 'orders' && <OrderSettingsCard />}

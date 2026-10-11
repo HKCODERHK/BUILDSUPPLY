@@ -1,6 +1,7 @@
 import type jsPDF from 'jspdf'
 import { loadPdfKit, type PdfKit } from './pdfKit'
 import type { Invoice, InvoiceItem, Customer, Supplier } from './database.types'
+import { printedSupplier } from './billPrint'
 import { loadLogo, type LogoImage } from './pdfLogo'
 import {
   PDF_MARGIN_X,
@@ -116,14 +117,19 @@ function buildInvoicePdf(
   return doc
 }
 
+// Every way out of here prints the business as the bill was issued, with only
+// the details the bill (or the defaults recorded on it) says to show — see
+// lib/billPrint.ts.
 export async function downloadInvoicePdf(supplier: Supplier, customer: Customer | null, invoice: Invoice, items: InvoiceItem[]) {
-  const [kit, logo] = await Promise.all([loadPdfKit(), loadLogo(supplier.logo_url)])
-  buildInvoicePdf(supplier, customer, invoice, items, logo, kit).save(`${invoice.invoice_no}.pdf`)
+  const s = printedSupplier(supplier, invoice)
+  const [kit, logo] = await Promise.all([loadPdfKit(), loadLogo(s.logo_url)])
+  buildInvoicePdf(s, customer, invoice, items, logo, kit).save(`${invoice.invoice_no}.pdf`)
 }
 
 export async function printInvoicePdf(supplier: Supplier, customer: Customer | null, invoice: Invoice, items: InvoiceItem[]) {
-  const [kit, logo] = await Promise.all([loadPdfKit(), loadLogo(supplier.logo_url)])
-  const doc = buildInvoicePdf(supplier, customer, invoice, items, logo, kit)
+  const s = printedSupplier(supplier, invoice)
+  const [kit, logo] = await Promise.all([loadPdfKit(), loadLogo(s.logo_url)])
+  const doc = buildInvoicePdf(s, customer, invoice, items, logo, kit)
   const url = doc.output('bloburl')
   window.open(url, '_blank', 'noopener,noreferrer')
 }
@@ -136,7 +142,8 @@ export async function invoicePdfFile(
   invoice: Invoice,
   items: InvoiceItem[],
 ): Promise<File> {
-  const [kit, logo] = await Promise.all([loadPdfKit(), loadLogo(supplier.logo_url)])
-  const blob = buildInvoicePdf(supplier, customer, invoice, items, logo, kit).output('blob')
+  const s = printedSupplier(supplier, invoice)
+  const [kit, logo] = await Promise.all([loadPdfKit(), loadLogo(s.logo_url)])
+  const blob = buildInvoicePdf(s, customer, invoice, items, logo, kit).output('blob')
   return new File([blob], `${invoice.invoice_no}.pdf`, { type: 'application/pdf' })
 }

@@ -72,6 +72,17 @@ export function ShopHero({ shop, action }: { shop: ShopProfile; action?: ReactNo
       </div>
       {preview && <ImagePreview src={preview} alt={shop.business_name} onClose={() => setPreview(null)} />}
       <div className="flex items-start gap-3 px-4 pb-4 pt-9">
+        {/* The owner's photo beside the shop's name (migration 043). */}
+        {shop.owner_photo_url && (
+          <button
+            type="button"
+            aria-label={t('shop.ownerPhoto')}
+            onClick={() => setPreview(shop.owner_photo_url ?? null)}
+            className="mt-0.5 h-11 w-11 shrink-0 overflow-hidden rounded-full border-2 border-card bg-surface shadow"
+          >
+            <img src={shop.owner_photo_url} alt="" className="h-full w-full object-cover" />
+          </button>
+        )}
         <div className="min-w-0 flex-1">
           <div className="break-words text-lg font-bold leading-tight text-ink">{shop.business_name}</div>
           {shop.address && (

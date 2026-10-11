@@ -53,6 +53,11 @@ export interface Supplier {
   hours?: Record<string, unknown> | null
   delivery_info?: string | null
   social?: Record<string, string> | null
+  // The owner's own profile, and the shop's bill defaults (migration 043).
+  // owner_mobile is private: never sent to customers; the admin can see it.
+  owner_mobile?: string | null
+  owner_photo_url?: string | null
+  bill_print?: import('./billPrint').PrintOptions | null
   created_at: string
 }
 
@@ -303,6 +308,10 @@ export interface Invoice {
   /** When the supplier marked it delivered (migration 034). */
   delivered_at: string | null
   received_at: string | null
+  /** The business details this bill was issued with, and the print defaults then (migration 043). */
+  issuer?: import('./billPrint').Issuer | null
+  /** This bill's own choice of what prints (migration 043); null uses the recorded defaults. */
+  print_options?: import('./billPrint').PrintOptions | null
   created_at: string
 }
 

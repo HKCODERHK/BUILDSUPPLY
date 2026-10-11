@@ -15,6 +15,17 @@ export async function listSuppliersOverview(): Promise<SupplierOverview[]> {
   return (data ?? []) as SupplierOverview[]
 }
 
+/**
+ * The owner's personal mobile (migration 043), for the admin only — customers
+ * never see it. Read straight from the supplier row, which the admin may read;
+ * null on a database without 043.
+ */
+export async function getOwnerMobile(id: string): Promise<string | null | undefined> {
+  const { data, error } = await supabase.from('suppliers').select('owner_mobile').eq('id', id).maybeSingle()
+  if (error) return undefined
+  return (data as { owner_mobile: string | null } | null)?.owner_mobile ?? null
+}
+
 export async function getDashboardStats(): Promise<AdminDashboardStats | null> {
   const { data, error } = await supabase.rpc('admin_dashboard_stats')
   if (error) throw error
