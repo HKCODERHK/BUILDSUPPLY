@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `041`, run in order. **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; 039 and 040 were already on live; **038 was pasted by the user on 2026-10-12** (the ten-minute duplicate rule is gone from `place_order`, checked read-only). **042 (the shop page, Phase 31) is the latest and is applied** (2026-10-12); 041 (customer accounts, Phase 30) was applied the same day. Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
+- **Schema migrations**: `supabase/migrations/` — `002` through `041`, run in order. **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; 039 and 040 were already on live; **038 was pasted by the user on 2026-10-12** (the ten-minute duplicate rule is gone from `place_order`, checked read-only). **043 (your profile and bill details, Phase 32) is the latest and is applied** (2026-10-12); 042 (the shop page, Phase 31) and 041 (customer accounts, Phase 30) were applied the same day. Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -1500,6 +1500,50 @@ risk) — revisit only if suppliers ask.
 - **Test gotcha:** a freshly started local stack fills four `_realtime`
   tables, so a local backup reports INCOMPLETE for them — the coverage guard
   working, not a problem with the app.
+
+
+**Phase 32 — tap to enlarge, shop-only photos, Your profile and bill
+details (2026-10-12). No migration for the first two; migration 043 for the
+rest. Both merged (29986ff, 8926a2f) and 043 applied the same day.**
+
+- **Tap to enlarge** (`ImagePreview` in `components/ui/modal.tsx`): the shop's
+  logo, cover and owner photo open full screen on the order page, khata link
+  and Shop screen — fits the screen, keeps its shape, closes on ✕, a tap
+  outside, Escape or back. Modal and ImagePreview share one hook
+  (`useDialogBehaviour`) for back / Escape, so the dialog rules above hold.
+- **Material pictures: the shop's own photos only** (`MaterialPicture`).
+  Drawn illustrations were built and **removed at the user's request**
+  ("feels AI-generated") — don't bring them back. Catalog photos are no longer
+  shown either: 043's `_shop_profile_json` sends only `materials.photo_url`,
+  and the component also ignores anything outside the `logos` bucket.
+- **Settings → Your profile** (`YourProfileCard`, `?s=me`): owner name (was
+  never guarded, now editable), **personal mobile — private from customers,
+  visible to the admin** (admin supplier page reads it directly; the
+  `admin_list_suppliers` RPC was deliberately not changed), and an owner
+  photo customers see beside the shop's name.
+- **What prints on bills** (`lib/billPrint.ts` is the one rule; `BillPrint.tsx`):
+  defaults under Business profile for **new** bills, and Print options on any
+  one bill (⋯ menu), each with a heading preview. Bills only.
+  - **History is frozen:** a trigger copies the business details **and the
+    defaults in force** into `invoices.issuer` when a bill is created; the
+    app's users cannot change it afterwards. Bills before 043 have no copy
+    and print with the shop's current details, as they always did.
+  - Choice order: the bill's `print_options` → `issuer.print` → everything.
+  - **GST lock:** a bill charging GST from a shop with a GSTIN always prints
+    name, address and GSTIN.
+  - The customer's copy from the khata link prints identically
+    (`khata_document` now returns `issuer` and `print_options`).
+  - **For the user's CA, not built:** "Tax Invoice" heading, HSN codes,
+    place of supply, signature line, buyer's GSTIN, "Bill of Supply" for
+    unregistered suppliers.
+- **Tested** on a fresh local copy: 35 of 35 new database checks, the 61
+  account checks, a structure diff (only the two re-issued functions moved),
+  real bill PDFs from the shop and from the khata link matching detail for
+  detail, old bills keeping their address after the shop changed it, three
+  languages / dark / 320px, and a backup + restore drill (71 of 71, stored
+  copies identical). Checked on live after the paste: all pieces present,
+  personal mobile absent from the public view, 0 bills given a copy
+  retroactively, counts unchanged.
 
 
 ## The admin panel
