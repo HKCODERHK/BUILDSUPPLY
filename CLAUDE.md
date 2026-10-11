@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `041`, run in order. **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; 039 and 040 were already on live; **038 was pasted by the user on 2026-10-12** (the ten-minute duplicate rule is gone from `place_order`, checked read-only). **041 (customer accounts, Phase 30) is the latest and is applied** (2026-10-12). Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
+- **Schema migrations**: `supabase/migrations/` — `002` through `041`, run in order. **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; 039 and 040 were already on live; **038 was pasted by the user on 2026-10-12** (the ten-minute duplicate rule is gone from `place_order`, checked read-only). **042 (the shop page, Phase 31) is the latest and is applied** (2026-10-12); 041 (customer accounts, Phase 30) was applied the same day. Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -1452,6 +1452,54 @@ customer side"), then a one-time connection instead of a link every visit.
   0 bills out of step, both `security_invoker` views intact.
 - **Not yet judged on a real phone:** Save → `/me` on the live site, and a
   customer adding `/me` to their home screen (the customer manifest).
+
+
+**Phase 31 — the shop's own page for customers (migration 042, 2026-10-12).
+Merged (8f9eb1e) and applied the same day, each on the user's approval.**
+Asked for as a list: business/logo, cover, brand colour, product photos,
+about, phone/WhatsApp, address, hours, delivery info, reviews, offers, social
+links. **Reviews were left out by the user's choice** (fake / curated review
+risk) — revisit only if suppliers ask.
+
+- **Settings → Shop page** (`components/ShopPageCard.tsx`, `?s=shop`, shown
+  only when the supplier row has 042's columns — `shopPageAvailable`): cover
+  (saved on choosing), **one of ten colours** (`lib/shopPage.ts`
+  `BRAND_COLORS`; the nine besides the default green are `[data-brand]` blocks
+  in `index.css`, each ≥5:1 for white button text in light and dark), about
+  (≤600), WhatsApp (falls back to the shop phone), hours per day with "same
+  every day", delivery info (≤400), social links (https only, checked again
+  on render by `safeLink`), product photos, offers (add / pause / delete).
+  The logo, phone and address were already there.
+- **Pictures** go into the public `logos` bucket, the shop's own folder,
+  shrunk on the phone to WebP (`lib/imageResize.ts`). `replaceShopImage`
+  uploads under a new name, **saves the address, and only then deletes the
+  old file**; a failed save removes the new upload instead. (The first draft
+  deleted first — caught in the browser test.) A material from the catalog
+  shows the catalog photo until the shop adds its own.
+- **Customers**: the order page (cover + logo, open/closed chip on India time,
+  offers, delivery, WhatsApp, photo tiles, about / hours / social at the
+  foot), a **Shop** tile and screen on the khata link (works with ordering
+  off), the shop's colour and WhatsApp on the status page. Pages without 042
+  look exactly as before.
+- **042**: new optional `suppliers` columns, `materials.photo_url`,
+  `supplier_offers` (RLS: own rows; no anon). Customers read only through
+  `shop_profile(link, khata)` (anon; by order link only while ordering is on,
+  by khata code for any active shop) and `my_shop_profile(connection)` (041
+  accounts) — `order_page`, `customer_khata` and `order_status` untouched.
+  Picture addresses must be `https://` (or `http://localhost` /
+  `127.0.0.1`, what a local test copy serves).
+- **Backups**: `supplier_offers` in the restore order and its own category;
+  pictures travel with the file backup. Drill on the local copy: 81 of 81,
+  the cover and product photo inside the zip.
+- **Tested** on a fresh local copy: 34 of 34 new checks (isolation, refused
+  values, nothing private exposed, suspended shop hidden), the 61 account
+  checks, every screen in three languages, light and dark, 320 / 360px.
+  Checked on live read-only after the paste: 7 columns, RLS on with one
+  policy, anon refused on the table (401), the public view returns only
+  published fields, counts unchanged.
+- **Test gotcha:** a freshly started local stack fills four `_realtime`
+  tables, so a local backup reports INCOMPLETE for them — the coverage guard
+  working, not a problem with the app.
 
 
 ## The admin panel
