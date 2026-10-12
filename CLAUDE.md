@@ -1631,6 +1631,33 @@ hand for now.
   Note: in that image `auth.uid()` reads `request.jwt.claim.sub`, so set both
   it and `request.jwt.claims` when simulating a user.
 
+**Phase 35 — phone-style sign-in, and the customer's first-time screen
+(2026-10-12, branch `phone-login`). No database change.** From the user's
+recording of a delivery app's login.
+- **`components/AuthShell.tsx`**: a rounded dark-green banner with the brand
+  and the app's loaded tipper, then the welcome and the form; `IconField`
+  (icon inside, a warning under it) and `GradientButton` (spinner while
+  busy). Used by both screens below, so they read as one app.
+- **Shop owners (`/login`)**: same email + password sign-in (`SignInForm`,
+  shared with the website's hero, which got the same look), "Welcome back",
+  a live "That email doesn't look right", Forgot password, and "New to
+  BuildSupply? Start your 10-day free trial" (WhatsApp). No sign-up — the
+  admin makes accounts.
+- **Customers on a shop's QR / order link** (`components/CustomerWelcome.tsx`,
+  `lib/customerProfile.ts`): the first time, Name, Mobile, Site / area and
+  City, once per phone; then the shop's page greets them by name with "Not
+  you? Change", and the order form is filled in (site + city). **Kept on the
+  phone only** (localStorage, or sessionStorage if "Keep my details" is
+  unticked); the shop sees it only in an order the customer sends. **It
+  unlocks nothing** — anyone can type any number — bills and balance still
+  open only from the customer's own khata link (Phase 30's rule), and the
+  screen says so. Skipped when the phone already knows them (a khata link
+  opened here, or a saved account); the page waits for the account check so
+  the screen never flashes up for a known customer. The khata link itself has
+  no such screen.
+- Checked at 360px in three languages; the only element past the edge is the
+  banner's clipped glow (page width stays 360).
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.

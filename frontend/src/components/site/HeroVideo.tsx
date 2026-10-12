@@ -24,7 +24,7 @@ function wantsStill() {
   return !!(reduce || saveData)
 }
 
-export const MONTAGE = { small: '/video/montage-640.mp4', large: '/video/montage-960.mp4', poster: '/video/montage-poster.jpg' }
+const MONTAGE = { small: '/video/montage-640.mp4', large: '/video/montage-960.mp4', poster: '/video/montage-poster.jpg' }
 
 export function HeroVideo() {
   const [still] = useState(wantsStill)
