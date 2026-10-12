@@ -70,7 +70,7 @@ function Hero() {
   const { t } = useLanguage()
   return (
     <section className="bg-shell text-white">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 pb-14 pt-10 sm:px-6 lg:grid-cols-2 lg:items-center lg:gap-14 lg:pb-20 lg:pt-16">
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 pb-14 pt-10 sm:px-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.3fr)] lg:items-center lg:gap-12 lg:pb-20 lg:pt-16">
         <div>
           <p className="text-sm font-semibold text-accent-soft">{t('site.hero.eyebrow')}</p>
           <h1 className="mt-3 text-[2rem] font-bold leading-tight sm:text-5xl">{t('site.hero.title')}</h1>
@@ -93,7 +93,7 @@ function Hero() {
             <p className="mt-2 text-center text-xs text-muted">{t('site.hero.trialNote')}</p>
           </div>
         </div>
-        <div className="mx-auto w-full max-w-lg lg:max-w-none">
+        <div className="mx-auto w-full max-w-xl lg:max-w-none lg:self-center">
           <HeroVideo />
         </div>
       </div>

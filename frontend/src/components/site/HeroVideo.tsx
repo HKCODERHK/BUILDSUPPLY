@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 
 /**
  * The website's moving picture (2026-10-12): real footage of the trade a
- * BuildSupply customer is in — cement bags loaded onto a truck, bricks
- * loaded at a yard, steel stirrups bent on a machine, bricks carried down an
- * Indian street — cut into one 20-second montage with cross-fades, looping.
+ * BuildSupply customer is in — a warehouse stacked with material bags, cement
+ * bags lifted onto a truck by forklift, heavy bags loaded onto a red truck,
+ * steel stirrups bent on a machine, steel bars cut in a shower of sparks —
+ * cut into one 25-second montage with cross-fades, looping. The user picked
+ * the forklift and steel shots and asked for more like them.
  *
- * The clips are free Pexels footage (3365496, 32165834, 16106454, 32534659),
+ * The clips are free Pexels footage (9856370, 3365496, 32268491, 16106454, 9084346),
  * downloaded with the user's approval and cut together here, so the site
  * ships two small files instead of 26 MB of originals. No caption ties any
  * person in them to BuildSupply: the Pexels licence forbids implying an
@@ -51,7 +53,7 @@ export function HeroVideo() {
   }, [still])
 
   return (
-    <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-xl" aria-hidden>
+    <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-2xl lg:aspect-[4/3]" aria-hidden>
       <video
         ref={ref}
         className="absolute inset-0 h-full w-full object-cover"

@@ -148,9 +148,9 @@ const router = createBrowserRouter([
 // in App's own body.
 function SplashGate() {
   const { splash } = useAuth()
-  // A customer opening an order link is not opening BuildSupply. Only the
-  // opening splash is skipped there: signing in from the website's front
-  // page still gets the sign-in splash (customer pages never sign in here).
+  // A customer opening an order link is not opening BuildSupply, and the
+  // public website is read, not launched: no opening splash on either.
+  // (Signing in raises no splash at all since 2026-10-12.)
   if (splash === 'launch' && isPublicOrderPath(window.location.pathname)) return null
   return splash ? <Splash phase={splash} /> : null
 }
