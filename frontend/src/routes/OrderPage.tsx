@@ -44,6 +44,7 @@ import { getShopProfile, type ShopProfile } from '@/services/shopPage'
 import { ShopAbout, ShopDelivery, ShopHero, ShopOffers } from '@/components/ShopProfileView'
 import { MaterialPicture } from '@/components/MaterialPicture'
 import { CustomerWelcome } from '@/components/CustomerWelcome'
+import { BuildSupplyFooter } from '@/components/BuildSupplyFooter'
 import { clearProfile, readProfile, siteWithCity, type CustomerProfile } from '@/lib/customerProfile'
 import { ImagePreview } from '@/components/ui/modal'
 import { brandAttr, shopWhatsapp } from '@/lib/shopPage'
@@ -352,10 +353,11 @@ export default function OrderPage() {
   if (loadFailed || !page || !page.found || !page.open) {
     const message = loadFailed ? t('error.generic') : page && page.found ? t('order.unavailable') : t('order.notFound')
     return (
-      <div className="min-h-screen bg-surface">
+      <div className="flex min-h-screen flex-col bg-surface">
         {header}
-        <main className="mx-auto max-w-lg p-4">
+        <main className="mx-auto flex w-full max-w-lg flex-1 flex-col p-4">
           <Card className="text-center text-sm text-ink">{message}</Card>
+          <BuildSupplyFooter />
         </main>
       </div>
     )
@@ -390,9 +392,9 @@ export default function OrderPage() {
 
   if (sentToken !== undefined) {
     return (
-      <div className="min-h-screen bg-surface">
+      <div className="flex min-h-screen flex-col bg-surface">
         {header}
-        <main className="mx-auto flex max-w-lg flex-col gap-4 p-4">
+        <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4">
           <SoftCard className="flex flex-col gap-4 p-5">
             <SuccessHeader title={t('order.sentTitle')} />
             <p className="text-sm text-ink">{t('order.sentBody', { business: page.business_name })}</p>
@@ -414,6 +416,7 @@ export default function OrderPage() {
               {t('order.another')}
             </Button>
           </SoftCard>
+          <BuildSupplyFooter />
         </main>
       </div>
     )
@@ -471,9 +474,9 @@ export default function OrderPage() {
   const chosenCount = chosen.length
 
   return (
-    <div className="min-h-screen bg-surface" data-brand={brandAttr(shop?.brand_color)}>
+    <div className="flex min-h-screen flex-col bg-surface" data-brand={brandAttr(shop?.brand_color)}>
       {header}
-      <main className={cn('mx-auto flex max-w-lg flex-col gap-4 p-4', tabs ? 'pb-44' : 'pb-28')}>
+      <main className={cn('mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4', tabs ? 'pb-44' : 'pb-28')}>
         {knownName && (
           <div className="flex items-center gap-3 pt-1">
             <CustomerAvatar id={khata?.code ?? link} name={knownName} size={44} />
@@ -765,6 +768,7 @@ export default function OrderPage() {
         </div>
 
         {shop && <ShopAbout shop={shop} showContact={false} />}
+        <BuildSupplyFooter />
       </main>
 
       {/* The cart, floating above the tab bar once something is in it: how

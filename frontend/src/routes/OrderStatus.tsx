@@ -24,6 +24,7 @@ import { receivedState } from '@/lib/received'
 import { QrCode } from '@/components/QrCode'
 import { upiPayUrl } from '@/lib/upi'
 import { cn } from '@/lib/utils'
+import { BuildSupplyFooter } from '@/components/BuildSupplyFooter'
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -200,7 +201,7 @@ export default function OrderStatus() {
   const progress = bill && steps ? [...steps].reverse().find((st) => st.done) ?? null : null
 
   return (
-    <div className="min-h-screen bg-surface" data-brand={brandAttr(shop?.brand_color)}>
+    <div className="flex min-h-screen flex-col bg-surface" data-brand={brandAttr(shop?.brand_color)}>
       <header className="sticky top-0 z-30 bg-shell px-4 pb-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white">
         <div className="mx-auto flex h-11 max-w-lg items-center gap-3">
           <svg
@@ -224,7 +225,7 @@ export default function OrderStatus() {
           <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
         </div>
       </header>
-      <main className={cn('mx-auto flex max-w-lg flex-col gap-4 p-4', tabs && 'pb-28')}>
+      <main className={cn('mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4', tabs && 'pb-28')}>
         {!view && !failed ? (
           <TruckLoader />
         ) : !found ? (
@@ -419,6 +420,7 @@ export default function OrderStatus() {
             )}
           </>
         )}
+        <BuildSupplyFooter />
       </main>
 
       {tabs && <CustomerTabBar tabs={tabs} />}

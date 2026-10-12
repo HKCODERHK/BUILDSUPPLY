@@ -1668,6 +1668,23 @@ recording of a delivery app's login.
 - Checked at 360px in three languages; the only element past the edge is the
   banner's clipped glow (page width stays 360).
 
+**Customer-side footer badge (2026-10-12, branch `customer-footer`). No
+database change.** `components/BuildSupplyFooter.tsx`: a small arch (curved
+top, flat base) with the BuildSupply mark in muted colours, centred as the
+**last thing inside each customer page's `<main>`** — in the flow, never
+fixed; `mt-auto` in a full-height column puts it at the bottom of a short
+page, and the page's own bottom padding (the room kept for a floating tab or
+cart bar) stays below it so the bar never covers it. On: the order page (its
+main, not-found and sent screens, and the first-time welcome via
+`AuthShell`'s `brandFooter`, which the shop owner's `/login` does not pass),
+the order status page, the khata link, and `/me`'s own screen — **not**
+around the khata page `/me` embeds, so there is never a second one. The
+logo is `components/BrandMark.tsx`, moved out of the website's SiteChrome
+so there is one drawing. Smaller and paler than anything of the shop's: the
+shop stays the identity. Checked at 360px: exactly one badge on every
+customer page, none on `/login` or `/`, fully visible when scrolled to the
+end (above the tab bar on the khata link), no sideways overflow.
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.
