@@ -1551,6 +1551,33 @@ rest. Both merged (29986ff, 8926a2f) and 043 applied the same day.**
   retroactively, counts unchanged.
 
 
+**Phase 33 — the public website (2026-10-12, branch `website`). No database
+change.** Asked for from a recording of claude.ai's sign-in page.
+- **`/` is now a front page** (`routes/Home.tsx`), not a redirect: top bar
+  with section links, the headline with the **same sign-in form** as `/login`
+  (`components/SignInForm.tsx`, shared) and the splash story on a loop, then
+  Features, How it works, data safety, Plans, FAQ, Contact and a full footer
+  (`components/site/SiteChrome.tsx`). A signed-in account opening `/` goes to
+  `/dashboard`, as before. Public: no opening splash (`isPublicOrderPath`),
+  but signing in from it still gets the sign-in splash.
+- **Plans are only a price list** (`lib/site.ts`, the user's figures): Basic
+  ₹499/month without online orders, Pro ₹699/month, Yearly ₹7,999; a
+  **10-day free trial**; **no refund once paid**. `suppliers.plan` still
+  gates nothing — making Basic actually leave out online orders is a later,
+  separate step the user chose. "Start free trial" is a `wa.me` message to
+  the admin number.
+- **`/privacy` and `/terms`** (`routes/Legal.tsx`), English only, written
+  from facts in this file (data in Supabase Singapore, nightly OneDrive
+  backup, the admin boundary). The user's decisions: business "BuildSupply,
+  Betul, Madhya Pradesh"; data kept 30 days after leaving, then deleted;
+  courts at Betul. **To be read by the user's CA/lawyer.** The privacy page
+  promises backups are never used to restore a deleted account into the app —
+  the backup system keeps every backup forever, so that promise is what
+  stands in for a backup retention rule.
+- `public/robots.txt` keeps `/khata/`, `/order-status/` and `/me` out of
+  search engines; `index.html` has a description and link-preview tags.
+- Three languages on the front page (`site.*` keys), zero overflow at 360px.
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.
