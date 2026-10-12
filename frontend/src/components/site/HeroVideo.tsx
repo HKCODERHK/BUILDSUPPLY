@@ -15,7 +15,7 @@ import { useEffect, useRef, useState } from 'react'
  * identifiable person endorses a product. The headline beside it makes the
  * claim; the footage shows the trade.
  *
- * Phones get the 640px file when it exists, computers the 960px one; reduced
+ * Computers get the tall cut, phones and tablets the wide one; reduced
  * motion or the browser's data saver shows the still and downloads no video.
  * The service worker leaves /video/ alone.
  */
@@ -26,11 +26,20 @@ function wantsStill() {
   return !!(reduce || saveData)
 }
 
-const MONTAGE = { small: '/video/montage-640.mp4', large: '/video/montage-960.mp4', poster: '/video/montage-poster.jpg' }
+// Two cuts of the same montage, made from the full-HD originals: a tall
+// 864×1080 one for the computer layout's portrait box, and a wide 960×540 one
+// for phones and tablets, where the box is 16:9. Each fills its box with real
+// pixels — the first version cropped a portrait out of 960px footage and
+// looked soft.
+const MONTAGE = {
+  tall: { src: '/video/montage-tall.mp4', poster: '/video/poster-tall.jpg' },
+  wide: { src: '/video/montage-wide.mp4', poster: '/video/poster-wide.jpg' },
+}
 
 export function HeroVideo() {
   const [still] = useState(wantsStill)
-  const [small] = useState(() => !!window.matchMedia?.('(max-width: 767px)').matches)
+  // Below the lg breakpoint the box is wide; from lg up it is tall.
+  const [cut] = useState(() => (window.matchMedia?.('(min-width: 1024px)').matches ? MONTAGE.tall : MONTAGE.wide))
   const ref = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
@@ -57,8 +66,8 @@ export function HeroVideo() {
       <video
         ref={ref}
         className="absolute inset-0 h-full w-full object-cover"
-        poster={MONTAGE.poster}
-        src={still ? undefined : small ? MONTAGE.small : MONTAGE.large}
+        poster={cut.poster}
+        src={still ? undefined : cut.src}
         muted
         autoPlay={!still}
         loop
