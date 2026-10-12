@@ -1577,14 +1577,17 @@ change.** Asked for from a recording of claude.ai's sign-in page.
 - `public/robots.txt` keeps `/khata/`, `/order-status/` and `/me` out of
   search engines; `index.html` has a description and link-preview tags.
 - Three languages on the front page (`site.*` keys), zero overflow at 360px.
-- **The moving picture** (`components/site/HeroVideo.tsx`): a 20-second
-  looping montage of the trade itself — cement bags onto a truck, bricks
-  loaded at a yard, steel stirrups bent, bricks carried down an Indian street —
-  cut from four free Pexels clips (3365496, 32165834, 16106454, 32534659),
-  downloaded with the user's approval. The originals (26 MB) stay out of the
+- **The moving picture** (`components/site/HeroVideo.tsx`): a 25-second
+  looping montage of the trade itself — a warehouse of material bags, cement
+  bags lifted onto a truck by forklift, heavy bags loaded onto a red truck,
+  steel stirrups bent, steel bars cut with sparks — from five free Pexels clips
+  (9856370, 3365496, 32268491, 16106454, 9084346), downloaded with the user's
+  approval. The user kept the forklift and steel-bending shots and asked for
+  more like them (the two brick shots went). The originals stay out of the
   repo; the montage was cut and cross-faded in the browser (canvas +
-  MediaRecorder, H.264 baseline) into `public/video/montage-960.mp4` (2.8 MB,
-  computers) and `montage-640.mp4` (0.7 MB, phones), plus a still. Reduced
+  MediaRecorder, H.264 baseline) into `public/video/montage-960.mp4` (3.5 MB,
+  computers) and `montage-640.mp4` (0.9 MB, phones), plus a still. Keep each
+  cut inside its clip: a clip that runs out mid-turn freezes on its last frame. Reduced
   motion or data saver shows the still. **No caption ties any person in it to
   BuildSupply** — the Pexels licence forbids implying endorsement. `sw.js`
   skips `/video/`. Before this: a drawn scene, then two office clips, both
