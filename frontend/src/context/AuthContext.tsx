@@ -59,10 +59,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // deliberate screen rather than a flicker.
   const splashUntilRef = useRef(Date.now() + MIN_SPLASH_MS)
 
-  function beginSplash(phase: Exclude<SplashPhase, null>) {
-    splashUntilRef.current = Date.now() + MIN_SPLASH_MS
-    setSplash(phase)
-  }
   function endSplash() {
     const remaining = Math.max(0, splashUntilRef.current - Date.now())
     window.setTimeout(() => setSplash(null), remaining)
@@ -124,9 +120,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const isNewSignIn = event === 'SIGNED_IN' && !hadSessionRef.current
       hadSessionRef.current = !!newSession
 
-      // Only a real sign-in raises the splash. A token refresh lands here too
-      // and must pass through without covering whatever is on screen.
-      if (isNewSignIn) beginSplash('signin')
+      // A sign-in goes straight to the dashboard (2026-10-12, the user's
+      // request): the six-second "Preparing your dashboard" splash that used
+      // to cover it is gone. The opening splash on a cold start is unchanged.
 
       setSession(newSession)
       if (newSession) {
@@ -134,7 +130,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (isNewSignIn && profile) {
           void logActivity(profile.role, 'login')
         }
-        if (isNewSignIn) endSplash()
       } else {
         setSupplier(null)
       }
