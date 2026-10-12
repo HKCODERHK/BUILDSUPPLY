@@ -1585,9 +1585,16 @@ change.** Asked for from a recording of claude.ai's sign-in page.
   approval. The user kept the forklift and steel-bending shots and asked for
   more like them (the two brick shots went). The originals stay out of the
   repo; the montage was cut and cross-faded in the browser (canvas +
-  MediaRecorder, H.264 baseline) into `public/video/montage-960.mp4` (3.5 MB,
-  computers) and `montage-640.mp4` (0.9 MB, phones), plus a still. Keep each
-  cut inside its clip: a clip that runs out mid-turn freezes on its last frame. Reduced
+  MediaRecorder, H.264 high profile) **from the full-HD 1920×1080 originals**
+  into `public/video/montage-tall.mp4` (864×1080, 8.9 MB, the computer
+  layout's 4:5 box) and `montage-wide.mp4` (960×540, 4.0 MB, phones and
+  tablets), each with its own still. The first cut was made from 960px copies
+  at a low bitrate and then cropped to portrait, and the user rightly called
+  it poor quality — always cut from HD and match the box's shape. The user
+  asked for Getty Images footage; it is paid, licensed and watermarked, so it
+  was not used. Keep each cut inside its clip: a clip that runs out mid-turn
+  freezes on its last frame. Record with a Worker-driven timer — a hidden
+  page's own timers slow to once a second. Reduced
   motion or data saver shows the still. **No caption ties any person in it to
   BuildSupply** — the Pexels licence forbids implying endorsement. `sw.js`
   skips `/video/`. Before this: a drawn scene, then two office clips, both

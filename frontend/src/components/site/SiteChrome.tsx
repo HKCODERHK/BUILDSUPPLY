@@ -51,18 +51,18 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 bg-shell/95 pt-[var(--safe-top)] text-white backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6">
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-10">
         <a href="/" className="shrink-0" aria-label="BuildSupply">
           <BrandMark />
         </a>
-        <nav className="ml-6 hidden items-center gap-1 lg:flex" aria-label="Main">
+        <nav className="ml-auto hidden items-center gap-1 lg:flex" aria-label="Main">
           {SECTIONS.map((s) => (
             <a key={s.id} href={`/#${s.id}`} className="rounded-lg px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white">
               {t(s.key)}
             </a>
           ))}
         </nav>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2 lg:ml-4">
           <LanguageToggle compact className={onShell} />
           <ThemeToggle className={`max-sm:hidden ${onShell}`} />
           <a
@@ -90,7 +90,7 @@ export function SiteHeader() {
 
       {open && (
         <div className="border-t border-white/10 lg:hidden">
-          <nav className="mx-auto flex max-w-6xl flex-col px-4 py-2 sm:px-6" aria-label="Main">
+          <nav className="mx-auto flex max-w-7xl flex-col px-4 py-2 sm:px-6 lg:px-10" aria-label="Main">
             {SECTIONS.map((s) => (
               <a
                 key={s.id}
