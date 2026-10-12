@@ -113,14 +113,18 @@ export function SplashStory() {
         <Storey />
       </Part>
 
-      {/* 2 · Materials, 0.9–1.7s: the supplier's stock — bricks under cement bags. */}
-      <Part x={4} y={110} w={52} viewBox="0 0 52 40" motion="story-pop" delay={0.9}>
-        <Brick x={2} y={32} />
-        <Brick x={16} y={32} />
-        <Brick x={30} y={32} />
-        <Bag x={1} y={17} w={25} h={15} fill={INK.body} />
-        <Bag x={26} y={17} w={25} h={15} fill={INK.body} />
-        <Bag x={13.5} y={2} w={25} h={15} fill={INK.cab} />
+      {/* 2 · Materials, 0.9–1.7s: the supplier's stock — bricks under cement
+          bags. Four bricks, so the row is as wide as the bags on it (three
+          stopped short of the right-hand bag); the stack sits at the band's
+          left edge so it still ends where the parked truck begins. */}
+      <Part x={0} y={110} w={58} viewBox="0 0 58 40" motion="story-pop" delay={0.9}>
+        <Brick x={1} y={32} />
+        <Brick x={15} y={32} />
+        <Brick x={29} y={32} />
+        <Brick x={43} y={32} />
+        <Bag x={4} y={17} w={25} h={15} fill={INK.body} />
+        <Bag x={29} y={17} w={25} h={15} fill={INK.body} />
+        <Bag x={16.5} y={2} w={25} h={15} fill={INK.cab} />
       </Part>
 
       {/* 3 · Delivery, 1.7–3.2s: the same tipper as everywhere else, from the

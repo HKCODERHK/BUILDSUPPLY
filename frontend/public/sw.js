@@ -65,6 +65,10 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return
   const url = new URL(request.url)
   if (url.origin !== self.location.origin) return
+  // The website's video clips go straight to the network: they arrive as
+  // partial (206) range responses the Cache API refuses, and a few MB of
+  // footage has no business in an app's offline cache.
+  if (url.pathname.startsWith('/video/')) return
 
   // Navigations: network first so a deploy is picked up immediately, falling
   // back to the cached shell when the connection drops.

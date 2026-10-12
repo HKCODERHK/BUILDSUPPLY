@@ -2,6 +2,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import type {
   AdminDashboardStats,
+  BillingCycle,
   Plan,
   Supplier,
   SupplierAccountStatus,
@@ -12,7 +13,13 @@ import { logActivity } from './activityLog'
 export async function listSuppliersOverview(): Promise<SupplierOverview[]> {
   const { data, error } = await supabase.rpc('admin_list_suppliers')
   if (error) throw error
-  return (data ?? []) as SupplierOverview[]
+  const rows = (data ?? []) as SupplierOverview[]
+  // The RPC predates Pro Yearly and has fixed columns, so the billing cycle
+  // is read straight from the supplier rows, which the admin may read. A
+  // failed read just leaves everyone monthly.
+  const { data: cycles } = await supabase.from('suppliers').select('id, billing_cycle')
+  const cycleOf = new Map((cycles ?? []).map((c: { id: string; billing_cycle: BillingCycle }) => [c.id, c.billing_cycle]))
+  return rows.map((r) => ({ ...r, billing_cycle: cycleOf.get(r.id) ?? 'monthly' }))
 }
 
 /**
@@ -124,7 +131,7 @@ export async function updateSupplierRecord(id: string, input: Partial<Supplier>)
 // their own supplier_status_* event) don't also produce a generic one.
 export async function updateSupplierSubscription(
   id: string,
-  input: Partial<Pick<Supplier, 'plan' | 'subscription_start' | 'subscription_expiry' | 'subscription_status'>>,
+  input: Partial<Pick<Supplier, 'plan' | 'billing_cycle' | 'subscription_start' | 'subscription_expiry' | 'subscription_status'>>,
 ): Promise<Supplier> {
   const data = await updateSupplierRecord(id, input)
   await logActivity('admin', 'subscription_changed', { supplierId: id, details: input })

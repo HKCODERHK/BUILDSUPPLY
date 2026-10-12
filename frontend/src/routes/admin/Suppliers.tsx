@@ -16,6 +16,7 @@ import {
 import type { SupplierAccountStatus, SupplierOverview } from '@/lib/database.types'
 import { AddSupplierModal } from './AddSupplierModal'
 import { TruckLoader } from '@/components/TruckLoader'
+import { planLabel } from '@/lib/plans'
 
 type FilterId = SupplierAccountStatus | 'all' | 'expired' | 'expiring' | 'no-expiry'
 
@@ -212,7 +213,7 @@ export default function AdminSuppliers() {
                     <td className="py-2.5 pr-3">
                       <Badge tone={statusTone(s.status)}>{s.status}</Badge>
                     </td>
-                    <td className="py-2.5 pr-3 capitalize">{s.plan}</td>
+                    <td className="py-2.5 pr-3">{planLabel(s)}</td>
                     <td className="py-2.5 pr-3">
                       <Badge tone={SUBSCRIPTION_TONE[subscriptionState(s.subscription_expiry)]}>
                         {SUBSCRIPTION_LABEL[subscriptionState(s.subscription_expiry)]}

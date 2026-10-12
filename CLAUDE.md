@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `041`, run in order. **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; 039 and 040 were already on live; **038 was pasted by the user on 2026-10-12** (the ten-minute duplicate rule is gone from `place_order`, checked read-only). **043 (your profile and bill details, Phase 32) is the latest and is applied** (2026-10-12); 042 (the shop page, Phase 31) and 041 (customer accounts, Phase 30) were applied the same day. Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
+- **Schema migrations**: `supabase/migrations/` — `002` through `041`, run in order. **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; 039 and 040 were already on live; **038 was pasted by the user on 2026-10-12** (the ten-minute duplicate rule is gone from `place_order`, checked read-only). **044 (three plans, Phase 34) is the latest — written, not yet applied**; **043 (your profile and bill details, Phase 32) is applied** (2026-10-12); 042 (the shop page, Phase 31) and 041 (customer accounts, Phase 30) were applied the same day. Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -1555,7 +1555,7 @@ rest. Both merged (29986ff, 8926a2f) and 043 applied the same day.**
 change.** Asked for from a recording of claude.ai's sign-in page.
 - **`/` is now a front page** (`routes/Home.tsx`), not a redirect: top bar
   with section links, the headline with the **same sign-in form** as `/login`
-  (`components/SignInForm.tsx`, shared) and the splash story on a loop, then
+  (`components/SignInForm.tsx`, shared) and a moving picture beside it, then
   Features, How it works, data safety, Plans, FAQ, Contact and a full footer
   (`components/site/SiteChrome.tsx`). A signed-in account opening `/` goes to
   `/dashboard`, as before. Public: no opening splash (`isPublicOrderPath`),
@@ -1577,6 +1577,59 @@ change.** Asked for from a recording of claude.ai's sign-in page.
 - `public/robots.txt` keeps `/khata/`, `/order-status/` and `/me` out of
   search engines; `index.html` has a description and link-preview tags.
 - Three languages on the front page (`site.*` keys), zero overflow at 360px.
+- **The moving picture** (`components/site/HeroVideo.tsx`): a 20-second
+  looping montage of the trade itself — cement bags onto a truck, bricks
+  loaded at a yard, steel stirrups bent, bricks carried down an Indian street —
+  cut from four free Pexels clips (3365496, 32165834, 16106454, 32534659),
+  downloaded with the user's approval. The originals (26 MB) stay out of the
+  repo; the montage was cut and cross-faded in the browser (canvas +
+  MediaRecorder, H.264 baseline) into `public/video/montage-960.mp4` (2.8 MB,
+  computers) and `montage-640.mp4` (0.7 MB, phones), plus a still. Reduced
+  motion or data saver shows the still. **No caption ties any person in it to
+  BuildSupply** — the Pexels licence forbids implying endorsement. `sw.js`
+  skips `/video/`. Before this: a drawn scene, then two office clips, both
+  replaced the same day at the user's request ("make it look like building
+  material suppliers"). Recording gotcha: requestAnimationFrame slows to ~2
+  frames a second when the app window is covered even though the page says
+  visible — drive a canvas recording with setInterval, and check the frame
+  count. The video plays only while on screen (IntersectionObserver) and is
+  started again on `visibilitychange` — browsers pause a muted background
+  video and do not always resume it.
+- **The truck story (the splash's) loops under "Everything a material shop
+  needs"**, above the feature cards — the user's placement, 2026-10-12.
+
+**Phase 34 — three plans (migration 044, 2026-10-12, branch `plans`).** The
+website sells Basic ₹499/month, Pro ₹699/month and Pro Yearly ₹7,999/year;
+the app now matches. Payments are not built — the user onboards suppliers by
+hand for now.
+- **No value was renamed.** Basic is stored as `plan = 'starter'`, Pro as
+  `'pro'`, Pro Yearly as `'pro'` + `billing_cycle = 'yearly'` (a column that
+  already existed). The CHECKs are unchanged and old backups restore as they
+  are. `lib/plans.ts` is the one map (`planChoiceOf`, `planLabel`,
+  `planAllowsOrders`); the website's prices (`lib/site.ts`) read it too.
+- **The only thing a plan decides: Basic has no online orders.** Trigger
+  `suppliers_plan_rules`: moving a shop to Basic (or creating one on it)
+  switches `ordering_enabled` off; a Basic supplier switching it on is refused
+  with "Online orders are part of the Pro plan…". The order link then reads
+  closed, as when a supplier turns ordering off. Orders already received stay.
+- **044 moved every supplier on 'starter' to Pro, once** (the user's
+  decision: Shree Balaji and Rahul Traders had ordering on). That step runs
+  only when the trigger does not exist yet, so pasting 044 again never lifts a
+  shop the admin has since put on Basic — the local test caught exactly that.
+- **Admin:** Add supplier and the supplier page pick one of the three
+  (`planOptionText`); new accounts default to Pro monthly, dates from the
+  platform default as before. A yearly choice sets `billing_cycle` right after
+  the Edge Function creates the row (the function only knows `plan`, so it was
+  not redeployed). The list shows Basic / Pro / Pro Yearly — the cycle is read
+  straight from `suppliers`, since `admin_list_suppliers` has fixed columns.
+  The dashboard tile reads "Basic / Pro / Yearly".
+- **Supplier:** on Basic, Settings → Online orders shows "Online orders are
+  part of the Pro plan" with "Ask to move to Pro" (WhatsApp to the admin) in
+  place of the switch.
+- Tested in a throwaway Supabase Postgres container (no network, schema.sql +
+  002→043, then 044 twice): 15 of 15, including RLS-simulated supplier writes.
+  Note: in that image `auth.uid()` reads `request.jwt.claim.sub`, so set both
+  it and `request.jwt.claims` when simulating a user.
 
 ## The admin panel
 
@@ -1588,7 +1641,7 @@ change.** Asked for from a recording of claude.ai's sign-in page.
 - **Passwords are generated, not invented** (`lib/generatePassword.ts`). The alphabet drops `O/0/I/l/1` because the admin reads them aloud and the supplier types them on a phone. After creating an account the credentials show once with "Send on WhatsApp" — the password can't be read back afterwards.
 - **`admin_supplier_activity` returns `details` only for admin-authored rows** (migration 020). That's what makes renewal history readable while still never exposing a supplier's customer names or invoice amounts. The `CASE` in the RPC enforces it; don't move that decision to the caller.
 - **`suppliers.last_contacted_at`** is stamped when the admin taps Call or WhatsApp. It records that a chase was attempted, not that it succeeded.
-- **`suppliers.plan` gates nothing, on purpose (confirmed 2026-09-09).** Starter and Pro get a byte-for-byte identical app. Verified rather than assumed: zero RLS policies reference the column, zero supplier-facing code reads it, the only function touching it is `admin_list_suppliers` returning it for the admin table, and the only rule is a CHECK allowing `'starter'` or `'pro'`. It records **what the user charges a supplier**, not what the software does. Don't add feature gating to it as a tidy-up — the user was asked and chose to leave it a label until a supplier actually offers to pay more, at which point the question is which features, and the answer has to come from them. Withholding a working feature from a paying supplier also cuts against this app's whole reason for existing.
+- **Superseded by migration 044 (2026-10-12): Basic now leaves out online orders — see Phase 34. The rest of this note is history.** `suppliers.plan` gated nothing, on purpose (confirmed 2026-09-09). Starter and Pro get a byte-for-byte identical app. Verified rather than assumed: zero RLS policies reference the column, zero supplier-facing code reads it, the only function touching it is `admin_list_suppliers` returning it for the admin table, and the only rule is a CHECK allowing `'starter'` or `'pro'`. It records **what the user charges a supplier**, not what the software does. Don't add feature gating to it as a tidy-up — the user was asked and chose to leave it a label until a supplier actually offers to pay more, at which point the question is which features, and the answer has to come from them. Withholding a working feature from a paying supplier also cuts against this app's whole reason for existing.
 - Admin screens stay **English** — the admin is the platform owner, not a supplier.
 
 ### Confirmation PIN (migration 022)

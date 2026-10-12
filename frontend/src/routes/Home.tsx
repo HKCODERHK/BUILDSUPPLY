@@ -25,6 +25,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import type { TranslationKey } from '@/lib/i18n'
 import { SignInForm } from '@/components/SignInForm'
+import { HeroVideo } from '@/components/site/HeroVideo'
 import { SplashStory } from '@/components/SplashStory'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { SiteFooter, SiteHeader } from '@/components/site/SiteChrome'
@@ -37,8 +38,8 @@ import { usePageTitle } from '@/lib/usePageTitle'
  * BuildSupply's public front page (2026-10-12), asked for from a recording of
  * claude.ai's sign-in page: a top bar, a headline with the sign-in box and a
  * picture beside it, then features, plans, FAQ and a full footer. The picture
- * is the app's own splash story, played on a loop — no stock or generated
- * photographs. A signed-in supplier or admin goes straight to their dashboard.
+ * is real stock footage, stressed then smiling (HeroVideo) — read its note
+ * on the licence before adding any caption to it. A signed-in supplier or admin goes straight to their dashboard.
  */
 export default function Home() {
   const { session, loading } = useAuth()
@@ -64,17 +65,6 @@ export default function Home() {
 }
 
 // ── Hero ────────────────────────────────────────────────────────────────
-
-/** The splash story, started again every few seconds while the page is open. */
-function LoopingStory() {
-  const [round, setRound] = useState(0)
-  useEffect(() => {
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
-    const id = window.setInterval(() => setRound((r) => r + 1), 7500)
-    return () => window.clearInterval(id)
-  }, [])
-  return <SplashStory key={round} />
-}
 
 function Hero() {
   const { t } = useLanguage()
@@ -104,7 +94,7 @@ function Hero() {
           </div>
         </div>
         <div className="mx-auto w-full max-w-lg lg:max-w-none">
-          <LoopingStory />
+          <HeroVideo />
         </div>
       </div>
     </section>
@@ -159,10 +149,26 @@ const FEATURES: { key: string; icon: ReactNode; pro?: boolean }[] = [
   { key: 'reports', icon: <ChartColumn size={20} /> },
 ]
 
+/** The app's own truck story (the splash's), started again every few
+ *  seconds while the page is open — the user wanted it under the features
+ *  heading. Still under reduced motion. */
+function LoopingStory() {
+  const [round, setRound] = useState(0)
+  useEffect(() => {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+    const id = window.setInterval(() => setRound((r) => r + 1), 7500)
+    return () => window.clearInterval(id)
+  }, [])
+  return <SplashStory key={round} />
+}
+
 function Features() {
   const { t } = useLanguage()
   return (
     <Section id="features" title={t('site.feat.title')} sub={t('site.feat.sub')}>
+      <div className="mx-auto -mt-7 mb-10 max-w-2xl">
+        <LoopingStory />
+      </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {FEATURES.map((f) => (
           <div key={f.key} className="rounded-2xl border border-border bg-card p-5">
