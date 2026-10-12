@@ -40,3 +40,15 @@ export function askForTrial(plan?: PlanId) {
     `Hi, I'd like to start the ${TRIAL_DAYS}-day free trial of BuildSupply${which}. My shop's name is: `,
   )
 }
+
+/** WhatsApp to BuildSupply to buy one paid plan — "Buy now" on its card. The
+ *  supplier presses send; nothing is charged here (payment is arranged in
+ *  the chat). */
+export function askToBuy(plan: PlanId) {
+  const p = PLANS.find((x) => x.id === plan)!
+  const name = plan === 'basic' ? 'Basic' : plan === 'pro' ? 'Pro' : 'Pro Yearly'
+  openWhatsAppShare(
+    ADMIN_WHATSAPP_NUMBER,
+    `Hi, I'd like to buy the BuildSupply ${name} plan (${rupees(p.price)}/${p.period}). My shop's name is: `,
+  )
+}

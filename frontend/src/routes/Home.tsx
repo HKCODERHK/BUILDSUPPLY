@@ -29,7 +29,7 @@ import { HeroVideo } from '@/components/site/HeroVideo'
 import { SplashStory } from '@/components/SplashStory'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { SiteFooter, SiteHeader } from '@/components/site/SiteChrome'
-import { PLANS, SITE, TRIAL_DAYS, YEARLY_PER_MONTH, YEARLY_SAVING, askForTrial, rupees, type PlanId } from '@/lib/site'
+import { PLANS, SITE, TRIAL_DAYS, YEARLY_PER_MONTH, YEARLY_SAVING, askForTrial, askToBuy, rupees, type PlanId } from '@/lib/site'
 import { openWhatsAppShare } from '@/lib/whatsapp'
 import { cn } from '@/lib/utils'
 import { usePageTitle } from '@/lib/usePageTitle'
@@ -75,31 +75,31 @@ function Hero() {
           The video's bottom is level with the sign-in box's and it reaches up
           to the top of the headline (the user's request); its width follows
           from 4:5. */}
-      <div className="mx-auto grid max-w-7xl gap-x-16 px-4 pb-14 pt-8 sm:px-6 lg:grid-cols-2 lg:px-10 lg:pb-16 lg:pt-6">
+      <div className="mx-auto grid max-w-7xl gap-x-16 px-4 pb-14 pt-8 sm:px-6 lg:min-h-[calc(100dvh-4rem)] lg:grid-cols-2 lg:content-center lg:px-10 lg:py-6">
         <div className="flex flex-col items-center text-center lg:col-start-1 lg:row-start-1">
-          <p className="text-sm font-semibold text-accent-soft">{t('site.hero.eyebrow')}</p>
-          <h1 className="mt-3 max-w-xl text-[2.1rem] font-bold leading-[1.1] sm:text-5xl lg:text-[3.4rem]">{t('site.hero.title')}</h1>
-          <p className="mt-4 max-w-md text-base text-white/75 sm:text-lg">{t('site.hero.sub')}</p>
+          <p className="text-sm font-semibold text-accent-soft lg:mb-3 lg:[@media(max-height:760px)]:hidden">{t('site.hero.eyebrow')}</p>
+          <h1 className="mt-3 max-w-xl text-[2.1rem] font-bold leading-[1.1] sm:text-5xl lg:mt-0 lg:[@media(max-height:700px)]:text-4xl">{t('site.hero.title')}</h1>
+          <p className="mt-4 max-w-lg text-base text-white/75 sm:text-lg lg:mt-3">{t('site.hero.sub')}</p>
         </div>
 
         <div
           id="signin"
-          className="mx-auto mt-8 w-full max-w-md scroll-mt-24 rounded-3xl border border-white/10 bg-card p-6 text-left text-ink shadow-xl sm:p-7 lg:col-start-1 lg:row-start-2"
+          className="mx-auto mt-8 w-full max-w-md scroll-mt-24 rounded-3xl border border-white/10 bg-card p-6 text-left text-ink shadow-xl lg:col-start-1 lg:row-start-2 lg:mt-6"
         >
           <h2 className="mb-4 text-center text-base font-semibold">{t('site.hero.signInTitle')}</h2>
           <SignInForm idPrefix="home-" />
-          <div className="my-5 flex items-center gap-3 text-xs text-muted-2">
+          <div className="my-5 flex items-center gap-3 text-xs text-muted-2 lg:[@media(max-height:700px)]:hidden">
             <span className="h-px flex-1 bg-border" />
             {t('site.hero.new')}
             <span className="h-px flex-1 bg-border" />
           </div>
           <button
             onClick={() => askForTrial()}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-border py-3 text-sm font-semibold text-accent-text hover:bg-accent-bg"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-border py-3 text-sm font-semibold text-accent-text hover:bg-accent-bg lg:[@media(max-height:700px)]:hidden"
           >
             <WhatsAppIcon size={16} /> {t('site.hero.trialBtn', { days: TRIAL_DAYS })}
           </button>
-          <p className="mt-2 text-center text-xs text-muted">{t('site.hero.trialNote')}</p>
+          <p className="mt-2 text-center text-xs text-muted lg:[@media(max-height:760px)]:hidden">{t('site.hero.trialNote')}</p>
         </div>
 
         <div className="mx-auto mt-10 w-full max-w-xl lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mt-0 lg:flex lg:max-w-none lg:justify-center lg:self-stretch">
@@ -271,7 +271,8 @@ function Plans() {
   const { t } = useLanguage()
   return (
     <Section id="plans" title={t('site.plans.title')} sub={t('site.plans.sub', { days: TRIAL_DAYS })} className="bg-card">
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <FreeTrialCard />
         {PLANS.map((p) => {
           const text = PLAN_TEXT[p.id]
           const popular = p.id === 'pro'
@@ -288,7 +289,10 @@ function Plans() {
                   {t('site.plans.popular')}
                 </span>
               )}
-              <h3 className="text-lg font-bold">{t(text.name)}</h3>
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-lg font-bold">{t(text.name)}</h3>
+                <span className="rounded-full border border-border px-2 py-0.5 text-[11px] font-semibold text-muted">{t('site.plans.paidTag')}</span>
+              </div>
               <p className="mt-1 text-sm text-muted">{t(text.for)}</p>
               <div className="mt-5 flex items-baseline gap-1">
                 <span className="text-4xl font-bold">{rupees(p.price)}</span>
@@ -305,13 +309,13 @@ function Plans() {
                 </p>
               )}
               <button
-                onClick={() => askForTrial(p.id)}
+                onClick={() => askToBuy(p.id)}
                 className={cn(
-                  'mt-5 inline-flex h-11 items-center justify-center rounded-lg text-sm font-semibold',
+                  'mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-lg text-sm font-semibold',
                   popular ? 'bg-accent text-white hover:bg-accent-soft' : 'border border-border bg-card text-ink hover:bg-surface',
                 )}
               >
-                {t('site.plans.cta')}
+                <WhatsAppIcon size={16} /> {t('site.plans.buy')}
               </button>
               <div className="mt-6 border-t border-border pt-5">
                 {text.lead && <p className="mb-3 text-sm font-semibold">{t(text.lead)}</p>}
@@ -336,6 +340,49 @@ function Plans() {
       </div>
       <p className="mx-auto mt-8 max-w-3xl text-center text-xs text-muted">{t('site.plans.note')}</p>
     </Section>
+  )
+}
+
+/**
+ * The free trial as a plan of its own, first in the row (the user's request,
+ * 2026-10-12): ₹0 for TRIAL_DAYS days with every feature, online orders
+ * included — in the app a trial account is simply Pro with an expiry date the
+ * admin sets. After it, the shop picks one of the paid plans.
+ */
+function FreeTrialCard() {
+  const { t } = useLanguage()
+  const list: TranslationKey[] = ['site.plans.f.freeAll', 'site.plans.f.freeNoPay', 'site.plans.f.freeKeep', 'site.plans.f.freeThen']
+  return (
+    <div className="relative flex flex-col rounded-2xl border border-accent/40 bg-accent-bg/50 p-6">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-lg font-bold">{t('site.plans.free')}</h3>
+        <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-white">{t('site.plans.freeTag')}</span>
+      </div>
+      <p className="mt-1 text-sm text-muted">{t('site.plans.freeFor', { days: TRIAL_DAYS })}</p>
+      <div className="mt-5 flex items-baseline gap-1">
+        <span className="text-4xl font-bold">{rupees(0)}</span>
+        <span className="text-sm text-muted">{t('site.plans.freePeriod', { days: TRIAL_DAYS })}</span>
+      </div>
+      <p className="mt-1 select-none text-sm text-transparent" aria-hidden>
+        ·
+      </p>
+      <button
+        onClick={() => askForTrial()}
+        className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-accent bg-card text-sm font-semibold text-accent-text hover:bg-accent-bg"
+      >
+        <WhatsAppIcon size={16} /> {t('site.plans.cta')}
+      </button>
+      <div className="mt-6 border-t border-border pt-5">
+        <ul className="flex flex-col gap-2.5">
+          {list.map((k) => (
+            <li key={k} className="flex gap-2.5 text-sm">
+              <Check size={17} className="mt-0.5 shrink-0 text-accent" />
+              {t(k, { days: TRIAL_DAYS })}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
   )
 }
 
