@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ReactNode } from 'react'
-import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider, Navigate, type RouteObject } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/context/AuthContext'
 import { ThemeProvider } from '@/context/ThemeContext'
 import { LanguageProvider } from '@/context/LanguageContext'
@@ -9,6 +9,7 @@ import { AppShell } from '@/components/layout/AppShell'
 import { Splash } from '@/components/Splash'
 import { TruckLoader } from '@/components/TruckLoader'
 import { screens } from '@/lib/screens'
+import { RouteError } from '@/components/RouteError'
 
 // Each screen is its own file, fetched the first time it is needed — and, for
 // a signed-in account, in the background soon after the app opens (see
@@ -100,7 +101,7 @@ function Page({ children }: { children: ReactNode }) {
 // A data router rather than <BrowserRouter>, because useBlocker only exists
 // on this one — and that is what lets New Invoice stop the Android back
 // button from throwing away a bill the supplier has half-typed.
-const router = createBrowserRouter([
+const routes: RouteObject[] = [
   // The public website (2026-10-12). A signed-in account opening / goes to
   // its dashboard, as / always did.
   { path: '/', element: <Page><Home /></Page> },
@@ -142,7 +143,12 @@ const router = createBrowserRouter([
   { path: '/admin/materials', element: <Protected admin><AdminMaterialCatalog /></Protected> },
   { path: '/admin/settings', element: <Protected admin><AdminPlatformSettings /></Protected> },
   { path: '*', element: <Navigate to="/dashboard" replace /> },
-])
+]
+
+// Every route gets the same error screen (components/RouteError) instead of
+// React Router's developer page — above all for a phone still on the build
+// before a deploy, whose next screen's file is gone: it reloads itself.
+const router = createBrowserRouter(routes.map((r) => ({ ...r, errorElement: <RouteError /> })))
 
 // Needs to be inside AuthProvider to read the splash phase, so it cannot live
 // in App's own body.

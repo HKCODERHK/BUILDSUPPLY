@@ -10,4 +10,7 @@
 # Real files are served first; this only catches what the filesystem misses.
 # The 200 matters: it rewrites rather than redirecting, so the URL the
 # supplier is on stays the URL they see.
+# A missing build file (/assets/…) is a real 404, never the app page — an old
+# tab asking for a file a deploy removed must fail cleanly (see sw.js).
+/assets/*  /404  404
 /*  /index.html  200
