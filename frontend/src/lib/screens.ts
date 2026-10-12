@@ -5,6 +5,8 @@ import { warmPdfKit } from './pdfKit'
 // customer: opening an order QR or a khata link fetches that one page, not the
 // supplier's whole app.
 export const screens = {
+  Home: () => import('@/routes/Home'),
+  Legal: () => import('@/routes/Legal'),
   Login: () => import('@/routes/Login'),
   ForgotPassword: () => import('@/routes/ForgotPassword'),
   ResetPassword: () => import('@/routes/ResetPassword'),
@@ -60,7 +62,7 @@ export function prefetchScreens(role: 'admin' | 'supplier') {
   const run = () => {
     const list = role === 'admin' ? ADMIN_SCREENS : SUPPLIER_SCREENS
     void list
-      .reduce<Promise<unknown>>((prev, key) => prev.then(() => screens[key]().catch(() => undefined)), Promise.resolve())
+      .reduce<Promise<unknown>>((prev, key) => prev.then(() => (screens[key] as () => Promise<unknown>)().catch(() => undefined)), Promise.resolve())
       .then(() => (role === 'supplier' ? warmPdfKit() : undefined))
   }
   const w = window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }

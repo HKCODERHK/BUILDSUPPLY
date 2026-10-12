@@ -1,10 +1,6 @@
-import { useState, type FormEvent } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
-import { Input } from '@/components/ui/input'
-import { PasswordInput } from '@/components/ui/password-input'
-import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
+import { SignInForm } from '@/components/SignInForm'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
@@ -14,23 +10,10 @@ import { useLanguage } from '@/context/LanguageContext'
 
 
 export default function Login() {
-  const { session, signIn, loading } = useAuth()
+  const { session, loading } = useAuth()
   const { t } = useLanguage()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
 
   if (!loading && session) return <Navigate to="/dashboard" replace />
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
-    setError(null)
-    setSubmitting(true)
-    const { error } = await signIn(email, password)
-    setSubmitting(false)
-    if (error) setError(error)
-  }
 
   return (
     <div className="relative flex min-h-app items-center justify-center bg-shell p-4">
@@ -52,42 +35,7 @@ export default function Login() {
         </div>
         <h1 className="mb-5 text-center text-sm text-muted">{t('auth.signInTitle')}</h1>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div>
-            <Label htmlFor="email" required>{t('auth.email')}</Label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="username"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-          <div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password" className="mb-1.5">
-                {t('auth.password')}
-              </Label>
-              <Link to="/forgot-password" className="mb-1.5 text-xs font-medium text-accent">
-                {t('auth.forgot')}
-              </Link>
-            </div>
-            <PasswordInput
-              id="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              showLabel={t('auth.showPassword')}
-              hideLabel={t('auth.hidePassword')}
-            />
-          </div>
-          {error && <p className="text-xs text-red-600">{error}</p>}
-          <Button type="submit" disabled={submitting} className="mt-1 w-full">
-            {submitting ? t('auth.signingIn') : t('auth.signIn')}
-          </Button>
-        </form>
+        <SignInForm />
 
         <p className="mt-5 text-center text-xs text-muted-2">
           {t('auth.noAccount')}

@@ -14,6 +14,8 @@ import { screens } from '@/lib/screens'
 // a signed-in account, in the background soon after the app opens (see
 // lib/screens). A customer opening an order or khata link gets that one page,
 // not the supplier's whole app.
+const Home = lazy(screens.Home)
+const Legal = lazy(screens.Legal)
 const Login = lazy(screens.Login)
 const ForgotPassword = lazy(screens.ForgotPassword)
 const ResetPassword = lazy(screens.ResetPassword)
@@ -50,7 +52,12 @@ function isPublicOrderPath(path: string) {
     path.startsWith('/order/') ||
     path.startsWith('/order-status/') ||
     path.startsWith('/khata/') ||
-    path === '/me'
+    path === '/me' ||
+    // The public website: a visitor reading about BuildSupply should not sit
+    // through an app's splash first.
+    path === '/' ||
+    path === '/privacy' ||
+    path === '/terms'
   )
 }
 
@@ -94,6 +101,11 @@ function Page({ children }: { children: ReactNode }) {
 // on this one — and that is what lets New Invoice stop the Android back
 // button from throwing away a bill the supplier has half-typed.
 const router = createBrowserRouter([
+  // The public website (2026-10-12). A signed-in account opening / goes to
+  // its dashboard, as / always did.
+  { path: '/', element: <Page><Home /></Page> },
+  { path: '/privacy', element: <Page><Legal doc="privacy" /></Page> },
+  { path: '/terms', element: <Page><Legal doc="terms" /></Page> },
   { path: '/login', element: <Page><Login /></Page> },
   { path: '/forgot-password', element: <Page><ForgotPassword /></Page> },
   { path: '/reset-password', element: <Page><ResetPassword /></Page> },
@@ -129,7 +141,6 @@ const router = createBrowserRouter([
   { path: '/admin/suppliers/:id', element: <Protected admin><AdminSupplierProfile /></Protected> },
   { path: '/admin/materials', element: <Protected admin><AdminMaterialCatalog /></Protected> },
   { path: '/admin/settings', element: <Protected admin><AdminPlatformSettings /></Protected> },
-  { path: '/', element: <Navigate to="/dashboard" replace /> },
   { path: '*', element: <Navigate to="/dashboard" replace /> },
 ])
 
@@ -137,8 +148,10 @@ const router = createBrowserRouter([
 // in App's own body.
 function SplashGate() {
   const { splash } = useAuth()
-  // A customer opening an order link is not opening BuildSupply.
-  if (isPublicOrderPath(window.location.pathname)) return null
+  // A customer opening an order link is not opening BuildSupply. Only the
+  // opening splash is skipped there: signing in from the website's front
+  // page still gets the sign-in splash (customer pages never sign in here).
+  if (splash === 'launch' && isPublicOrderPath(window.location.pathname)) return null
   return splash ? <Splash phase={splash} /> : null
 }
 
