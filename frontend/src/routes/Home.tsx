@@ -72,8 +72,9 @@ function Hero() {
     <section className="bg-shell text-white">
       {/* Laid out like claude.ai's sign-in page, at the user's request: the
           left column centred on one line — headline, subtitle, sign-in box.
-          The video sits beside the sign-in box, sized to it: the same top
-          and bottom (the user's request), its width following from 4:5. */}
+          The video's bottom is level with the sign-in box's and it reaches up
+          to the top of the headline (the user's request); its width follows
+          from 4:5. */}
       <div className="mx-auto grid max-w-7xl gap-x-16 px-4 pb-14 pt-8 sm:px-6 lg:grid-cols-2 lg:px-10 lg:pb-16 lg:pt-6">
         <div className="flex flex-col items-center text-center lg:col-start-1 lg:row-start-1">
           <p className="text-sm font-semibold text-accent-soft">{t('site.hero.eyebrow')}</p>
@@ -101,7 +102,7 @@ function Hero() {
           <p className="mt-2 text-center text-xs text-muted">{t('site.hero.trialNote')}</p>
         </div>
 
-        <div className="mx-auto mt-10 w-full max-w-xl lg:col-start-2 lg:row-start-2 lg:mt-8 lg:flex lg:max-w-none lg:justify-center lg:self-stretch">
+        <div className="mx-auto mt-10 w-full max-w-xl lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mt-0 lg:flex lg:max-w-none lg:justify-center lg:self-stretch">
           <HeroVideo />
         </div>
       </div>
