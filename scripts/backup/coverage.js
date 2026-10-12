@@ -81,6 +81,12 @@ const CATEGORIES = [
   // but restored only for logins that exist: after a disaster the customer
   // relinks by tapping Save on their khata link, which the restore keeps.
   ['Customer accounts (relinked from the khata link)', ['customer_accounts', 'customer_connections']],
+  // Supplier verification (045): applications, KYC details, the agreement and
+  // declarations each account accepted, document records (the files are in
+  // the private `kyc` bucket and travel with the file backup), the audit log
+  // and the admin's legal texts and settings.
+  ['Supplier verification and agreements', ['supplier_compliance', 'supplier_documents', 'supplier_acceptances',
+    'compliance_audit_log', 'compliance_texts', 'compliance_requirements', 'retention_settings']],
 ]
 
 function categoryOf(table) {
@@ -136,10 +142,21 @@ function classify(cat, excluded) {
 }
 
 // Login coverage: every login must be recreatable from the backup alone.
-function loginProblems(auth) {
+// compliance: the backed-up supplier_compliance rows. A login with no
+// supplier account is covered when it is an applicant's (045) and the
+// application in the backup carries the login's own email.
+function loginProblems(auth, compliance = []) {
   const p = []
   if (!auth) return ['the login summary is missing from the catalog']
-  if (auth.without_account.length) p.push(`${auth.without_account.length} login(s) are neither a supplier account nor an anonymous customer login, so no recovery covers them: ${auth.without_account.join(', ')}`)
+  const emails = new Map((auth.non_supplier_logins || []).map((u) => [u.id, String(u.email || '').toLowerCase()]))
+  const applicants = new Map(compliance.filter((c) => c.is_applicant).map((c) => [c.user_id, String(c.email || '').toLowerCase()]))
+  const uncovered = []
+  for (const id of auth.without_account) {
+    if (!applicants.has(id) || !emails.has(id)) { uncovered.push(id); continue }
+    if (!applicants.get(id)) p.push(`applicant ${id} has no email on their application to recreate the login with`)
+    else if (applicants.get(id) !== emails.get(id)) p.push(`applicant ${id}'s login email differs from the email on their application, so recovery would recreate the wrong address`)
+  }
+  if (uncovered.length) p.push(`${uncovered.length} login(s) are neither a supplier account, an applicant nor an anonymous customer login, so no recovery covers them: ${uncovered.join(', ')}`)
   if (auth.account_without_login.length) p.push(`${auth.account_without_login.length} account(s) have no login: ${auth.account_without_login.join(', ')}`)
   if (auth.email_mismatch.length) p.push(`${auth.email_mismatch.length} login email(s) differ from the account's email, so recovery would recreate the wrong address: ${auth.email_mismatch.join(', ')}`)
   if (auth.no_email.length) p.push(`${auth.no_email.length} account(s) have no email to recreate a login with: ${auth.no_email.join(', ')}`)

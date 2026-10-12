@@ -71,7 +71,10 @@ try {
   #    one file per table, the manifest and the coverage of every data source.
   $data = Join-Path $work 'data'
   $projectUrl = if ($script:Cfg.ProjectUrl) { $script:Cfg.ProjectUrl } else { 'https://' + $script:Cfg.ProjectRef + '.supabase.co' }
-  Invoke-BsTool $work @('files', $catalog, $data, $projectUrl) | Out-Null
+  # Files in a private bucket (KYC documents) are read with the project's
+  # service key, which backup-tool.js asks the CLI for itself and keeps in
+  # memory - it is never passed on a command line or written anywhere.
+  Invoke-BsTool $work @('files', $catalog, $data, $projectUrl, $script:Cfg.CliPath, $script:Cfg.ProjectRef) | Out-Null
   $summary = Invoke-BsTool $work @('split', (Join-Path $work 'snapshot.out'), $catalog, $data, $script:Cfg.ProjectRef)
   Remove-Item -LiteralPath (Join-Path $work 'snapshot.out') -Force
 

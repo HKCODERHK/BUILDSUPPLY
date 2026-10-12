@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `041`, run in order. **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; 039 and 040 were already on live; **038 was pasted by the user on 2026-10-12** (the ten-minute duplicate rule is gone from `place_order`, checked read-only). **044 (three plans, Phase 34) is the latest — written, not yet applied**; **043 (your profile and bill details, Phase 32) is applied** (2026-10-12); 042 (the shop page, Phase 31) and 041 (customer accounts, Phase 30) were applied the same day. Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
+- **Schema migrations**: `supabase/migrations/` — `002` through `041`, run in order. **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; 039 and 040 were already on live; **038 was pasted by the user on 2026-10-12** (the ten-minute duplicate rule is gone from `place_order`, checked read-only). **045 (supplier compliance, Phase 36) is the latest — written and tested locally, not yet applied**; 044 (three plans, Phase 34); **043 (your profile and bill details, Phase 32) is applied** (2026-10-12); 042 (the shop page, Phase 31) and 041 (customer accounts, Phase 30) were applied the same day. Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -1685,6 +1685,64 @@ so there is one drawing. Smaller and paler than anything of the shop's: the
 shop stays the identity. Checked at 360px: exactly one badge on every
 customer page, none on `/login` or `/`, fully visible when scrolled to the
 end (above the tab bar on the khata link), no sideways overflow.
+
+**Phase 36 — supplier compliance, round 1 of 4 (migration 045, 2026-10-13,
+branch `compliance-1`).** From a pasted KYC / agreement / indemnity spec. The
+user's decisions (2026-10-13), which override the spec where they differ:
+- **Existing suppliers keep working** — 045 gives each a `PENDING`,
+  `grandfathered` record, prefilled from `suppliers` where values pass the
+  checks; they will see a "Complete your KYC" card (round 2), never a lockout.
+- **New suppliers apply, there is no sign-up.** Their login exists but there
+  is **no `suppliers` row until the admin accepts** (after payment on
+  WhatsApp), so the app's business screens are unreachable — only the
+  application status screen. `accept_supplier_application(user, plan, cycle,
+  start, expiry)` creates the row; the four plans are the website's (Free
+  trial = Pro with dates, Basic = starter, Pro, Yearly). Forgotten email or
+  password: the supplier contacts the user, who resets it from admin.
+- **Existing admin screens stay exactly as they are.** One new admin screen,
+  "Supplier Compliance", comes in round 3.
+- **Soft suspension** (compliance `SUSPENDED`): login and records stay, online
+  ordering is off and cannot be switched on (`suppliers_compliance_rules`,
+  same shape as 044's plan rule). The old Suspend (a login ban) is untouched.
+  Terminate is permanent; reinstate returns to APPROVED only if the account
+  was approved before.
+- Acceptance records: a **keyed code of the request address** (HMAC with the
+  spam guard's secret, salted per account — `_request_ip_hash`) plus the
+  device string, timestamp, text version and account. Never the address.
+- No bank details. Nothing assigns legal liability; the admin notice says so.
+  The agreement, the 7 declarations and the ordering disclosure are seeded as
+  **DRAFTs for legal review**, editable by the admin as new versions (a
+  version's wording can never change once saved).
+- Complaints (supplier + admin read the full text — a narrow exception to the
+  019 boundary) and the disclosure line on the order page are round 4 (046).
+
+045 itself: 7 tables (`supplier_compliance`, `supplier_documents`,
+`supplier_acceptances`, `compliance_audit_log`, `compliance_texts`,
+`compliance_requirements`, `retention_settings`), the private `kyc` bucket
+(5 MB; PDF/JPEG/PNG/WebP; own folder only; admin reads; **no update or delete
+policy**, so an uploaded KYC file can't be replaced or removed through the
+app), and functions that do every status change — the account itself can
+edit only its business fields, and only while `PENDING` or `REJECTED`
+(`supplier_compliance_guard`). Acceptances, document records, text versions
+and the audit log refuse update and delete even from the SQL editor, except a
+whole-account cascade. **Supabase grants everything on a new table to the
+app's roles by default — 045 revokes all and grants back only what is
+listed**; the first draft missed this and the local tests caught it.
+- **Tested on a throwaway Postgres** (schema + 002→044 + fixtures, 045 twice):
+  98 of 98; a structure snapshot showed nothing existing removed or changed,
+  46 additions. Then on a local Supabase stack through the real APIs: 23 of
+  23 (storage boundaries included — no public address, other shops can't
+  upload or download, the owner can't delete or overwrite, `.exe` refused).
+- **Backups cover it** (the permanent rule): applicant logins are recreated
+  from their application's email (`loginAccounts` in `backup-tool.js`,
+  `restore-logins.mjs`) and checked against the login's email
+  (`coverage.loginProblems`); private-bucket files are downloaded with the
+  service key the CLI's stored login provides, **held in memory only** (proved
+  absent from every output file); each `supplier_documents` row must have its
+  file; the three seeded tables are replaced, not collided with, on restore.
+  An isolated backup → restore drill on the local stack: 63 of 63, all seven
+  tables value-for-value, the applicant's login recreated, 3 KYC files.
+  **Re-run `install-backup.ps1 -NoTasks` after 045 is merged.**
 
 ## The admin panel
 

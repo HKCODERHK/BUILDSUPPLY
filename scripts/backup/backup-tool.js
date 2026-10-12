@@ -101,6 +101,39 @@ function storageRefs(text) {
   return out
 }
 
+// Every login a restore recreates: each supplier account, plus each
+// applicant (045) - a login whose application is waiting, or was declined,
+// and has no supplier account yet. The applicant's email is the one on the
+// application, which coverage.js checks matches the login's.
+function loginAccounts(suppliers, compliance) {
+  const ids = new Set(suppliers.map((s) => s.id))
+  const applicants = compliance
+    .filter((c) => c.is_applicant && !ids.has(c.user_id))
+    .map((c) => ({ id: c.user_id, business_name: (c.legal_name || 'Applicant') + ' (applicant)', email: c.email, role: 'applicant', status: 'active' }))
+  return [...suppliers, ...applicants]
+}
+
+// The project's service key, from the Supabase CLI's stored login, kept in
+// memory only. Returns { key } or { why }.
+function serviceKey(cliPath, projectRef) {
+  if (process.env.BUILDSUPPLY_TEST_SERVICE_KEY) return { key: process.env.BUILDSUPPLY_TEST_SERVICE_KEY }
+  if (!cliPath || !/^[a-z0-9][a-z0-9-]{2,39}$/.test(String(projectRef || ''))) return { why: 'no Supabase CLI to ask for the service key' }
+  const { spawnSync } = require('child_process')
+  const line = `"${cliPath}" projects api-keys --project-ref ${projectRef} -o json`
+  const r = /\.(cmd|bat)$/i.test(cliPath)
+    ? spawnSync(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', `"${line}"`], { windowsVerbatimArguments: true, encoding: 'utf8', timeout: 120000 })
+    : spawnSync(cliPath, ['projects', 'api-keys', '--project-ref', projectRef, '-o', 'json'], { encoding: 'utf8', timeout: 120000 })
+  if (r.status !== 0) return { why: 'the Supabase CLI could not list the project keys (exit ' + r.status + ') - run  npx supabase login' }
+  let list
+  try {
+    list = JSON.parse(r.stdout)
+  } catch {
+    return { why: 'the Supabase CLI answered something that is not a key list' }
+  }
+  const k = (Array.isArray(list) ? list : []).find((x) => x && x.name === 'service_role' && typeof x.api_key === 'string' && x.api_key.length > 40)
+  return k ? { key: k.api_key } : { why: 'the project has no service_role key the backup can use' }
+}
+
 const commands = {
   // What the database holds, read fresh every run and in ONE read-only
   // statement: the app's tables and columns, EVERY table in EVERY schema
@@ -141,6 +174,11 @@ select json_build_object(
     -- A customer's anonymous login (041) is covered by relinking from the
     -- khata link, not by recreating it, so it is not "without an account".
     'without_account', (select coalesce(json_agg(u.id order by u.id), '[]'::json) from auth.users u
+       where not exists (select 1 from public.suppliers s where s.id = u.id) and not coalesce(u.is_anonymous, false)),
+    -- The same logins with their email: an applicant's (045) is covered by
+    -- its application row in supplier_compliance, matched in coverage.js.
+    'non_supplier_logins', (select coalesce(json_agg(json_build_object('id', u.id, 'email', u.email) order by u.id), '[]'::json)
+       from auth.users u
        where not exists (select 1 from public.suppliers s where s.id = u.id) and not coalesce(u.is_anonymous, false)),
     'customer_logins', (select count(*) from auth.users u where coalesce(u.is_anonymous, false)
        and not exists (select 1 from public.suppliers s where s.id = u.id)),
@@ -213,7 +251,13 @@ select json_build_object(
   // else - checked against the size and checksum storage recorded for it,
   // and written as _file_NNNNNN.bin. A file that cannot be fetched or does
   // not match is a PROBLEM, never skipped quietly.
-  async files([catalogFile, dir, baseUrl]) {
+  //
+  // A file in a PRIVATE bucket (the KYC documents, 045) has no public
+  // address. For those - and only when there are any - the project's
+  // service key is asked of the Supabase CLI's stored login, held in this
+  // process's memory for the downloads, and never written, logged or passed
+  // on. Without it each private file is a problem, as before.
+  async files([catalogFile, dir, baseUrl, cliPath, projectRef]) {
     const cat = readJson(catalogFile)
     fs.mkdirSync(dir, { recursive: true })
     const base = String(baseUrl || '').replace(/\/+$/, '')
@@ -222,20 +266,31 @@ select json_build_object(
     const saved = []
     const problems = []
     let n = 0
-    for (const o of cat.objects || []) {
+    const isPublic = (o) => {
       const b = buckets.find((x) => x.id === o.bucket)
+      return !!(b && b.public)
+    }
+    let privateHeaders = null
+    let keyProblem = ''
+    if ((cat.objects || []).some((o) => !isPublic(o))) {
+      const got = serviceKey(cliPath, projectRef)
+      if (got.key) privateHeaders = { apikey: got.key, Authorization: 'Bearer ' + got.key }
+      else keyProblem = got.why
+    }
+    for (const o of cat.objects || []) {
       const label = o.bucket + '/' + o.name
-      if (!b || !b.public) {
-        problems.push(`uploaded file ${label} is in a private bucket, which the backup cannot download yet`)
+      const pub = isPublic(o)
+      if (!pub && !privateHeaders) {
+        problems.push(`uploaded file ${label} is in a private bucket and could not be downloaded (${keyProblem})`)
         continue
       }
-      const url = base + '/storage/v1/object/public/' + encodeURIComponent(o.bucket) + '/' + o.name.split('/').map(encodeURIComponent).join('/')
+      const url = base + '/storage/v1/object/' + (pub ? 'public/' : 'authenticated/') + encodeURIComponent(o.bucket) + '/' + o.name.split('/').map(encodeURIComponent).join('/')
       let buf = null
       let why = ''
       for (const wait of [0, 5000, 20000]) {
         if (wait) await sleep(wait)
         try {
-          const r = await fetch(url)
+          const r = await fetch(url, pub ? undefined : { headers: privateHeaders })
           if (r.ok) {
             buf = Buffer.from(await r.arrayBuffer())
             break
@@ -264,6 +319,7 @@ select json_build_object(
       fs.writeFileSync(path.join(dir, file), buf)
       saved.push({ bucket: o.bucket, name: o.name, size: buf.length, mimetype: o.mimetype || null, etag, sha256: sha256(buf), file })
     }
+    privateHeaders = null
     fs.writeFileSync(path.join(dir, '_storage.json'), JSON.stringify({ base_url: base, buckets, objects: saved, problems }, null, 1))
     console.log('OK ' + saved.length + ' files saved ' + problems.length + ' problems')
   },
@@ -310,7 +366,7 @@ select json_build_object(
     }
 
     // D. Logins: every one must be recreatable from this backup alone.
-    problems.push(...coverage.loginProblems(cat.auth))
+    problems.push(...coverage.loginProblems(cat.auth, allRows.supplier_compliance || []))
 
     // B. Uploaded files, fetched by the `files` step into this folder.
     const storagePath = path.join(dir, '_storage.json')
@@ -333,6 +389,13 @@ select json_build_object(
           }
         }
       }
+      // KYC documents (045) are named by path, not by public address.
+      for (const d of allRows.supplier_documents || []) {
+        const k = 'kyc/' + d.storage_path
+        if (kept.has(k)) continue
+        if (inProduction.has(k)) problems.push(`supplier_documents refers to KYC file ${k}, which is not in this backup`)
+        else problems.push(`supplier_documents refers to KYC file ${k}, which is missing from storage`)
+      }
     }
 
     const extras = {
@@ -352,7 +415,7 @@ select json_build_object(
 
     // Every login a restore would have to recreate, discovered from the data
     // itself rather than from anyone's notes.
-    const accounts = (snap.suppliers || []).map((s) => ({
+    const accounts = loginAccounts(snap.suppliers || [], snap.supplier_compliance || []).map((s) => ({
       id: s.id,
       business_name: s.business_name,
       email: s.email,
@@ -462,7 +525,8 @@ select json_build_object(
   // restore-logins.mjs and the Auth Admin API instead; see DISASTER-RECOVERY.md.)
   'logins-sql'([dir, outFile]) {
     const sq = (s) => (s === null || s === undefined ? 'null' : q(s))
-    const sup = readJson(path.join(dir, 'suppliers.json'))
+    const compliance = path.join(dir, 'supplier_compliance.json')
+    const sup = loginAccounts(readJson(path.join(dir, 'suppliers.json')), fs.existsSync(compliance) ? readJson(compliance) : [])
     if (!sup.length) fail('the backup has no accounts')
     const values = sup
       .map((s) => `(${sq(s.id)}::uuid, ${sq(s.email)}, '00000000-0000-0000-0000-000000000000'::uuid, 'authenticated', 'authenticated')`)
@@ -578,7 +642,11 @@ select json_build_object(
     add('integrity: no app trigger left switched off', 0,
       "select count(*) from pg_trigger tg join pg_class c on c.oid = tg.tgrelid join pg_namespace n on n.oid = c.relnamespace " +
         "where n.nspname = 'public' and not tg.tgisinternal and tg.tgenabled = 'D'")
-    add('logins: every account has its login row', m.accounts.length, 'select count(*) from public.suppliers s join auth.users u on u.id = s.id')
+    // Every supplier account, and (045) every applicant still without one.
+    add('logins: every account has its login row', m.accounts.length, m.tables.supplier_compliance
+      ? 'select count(*) from auth.users u where exists (select 1 from public.suppliers s where s.id = u.id) ' +
+          'or exists (select 1 from public.supplier_compliance c where c.user_id = u.id and c.is_applicant)'
+      : 'select count(*) from public.suppliers s join auth.users u on u.id = s.id')
 
     // E. Auto-counters: after a restore, the next number each one hands out
     // must be above every number already in its column, or the first new
