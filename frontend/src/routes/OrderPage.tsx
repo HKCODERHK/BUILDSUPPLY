@@ -43,6 +43,8 @@ import { myShops, rememberCurrentShop, type MyShop } from '@/services/customerAc
 import { getShopProfile, type ShopProfile } from '@/services/shopPage'
 import { ShopAbout, ShopDelivery, ShopHero, ShopOffers } from '@/components/ShopProfileView'
 import { MaterialPicture } from '@/components/MaterialPicture'
+import { CustomerWelcome } from '@/components/CustomerWelcome'
+import { clearProfile, readProfile, siteWithCity, type CustomerProfile } from '@/lib/customerProfile'
 import { ImagePreview } from '@/components/ui/modal'
 import { brandAttr, shopWhatsapp } from '@/lib/shopPage'
 
@@ -119,6 +121,12 @@ export default function OrderPage() {
   // this phone has ever opened it (lib/customerLinks — on the phone only,
   // never on the server).
   const [khata] = useState(() => readKhata(link))
+  // What the customer told us the first time they opened a shop's QR or link
+  // (lib/customerProfile — on this phone only). Fills in the form after the
+  // shop's own record and their last order here.
+  const [profile, setProfile] = useState<CustomerProfile | null>(readProfile)
+  // "Not you? Change": the first-time screen again, to put new details in.
+  const [changing, setChanging] = useState(false)
   const [form, setForm] = useState(() => {
     const previous = readLast(link)
     const mine = khata
@@ -129,11 +137,11 @@ export default function OrderPage() {
     // khata. The site stays the last order's: it is where the load goes, not
     // who is asking.
     return {
-      name: mine?.name ?? previous?.name ?? '',
-      phone: mine?.phone ?? previous?.phone ?? '',
+      name: mine?.name ?? previous?.name ?? profile?.name ?? '',
+      phone: mine?.phone ?? previous?.phone ?? profile?.phone ?? '',
       // The last order's site only if the same person sent it — otherwise it
       // is somebody else's site on this phone.
-      site: (samePerson(mine, previous) ? previous?.site : null) || mine?.site || '',
+      site: (samePerson(mine, previous) ? previous?.site : null) || mine?.site || (profile ? siteWithCity(profile) : ''),
       date: '',
       note: '',
       trap: '',
@@ -175,6 +183,9 @@ export default function OrderPage() {
   // shop is on it: the shop's record of who they are fills the form, and the
   // tabs lead back to /me. The order itself is placed exactly as before.
   const [account, setAccount] = useState<MyShop | null>(null)
+  // Whether that check has answered, so the first-time screen never flashes
+  // up for a customer whose saved account is about to name them.
+  const [accountChecked, setAccountChecked] = useState(false)
   useEffect(() => {
     let live = true
     myShops()
@@ -192,6 +203,7 @@ export default function OrderPage() {
       .catch(() => {
         // No account, or it can't be reached: the page is the public one.
       })
+      .finally(() => live && setAccountChecked(true))
     return () => {
       live = false
     }
@@ -349,6 +361,33 @@ export default function OrderPage() {
     )
   }
 
+  // A customer this phone doesn't know yet — no details given, no khata link
+  // opened here, no saved account — tells us who they are once, first.
+  const unknown = !profile && !khata && !account
+  if (unknown && !accountChecked) {
+    return (
+      <div className="min-h-screen bg-surface">
+        {header}
+        <TruckLoader />
+      </div>
+    )
+  }
+  if ((unknown || changing) && sentToken === undefined) {
+    return (
+      <CustomerWelcome
+        shopName={page.business_name}
+        logoUrl={page.logo_url}
+        initial={changing ? null : undefined}
+        onDone={(p) => {
+          setProfile(p)
+          setChanging(false)
+          setForm((f) => ({ ...f, name: p.name, phone: p.phone, site: siteWithCity(p) }))
+          window.scrollTo({ top: 0 })
+        }}
+      />
+    )
+  }
+
   if (sentToken !== undefined) {
     return (
       <div className="min-h-screen bg-surface">
@@ -382,7 +421,10 @@ export default function OrderPage() {
 
   // Who this phone is to this shop, for the greeting: the khata's own
   // customer, or whoever sent the last order. Nobody known: no greeting.
-  const knownName = account?.customer_name ?? khata?.name ?? last?.name ?? null
+  const knownName = account?.customer_name ?? khata?.name ?? profile?.name ?? last?.name ?? null
+  // Only details typed on this phone can be changed here; a khata or saved
+  // account is the shop's own record of who they are.
+  const canChange = !account && !khata && !!profile
   const quickActions: QuickAction[] = [
     ...(page.address
       ? [
@@ -440,6 +482,18 @@ export default function OrderPage() {
               <div className="line-clamp-2 break-words text-lg font-bold leading-tight text-ink">
                 {t('khata.hello', { name: knownName })}
               </div>
+              {canChange && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearProfile()
+                    setChanging(true)
+                  }}
+                  className="mt-0.5 text-xs font-medium text-accent-text"
+                >
+                  {t('cw.notYou')}
+                </button>
+              )}
             </div>
           </div>
         )}

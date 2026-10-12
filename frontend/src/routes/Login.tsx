@@ -1,14 +1,17 @@
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { SignInForm } from '@/components/SignInForm'
-import { ThemeToggle } from '@/components/ThemeToggle'
-import { LanguageToggle } from '@/components/LanguageToggle'
+import { AuthShell } from '@/components/AuthShell'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
-import { openWhatsAppShare } from '@/lib/whatsapp'
-import { ADMIN_WHATSAPP_NUMBER } from '@/lib/adminContact'
 import { useLanguage } from '@/context/LanguageContext'
+import { TRIAL_DAYS, askForTrial } from '@/lib/site'
 
-
+/**
+ * The shop owner's sign-in (and the admin's), in the phone-style look the user
+ * asked for from a recording (2026-10-12). Accounts are made by the admin, so
+ * there is no sign-up — a new shop asks for its free trial on WhatsApp.
+ * Customers never come here: they arrive through a shop's QR or link.
+ */
 export default function Login() {
   const { session, loading } = useAuth()
   const { t } = useLanguage()
@@ -16,42 +19,39 @@ export default function Login() {
   if (!loading && session) return <Navigate to="/dashboard" replace />
 
   return (
-    <div className="relative flex min-h-app items-center justify-center bg-shell p-4">
-      {/* Language sits beside theme so someone can switch to Hindi or
-          Marathi before they even sign in. */}
-      <div className="absolute right-4 top-4 flex items-center gap-2">
-        <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
-        <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
-      </div>
-      <div className="w-full max-w-sm rounded-2xl bg-card p-7">
-        <div className="mb-1 flex items-center justify-center gap-2">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#198A45" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <AuthShell
+      brand={
+        <Link to="/" className="flex items-center gap-2">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5FE08C" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M3 21h18" />
             <path d="M5 21V8l5-4v17" />
             <path d="M10 21V11l6 3v7" />
             <path d="M16 21v-4l3 1.5V21" />
           </svg>
-          <span className="text-lg font-bold text-ink">BuildSupply</span>
+          <span className="text-xl font-bold">BuildSupply</span>
+        </Link>
+      }
+      tagline={t('site.footer.tagline')}
+      title={t('login.welcome')}
+      subtitle={t('site.hero.signInTitle')}
+      footer={
+        <div className="text-center">
+          <div className="mb-3 flex items-center gap-3 text-xs text-muted-2">
+            <span className="h-px flex-1 bg-border" />
+            {t('site.hero.new')}
+            <span className="h-px flex-1 bg-border" />
+          </div>
+          <button
+            type="button"
+            onClick={() => askForTrial()}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card py-3 text-sm font-semibold text-accent-text hover:bg-accent-bg"
+          >
+            <WhatsAppIcon size={16} /> {t('site.hero.trialBtn', { days: TRIAL_DAYS })}
+          </button>
         </div>
-        <h1 className="mb-5 text-center text-sm text-muted">{t('auth.signInTitle')}</h1>
-
-        <SignInForm />
-
-        <p className="mt-5 text-center text-xs text-muted-2">
-          {t('auth.noAccount')}
-          <br />
-          {t('auth.contactAdmin')}
-        </p>
-
-        <button
-          onClick={() =>
-            openWhatsAppShare(ADMIN_WHATSAPP_NUMBER, "Hi, I'd like to take a subscription for BuildSupply. Please share the details.")
-          }
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-border py-2.5 text-sm font-semibold text-accent hover:bg-accent-bg"
-        >
-          <WhatsAppIcon size={16} /> {t('auth.askSubscription')}
-        </button>
-      </div>
-    </div>
+      }
+    >
+      <SignInForm />
+    </AuthShell>
   )
 }
