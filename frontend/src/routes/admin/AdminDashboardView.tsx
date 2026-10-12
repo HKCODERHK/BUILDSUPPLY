@@ -17,6 +17,7 @@ import {
 } from '@/lib/subscription'
 import type { AdminDashboardStats, SupplierOverview } from '@/lib/database.types'
 import { TruckLoader } from '@/components/TruckLoader'
+import { planChoiceOf } from '@/lib/plans'
 
 // The whole point of this screen: who needs attention, who needs renewing,
 // who do I contact — answered without clicking into anything, with the action
@@ -67,8 +68,8 @@ export function AdminDashboardView() {
   }, [suppliers])
 
   const planSplit = useMemo(() => {
-    const pro = suppliers.filter((s) => s.plan === 'pro').length
-    return { pro, starter: suppliers.length - pro }
+    const count = (c: string) => suppliers.filter((s) => planChoiceOf(s) === c).length
+    return { basic: count('basic'), pro: count('pro'), yearly: count('yearly') }
   }, [suppliers])
 
   // Every tile lands on the supplier list already filtered — a count you
@@ -91,13 +92,13 @@ export function AdminDashboardView() {
       tone: 'text-amber-600',
     },
     { label: 'No Expiry Set', value: undefined, to: '/admin/suppliers?filter=no-expiry', tone: 'text-muted' },
-    { label: 'Pro / Starter', value: undefined, to: '/admin/suppliers' },
+    { label: 'Basic / Pro / Yearly', value: undefined, to: '/admin/suppliers' },
   ]
 
   const noExpiryCount = suppliers.filter((s) => subscriptionState(s.subscription_expiry) === 'none').length
 
   function tileValue(label: string, value: number | undefined) {
-    if (label === 'Pro / Starter') return `${planSplit.pro} / ${planSplit.starter}`
+    if (label === 'Basic / Pro / Yearly') return `${planSplit.basic} / ${planSplit.pro} / ${planSplit.yearly}`
     if (label === 'No Expiry Set') return noExpiryCount
     return value ?? 0
   }

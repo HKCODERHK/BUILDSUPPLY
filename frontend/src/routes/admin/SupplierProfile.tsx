@@ -31,6 +31,7 @@ import {
   SUBSCRIPTION_TONE,
 } from '@/lib/subscription'
 import type { AdminActivityEntry, SupplierOverview } from '@/lib/database.types'
+import { PLAN_CHOICES, planAllowsOrders, planChoice, planChoiceOf, planOptionText, type PlanChoice } from '@/lib/plans'
 import { TruckLoader } from '@/components/TruckLoader'
 
 type Tab = 'overview' | 'activity'
@@ -234,6 +235,21 @@ export default function SupplierProfile() {
     }
   }
 
+  // Plan and billing cycle move together: Pro Yearly is 'pro' + 'yearly'.
+  // Moving a shop to Basic switches its online ordering off (migration 044).
+  async function handlePlanChange(choice: PlanChoice) {
+    if (!id || !supplier) return
+    if (!(await confirmWithPin(t('pin.reasonSubscription', { name: supplier.business_name })))) return
+    setActionError(null)
+    const p = planChoice(choice)
+    try {
+      await updateSupplierSubscription(id, { plan: p.plan, billing_cycle: p.cycle })
+      await refresh()
+    } catch (err) {
+      setActionError(describeError(err))
+    }
+  }
+
   if (loading) return <TruckLoader label="Loading…" />
   if (!supplier) return <p className="text-sm text-muted">Supplier not found.</p>
 
@@ -381,13 +397,19 @@ export default function SupplierProfile() {
               <div>
                 <Label>Plan</Label>
                 <select
-                  value={supplier.plan}
-                  onChange={(e) => handleSubscriptionChange('plan', e.target.value)}
+                  value={planChoiceOf(supplier)}
+                  onChange={(e) => handlePlanChange(e.target.value as PlanChoice)}
                   className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-accent"
                 >
-                  <option value="starter">Starter</option>
-                  <option value="pro">Pro</option>
+                  {PLAN_CHOICES.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {planOptionText(p.id)}
+                    </option>
+                  ))}
                 </select>
+                {!planAllowsOrders(supplier.plan) && (
+                  <p className="mt-1.5 text-xs text-muted">Basic has no online orders — this shop's order link stays closed.</p>
+                )}
               </div>
               <div>
                 <Label>Start date</Label>

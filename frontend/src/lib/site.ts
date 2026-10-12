@@ -1,23 +1,17 @@
 import { ADMIN_WHATSAPP_NUMBER } from '@/lib/adminContact'
 import { openWhatsAppShare } from '@/lib/whatsapp'
+import { PLAN_CHOICES, type PlanChoice } from '@/lib/plans'
 
 // The public website's facts, in one place: change a price or the trial here
 // and the front page, the FAQ and the Terms all follow.
 //
-// The plans are only a price list (2026-10-12, the user's figures). Nothing in
-// the app reads them: `suppliers.plan` still gates nothing, so a Basic
-// supplier can switch online orders on today. Making Basic actually leave out
-// online orders is a separate step the user chose to take later.
+// The plans themselves live in lib/plans.ts, shared with the admin panel and
+// the supplier's screens, so the website and the app can't drift apart.
 
 export const TRIAL_DAYS = 10
 
-export type PlanId = 'basic' | 'pro' | 'yearly'
-
-export const PLANS: { id: PlanId; price: number; period: 'month' | 'year'; orders: boolean }[] = [
-  { id: 'basic', price: 499, period: 'month', orders: false },
-  { id: 'pro', price: 699, period: 'month', orders: true },
-  { id: 'yearly', price: 7999, period: 'year', orders: true },
-]
+export type PlanId = PlanChoice
+export const PLANS = PLAN_CHOICES
 
 const pro = PLANS.find((p) => p.id === 'pro')!.price
 const yearly = PLANS.find((p) => p.id === 'yearly')!.price

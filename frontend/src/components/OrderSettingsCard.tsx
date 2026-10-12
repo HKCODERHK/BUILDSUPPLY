@@ -5,6 +5,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Share2 } from 'lucide-react'
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import { ADMIN_WHATSAPP_NUMBER } from '@/lib/adminContact'
+import { openWhatsAppShare } from '@/lib/whatsapp'
+import { planAllowsOrders } from '@/lib/plans'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import {
@@ -88,6 +92,30 @@ export function OrderSettingsCard() {
     } catch {
       setCopied(false)
     }
+  }
+
+  // Basic has no online orders (migration 044): in place of the switch, say
+  // so and offer the way to Pro. The database refuses it anyway.
+  if (!planAllowsOrders(supplier.plan)) {
+    const name = supplier.business_name
+    return (
+      <Card className="mt-4 max-w-lg">
+        <CardHeader>
+          <CardTitle>{t('ord.settingsTitle')}</CardTitle>
+        </CardHeader>
+        <p className="text-sm font-medium text-ink">{t('plan.ordersLocked')}</p>
+        <p className="mt-1.5 text-sm text-muted">{t('plan.ordersLockedHint')}</p>
+        <Button
+          variant="outline"
+          className="mt-4"
+          onClick={() =>
+            openWhatsAppShare(ADMIN_WHATSAPP_NUMBER, `Hi, I'd like to move ${name} to the Pro plan for online orders.`)
+          }
+        >
+          <WhatsAppIcon size={16} /> {t('plan.askUpgrade')}
+        </Button>
+      </Card>
+    )
   }
 
   return (

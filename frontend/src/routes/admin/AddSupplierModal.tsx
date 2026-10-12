@@ -6,12 +6,12 @@ import { PhoneInput } from '@/components/ui/phone-input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
-import { createSupplierAccount } from '@/services/adminSuppliers'
+import { createSupplierAccount, updateSupplierSubscription } from '@/services/adminSuppliers'
 import { getPlatformSettings } from '@/services/platformSettings'
 import { openWhatsAppShare } from '@/lib/whatsapp'
 import { generatePassword } from '@/lib/generatePassword'
 import { today, todayPlusDays } from '@/lib/subscription'
-import type { Plan } from '@/lib/database.types'
+import { PLAN_CHOICES, planChoice, planOptionText, type PlanChoice } from '@/lib/plans'
 
 const emptyForm = {
   business_name: '',
@@ -20,7 +20,8 @@ const emptyForm = {
   password: '',
   phone: '',
   address: '',
-  plan: 'starter' as Plan,
+  // New accounts start on Pro monthly (the user's choice, 2026-10-12).
+  plan: 'pro' as PlanChoice,
   subscription_start: '',
   subscription_expiry: '',
 }
@@ -78,17 +79,21 @@ export function AddSupplierModal({ onClose, onCreated }: { onClose: () => void; 
     setSaving(true)
     setError(null)
     try {
-      await createSupplierAccount({
+      const choice = planChoice(form.plan)
+      const { id } = await createSupplierAccount({
         email: form.email,
         password: form.password,
         business_name: form.business_name,
         owner_name: form.owner_name || undefined,
         phone: form.phone || undefined,
         address: form.address || undefined,
-        plan: form.plan,
+        plan: choice.plan,
         subscription_start: form.subscription_start || undefined,
         subscription_expiry: form.subscription_expiry || undefined,
       })
+      // The Edge Function only knows the plan; a yearly one also needs its
+      // billing cycle, set straight after on the new row.
+      if (choice.cycle === 'yearly') await updateSupplierSubscription(id, { billing_cycle: 'yearly' })
       onCreated()
       setHandoff({
         business_name: form.business_name,
@@ -222,11 +227,14 @@ export function AddSupplierModal({ onClose, onCreated }: { onClose: () => void; 
           <select
             id="plan"
             value={form.plan}
-            onChange={(e) => setForm({ ...form, plan: e.target.value as Plan })}
+            onChange={(e) => setForm({ ...form, plan: e.target.value as PlanChoice })}
             className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-accent"
           >
-            <option value="starter">Starter</option>
-            <option value="pro">Pro</option>
+            {PLAN_CHOICES.map((p) => (
+              <option key={p.id} value={p.id}>
+                {planOptionText(p.id)}
+              </option>
+            ))}
           </select>
         </div>
         <div className="grid grid-cols-2 gap-3">

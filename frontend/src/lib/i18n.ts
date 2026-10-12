@@ -1774,6 +1774,10 @@ const STRINGS = {
   // The shop's own page for customers (migration 042).
   'shop.viewLogo': { en: 'Show the logo larger', hi: 'लोगो बड़ा देखें', mr: 'लोगो मोठा पाहा' },
   'shop.viewCover': { en: 'Show the cover photo larger', hi: 'कवर फ़ोटो बड़ी देखें', mr: 'कव्हर फोटो मोठा पाहा' },
+  // Plans (migration 044): Basic has no online orders.
+  'plan.ordersLocked': { en: 'Online orders are part of the Pro plan.', hi: 'ऑनलाइन ऑर्डर प्रो प्लान में मिलते हैं।', mr: 'ऑनलाइन ऑर्डर प्रो प्लॅनमध्ये मिळतात.' },
+  'plan.ordersLockedHint': { en: 'Your shop is on Basic. Move to Pro to take orders from your own link and QR.', hi: 'आपकी दुकान बेसिक प्लान पर है। अपने लिंक और QR से ऑर्डर लेने के लिए प्रो पर जाइए।', mr: 'तुमचे दुकान बेसिक प्लॅनवर आहे. तुमच्या लिंक आणि QR वरून ऑर्डर घेण्यासाठी प्रोवर जा.' },
+  'plan.askUpgrade': { en: 'Ask to move to Pro', hi: 'प्रो पर जाने के लिए पूछें', mr: 'प्रोवर जाण्यासाठी विचारा' },
   // The public website at / (front page, plans, FAQ, footer).
   'site.nav.features': { en: 'Features', hi: 'फ़ीचर', mr: 'फीचर्स' },
   'site.nav.how': { en: 'How it works', hi: 'कैसे काम करता है', mr: 'कसे काम करते' },
