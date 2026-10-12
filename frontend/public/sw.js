@@ -18,7 +18,7 @@
 // v6: only /assets/* is cache-first now, and the icons carry ?v=3 — see the
 // fetch handler; v5's copies of the old icons had to go.
 // v7: icon-512's name went lowercase ("buildsupply"), so it is ?v=4 now.
-const CACHE = 'buildsupply-v7'
+const CACHE = 'buildsupply-v8'
 
 // The shell only. Everything under /assets/ is content-hashed by Vite, so it
 // gets cached on first use instead of being listed here. The icon URLs must
@@ -40,6 +40,10 @@ const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon-192.png?v=3',
  * We key purely on URL, and the filenames are content-hashed, so Vary has
  * nothing useful to tell us here.
  */
+function isPage(response) {
+  return (response.headers.get('content-type') || '').includes('text/html')
+}
+
 function cacheLookup(cache, request) {
   return cache.match(request, { ignoreVary: true })
 }
@@ -102,10 +106,15 @@ self.addEventListener('fetch', (event) => {
       (async () => {
         const cache = await caches.open(CACHE)
         const cached = await cacheLookup(cache, request)
-        if (cached) return cached
+        // A web page is never app code. A host answers a file it no longer
+        // has (a build replaced by a deploy) with index.html and a 200, and
+        // storing that would serve the page as this file forever — after a
+        // rollback brings the name back, the app would stay broken. So a
+        // stored page is ignored, and none is ever stored.
+        if (cached && !isPage(cached)) return cached
 
         const response = await fetch(request)
-        if (response.ok && response.type === 'basic') {
+        if (response.ok && response.type === 'basic' && !isPage(response)) {
           cache.put(request, response.clone())
         }
         return response

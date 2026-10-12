@@ -1778,6 +1778,14 @@ const STRINGS = {
   'plan.ordersLocked': { en: 'Online orders are part of the Pro plan.', hi: 'ऑनलाइन ऑर्डर प्रो प्लान में मिलते हैं।', mr: 'ऑनलाइन ऑर्डर प्रो प्लॅनमध्ये मिळतात.' },
   'plan.ordersLockedHint': { en: 'Your shop is on Basic. Move to Pro to take orders from your own link and QR.', hi: 'आपकी दुकान बेसिक प्लान पर है। अपने लिंक और QR से ऑर्डर लेने के लिए प्रो पर जाइए।', mr: 'तुमचे दुकान बेसिक प्लॅनवर आहे. तुमच्या लिंक आणि QR वरून ऑर्डर घेण्यासाठी प्रोवर जा.' },
   'plan.askUpgrade': { en: 'Ask to move to Pro', hi: 'प्रो पर जाने के लिए पूछें', mr: 'प्रोवर जाण्यासाठी विचारा' },
+  // The error screen (components/RouteError).
+  'err.updateTitle': { en: 'A new version of BuildSupply is ready', hi: 'BuildSupply का नया वर्ज़न आ गया है', mr: 'BuildSupply ची नवीन आवृत्ती आली आहे' },
+  'err.updateBody': { en: 'Loading it now…', hi: 'अभी लोड हो रहा है…', mr: 'आता लोड होत आहे…' },
+  'err.updateTap': { en: 'Tap Reload to open it.', hi: 'खोलने के लिए रीलोड दबाएँ।', mr: 'उघडण्यासाठी रीलोड दाबा.' },
+  'err.title': { en: 'Something went wrong', hi: 'कुछ गड़बड़ हो गई', mr: 'काहीतरी चुकले' },
+  'err.body': { en: 'Please reload. Your saved bills, payments and khata are safe.', hi: 'कृपया रीलोड करें। आपके सेव किए बिल, पेमेंट और खाता सुरक्षित हैं।', mr: 'कृपया रीलोड करा. तुमची सेव्ह केलेली बिले, पेमेंट आणि खाते सुरक्षित आहेत.' },
+  'err.reload': { en: 'Reload', hi: 'रीलोड करें', mr: 'रीलोड करा' },
+  'err.home': { en: 'Go to home', hi: 'होम पर जाएँ', mr: 'होमवर जा' },
   // Phone-style sign-in and the customer's first-time screen (2026-10-12).
   'login.welcome': { en: 'Welcome back', hi: 'फिर से स्वागत है', mr: 'पुन्हा स्वागत आहे' },
   'login.badEmail': { en: 'That email doesn’t look right', hi: 'यह ईमेल सही नहीं लगता', mr: 'हा ईमेल बरोबर वाटत नाही' },
