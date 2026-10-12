@@ -70,14 +70,17 @@ function Hero() {
   const { t } = useLanguage()
   return (
     <section className="bg-shell text-white">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 pb-14 pt-10 sm:px-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.3fr)] lg:items-center lg:gap-12 lg:pb-20 lg:pt-16">
-        <div>
+      {/* Laid out like claude.ai's sign-in page, at the user's request: the
+          left column centred on one line — headline, subtitle, sign-in box —
+          and a tall portrait video on the right, both centred in the row. */}
+      <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 pb-14 pt-8 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-10 lg:pb-16 lg:pt-6">
+        <div className="flex flex-col items-center text-center">
           <p className="text-sm font-semibold text-accent-soft">{t('site.hero.eyebrow')}</p>
-          <h1 className="mt-3 text-[2rem] font-bold leading-tight sm:text-5xl">{t('site.hero.title')}</h1>
-          <p className="mt-4 max-w-xl text-base text-white/75 sm:text-lg">{t('site.hero.sub')}</p>
+          <h1 className="mt-3 max-w-xl text-[2.1rem] font-bold leading-[1.1] sm:text-5xl lg:text-[3.4rem]">{t('site.hero.title')}</h1>
+          <p className="mt-4 max-w-md text-base text-white/75 sm:text-lg">{t('site.hero.sub')}</p>
 
-          <div id="signin" className="mt-8 max-w-sm scroll-mt-24 rounded-2xl border border-white/10 bg-card p-6 text-ink shadow-xl">
-            <h2 className="mb-4 text-base font-semibold">{t('site.hero.signInTitle')}</h2>
+          <div id="signin" className="mt-8 w-full max-w-md scroll-mt-24 rounded-3xl border border-white/10 bg-card p-6 text-left text-ink shadow-xl sm:p-7">
+            <h2 className="mb-4 text-center text-base font-semibold">{t('site.hero.signInTitle')}</h2>
             <SignInForm idPrefix="home-" />
             <div className="my-5 flex items-center gap-3 text-xs text-muted-2">
               <span className="h-px flex-1 bg-border" />
@@ -86,14 +89,14 @@ function Hero() {
             </div>
             <button
               onClick={() => askForTrial()}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-border py-2.5 text-sm font-semibold text-accent-text hover:bg-accent-bg"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-border py-3 text-sm font-semibold text-accent-text hover:bg-accent-bg"
             >
               <WhatsAppIcon size={16} /> {t('site.hero.trialBtn', { days: TRIAL_DAYS })}
             </button>
             <p className="mt-2 text-center text-xs text-muted">{t('site.hero.trialNote')}</p>
           </div>
         </div>
-        <div className="mx-auto w-full max-w-xl lg:max-w-none lg:self-center">
+        <div className="mx-auto w-full max-w-xl lg:max-w-[560px]">
           <HeroVideo />
         </div>
       </div>
