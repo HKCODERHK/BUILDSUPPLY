@@ -29,7 +29,7 @@ import { HeroVideo } from '@/components/site/HeroVideo'
 import { SplashStory } from '@/components/SplashStory'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { SiteFooter, SiteHeader } from '@/components/site/SiteChrome'
-import { PLANS, SITE, TRIAL_DAYS, YEARLY_PER_MONTH, YEARLY_SAVING, askForTrial, rupees, type PlanId } from '@/lib/site'
+import { PLANS, SITE, TRIAL_DAYS, YEARLY_PER_MONTH, YEARLY_SAVING, askForTrial, askToBuy, rupees, type PlanId } from '@/lib/site'
 import { openWhatsAppShare } from '@/lib/whatsapp'
 import { cn } from '@/lib/utils'
 import { usePageTitle } from '@/lib/usePageTitle'
@@ -309,13 +309,13 @@ function Plans() {
                 </p>
               )}
               <button
-                onClick={() => askForTrial(p.id)}
+                onClick={() => askToBuy(p.id)}
                 className={cn(
-                  'mt-5 inline-flex h-11 items-center justify-center rounded-lg text-sm font-semibold',
+                  'mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-lg text-sm font-semibold',
                   popular ? 'bg-accent text-white hover:bg-accent-soft' : 'border border-border bg-card text-ink hover:bg-surface',
                 )}
               >
-                {t('site.plans.cta')}
+                <WhatsAppIcon size={16} /> {t('site.plans.buy')}
               </button>
               <div className="mt-6 border-t border-border pt-5">
                 {text.lead && <p className="mb-3 text-sm font-semibold">{t(text.lead)}</p>}

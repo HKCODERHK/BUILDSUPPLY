@@ -1856,6 +1856,7 @@ const STRINGS = {
   'site.plans.f.freeNoPay': { en: 'No payment needed to start', hi: 'शुरू करने के लिए कोई पेमेंट नहीं', mr: 'सुरू करण्यासाठी कोणतेही पेमेंट नाही' },
   'site.plans.f.freeKeep': { en: 'Your bills and khata stay when you choose a plan', hi: 'प्लान चुनने पर आपके बिल और खाता वैसे ही रहते हैं', mr: 'प्लॅन निवडल्यावर तुमची बिले आणि खाते तसेच राहतात' },
   'site.plans.f.freeThen': { en: 'After {days} days, choose a paid plan to carry on', hi: '{days} दिन बाद चालू रखने के लिए पेड प्लान चुनें', mr: '{days} दिवसांनंतर सुरू ठेवण्यासाठी पेड प्लॅन निवडा' },
+  'site.plans.buy': { en: 'Buy now', hi: 'अभी खरीदें', mr: 'आता खरेदी करा' },
   'site.plans.basic': { en: 'Basic', hi: 'बेसिक', mr: 'बेसिक' },
   'site.plans.pro': { en: 'Pro', hi: 'प्रो', mr: 'प्रो' },
   'site.plans.yearly': { en: 'Yearly', hi: 'सालाना', mr: 'वार्षिक' },
