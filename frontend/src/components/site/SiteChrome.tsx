@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Mail, Menu, Phone, X } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { BrandMark } from '@/components/BrandMark'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { useLanguage } from '@/context/LanguageContext'
@@ -20,20 +21,6 @@ const SECTIONS: { id: string; key: TranslationKey }[] = [
   { id: 'faq', key: 'site.nav.faq' },
   { id: 'contact', key: 'site.nav.contact' },
 ]
-
-export function BrandMark({ className = '' }: { className?: string }) {
-  return (
-    <span className={`flex items-center gap-2 ${className}`}>
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#35A85D" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <path d="M3 21h18" />
-        <path d="M5 21V8l5-4v17" />
-        <path d="M10 21V11l6 3v7" />
-        <path d="M16 21v-4l3 1.5V21" />
-      </svg>
-      <span className="text-lg font-bold">BuildSupply</span>
-    </span>
-  )
-}
 
 const onShell = 'border-white/20 text-white hover:bg-white/10 hover:text-white'
 

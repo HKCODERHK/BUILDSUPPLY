@@ -32,6 +32,7 @@ import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { TruckLoader } from '@/components/TruckLoader'
 import { useLanguage } from '@/context/LanguageContext'
 import { cn } from '@/lib/utils'
+import { BuildSupplyFooter } from '@/components/BuildSupplyFooter'
 import { buildCustomerLedger } from '@/lib/customerLedger'
 import { downloadCustomerLedgerPdf, type LedgerEntry } from '@/lib/customerLedgerPdf'
 import { downloadInvoicePdf } from '@/lib/invoicePdf'
@@ -706,7 +707,7 @@ export default function KhataPage({
   )
 
   return (
-    <div className="min-h-screen bg-surface" data-brand={brandAttr(shop?.brand_color)}>
+    <div className="flex min-h-screen flex-col bg-surface" data-brand={brandAttr(shop?.brand_color)}>
       {/* Two brands, one bar. At the top of a page it says BuildSupply, with
           the language and day/night buttons, and the shop's own logo and name
           sit under it on the page. Scroll, and the shop rises into the bar as
@@ -759,7 +760,7 @@ export default function KhataPage({
           </div>
         </div>
       </header>
-      <main className={cn('mx-auto flex max-w-lg flex-col gap-4 p-4', found && 'pb-28')}>
+      <main className={cn('mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4', found && 'pb-28')}>
         {/* The shop, large, where the page begins — this is what rises into
             the bar. Measured, not guessed: `shopUp` turns on the moment this
             block's last pixel passes under the bar. */}
@@ -1257,6 +1258,7 @@ export default function KhataPage({
             {accountFooter}
           </>
         )}
+        <BuildSupplyFooter />
       </main>
 
       {found && <CustomerTabBar tabs={tabs} />}

@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import { signOutCustomer } from '@/lib/customerAuth'
 import { disconnectShop, myShops, readCurrentShop, rememberCurrentShop, type MyShop } from '@/services/customerAccount'
 import KhataPage from './KhataPage'
+import { BuildSupplyFooter } from '@/components/BuildSupplyFooter'
 
 /**
  * /me — the customer's own BuildSupply (migration 041). Once a khata link has
@@ -179,7 +180,7 @@ export default function MyAccount() {
 
   // No account on this phone, or no shops on it yet.
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="flex min-h-screen flex-col bg-surface">
       <header className="sticky top-0 z-30 bg-shell px-4 pb-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white">
         <div className="mx-auto flex h-11 max-w-lg items-center gap-3">
           <span className="min-w-0 flex-1 truncate text-lg font-bold">{t('acct.title')}</span>
@@ -187,7 +188,7 @@ export default function MyAccount() {
           <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
         </div>
       </header>
-      <main className="mx-auto flex max-w-lg flex-col gap-4 p-4">
+      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4">
         {!shops && !failed ? (
           <TruckLoader />
         ) : (
@@ -205,6 +206,7 @@ export default function MyAccount() {
             </SoftCard>
           </>
         )}
+        <BuildSupplyFooter />
       </main>
     </div>
   )

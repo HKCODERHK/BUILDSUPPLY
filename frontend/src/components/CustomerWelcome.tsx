@@ -3,6 +3,7 @@ import { Building2, MapPin, Phone, ShieldCheck, UserRound } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { AuthShell, GradientButton, IconField, iconInputClass } from '@/components/AuthShell'
+import { BuildSupplyFooter } from '@/components/BuildSupplyFooter'
 import { useLanguage } from '@/context/LanguageContext'
 import { saveProfile, type CustomerProfile } from '@/lib/customerProfile'
 
@@ -75,6 +76,7 @@ export function CustomerWelcome({
       tagline={t('cw.tagline')}
       title={t('cw.title')}
       subtitle={t('cw.sub')}
+      brandFooter={<BuildSupplyFooter className="mt-0 pt-6" />}
       footer={
         <p className="flex items-start gap-2 rounded-xl bg-accent-bg p-3 text-xs text-accent-text">
           <ShieldCheck size={16} className="mt-0.5 shrink-0" />

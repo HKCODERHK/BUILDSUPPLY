@@ -21,6 +21,7 @@ export function AuthShell({
   subtitle,
   children,
   footer,
+  brandFooter,
 }: {
   /** The name and mark at the top of the banner. */
   brand: ReactNode
@@ -29,6 +30,9 @@ export function AuthShell({
   subtitle?: ReactNode
   children: ReactNode
   footer?: ReactNode
+  /** The BuildSupply badge at the very bottom — customer screens only; the
+   *  shop owner's /login, which shares this frame, passes nothing. */
+  brandFooter?: ReactNode
 }) {
   const onShell = 'border-white/20 text-white hover:bg-white/10 hover:text-white'
   return (
@@ -65,6 +69,7 @@ export function AuthShell({
           {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
           <div className="mt-5">{children}</div>
           {footer && <div className="mt-auto pt-6">{footer}</div>}
+          {brandFooter}
         </main>
       </div>
     </div>
