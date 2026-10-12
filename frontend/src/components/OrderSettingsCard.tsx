@@ -9,6 +9,8 @@ import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { ADMIN_WHATSAPP_NUMBER } from '@/lib/adminContact'
 import { openWhatsAppShare } from '@/lib/whatsapp'
 import { planAllowsOrders } from '@/lib/plans'
+import { useMyCompliance } from '@/lib/useMyCompliance'
+import type { TranslationKey } from '@/lib/i18n'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import {
@@ -29,6 +31,8 @@ import {
 export function OrderSettingsCard() {
   const { supplier, refreshSupplier } = useAuth()
   const { t } = useLanguage()
+  // A soft suspension (migration 045) keeps ordering off; the database refuses it.
+  const { record: kyc } = useMyCompliance()
   const [enabled, setEnabled] = useState(supplier?.ordering_enabled ?? false)
   const [showPrices, setShowPrices] = useState(supplier?.order_show_prices ?? false)
   const [link, setLink] = useState(supplier?.order_link ?? (supplier ? suggestOrderLink(supplier.business_name) : ''))
@@ -92,6 +96,28 @@ export function OrderSettingsCard() {
     } catch {
       setCopied(false)
     }
+  }
+
+  // Suspended by BuildSupply: say why, in place of a switch that would only
+  // be refused.
+  if (kyc?.status === 'SUSPENDED') {
+    const reason = kyc.suspension_note || (kyc.suspension_code ? t(`kyc.code.${kyc.suspension_code}` as TranslationKey) : '')
+    return (
+      <Card className="mt-4 max-w-lg">
+        <CardHeader>
+          <CardTitle>{t('ord.settingsTitle')}</CardTitle>
+        </CardHeader>
+        <p className="text-sm font-medium text-red-700 dark:text-red-300">{t('dash.kycSuspended', { reason })}</p>
+        <p className="mt-1.5 text-sm text-muted">{t('kyc.suspendedNote')}</p>
+        <Button
+          variant="outline"
+          className="mt-4"
+          onClick={() => openWhatsAppShare(ADMIN_WHATSAPP_NUMBER, `Hi, about the suspension of ${supplier.business_name} on BuildSupply.`)}
+        >
+          <WhatsAppIcon size={16} /> {t('app.contact')}
+        </Button>
+      </Card>
+    )
   }
 
   // Basic has no online orders (migration 044): in place of the switch, say

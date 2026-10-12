@@ -1744,6 +1744,49 @@ listed**; the first draft missed this and the local tests caught it.
   tables value-for-value, the applicant's login recreated, 3 KYC files.
   **Re-run `install-backup.ps1 -NoTasks` after 045 is merged.**
 
+**Phase 36, round 2 — applying, the application screen, KYC for existing
+shops (2026-10-13, branch `compliance-2`). No migration.**
+- **`/apply`** (`routes/Apply.tsx`, public, no splash): shop name, owner,
+  mobile, district, state, email, password (the breach check from
+  `lib/passwordRules`) and the plan (Free trial / Basic / Pro / Yearly), then
+  signs them straight in. `/login`'s WhatsApp trial button became **Apply to
+  join BuildSupply**; the website's trial buttons are unchanged.
+- **A new Edge Function, `supplier-apply`** — `admin-manage-supplier` was left
+  byte-for-byte as it was (the user's "don't change the admin side"). It
+  creates the login (`email_confirm`) and a PENDING `is_applicant` row, and
+  nothing else: extra fields are ignored, the bot trap answers ok, only the
+  app's own origins are served, and **10 applications an hour platform-wide**
+  (`busy`). Origin is only a browser check — the hourly cap is what holds
+  against a script. **Deployed with `--no-verify-jwt`** (also
+  `[functions.supplier-apply]` in `supabase/config.toml`): the app calls it
+  signed out with the publishable key, which is not a JWT.
+- **`/application`** (`routes/Application.tsx`): an applicant has a login and
+  no `suppliers` row; `ProtectedRoute` sends that case here (any other
+  missing profile still gets `AccountLoadError`). Plan asked for, what happens
+  next, Message BuildSupply, the KYC steps, Sign out. When the admin accepts,
+  it reloads the profile and opens the Dashboard. **It shows its loader only
+  while there is no session** — an applicant never has a supplier, so the auth
+  provider's `loading` returns on every background reload, and hiding the page
+  then wiped what they had typed (caught in the browser test).
+- **`components/ComplianceForm.tsx`** — one form for both: business details
+  (PAN / GSTIN / PIN checked as typed; an applicant's email is their login and
+  locked), documents into the private `kyc` bucket (PDF/JPG/PNG/WebP ≤5 MB,
+  View through a 2-minute signed link), the agreement and the 7 declarations
+  (English, from the database), and Send — "Still needed: …" until
+  `compliance_missing` is empty. Editable only while PENDING / REJECTED.
+- **Existing shops**: Settings → Verification (KYC) (`KycSettingsCard`,
+  `?s=kyc`; a shop made after 045 opens its record there with
+  `start_compliance`) and a Dashboard notice (`KycNotice`, above Start-here):
+  complete it, correct it, or — while soft-suspended — the reason. Settings →
+  Online orders shows the suspension instead of a switch the database would
+  refuse. **Nothing locks a shop out.** `lib/useMyCompliance.ts` reads it.
+- Tested on a local stack with the function served: apply → signed in →
+  details → two uploads (6 MB and .exe refused) → agreement → declarations →
+  sent, all rows checked; accepted through `accept_supplier_application` →
+  Dashboard; a grandfathered shop's notice, KYC section and soft suspension;
+  the function's refusals one by one (rate limit at the 11th); 360px in three
+  languages, zero overflow.
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.

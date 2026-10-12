@@ -23,6 +23,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import type { TranslationKey } from '@/lib/i18n'
 import { AdminDashboardView } from '@/routes/admin/AdminDashboardView'
 import { StartHereCard } from '@/components/StartHereCard'
+import { KycNotice } from '@/components/KycSettings'
 import { DraftBanners } from '@/components/Drafts'
 import { TruckLoader } from '@/components/TruckLoader'
 import { CustomerAvatar } from '@/components/CustomerAvatar'
@@ -398,6 +399,11 @@ function SupplierDashboardView() {
           no materials to put on it. The card covers the same ground in the
           order that actually works. */}
       {!showStart && <QuickActions />}
+
+      {/* Verification (045): complete it, correct it, or why online orders
+          are paused. Above the Start-here card too: a shop with no bills yet
+          still needs to see it. */}
+      <KycNotice />
 
       {loading ? (
         <TruckLoader />

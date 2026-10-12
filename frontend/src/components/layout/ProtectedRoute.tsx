@@ -1,9 +1,10 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { TruckLoader } from '@/components/TruckLoader'
 import { AccountLoadError } from '@/components/AccountLoadError'
+import { getMyCompliance } from '@/services/compliance'
 
 export function ProtectedRoute({
   children,
@@ -33,7 +34,7 @@ export function ProtectedRoute({
   // Signed in, but the profile didn't load. Not /login: Login sends anyone
   // with a session back here, and the two redirected each other forever.
   if (!supplier) {
-    return <AccountLoadError />
+    return <NoSupplierRow userId={session.user.id} />
   }
 
   // Belt-and-suspenders alongside the Supabase Auth-level ban: a session
@@ -67,4 +68,25 @@ export function ProtectedRoute({
   }
 
   return <>{children}</>
+}
+
+/**
+ * Signed in with no supplier row. Either a shop that has applied and not
+ * been accepted yet (migration 045) — their place is the application screen
+ * — or the profile simply did not load, which keeps its old screen.
+ */
+function NoSupplierRow({ userId }: { userId: string }) {
+  const [applicant, setApplicant] = useState<boolean | null>(null)
+  useEffect(() => {
+    let live = true
+    getMyCompliance(userId)
+      .then((r) => live && setApplicant(!!r?.is_applicant))
+      .catch(() => live && setApplicant(false))
+    return () => {
+      live = false
+    }
+  }, [userId])
+  if (applicant === null) return <TruckLoader inline className="min-h-app" />
+  if (applicant) return <Navigate to="/application" replace />
+  return <AccountLoadError />
 }

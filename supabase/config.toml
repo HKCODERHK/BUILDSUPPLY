@@ -25,3 +25,9 @@ additional_redirect_urls = [
   # app only ever redirects to /reset-password.
   "http://localhost:5173/**",
 ]
+
+# The public "apply to join" function (compliance round 2). Called signed
+# out with the publishable key, which is not a JWT, so the gateway must not
+# demand one; the function checks everything itself.
+[functions.supplier-apply]
+verify_jwt = false

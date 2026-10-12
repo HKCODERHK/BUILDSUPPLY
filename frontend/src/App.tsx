@@ -18,6 +18,8 @@ import { RouteError } from '@/components/RouteError'
 const Home = lazy(screens.Home)
 const Legal = lazy(screens.Legal)
 const Login = lazy(screens.Login)
+const Apply = lazy(screens.Apply)
+const Application = lazy(screens.Application)
 const ForgotPassword = lazy(screens.ForgotPassword)
 const ResetPassword = lazy(screens.ResetPassword)
 const Dashboard = lazy(screens.Dashboard)
@@ -58,7 +60,8 @@ function isPublicOrderPath(path: string) {
     // through an app's splash first.
     path === '/' ||
     path === '/privacy' ||
-    path === '/terms'
+    path === '/terms' ||
+    path === '/apply'
   )
 }
 
@@ -108,6 +111,10 @@ const routes: RouteObject[] = [
   { path: '/privacy', element: <Page><Legal doc="privacy" /></Page> },
   { path: '/terms', element: <Page><Legal doc="terms" /></Page> },
   { path: '/login', element: <Page><Login /></Page> },
+  // A new shop applying, and its own application once signed in (045). Not
+  // behind ProtectedRoute: an applicant has a login but no supplier account.
+  { path: '/apply', element: <Page><Apply /></Page> },
+  { path: '/application', element: <Page><Application /></Page> },
   { path: '/forgot-password', element: <Page><ForgotPassword /></Page> },
   { path: '/reset-password', element: <Page><ResetPassword /></Page> },
   { path: '/order/:link', element: <Page><OrderPage /></Page> },

@@ -2,14 +2,14 @@ import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { SignInForm } from '@/components/SignInForm'
 import { AuthShell } from '@/components/AuthShell'
-import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import { Store } from 'lucide-react'
 import { useLanguage } from '@/context/LanguageContext'
-import { TRIAL_DAYS, askForTrial } from '@/lib/site'
 
 /**
  * The shop owner's sign-in (and the admin's), in the phone-style look the user
  * asked for from a recording (2026-10-12). Accounts are made by the admin, so
- * there is no sign-up — a new shop asks for its free trial on WhatsApp.
+ * there is no sign-up — a new shop applies (/apply, migration 045), and the
+ * admin accepts the application after payment.
  * Customers never come here: they arrive through a shop's QR or link.
  */
 export default function Login() {
@@ -41,13 +41,14 @@ export default function Login() {
             {t('site.hero.new')}
             <span className="h-px flex-1 bg-border" />
           </div>
-          <button
-            type="button"
-            onClick={() => askForTrial()}
+          {/* A new shop applies here (045): no sign-up, an application the
+              admin accepts after payment. */}
+          <Link
+            to="/apply"
             className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card py-3 text-sm font-semibold text-accent-text hover:bg-accent-bg"
           >
-            <WhatsAppIcon size={16} /> {t('site.hero.trialBtn', { days: TRIAL_DAYS })}
-          </button>
+            <Store size={16} /> {t('login.apply')}
+          </Link>
         </div>
       }
     >
