@@ -1577,18 +1577,22 @@ change.** Asked for from a recording of claude.ai's sign-in page.
 - `public/robots.txt` keeps `/khata/`, `/order-status/` and `/me` out of
   search engines; `index.html` has a description and link-preview tags.
 - Three languages on the front page (`site.*` keys), zero overflow at 360px.
-- **The moving picture** (`components/site/HeroVideo.tsx`, asked for from
-  the video beside claude.ai's sign-in, "real feel, the man must be
-  Indian"): two real Pexels clips in `public/video/` (RDNE Stock project,
-  7581377 a man handed more files at his desk, 7581309 a man smiling on a
-  call), played in turn with a cross-fade; 640px files on phones, 960px on
-  computers, a still under reduced motion or data saver. **The Pexels licence
-  forbids implying an identifiable person endorses the product, so no caption
-  ties either man to BuildSupply — don't add one.** Downloaded with the user's
-  approval. `sw.js` skips `/video/` (range responses can't be cached). A
-  drawn version (ShopkeeperStory) was built first and replaced the same day.
-  The user was told filming a real supplier at a real shop is the better
-  long-term footage.
+- **The moving picture** (`components/site/HeroVideo.tsx`): a 20-second
+  looping montage of the trade itself — cement bags onto a truck, bricks
+  loaded at a yard, steel stirrups bent, bricks carried down an Indian street —
+  cut from four free Pexels clips (3365496, 32165834, 16106454, 32534659),
+  downloaded with the user's approval. The originals (26 MB) stay out of the
+  repo; the montage was cut and cross-faded in the browser (canvas +
+  MediaRecorder, H.264 baseline) into `public/video/montage-960.mp4` (2.8 MB,
+  computers) and `montage-640.mp4` (0.7 MB, phones), plus a still. Reduced
+  motion or data saver shows the still. **No caption ties any person in it to
+  BuildSupply** — the Pexels licence forbids implying endorsement. `sw.js`
+  skips `/video/`. Before this: a drawn scene, then two office clips, both
+  replaced the same day at the user's request ("make it look like building
+  material suppliers"). Recording gotcha: requestAnimationFrame slows to ~2
+  frames a second when the app window is covered even though the page says
+  visible — drive a canvas recording with setInterval, and check the frame
+  count.
 
 **Phase 34 — three plans (migration 044, 2026-10-12, branch `plans`).** The
 website sells Basic ₹499/month, Pro ₹699/month and Pro Yearly ₹7,999/year;
