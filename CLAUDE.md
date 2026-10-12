@@ -1560,6 +1560,7 @@ change.** Asked for from a recording of claude.ai's sign-in page.
   (`components/site/SiteChrome.tsx`). A signed-in account opening `/` goes to
   `/dashboard`, as before. Public: no opening splash (`isPublicOrderPath`),
   but signing in from it still gets the sign-in splash.
+- **A Free trial card leads the plans** (2026-10-12): ₹0 for 10 days, every feature including online orders; Basic, Pro and Yearly are tagged Paid. In the app a trial is just Pro with the expiry the admin sets — no plan value of its own.
 - **Plans are only a price list** (`lib/site.ts`, the user's figures): Basic
   ₹499/month without online orders, Pro ₹699/month, Yearly ₹7,999; a
   **10-day free trial**; **no refund once paid**. `suppliers.plan` still
