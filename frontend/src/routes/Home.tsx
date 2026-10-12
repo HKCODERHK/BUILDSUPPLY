@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
 import {
   BookOpen,
@@ -25,7 +25,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import type { TranslationKey } from '@/lib/i18n'
 import { SignInForm } from '@/components/SignInForm'
-import { SplashStory } from '@/components/SplashStory'
+import { ShopkeeperStory } from '@/components/site/ShopkeeperStory'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { SiteFooter, SiteHeader } from '@/components/site/SiteChrome'
 import { PLANS, SITE, TRIAL_DAYS, YEARLY_PER_MONTH, YEARLY_SAVING, askForTrial, rupees, type PlanId } from '@/lib/site'
@@ -37,8 +37,8 @@ import { usePageTitle } from '@/lib/usePageTitle'
  * BuildSupply's public front page (2026-10-12), asked for from a recording of
  * claude.ai's sign-in page: a top bar, a headline with the sign-in box and a
  * picture beside it, then features, plans, FAQ and a full footer. The picture
- * is the app's own splash story, played on a loop — no stock or generated
- * photographs. A signed-in supplier or admin goes straight to their dashboard.
+ * is a drawn supplier going from stressed to smiling (ShopkeeperStory) — no
+ * stock or generated photographs. A signed-in supplier or admin goes straight to their dashboard.
  */
 export default function Home() {
   const { session, loading } = useAuth()
@@ -64,17 +64,6 @@ export default function Home() {
 }
 
 // ── Hero ────────────────────────────────────────────────────────────────
-
-/** The splash story, started again every few seconds while the page is open. */
-function LoopingStory() {
-  const [round, setRound] = useState(0)
-  useEffect(() => {
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
-    const id = window.setInterval(() => setRound((r) => r + 1), 7500)
-    return () => window.clearInterval(id)
-  }, [])
-  return <SplashStory key={round} />
-}
 
 function Hero() {
   const { t } = useLanguage()
@@ -104,7 +93,7 @@ function Hero() {
           </div>
         </div>
         <div className="mx-auto w-full max-w-lg lg:max-w-none">
-          <LoopingStory />
+          <ShopkeeperStory />
         </div>
       </div>
     </section>

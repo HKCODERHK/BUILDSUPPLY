@@ -1779,6 +1779,13 @@ const STRINGS = {
   'plan.ordersLockedHint': { en: 'Your shop is on Basic. Move to Pro to take orders from your own link and QR.', hi: 'आपकी दुकान बेसिक प्लान पर है। अपने लिंक और QR से ऑर्डर लेने के लिए प्रो पर जाइए।', mr: 'तुमचे दुकान बेसिक प्लॅनवर आहे. तुमच्या लिंक आणि QR वरून ऑर्डर घेण्यासाठी प्रोवर जा.' },
   'plan.askUpgrade': { en: 'Ask to move to Pro', hi: 'प्रो पर जाने के लिए पूछें', mr: 'प्रोवर जाण्यासाठी विचारा' },
   // The public website at / (front page, plans, FAQ, footer).
+  'site.anim.beforeTag': { en: 'Before', hi: 'पहले', mr: 'आधी' },
+  'site.anim.afterTag': { en: 'With BuildSupply', hi: 'BuildSupply के साथ', mr: 'BuildSupply सोबत' },
+  'site.anim.before': { en: 'Registers, loose bills and endless calls', hi: 'रजिस्टर, बिखरे बिल और लगातार फ़ोन', mr: 'रजिस्टर, सुटी बिले आणि सततचे फोन' },
+  'site.anim.after': { en: 'Every bill, payment and order in one app', hi: 'हर बिल, पेमेंट और ऑर्डर एक ही ऐप में', mr: 'प्रत्येक बिल, पेमेंट आणि ऑर्डर एकाच ॲपमध्ये' },
+  'site.anim.chipBill': { en: 'Bill sent on WhatsApp', hi: 'WhatsApp पर बिल भेजा', mr: 'WhatsApp वर बिल पाठवले' },
+  'site.anim.chipPaid': { en: 'Payment received', hi: 'पेमेंट मिल गया', mr: 'पेमेंट मिळाले' },
+  'site.anim.chipOrder': { en: 'New order from your QR', hi: 'आपके QR से नया ऑर्डर', mr: 'तुमच्या QR वरून नवीन ऑर्डर' },
   'site.nav.features': { en: 'Features', hi: 'फ़ीचर', mr: 'फीचर्स' },
   'site.nav.how': { en: 'How it works', hi: 'कैसे काम करता है', mr: 'कसे काम करते' },
   'site.nav.plans': { en: 'Plans', hi: 'प्लान', mr: 'प्लॅन' },
