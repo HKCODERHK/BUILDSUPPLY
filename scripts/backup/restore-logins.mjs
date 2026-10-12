@@ -55,7 +55,17 @@ if (url.includes(LIVE_REF) && !flag('--allow-live-project')) {
 }
 const supFile = path.join(backup, 'suppliers.json')
 if (!fs.existsSync(supFile)) stop('no suppliers.json in ' + backup + ' - point --backup at an unzipped backup folder')
-const suppliers = JSON.parse(fs.readFileSync(supFile, 'utf8'))
+const supplierRows = JSON.parse(fs.readFileSync(supFile, 'utf8'))
+// Applicants (045): a login whose application has no supplier account yet.
+// Recreated from the email on their application, so they can sign in and
+// see its status again; their application, documents and acceptances come
+// back with the data.
+const compFile = path.join(backup, 'supplier_compliance.json')
+const supplierIds = new Set(supplierRows.map((s) => s.id))
+const applicants = (fs.existsSync(compFile) ? JSON.parse(fs.readFileSync(compFile, 'utf8')) : [])
+  .filter((c) => c.is_applicant && !supplierIds.has(c.user_id))
+  .map((c) => ({ id: c.user_id, business_name: (c.legal_name || 'Applicant') + ' (applicant)', email: c.email, status: 'active' }))
+const suppliers = [...supplierRows, ...applicants]
 if (!suppliers.length) stop('the backup has no accounts')
 
 // The same alphabet as the admin panel's generated passwords: no O/0/I/l/1,

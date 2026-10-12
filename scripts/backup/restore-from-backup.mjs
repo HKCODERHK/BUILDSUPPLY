@@ -109,6 +109,13 @@ const ORDER = [
   'activity_log',
   'customer_accounts',
   'customer_connections',
+  'compliance_texts',
+  'compliance_requirements',
+  'retention_settings',
+  'supplier_compliance',
+  'supplier_documents',
+  'supplier_acceptances',
+  'compliance_audit_log',
 ]
 
 // A table the backup holds but ORDER has never heard of - one a later
@@ -133,7 +140,21 @@ const TABLES = [...ORDER, ...unknown]
 // Backups made since 2026-09-23 deliberately leave out order_guard_secret
 // (and supplier_pins), so for those the fresh key the migration made stays.
 // Older backups still carry it and it is restored as before.
-const SEEDED = new Set(['platform_settings', 'order_guard_secret'])
+// Each with the column its seeded row is found by. 045 seeds the document
+// requirements and retention settings the same way.
+const SEEDED = new Map([
+  ['platform_settings', 'id'],
+  ['order_guard_secret', 'id'],
+  ['compliance_requirements', 'doc_type'],
+  ['retention_settings', 'record_type'],
+])
+
+// 045 also seeds DRAFT legal texts, under fresh ids. The backup's versions -
+// the ones suppliers actually accepted, which their acceptance rows point
+// at - replace them: the seeded drafts are removed first (app triggers are
+// off for the load). In the empty database a restore targets, nothing can
+// point at a seeded draft yet.
+const CLEARED_FIRST = new Set(['compliance_texts'])
 
 // Which phone holds which customer's account (migration 041). Their logins
 // are anonymous and are deliberately not recreated after a disaster, so a
@@ -177,13 +198,15 @@ function emit(table, rows) {
 
   print(`-- ${table}: ${rows.length} row(s), ${columns.length} column(s)${held ? ` (${held} filled in at the end)` : ''}`)
   if (RELINKED[table]) print(`-- ${table}: restored only where the customer's login exists; otherwise they relink with Save on their khata link`)
+  if (CLEARED_FIRST.has(table)) print(`delete from public.${table};`)
   print(`insert into public.${table} (${list})
   select ${list} from jsonb_populate_recordset(null::public.${table}, ${json}::jsonb) x${RELINKED[table] ? `\n  where ${RELINKED[table]}` : ''}`)
   if (SEEDED.has(table)) {
     // The migrations already put a row here, so the backup's row replaces it
     // rather than colliding. Re-running the script stays harmless.
-    print('  on conflict (id) do update set')
-    const sets = columns.filter((c) => c !== 'id')
+    const keyCol = SEEDED.get(table)
+    print(`  on conflict (${keyCol}) do update set`)
+    const sets = columns.filter((c) => c !== keyCol)
     for (let i = 0; i < sets.length; i++) {
       print(`    ${sets[i]} = excluded.${sets[i]}${i < sets.length - 1 ? ',' : ';'}`)
     }
