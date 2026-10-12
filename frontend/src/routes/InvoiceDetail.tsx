@@ -22,7 +22,8 @@ import { usePin } from '@/context/PinContext'
 import type { Invoice, InvoiceItem, Customer } from '@/lib/database.types'
 import { TruckLoader } from '@/components/TruckLoader'
 import { PrintOptionsModal } from '@/components/BillPrint'
-import { printedSupplier } from '@/lib/billPrint'
+import { billIssuer, effectiveChoices, printedSupplier, withChoice } from '@/lib/billPrint'
+import { setInvoicePrintOptions } from '@/services/shopPage'
 import { cn } from '@/lib/utils'
 
 function formatINR(n: number) {
@@ -46,6 +47,8 @@ export default function InvoiceDetail() {
   const [cancelling, setCancelling] = useState(false)
   const [driverOpen, setDriverOpen] = useState(false)
   const [printOpen, setPrintOpen] = useState(false)
+  const [gstSaving, setGstSaving] = useState(false)
+  const [gstFailed, setGstFailed] = useState(false)
 
   async function refresh() {
     if (!id) return
@@ -143,6 +146,29 @@ export default function InvoiceDetail() {
 
   const from = supplier ? printedSupplier(supplier, invoice) : null
 
+  // "Hide GST number", right above the bill, so it is set before sharing.
+  // Saved on the bill itself, so the PDF, a later re-share and the
+  // customer's copy on their khata link all agree. Only offered when the
+  // bill was issued with a GST number to hide (and on a database with 043).
+  const issuer = supplier ? billIssuer(supplier, invoice) : null
+  const canHideGst = !!supplier && 'bill_print' in supplier && !!issuer?.gst_number
+  const gstHidden = !!issuer && !effectiveChoices(invoice, issuer).gstin
+
+  async function toggleGst(hide: boolean) {
+    if (!invoice || !issuer || gstSaving) return
+    setGstSaving(true)
+    setGstFailed(false)
+    try {
+      const options = withChoice(invoice, issuer, 'gstin', !hide)
+      await setInvoicePrintOptions(invoice.id, options)
+      setInvoice({ ...invoice, print_options: options })
+    } catch {
+      setGstFailed(true)
+    } finally {
+      setGstSaving(false)
+    }
+  }
+
   return (
     <div>
       <PageHeader
@@ -193,6 +219,25 @@ export default function InvoiceDetail() {
         <Card className="mb-4 border-red-300 bg-red-50 dark:bg-red-950">
           <p className="text-sm font-semibold text-red-700 dark:text-red-300">{t('inv.cancelledBanner')}</p>
           <p className="mt-1 text-xs text-red-700/80 dark:text-red-300/80">{t('inv.cancelledDetail')}</p>
+        </Card>
+      )}
+
+      {canHideGst && (
+        <Card className="mb-3 px-4 py-3 sm:px-5 sm:py-3">
+          <label className="flex items-center gap-3 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={gstHidden}
+              disabled={gstSaving}
+              onChange={(e) => toggleGst(e.target.checked)}
+            />
+            <span className="flex-1 font-medium">{t('bp.hideGst')}</span>
+            {gstSaving && <span className="text-xs text-muted">{t('common.saving')}</span>}
+          </label>
+          {gstHidden && Number(invoice.gst_amount) > 0 && (
+            <p className="mt-1.5 pl-7 text-xs text-muted">{t('bp.hideGstNote')}</p>
+          )}
+          {gstFailed && <p className="mt-1.5 pl-7 text-xs text-red-700 dark:text-red-300">{t('error.generic')}</p>}
         </Card>
       )}
 

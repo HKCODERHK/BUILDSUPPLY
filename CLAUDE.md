@@ -1530,7 +1530,12 @@ rest. Both merged (29986ff, 8926a2f) and 043 applied the same day.**
     and print with the shop's current details, as they always did.
   - Choice order: the bill's `print_options` → `issuer.print` → everything.
   - **GST lock:** a bill charging GST from a shop with a GSTIN always prints
-    name, address and GSTIN.
+    name and address. **The GSTIN is no longer locked** (2026-10-12, the
+    user's decision): **"Hide GST number on this bill"** sits right above the
+    bill on its page, saved as that bill's `print_options` (`withChoice`), so
+    the PDF, re-shares and the khata link copy agree; on a GST bill it shows a
+    "check with your CA" note. The lock lives only in `lib/billPrint.ts` —
+    043's SQL comment still describes the old rule; no migration was needed.
   - The customer's copy from the khata link prints identically
     (`khata_document` now returns `issuer` and `print_options`).
   - **For the user's CA, not built:** "Tax Invoice" heading, HSN codes,
