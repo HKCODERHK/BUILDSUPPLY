@@ -1592,7 +1592,11 @@ change.** Asked for from a recording of claude.ai's sign-in page.
   material suppliers"). Recording gotcha: requestAnimationFrame slows to ~2
   frames a second when the app window is covered even though the page says
   visible — drive a canvas recording with setInterval, and check the frame
-  count.
+  count. The video plays only while on screen (IntersectionObserver) and is
+  started again on `visibilitychange` — browsers pause a muted background
+  video and do not always resume it.
+- **The truck story (the splash's) loops under "Everything a material shop
+  needs"**, above the feature cards — the user's placement, 2026-10-12.
 
 **Phase 34 — three plans (migration 044, 2026-10-12, branch `plans`).** The
 website sells Basic ₹499/month, Pro ₹699/month and Pro Yearly ₹7,999/year;

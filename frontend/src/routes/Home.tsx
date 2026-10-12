@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
 import {
   BookOpen,
@@ -26,6 +26,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import type { TranslationKey } from '@/lib/i18n'
 import { SignInForm } from '@/components/SignInForm'
 import { HeroVideo } from '@/components/site/HeroVideo'
+import { SplashStory } from '@/components/SplashStory'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { SiteFooter, SiteHeader } from '@/components/site/SiteChrome'
 import { PLANS, SITE, TRIAL_DAYS, YEARLY_PER_MONTH, YEARLY_SAVING, askForTrial, rupees, type PlanId } from '@/lib/site'
@@ -148,10 +149,26 @@ const FEATURES: { key: string; icon: ReactNode; pro?: boolean }[] = [
   { key: 'reports', icon: <ChartColumn size={20} /> },
 ]
 
+/** The app's own truck story (the splash's), started again every few
+ *  seconds while the page is open — the user wanted it under the features
+ *  heading. Still under reduced motion. */
+function LoopingStory() {
+  const [round, setRound] = useState(0)
+  useEffect(() => {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+    const id = window.setInterval(() => setRound((r) => r + 1), 7500)
+    return () => window.clearInterval(id)
+  }, [])
+  return <SplashStory key={round} />
+}
+
 function Features() {
   const { t } = useLanguage()
   return (
     <Section id="features" title={t('site.feat.title')} sub={t('site.feat.sub')}>
+      <div className="mx-auto -mt-7 mb-10 max-w-2xl">
+        <LoopingStory />
+      </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {FEATURES.map((f) => (
           <div key={f.key} className="rounded-2xl border border-border bg-card p-5">

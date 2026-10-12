@@ -32,9 +32,22 @@ export function HeroVideo() {
   const ref = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
-    if (still) return
+    const v = ref.current
+    if (still || !v) return
     // Muted, inline video may autoplay; if a phone refuses, the still stays.
-    ref.current?.play().catch(() => undefined)
+    // Browsers pause a muted video when its tab goes to the background, and
+    // do not always start it again — so play it whenever it is back in view.
+    const play = () => {
+      if (!document.hidden && v.paused) v.play().catch(() => undefined)
+    }
+    play()
+    const seen = new IntersectionObserver(([e]) => (e.isIntersecting ? play() : v.pause()))
+    seen.observe(v)
+    document.addEventListener('visibilitychange', play)
+    return () => {
+      seen.disconnect()
+      document.removeEventListener('visibilitychange', play)
+    }
   }, [still])
 
   return (
@@ -45,6 +58,7 @@ export function HeroVideo() {
         poster={MONTAGE.poster}
         src={still ? undefined : small ? MONTAGE.small : MONTAGE.large}
         muted
+        autoPlay={!still}
         loop
         playsInline
         preload={still ? 'none' : 'auto'}
