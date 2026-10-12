@@ -62,7 +62,7 @@ export function HeroVideo() {
   }, [still])
 
   return (
-    <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-2xl lg:aspect-[4/5]" aria-hidden>
+    <div className="relative aspect-video w-full overflow-hidden rounded-3xl bg-black shadow-2xl lg:aspect-[4/5] lg:h-full lg:w-auto" aria-hidden>
       <video
         ref={ref}
         className="absolute inset-0 h-full w-full object-cover"
