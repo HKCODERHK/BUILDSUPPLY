@@ -37,6 +37,8 @@ export const screens = {
   AdminSupplierProfile: () => import('@/routes/admin/SupplierProfile'),
   AdminMaterialCatalog: () => import('@/routes/admin/MaterialCatalog'),
   AdminPlatformSettings: () => import('@/routes/admin/PlatformSettings'),
+  AdminCompliance: () => import('@/routes/admin/Compliance'),
+  AdminComplianceDetail: () => import('@/routes/admin/ComplianceDetail'),
 }
 
 type Screen = keyof typeof screens
@@ -47,7 +49,7 @@ const SUPPLIER_SCREENS: Screen[] = [
   'Payments', 'Orders', 'OrderDetail', 'Settings', 'Quotations', 'NewQuotation', 'QuotationDetail',
   'Deliveries', 'Reminders', 'Reports',
 ]
-const ADMIN_SCREENS: Screen[] = ['Dashboard', 'AdminSuppliers', 'AdminSupplierProfile', 'AdminMaterialCatalog', 'AdminPlatformSettings', 'Settings']
+const ADMIN_SCREENS: Screen[] = ['Dashboard', 'AdminSuppliers', 'AdminSupplierProfile', 'AdminMaterialCatalog', 'AdminPlatformSettings', 'AdminCompliance', 'AdminComplianceDetail', 'Settings']
 
 let started = false
 

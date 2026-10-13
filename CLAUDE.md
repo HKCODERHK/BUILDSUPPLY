@@ -1787,6 +1787,42 @@ shops (2026-10-13, branch `compliance-2`). No migration.**
   the function's refusals one by one (rate limit at the 11th); 360px in three
   languages, zero overflow.
 
+**Phase 36, round 3 — the admin's Supplier Compliance screen (2026-10-13,
+branch `compliance-3`, built on `compliance-2`). No migration.** The one new
+admin screen the user agreed to; the other admin screens are unchanged except
+that the sidebar and the More sheet gained one link ("Supplier Compliance" /
+"Compliance", `FileCheck2`). English only.
+- **`/admin/compliance`** (`routes/admin/Compliance.tsx`): the admin notice
+  (the active `admin_notice` text) on top, then three tabs (`?tab=`):
+  - **Review** — filter chips with counts (Needs a decision = UNDER_REVIEW,
+    New shops, KYC not sent, Approved, Rejected, Suspended, All) and search.
+  - **Legal texts** — each text's version in force; **New version** publishes
+    the next one (`publishTextVersion`: the old one off, the new one on, the old
+    one switched back on if the insert fails). Versions are never edited.
+  - **Record keeping** — `retention_settings`, 1–100 years or "until decided";
+    nothing is deleted by it.
+- **`/admin/compliance/:id`** (`routes/admin/ComplianceDetail.tsx`): status and
+  reasons, Call / WhatsApp, **Decisions** (only the ones that apply: Accept
+  application, Approve, Ask for a correction, Reject, Suspend online orders,
+  Reinstate, Terminate agreement — accept / approve wait until nothing is
+  missing; the PIN gate on all but correction and document review; Terminate
+  also needs the shop's name typed), business details, documents (View through
+  a signed link, Accept / Not OK with a note; earlier uploads under a fold),
+  acceptances (version, time, the start of the address code, device) and the
+  history. **Accept application** suggests the plan and dates from what the
+  shop asked for — Free trial = Pro to today + `TRIAL_DAYS`, Basic / Pro a
+  month, Yearly a year — and refuses an expiry before the start.
+- `services/adminCompliance.ts` holds the reads, the decision calls and the
+  status labels. Every decision is one of 045's functions; nothing writes a
+  status itself.
+- Tested on a local stack signed in as a local admin: queue counts, View,
+  both document reviews, accept (trial → Pro, 10 days, account created),
+  suspend (a reason; "Other" needs a note) → reinstate (back to Approved) →
+  terminate (a wrong name blocked; no way back), correction and reject on an
+  existing shop, a new disclosure version (the customer-facing function read
+  the new wording at once), a retention period; every row checked in the
+  database; 360px with no overflow on all five views.
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.

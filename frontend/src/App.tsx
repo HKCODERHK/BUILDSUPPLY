@@ -41,6 +41,8 @@ const AdminSuppliers = lazy(screens.AdminSuppliers)
 const AdminSupplierProfile = lazy(screens.AdminSupplierProfile)
 const AdminMaterialCatalog = lazy(screens.AdminMaterialCatalog)
 const AdminPlatformSettings = lazy(screens.AdminPlatformSettings)
+const AdminCompliance = lazy(screens.AdminCompliance)
+const AdminComplianceDetail = lazy(screens.AdminComplianceDetail)
 const OrderPage = lazy(screens.OrderPage)
 const OrderStatus = lazy(screens.OrderStatus)
 const KhataPage = lazy(screens.KhataPage)
@@ -149,6 +151,9 @@ const routes: RouteObject[] = [
   { path: '/admin/suppliers/:id', element: <Protected admin><AdminSupplierProfile /></Protected> },
   { path: '/admin/materials', element: <Protected admin><AdminMaterialCatalog /></Protected> },
   { path: '/admin/settings', element: <Protected admin><AdminPlatformSettings /></Protected> },
+  // Supplier verification (045) — the one new admin screen.
+  { path: '/admin/compliance', element: <Protected admin><AdminCompliance /></Protected> },
+  { path: '/admin/compliance/:id', element: <Protected admin><AdminComplianceDetail /></Protected> },
   { path: '*', element: <Navigate to="/dashboard" replace /> },
 ]
 

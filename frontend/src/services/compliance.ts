@@ -40,6 +40,8 @@ export interface ComplianceRecord {
   suspension_code: string | null
   suspension_note: string | null
   terminated_at: string | null
+  termination_reason: string | null
+  termination_notes: string | null
 }
 
 /** The business fields the account may edit itself. */
