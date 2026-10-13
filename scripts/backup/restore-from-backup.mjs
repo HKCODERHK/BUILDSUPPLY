@@ -98,6 +98,8 @@ const ORDER = [
   'invoice_items',
   'payments',
   'payment_allocations',
+  // Complaints about a bill (046): after the shop, the customer and the bill.
+  'customer_complaints',
   'order_requests',
   'order_request_clients',
   'order_blocked_phones',

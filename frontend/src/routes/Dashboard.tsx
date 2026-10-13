@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, AlertTriangle, ChevronRight, ClipboardList, Inbox, BadgeCheck, Tags } from 'lucide-react'
+import { Plus, AlertTriangle, ChevronRight, ClipboardList, Inbox, BadgeCheck, Tags, MessageSquareWarning } from 'lucide-react'
 import { localDateKey } from '@/lib/localDate'
 import { UpdateRatesModal } from '@/components/UpdateRatesModal'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -24,6 +24,7 @@ import type { TranslationKey } from '@/lib/i18n'
 import { AdminDashboardView } from '@/routes/admin/AdminDashboardView'
 import { StartHereCard } from '@/components/StartHereCard'
 import { KycNotice } from '@/components/KycSettings'
+import { countOpenComplaints } from '@/services/complaints'
 import { DraftBanners } from '@/components/Drafts'
 import { TruckLoader } from '@/components/TruckLoader'
 import { CustomerAvatar } from '@/components/CustomerAvatar'
@@ -283,8 +284,13 @@ function SupplierDashboardView() {
   // Orders approved on the spot and not yet priced (037): the supplier said
   // yes and stopped there, and the customer is waiting on a figure.
   const [unpriced, setUnpriced] = useState<{ count: number; orderId: string | null }>({ count: 0, orderId: null })
+  // Customer complaints still open (046); 0 before it exists.
+  const [complaints, setComplaints] = useState(0)
   useEffect(() => {
     let active = true
+    countOpenComplaints()
+      .then((n) => active && setComplaints(n))
+      .catch(() => {})
     countPendingOrders()
       .then((n) => active && setPendingOrders(n))
       .catch(() => {})
@@ -404,6 +410,20 @@ function SupplierDashboardView() {
           are paused. Above the Start-here card too: a shop with no bills yet
           still needs to see it. */}
       <KycNotice />
+      {complaints > 0 && (
+        <Link
+          to="/complaints"
+          className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950"
+        >
+          <div className="flex items-center gap-2.5">
+            <MessageSquareWarning size={18} className="shrink-0 text-amber-700 dark:text-amber-400" />
+            <span className="text-sm font-medium text-amber-900 dark:text-amber-200">
+              {complaints === 1 ? t('dash.complaintsOne') : t('dash.complaintsMany', { count: complaints })}
+            </span>
+          </div>
+          <span className="shrink-0 text-xs font-semibold text-amber-800 dark:text-amber-300">{t('dash.complaintsOpen')}</span>
+        </Link>
+      )}
 
       {loading ? (
         <TruckLoader />

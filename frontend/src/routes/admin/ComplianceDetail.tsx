@@ -16,6 +16,7 @@ import { PLAN_CHOICES, type PlanChoice } from '@/lib/plans'
 import { TRIAL_DAYS } from '@/lib/site'
 import { today, todayPlusDays, renewedExpiry } from '@/lib/subscription'
 import type { ComplianceRecord } from '@/services/compliance'
+import { listComplaintsForSupplier, type ShopComplaint } from '@/services/complaints'
 import {
   COMPLIANCE_STATUS_LABEL,
   COMPLIANCE_STATUS_TONE,
@@ -51,6 +52,17 @@ const DOC_LABEL: Record<string, string> = {
   gst_certificate: 'GST certificate',
   business_registration: 'Business registration',
   licence: 'Trade licence',
+}
+
+const COMPLAINT_LABEL: Record<string, string> = {
+  quality: 'Quality',
+  quantity: 'Less quantity',
+  wrong_item: 'Wrong material',
+  damaged: 'Damaged',
+  delivery: 'Delivery',
+  billing: 'Bill or rate',
+  behaviour: 'Staff behaviour',
+  other: 'Other',
 }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -139,13 +151,21 @@ export default function AdminComplianceDetail() {
   const [acc, setAcc] = useState<AdminAcceptance[]>([])
   const [audit, setAudit] = useState<AuditEntry[]>([])
   const [missing, setMissing] = useState<string[]>([])
+  const [complaints, setComplaints] = useState<ShopComplaint[]>([])
   const [dialog, setDialog] = useState<Dialog>(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
 
   const fetchAll = useCallback(async () => {
-    const [r, d, a, l, m] = await Promise.all([getCompliance(id), listDocumentsFor(id), listAcceptancesFor(id), listAuditFor(id), missingFor(id)])
-    return { r, d, a, l, m }
+    const [r, d, a, l, m, k] = await Promise.all([
+      getCompliance(id),
+      listDocumentsFor(id),
+      listAcceptancesFor(id),
+      listAuditFor(id),
+      missingFor(id),
+      listComplaintsForSupplier(id).catch(() => [] as ShopComplaint[]),
+    ])
+    return { r, d, a, l, m, k }
   }, [id])
   const apply = useCallback((x: Awaited<ReturnType<typeof fetchAll>>) => {
     setRecord(x.r)
@@ -153,6 +173,7 @@ export default function AdminComplianceDetail() {
     setAcc(x.a)
     setAudit(x.l)
     setMissing(x.m)
+    setComplaints(x.k)
   }, [])
   const reload = useCallback(() => fetchAll().then(apply), [fetchAll, apply])
 
@@ -402,6 +423,41 @@ export default function AdminComplianceDetail() {
           </div>
         )}
       </Card>
+
+      {!r.is_applicant && (
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              Customer complaints
+              {complaints.length > 0 &&
+                ` · ${complaints.filter((c) => c.status === 'open' || c.status === 'in_progress').length} open of ${complaints.length}`}
+            </CardTitle>
+          </CardHeader>
+          {complaints.length === 0 ? (
+            <p className="text-sm text-muted">None.</p>
+          ) : (
+            <div className="flex flex-col gap-2 text-sm">
+              {complaints.map((c) => (
+                <div key={c.id} className="rounded-lg border border-border p-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-medium text-ink">
+                      {COMPLAINT_LABEL[c.category] ?? c.category} · Bill {c.invoice_no}
+                      {c.customers ? ` · ${c.customers.name}` : ''}
+                    </span>
+                    <Badge tone={c.status === 'resolved' || c.status === 'closed' ? 'success' : c.status === 'in_progress' ? 'info' : 'warning'}>
+                      {c.status.replace('_', ' ')}
+                    </Badge>
+                  </div>
+                  <p className="mt-1 whitespace-pre-line text-ink">{c.description}</p>
+                  {c.supplier_response && <p className="mt-1 text-muted">Shop replied: {c.supplier_response}</p>}
+                  <p className="mt-1 text-xs text-muted">{fmt(c.created_at)}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="mt-3 text-xs text-muted">Read-only here: the shop answers its own complaints. Repeated or unresolved ones are a reason you may suspend online orders.</p>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

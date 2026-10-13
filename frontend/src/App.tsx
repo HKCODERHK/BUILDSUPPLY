@@ -20,6 +20,7 @@ const Legal = lazy(screens.Legal)
 const Login = lazy(screens.Login)
 const Apply = lazy(screens.Apply)
 const Application = lazy(screens.Application)
+const Complaints = lazy(screens.Complaints)
 const ForgotPassword = lazy(screens.ForgotPassword)
 const ResetPassword = lazy(screens.ResetPassword)
 const Dashboard = lazy(screens.Dashboard)
@@ -144,6 +145,8 @@ const routes: RouteObject[] = [
   { path: '/deliveries', element: <Protected supplierOnly><Deliveries /></Protected> },
   { path: '/reminders', element: <Protected supplierOnly><Reminders /></Protected> },
   { path: '/reports', element: <Protected supplierOnly><Reports /></Protected> },
+  // Customer complaints about the shop's bills (046), from the Dashboard notice.
+  { path: '/complaints', element: <Protected supplierOnly><Complaints /></Protected> },
   // Not supplier-only: this edits the signed-in account's own profile, which
   // the admin also has.
   { path: '/settings', element: <Protected><Settings /></Protected> },

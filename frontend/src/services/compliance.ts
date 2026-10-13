@@ -238,3 +238,13 @@ export async function applyAsSupplier(input: ApplicationInput): Promise<void> {
   }
   if (data?.error) throw new Error(data.error)
 }
+
+/**
+ * The line customers see when ordering (045's `order_disclosure` text, which
+ * the admin can change). Null when there is none, or no 045.
+ */
+export async function platformDisclosure(): Promise<string | null> {
+  const { data, error } = await supabase.rpc('platform_disclosure')
+  if (error || typeof data !== 'string' || !data.trim()) return null
+  return data
+}

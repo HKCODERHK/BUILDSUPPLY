@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `041`, run in order. **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; 039 and 040 were already on live; **038 was pasted by the user on 2026-10-12** (the ten-minute duplicate rule is gone from `place_order`, checked read-only). **045 (supplier compliance, Phase 36) is the latest — written and tested locally, not yet applied**; 044 (three plans, Phase 34); **043 (your profile and bill details, Phase 32) is applied** (2026-10-12); 042 (the shop page, Phase 31) and 041 (customer accounts, Phase 30) were applied the same day. Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
+- **Schema migrations**: `supabase/migrations/` — `002` through `041`, run in order. **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; 039 and 040 were already on live; **038 was pasted by the user on 2026-10-12** (the ten-minute duplicate rule is gone from `place_order`, checked read-only). **046 (customer complaints, Phase 36 round 4) is the latest — written and tested locally, not yet applied**; **045 (supplier compliance) is applied** (2026-10-13); 044 (three plans, Phase 34); **043 (your profile and bill details, Phase 32) is applied** (2026-10-12); 042 (the shop page, Phase 31) and 041 (customer accounts, Phase 30) were applied the same day. Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -1822,6 +1822,45 @@ that the sidebar and the More sheet gained one link ("Supplier Compliance" /
   existing shop, a new disclosure version (the customer-facing function read
   the new wording at once), a retention period; every row checked in the
   database; 360px with no overflow on all five views.
+
+**Phase 36, round 4 — customer complaints and the order disclosure
+(migration 046, 2026-10-13, branch `compliance-4`, on `compliance-3`).**
+- **The customer** raises a complaint **only from inside one bill**: the khata
+  link's (or `/me`'s) "View bill" dialog ends with a quiet 12px link,
+  "Problem with this bill or the material?" (`components/BillComplaint.tsx`) —
+  the user's decision, so it is found when needed and not tapped for fun. A
+  category (quality, less quantity, wrong, damaged, delivery, bill or rate,
+  staff, other) and at least 10 characters; afterwards the complaint, its
+  status and the shop's reply show in that bill. Hidden on a database
+  without 046.
+- **Limits, in the database** (`_file_complaint`): only the customer's own live
+  bills; one open complaint per bill (a second is answered `already`); 3 a
+  day and 10 in 30 days per customer; nothing while the shop is not active.
+- **The shop**: a Dashboard notice (above Start-here, with the KYC notice) →
+  **`/complaints`** (`routes/Complaints.tsx`, Open / Done): the customer, the
+  bill, what they wrote, Call, **Working on it**, **Mark resolved** (needs a
+  reply). `respond_complaint` lets only the shop the complaint is about answer
+  it — not the admin.
+- **The admin** reads every complaint in full — the narrow exception to 019
+  the user approved — as a card on each shop's compliance page. The
+  customer's name does not show there: `customers` stays unreadable to the
+  admin, and that was left as it is.
+- **046**: `customer_complaints` (RLS: the shop's own, or the admin; select
+  only; every write through functions; what the customer wrote and the row
+  itself refuse change / delete even from the SQL editor, except a cascade),
+  `file_complaint` / `khata_complaints` (anon, by khata code),
+  `my_file_complaint` / `my_khata_complaints` (041 accounts),
+  `respond_complaint`. Nothing existing changed (structure diff: 11
+  additions). Tested on a throwaway Postgres: 33 of 33, 046 applied twice.
+- **The order page** shows 045's `order_disclosure` text (`platform_disclosure`,
+  admin-editable) under Place order, in English like the other legal texts.
+- **Backups**: `customer_complaints` is in the restore order after the bills
+  and has its own category; an isolated backup → drill passed 88 of 88 with a
+  complaint restored value for value.
+- Tested end to end on a local stack: filed from the khata link (category and
+  length checks), the shop's notice → in progress → resolved (a reply
+  required), the reply on the customer's bill, the admin's card, the
+  disclosure under Place order; 360px.
 
 ## The admin panel
 

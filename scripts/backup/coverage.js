@@ -68,6 +68,8 @@ const CATEGORIES = [
   ['Customers', ['customers']],
   ['Bills and invoices', ['invoices', 'invoice_items']],
   ['Payments', ['payments', 'payment_allocations']],
+  // A customer's complaint about one of their bills, and the shop's reply (046).
+  ['Customer complaints', ['customer_complaints']],
   ['Estimates', ['quotations', 'quotation_items']],
   ['Customer orders and requests', ['order_requests', 'order_request_clients', 'order_blocked_phones']],
   ['Drivers and deliveries', ['drivers']],

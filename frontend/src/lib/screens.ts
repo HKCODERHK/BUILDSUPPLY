@@ -10,6 +10,7 @@ export const screens = {
   Login: () => import('@/routes/Login'),
   Apply: () => import('@/routes/Apply'),
   Application: () => import('@/routes/Application'),
+  Complaints: () => import('@/routes/Complaints'),
   ForgotPassword: () => import('@/routes/ForgotPassword'),
   ResetPassword: () => import('@/routes/ResetPassword'),
   OrderPage: () => import('@/routes/OrderPage'),

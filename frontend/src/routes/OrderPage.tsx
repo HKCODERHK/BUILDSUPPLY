@@ -33,6 +33,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import type { TranslationKey } from '@/lib/i18n'
 import { sanitizeDecimal } from '@/lib/numberInput'
 import { newRequestId } from '@/services/db'
+import { platformDisclosure } from '@/services/compliance'
 import { getOrderPage, orderStatusUrl, placeOrder, type OrderPage as OrderPageData } from '@/services/orders'
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
 import { readKhata, rememberOrder, type KhataLink } from '@/lib/customerLinks'
@@ -154,6 +155,15 @@ export default function OrderPage() {
   const summaryRef = useRef<HTMLDivElement>(null)
   const [logoPreview, setLogoPreview] = useState(false)
   const [sharingShop, setSharingShop] = useState(false)
+  // Who provides what (045): shown under Place order, as the admin wrote it.
+  const [disclosure, setDisclosure] = useState<string | null>(null)
+  useEffect(() => {
+    let live = true
+    platformDisclosure().then((d) => live && setDisclosure(d), () => undefined)
+    return () => {
+      live = false
+    }
+  }, [])
   const [sending, setSending] = useState(false)
   const sendingRef = useRef(false)
   // One id per order: a double tap or a retry returns the same order.
@@ -763,6 +773,11 @@ export default function OrderPage() {
                   </>
                 )}
               </Button>
+              {disclosure && (
+                <p lang="en" className="text-center text-xs leading-relaxed text-muted">
+                  {disclosure}
+                </p>
+              )}
             </form>
           </SoftCard>
         </div>
