@@ -1352,6 +1352,11 @@ const STRINGS = {
     mr: 'तुम्ही {business} यांना कॉल करायला सांगितले ({date}).',
   },
   'est.converted': { en: 'This estimate has been turned into a bill.', hi: 'इस एस्टिमेट का बिल बन चुका है।', mr: 'या एस्टिमेटचे बिल झाले आहे.' },
+  'est.closed': {
+    en: 'This estimate is no longer open. Please contact {business}.',
+    hi: 'यह एस्टिमेट अब खुला नहीं है। कृपया {business} से संपर्क करें।',
+    mr: 'हे एस्टिमेट आता खुले नाही. कृपया {business} यांच्याशी संपर्क साधा.',
+  },
   'est.expired': {
     en: 'This estimate has expired. Please contact {business}.',
     hi: 'यह एस्टिमेट पुराना हो गया है। कृपया {business} से संपर्क करें।',
@@ -1684,6 +1689,11 @@ const STRINGS = {
   'khata.estimatePdf': { en: 'Estimate PDF', hi: 'एस्टिमेट PDF', mr: 'एस्टिमेट PDF' },
   'khata.estBilled': { en: 'Billed', hi: 'बिल बन गया', mr: 'बिल झाले' },
   'khata.orderItems': { en: 'Materials: {count}', hi: 'सामान: {count}', mr: 'साहित्य: {count}' },
+  'khata.paused': {
+    en: 'This shop isn’t available on BuildSupply right now. Your link still works — please check again later, or call the shop.',
+    hi: 'यह दुकान अभी BuildSupply पर उपलब्ध नहीं है। आपका लिंक अब भी चलता है — कृपया बाद में देखें, या दुकान को कॉल करें।',
+    mr: 'हे दुकान सध्या BuildSupply वर उपलब्ध नाही. तुमची लिंक अजूनही चालते — कृपया नंतर पाहा, किंवा दुकानाला कॉल करा.',
+  },
   'khata.notFound': {
     en: 'This khata link is not valid, or it has been stopped. Please ask your supplier for a new one.',
     hi: 'यह खाता लिंक सही नहीं है या बंद कर दिया गया है। कृपया अपने सप्लायर से नया लिंक माँगें।',

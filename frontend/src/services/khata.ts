@@ -52,10 +52,16 @@ export interface KhataOrder {
   item_count: number
   /** The bill this order became, once one exists (migration 033). */
   bill?: string | null
+  /**
+   * Whether the shop has priced it yet (migration 047). Absent before 047:
+   * only an explicit false means "accepted, the price is on its way".
+   */
+  has_estimate?: boolean
 }
 
 export type KhataView =
-  | { found: false }
+  /** `paused`: the shop is paused on BuildSupply; the link itself is still good (047). */
+  | { found: false; paused?: boolean }
   | {
       found: true
       supplier: { business_name: string; address: string | null; phone: string | null; gst_number: string | null; logo_url: string | null }

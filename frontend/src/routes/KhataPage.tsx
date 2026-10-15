@@ -32,6 +32,7 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { TruckLoader } from '@/components/TruckLoader'
 import { useLanguage } from '@/context/LanguageContext'
+import type { TranslationKey } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { BuildSupplyFooter } from '@/components/BuildSupplyFooter'
 import { buildCustomerLedger } from '@/lib/customerLedger'
@@ -90,6 +91,15 @@ function formatDate(iso: string) {
 }
 
 /** The last three months show straight away; older lines wait behind "Show older". */
+/**
+ * An approved order the shop has not priced yet reads "Order accepted", as
+ * on its own status page, not "Estimate ready" (#2). Only 047's explicit
+ * false says so; before 047 the flag is absent and nothing changes.
+ */
+function orderStatusKey(o: KhataOrder): TranslationKey {
+  return o.status === 'approved' && o.has_estimate === false ? 'order.status.accepted' : `order.status.${o.status}`
+}
+
 const DAY_MS = 24 * 60 * 60 * 1000
 const RECENT_MS = 90 * DAY_MS
 
@@ -248,7 +258,8 @@ export default function KhataPage({
       myKhata(connection)
         .then((v) => {
           setView(v)
-          if (!v.found) onGone?.()
+          // Paused is not gone (#11): the shop is still on the account.
+          if (!v.found && !v.paused) onGone?.()
           if (v.found) void warmPdfKit()
         })
         .catch(() => setFailed(true))
@@ -260,7 +271,8 @@ export default function KhataPage({
         // Kept on the customer's phone so the supplier's order page can offer
         // "My khata"; a link the supplier has stopped is forgotten.
         if (v.found && v.order_link) rememberKhataCode(v.order_link, token, v.customer)
-        if (!v.found) forgetKhataCode(token)
+        // A paused shop's link is still good (047, #11): keep it.
+        if (!v.found && !v.paused) forgetKhataCode(token)
         // Every button on this page makes a PDF: have the PDF tools ready.
         if (v.found) void warmPdfKit()
       })
@@ -684,7 +696,7 @@ export default function KhataPage({
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Badge tone={o.status === 'approved' ? 'success' : o.status === 'rejected' ? 'neutral' : 'warning'}>
-            {t(`order.status.${o.status}`)}
+            {t(orderStatusKey(o))}
           </Badge>
           <ChevronRight size={16} className="text-muted" />
         </div>
@@ -808,7 +820,13 @@ export default function KhataPage({
         {!view && !failed ? (
           <TruckLoader />
         ) : !found ? (
-          <Card className="text-center text-sm text-ink">{failed ? t('error.generic') : t('khata.notFound')}</Card>
+          <>
+            <Card className="text-center text-sm text-ink">
+              {failed ? t('error.generic') : view && !view.found && view.paused ? t('khata.paused') : t('khata.notFound')}
+            </Card>
+            {/* On /me a paused shop stays on the account: it can still be removed (#11). */}
+            {view && !view.found && view.paused && accountFooter}
+          </>
         ) : section ? (
           <>
             <button type="button" onClick={closeSection} className="-mx-1 flex items-center gap-2 px-1 py-1 text-left">
@@ -1108,7 +1126,7 @@ export default function KhataPage({
                         ? t('khata.liveArrived')
                         : live.kind === 'pending'
                           ? t('khata.livePending')
-                          : t(`order.status.${live.order.status}`)}
+                          : t(orderStatusKey(live.order))}
                     </div>
                     <div className="truncate text-xs text-muted">
                       {live.kind === 'order'
@@ -1119,7 +1137,7 @@ export default function KhataPage({
                   {live.kind === 'order' ? (
                     <Link
                       to={`/order-status/${live.order.code}`}
-                      aria-label={t(`order.status.${live.order.status}`)}
+                      aria-label={t(orderStatusKey(live.order))}
                       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-white shadow"
                     >
                       <ChevronRight size={20} />

@@ -108,7 +108,9 @@ export default function OrderStatus() {
   // track once an order is rejected — the reason above says it all. A bill
   // made straight from the estimate counts as accepted.
   const bill = found?.bill ?? null
-  const billed = estimate?.status === 'Converted' || !!bill
+  // Only a live bill counts (#10): a converted estimate whose bill was
+  // cancelled is not billed, and is not owed either (047).
+  const billed = !!bill
   const steps =
     found && found.status !== 'rejected'
       ? [
@@ -400,8 +402,10 @@ export default function OrderStatus() {
                     </div>
                   </div>
 
-                  {estimate.status === 'Converted' ? (
+                  {estimate.status === 'Converted' && bill ? (
                     <p className="rounded-2xl bg-accent-bg p-3 text-sm font-medium text-accent-text">{t('est.converted')}</p>
+                  ) : estimate.status === 'Converted' ? (
+                    <p className="text-sm text-muted">{t('est.closed', { business: found.business_name })}</p>
                   ) : estimate.status === 'Expired' ? (
                     <p className="text-sm text-muted">{t('est.expired', { business: found.business_name })}</p>
                   ) : (
