@@ -5,6 +5,7 @@ import { readKhata, rememberOrder } from '@/lib/customerLinks'
 import { readProfile } from '@/lib/customerProfile'
 import type { TranslationKey } from '@/lib/i18n'
 import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button-variants'
 import {
   CustomerHeader,
   CustomerTabBar,
@@ -19,6 +20,7 @@ import { getShopProfile, type ShopProfile } from '@/services/shopPage'
 import { brandAttr, shopWhatsapp } from '@/lib/shopPage'
 import { TruckLoader } from '@/components/TruckLoader'
 import { useLanguage } from '@/context/LanguageContext'
+import { showDate } from '@/lib/displayDate'
 import { getOrderStatus, respondToEstimate, type OrderStatusView } from '@/services/orders'
 import { rejectReasonText } from '@/lib/orderFormat'
 import { receivedState } from '@/lib/received'
@@ -27,9 +29,7 @@ import { upiPayUrl } from '@/lib/upi'
 import { cn } from '@/lib/utils'
 import { BuildSupplyFooter } from '@/components/BuildSupplyFooter'
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-}
+
 
 function formatINR(n: number) {
   return `₹${Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
@@ -45,7 +45,9 @@ function formatINR(n: number) {
  */
 export default function OrderStatus() {
   const { token = '' } = useParams()
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
+  // On screen in the reader's language; the PDFs stay English (#34).
+  const formatDate = (iso: string) => showDate(iso, lang)
   const navigate = useNavigate()
   const [view, setView] = useState<OrderStatusView | null>(null)
   const [failed, setFailed] = useState(false)
@@ -239,7 +241,7 @@ export default function OrderStatus() {
             <SoftCard className="overflow-hidden">
               {found.status !== 'rejected' && <DeliveryStrip at={arrived ? 'site' : 'shop'} />}
               <div className="flex flex-col gap-2 p-4">
-                <div className="text-[11px] font-medium text-muted">
+                <div className="text-xs font-medium text-muted">
                   {t('khata.liveOrder')} · {found.business_name}
                 </div>
                 {/* Approved reads "Estimate ready" only once there is one; an
@@ -276,8 +278,8 @@ export default function OrderStatus() {
                   <QrCode text={upiUrl} size={200} label={t('upi.payTitle')} />
                 </div>
                 <div className="text-xs text-muted">{found.upi_id}</div>
-                <a href={upiUrl} className="w-full">
-                  <Button className="w-full rounded-2xl">{t('upi.openApp', { amount: formatINR(found.due ?? 0) })}</Button>
+                <a href={upiUrl} className={buttonVariants({ size: 'tap', className: 'w-full rounded-2xl' })}>
+                  {t('upi.openApp', { amount: formatINR(found.due ?? 0) })}
                 </a>
                 <p className="text-xs text-muted">{t('upi.payHint')}</p>
               </SoftCard>
@@ -407,12 +409,12 @@ export default function OrderStatus() {
                       )}
                       <div className="flex flex-wrap gap-2">
                         {found.response !== 'accepted' && (
-                          <Button className="rounded-full px-5" onClick={() => answer('accepted')} disabled={answering !== null}>
+                          <Button size="tap" className="rounded-full px-5" onClick={() => answer('accepted')} disabled={answering !== null}>
                             {answering === 'accepted' ? t('common.saving') : t('est.accept')}
                           </Button>
                         )}
                         {found.response !== 'call_me' && (
-                          <Button variant="outline" className="rounded-full px-5" onClick={() => answer('call_me')} disabled={answering !== null}>
+                          <Button variant="outline" size="tap" className="rounded-full px-5" onClick={() => answer('call_me')} disabled={answering !== null}>
                             {answering === 'call_me' ? t('common.saving') : t('est.callMe')}
                           </Button>
                         )}

@@ -132,7 +132,7 @@ export default function MyAccount() {
                 onClick={() => switchTo(s.connection)}
                 aria-pressed={s.connection === current}
                 className={cn(
-                  'flex max-w-[12rem] items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold',
+                  'flex min-h-11 max-w-[12rem] items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold',
                   s.connection === current ? 'border-accent bg-accent-bg text-accent-text' : 'border-border bg-card text-muted',
                 )}
               >
@@ -169,10 +169,10 @@ export default function MyAccount() {
               </p>
               {actionFailed === what && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{t('error.generic')}</p>}
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={what === 'remove' ? removeShop : signOut} disabled={busy}>
+                <Button size="tap" variant="outline" onClick={what === 'remove' ? removeShop : signOut} disabled={busy}>
                   {t('acct.yes')}
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => setAsking(null)} disabled={busy}>
+                <Button size="tap" variant="ghost" onClick={() => setAsking(null)} disabled={busy}>
                   {t('ord.cancel')}
                 </Button>
               </div>

@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import { Clock, Globe, MapPin, MessageCircle, Navigation, Phone, Store, Tag, Truck } from 'lucide-react'
 import { useLanguage } from '@/context/LanguageContext'
-import { DAYS, formatTime, openState, readHours, safeLink, shopWhatsapp, SOCIAL_KEYS, type SocialKey } from '@/lib/shopPage'
+import { showDate, showTime } from '@/lib/displayDate'
+import { DAYS, openState, readHours, safeLink, shopWhatsapp, SOCIAL_KEYS, type SocialKey } from '@/lib/shopPage'
 import { cn } from '@/lib/utils'
 import type { ShopProfile } from '@/services/shopPage'
 import { SectionHeading, SoftCard } from './CustomerHome'
@@ -16,18 +17,18 @@ import { ImagePreview } from './ui/modal'
 
 /** "Open · closes 7 pm" / "Closed · opens 9 am" / "Closed today", or nothing. */
 export function OpenChip({ hours, className }: { hours: unknown; className?: string }) {
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
   const state = openState(readHours(hours))
   if (!state) return null
   const text = state.open
-    ? t('shop.openUntil', { time: formatTime(state.until) })
+    ? t('shop.openUntil', { time: showTime(state.until, lang) })
     : state.until
-      ? t('shop.opensAt', { time: formatTime(state.until) })
+      ? t('shop.opensAt', { time: showTime(state.until, lang) })
       : t('shop.closedToday')
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold',
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold',
         state.open
           ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
           : 'bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300',
@@ -101,7 +102,7 @@ export function ShopHero({ shop, action }: { shop: ShopProfile; action?: ReactNo
 
 /** Live offers, as tinted cards. */
 export function ShopOffers({ shop }: { shop: ShopProfile }) {
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
   if (!shop.offers.length) return null
   return (
     <>
@@ -116,9 +117,9 @@ export function ShopOffers({ shop }: { shop: ShopProfile }) {
               <div className="break-words text-sm font-bold text-accent-text">{o.title}</div>
               {o.details && <div className="break-words text-xs text-ink">{o.details}</div>}
               {o.valid_until && (
-                <div className="text-[11px] text-muted">
+                <div className="text-xs text-muted">
                   {t('shop.untilDate', {
-                    date: new Date(`${o.valid_until}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+                    date: showDate(`${o.valid_until}T00:00:00`, lang, false),
                   })}
                 </div>
               )}
@@ -176,7 +177,7 @@ function SocialIcon({ k }: { k: SocialKey }) {
 
 /** About, hours, contact and social links — the khata link's "Shop" screen, and the foot of the order page. */
 export function ShopAbout({ shop, showContact = true }: { shop: ShopProfile; showContact?: boolean }) {
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
   const hours = readHours(shop.hours)
   const wa = shopWhatsapp(shop)
   const links = SOCIAL_KEYS.map((k) => ({ k, url: safeLink(shop.social?.[k]) })).filter((l) => l.url)
@@ -217,7 +218,7 @@ export function ShopAbout({ shop, showContact = true }: { shop: ShopProfile; sho
                       {d === todayKey && <Clock size={13} className="text-accent" />}
                       {t(`day.${d}`)}
                     </span>
-                    <span>{!h ? '—' : 'closed' in h ? t('shop.closed') : `${formatTime(h.open)} – ${formatTime(h.close)}`}</span>
+                    <span>{!h ? '—' : 'closed' in h ? t('shop.closed') : `${showTime(h.open, lang, false)} – ${showTime(h.close, lang, false)}`}</span>
                   </div>
                 )
               })}

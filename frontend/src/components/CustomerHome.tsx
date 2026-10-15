@@ -48,7 +48,8 @@ export function CustomerHeader({
   /** Shown instead of a shop, e.g. "My BuildSupply" on /me with no shop. */
   title?: string
 }) {
-  const toggles = 'border-white/20 text-white hover:bg-white/10 hover:text-white'
+  // 44px, like every other control on these pages (#30).
+  const toggles = 'h-11 min-w-11 w-11 border-white/20 text-white hover:bg-white/10 hover:text-white'
   let mark: ReactNode
   if (shop?.logo_url) {
     const img = <img src={shop.logo_url} alt="" className="h-9 w-9 rounded-lg bg-white object-cover" />
@@ -154,7 +155,7 @@ export function SectionHeading({ title, action, onAction }: { title: string; act
     <div className="flex items-baseline justify-between gap-3 px-1">
       <h2 className="text-base font-bold text-ink">{title}</h2>
       {action && onAction && (
-        <button type="button" onClick={onAction} className="shrink-0 text-xs font-semibold text-accent">
+        <button type="button" onClick={onAction} className="inline-flex min-h-11 shrink-0 items-center text-xs font-semibold text-accent">
           {action}
         </button>
       )}
@@ -180,14 +181,15 @@ export function SoftTile({
     <button
       type="button"
       onClick={onClick}
-      className="flex min-w-0 items-center gap-3 rounded-2xl border border-border bg-card p-3 text-left shadow-[0_2px_10px_rgba(10,36,39,0.04)] transition-colors hover:bg-surface active:bg-surface"
+      className="flex min-w-0 items-center gap-3 rounded-2xl border border-border bg-card p-3 text-left shadow-[0_2px_10px_rgba(10,36,39,0.04)] transition-colors hover:bg-surface active:bg-surface max-[359px]:gap-2"
     >
-      <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', TINTS[tint])}>
+      {/* A smaller icon on the narrowest phones, so "Payments" fits whole (#32). */}
+      <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl max-[359px]:h-8 max-[359px]:w-8', TINTS[tint])}>
         <I size={19} strokeWidth={1.9} />
       </span>
       <span className="min-w-0">
         <span className="block truncate text-sm font-semibold text-ink">{title}</span>
-        {detail && <span className="line-clamp-2 block text-[11px] leading-snug text-muted">{detail}</span>}
+        {detail && <span className="line-clamp-2 block text-xs leading-snug text-muted">{detail}</span>}
       </span>
     </button>
   )
@@ -251,12 +253,13 @@ export function CustomerTabBar({ tabs }: { tabs: TabItem[] }) {
             onClick={tab.onClick}
             aria-current={tab.active ? 'page' : undefined}
             className={cn(
-              'flex min-w-0 flex-col items-center gap-0.5 rounded-2xl py-1.5 text-[11px] font-medium transition-colors max-[359px]:text-[10px]',
+              'flex min-w-0 flex-col items-center gap-0.5 rounded-2xl py-1.5 text-xs font-medium transition-colors',
               tab.active ? 'bg-accent-bg text-accent-text' : 'text-muted hover:text-ink',
             )}
           >
             <tab.icon size={20} strokeWidth={tab.active ? 2.2 : 1.8} />
-            <span className="w-full truncate text-center">{tab.label}</span>
+            {/* Two short lines rather than a cut-off word at 12px (#31, #32). */}
+            <span className="line-clamp-2 w-full break-words text-center leading-tight">{tab.label}</span>
           </button>
         ))}
       </div>

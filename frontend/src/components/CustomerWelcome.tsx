@@ -75,7 +75,7 @@ export function CustomerWelcome({
             </span>
           )}
           <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-wide text-white/60">{t('cw.orderFrom')}</div>
+            <div className="text-xs uppercase tracking-wide text-white/60">{t('cw.orderFrom')}</div>
             <div className="line-clamp-2 break-words text-base font-bold leading-tight">{shopName}</div>
           </div>
         </div>

@@ -1829,7 +1829,8 @@ const STRINGS = {
   // Phone-style sign-in and the customer's first-time screen (2026-10-12).
   'login.welcome': { en: 'Welcome back', hi: 'फिर से स्वागत है', mr: 'पुन्हा स्वागत आहे' },
   'login.badEmail': { en: 'That email doesn’t look right', hi: 'यह ईमेल सही नहीं लगता', mr: 'हा ईमेल बरोबर वाटत नाही' },
-  'cw.orderFrom': { en: 'Ordering from', hi: 'ऑर्डर करें', mr: 'ऑर्डर करा' },
+  // A label over the shop's name, not a command (#33).
+  'cw.orderFrom': { en: 'Ordering from', hi: 'यहाँ से ऑर्डर', mr: 'येथून ऑर्डर' },
   'cw.tagline': { en: 'Cement, sand, bricks and steel — ordered from your phone.', hi: 'सीमेंट, रेत, ईंट और सरिया — अपने फ़ोन से ऑर्डर करें।', mr: 'सिमेंट, वाळू, विटा आणि सळई — तुमच्या फोनवरून ऑर्डर करा.' },
   'cw.title': { en: 'Welcome', hi: 'स्वागत है', mr: 'स्वागत आहे' },
   'cw.sub': { en: 'Tell us who you are — just once. Your details fill in every order.', hi: 'बस एक बार बताइए आप कौन हैं — हर ऑर्डर में आपकी जानकारी अपने आप भर जाएगी।', mr: 'फक्त एकदा सांगा तुम्ही कोण आहात — प्रत्येक ऑर्डरमध्ये तुमची माहिती आपोआप भरली जाईल.' },

@@ -77,7 +77,7 @@ export function OrderLinkShareModal({
         logoUrl: sourceLogo,
         initialsKey: supplier?.id ?? business,
       })
-      await shareDocumentOnWhatsApp({ file, message, title: 'Order QR' })
+      await shareDocumentOnWhatsApp({ file, message, title: t('ordShare.scanToOrder') })
     } finally {
       setSharing(false)
     }
@@ -118,7 +118,7 @@ export function OrderLinkShareModal({
             <button
               type="button"
               onClick={onClose}
-              aria-label="Close"
+              aria-label={t('common.close')}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white"
             >
               <X size={20} />

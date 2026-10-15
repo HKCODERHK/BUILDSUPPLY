@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   BookOpen,
+  Check,
   ChevronRight,
   House,
   MapPin,
@@ -21,6 +22,7 @@ import {
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button-variants'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PhoneInput } from '@/components/ui/phone-input'
@@ -468,16 +470,17 @@ export default function OrderPage() {
                 <p className="mb-2 text-xs text-muted">{t('order.keepLink')}</p>
                 <p className="break-all text-xs font-medium text-ink">{orderStatusUrl(sentToken)}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" onClick={() => copyStatusLink(sentToken)}>
+                  <Button size="tap" variant="outline" onClick={() => copyStatusLink(sentToken)}>
                     {copied ? t('order.copied') : t('order.copyLink')}
                   </Button>
-                  <Link to={`/order-status/${sentToken}`}>
-                    <Button size="sm">{t('order.viewStatus')}</Button>
+                  {/* A link styled as a button, not a button inside a link (#35). */}
+                  <Link to={`/order-status/${sentToken}`} className={buttonVariants({ size: 'tap' })}>
+                    {t('order.viewStatus')}
                   </Link>
                 </div>
               </div>
             )}
-            <Button variant="outline" onClick={startAgain}>
+            <Button variant="outline" size="tap" onClick={startAgain}>
               {t('order.another')}
             </Button>
             {/* And the ways on from here (#23): the shop, and their khata. */}
@@ -563,7 +566,7 @@ export default function OrderPage() {
       <main className={cn('mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4', tabs ? 'pb-44' : 'pb-28')}>
         {knownName && (
           <div className="flex items-center gap-3 pt-1">
-            <CustomerAvatar id={khata?.code ?? link} name={knownName} size={44} />
+            <CustomerAvatar id={`${page.business_name}|${knownName}`} name={knownName} size={44} />
             <div className="min-w-0 flex-1">
               <div className="text-xs text-muted">{t(greetingKey())}</div>
               <div className="line-clamp-2 break-words text-lg font-bold leading-tight text-ink">
@@ -574,7 +577,7 @@ export default function OrderPage() {
                   type="button"
                   // Nothing is cleared until they press Continue (#17).
                   onClick={() => setChanging(true)}
-                  className="mt-0.5 text-xs font-medium text-accent-text"
+                  className="inline-flex min-h-11 items-center text-xs font-medium text-accent-text"
                 >
                   {t('cw.notYou')}
                 </button>
@@ -694,7 +697,7 @@ export default function OrderPage() {
                       type="button"
                       aria-label={t('order.less', { name: m.name })}
                       onClick={() => step(m.id, -1)}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface text-ink"
+                      className="flex h-11 w-9 shrink-0 items-center justify-center rounded-xl bg-surface text-ink"
                     >
                       <Minus size={15} />
                     </button>
@@ -712,13 +715,13 @@ export default function OrderPage() {
                         setQty((prev) => ({ ...prev, [m.id]: next }))
                         setError(null)
                       }}
-                      className="h-9 w-full min-w-0 rounded-xl border border-border bg-card text-center text-sm font-semibold text-ink outline-none focus:border-accent"
+                      className="h-11 w-full min-w-0 rounded-xl border border-border bg-card text-center text-sm font-semibold text-ink outline-none focus:border-accent"
                     />
                     <button
                       type="button"
                       aria-label={t('order.more', { name: m.name })}
                       onClick={() => step(m.id, 1)}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent text-white"
+                      className="flex h-11 w-9 shrink-0 items-center justify-center rounded-xl bg-accent text-white"
                     >
                       <Plus size={15} />
                     </button>
@@ -728,7 +731,7 @@ export default function OrderPage() {
                     type="button"
                     aria-label={t('order.more', { name: m.name })}
                     onClick={() => step(m.id, 1)}
-                    className="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-accent-bg text-sm font-semibold text-accent-text"
+                    className="flex h-11 items-center justify-center gap-1.5 rounded-xl bg-accent-bg text-sm font-semibold text-accent-text"
                   >
                     <Plus size={15} /> {t('order.add')}
                   </button>
@@ -799,21 +802,22 @@ export default function OrderPage() {
                 <>
                   <div>
                     <Label htmlFor="order-name" required>{t('order.name')}</Label>
-                    <Input id="order-name" autoComplete="name" value={form.name} maxLength={60} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                    <Input id="order-name" className="h-11" autoComplete="name" value={form.name} maxLength={60} onChange={(e) => setForm({ ...form, name: e.target.value })} />
                   </div>
                   <div>
                     <Label htmlFor="order-phone" required>{t('order.phone')}</Label>
-                    <PhoneInput id="order-phone" value={form.phone} onValueChange={(phone) => setForm({ ...form, phone })} />
+                    <PhoneInput id="order-phone" className="h-11" value={form.phone} onValueChange={(phone) => setForm({ ...form, phone })} />
                   </div>
                   <div>
                     <Label htmlFor="order-site">{t('order.site')}</Label>
-                    <Input id="order-site" value={form.site} maxLength={120} onChange={(e) => setForm({ ...form, site: e.target.value })} />
+                    <Input id="order-site" className="h-11" value={form.site} maxLength={120} onChange={(e) => setForm({ ...form, site: e.target.value })} />
                   </div>
                 </>
               )}
               <div>
                 <Label htmlFor="order-date">{t('order.date')}</Label>
                 <Input
+                  className="h-11"
                   id="order-date"
                   type="date"
                   min={localIsoDate(0)}
@@ -824,17 +828,22 @@ export default function OrderPage() {
               </div>
               {takesUpi && (
                 <div>
-                  <Label>{t('order.payHow')}</Label>
-                  <div className="mt-1 grid grid-cols-2 gap-2">
+                  <Label id="order-pay-how">{t('order.payHow')}</Label>
+                  {/* A choice a screen reader can hear, and a tick, not colour
+                      alone, on the one chosen (#35). */}
+                  <div role="radiogroup" aria-labelledby="order-pay-how" className="mt-1 grid grid-cols-2 gap-2">
                     {(['cash', 'online'] as const).map((mode) => (
                       <button
                         key={mode}
                         type="button"
+                        role="radio"
+                        aria-checked={payment === mode}
                         onClick={() => setPayment(mode)}
-                        className={`rounded-xl border px-3 py-2.5 text-sm font-medium ${
+                        className={`flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm font-medium ${
                           payment === mode ? 'border-accent bg-accent-bg text-accent-text' : 'border-border text-muted'
                         }`}
                       >
+                        {payment === mode && <Check size={15} className="shrink-0" aria-hidden="true" />}
                         {t(mode === 'cash' ? 'order.payCash' : 'order.payOnline')}
                       </button>
                     ))}
@@ -859,7 +868,7 @@ export default function OrderPage() {
                 <label htmlFor="order-website">Website</label>
                 <input id="order-website" tabIndex={-1} autoComplete="off" value={form.trap} onChange={(e) => setForm({ ...form, trap: e.target.value })} />
               </div>
-              {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>}
+              {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>}
               {/* Big, and wrapping rather than clipped: a long business name
                   must still read as one sentence with the button's word. */}
               <Button
