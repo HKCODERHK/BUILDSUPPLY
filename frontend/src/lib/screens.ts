@@ -8,6 +8,9 @@ export const screens = {
   Home: () => import('@/routes/Home'),
   Legal: () => import('@/routes/Legal'),
   Login: () => import('@/routes/Login'),
+  Apply: () => import('@/routes/Apply'),
+  Application: () => import('@/routes/Application'),
+  Complaints: () => import('@/routes/Complaints'),
   ForgotPassword: () => import('@/routes/ForgotPassword'),
   ResetPassword: () => import('@/routes/ResetPassword'),
   OrderPage: () => import('@/routes/OrderPage'),
@@ -35,6 +38,8 @@ export const screens = {
   AdminSupplierProfile: () => import('@/routes/admin/SupplierProfile'),
   AdminMaterialCatalog: () => import('@/routes/admin/MaterialCatalog'),
   AdminPlatformSettings: () => import('@/routes/admin/PlatformSettings'),
+  AdminCompliance: () => import('@/routes/admin/Compliance'),
+  AdminComplianceDetail: () => import('@/routes/admin/ComplianceDetail'),
 }
 
 type Screen = keyof typeof screens
@@ -45,7 +50,7 @@ const SUPPLIER_SCREENS: Screen[] = [
   'Payments', 'Orders', 'OrderDetail', 'Settings', 'Quotations', 'NewQuotation', 'QuotationDetail',
   'Deliveries', 'Reminders', 'Reports',
 ]
-const ADMIN_SCREENS: Screen[] = ['Dashboard', 'AdminSuppliers', 'AdminSupplierProfile', 'AdminMaterialCatalog', 'AdminPlatformSettings', 'Settings']
+const ADMIN_SCREENS: Screen[] = ['Dashboard', 'AdminSuppliers', 'AdminSupplierProfile', 'AdminMaterialCatalog', 'AdminPlatformSettings', 'AdminCompliance', 'AdminComplianceDetail', 'Settings']
 
 let started = false
 

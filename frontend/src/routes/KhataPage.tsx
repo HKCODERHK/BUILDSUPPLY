@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { ImagePreview, Modal } from '@/components/ui/modal'
+import { BillComplaint } from '@/components/BillComplaint'
 import { formatRate, gstSlabs } from '@/lib/gst'
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
 import { Badge } from '@/components/ui/badge'
@@ -1367,6 +1368,14 @@ export default function KhataPage({
             >
               <Download size={15} /> {t('khata.billPdf')}
             </Button>
+            {/* A complaint about this bill (046) — here and nowhere more visible. */}
+            {viewing.kind === 'bill' && found && (
+              <BillComplaint
+                source={connection ? { connection } : { token }}
+                invoiceNo={viewing.invoice_no}
+                shopName={found.supplier.business_name}
+              />
+            )}
           </div>
         </Modal>
       )}

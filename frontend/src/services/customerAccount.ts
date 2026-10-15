@@ -25,6 +25,9 @@ async function call<T>(fn: string, args: Record<string, unknown> = {}): Promise<
   return data as T
 }
 
+/** The same call, for other services that act as the signed-in customer (046). */
+export const callCustomer = call
+
 let available: Promise<boolean> | null = null
 /**
  * Whether this database has customer accounts (migration 041). Asked signed

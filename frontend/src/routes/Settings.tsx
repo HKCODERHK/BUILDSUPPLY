@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Inbox, Languages, Lock, LogOut, Palette, Pencil, Percent, QrCode, ShieldCheck, Store, Type, UserRound, type LucideIcon } from 'lucide-react'
+import { ArrowLeft, BadgeCheck, Inbox, Languages, Lock, LogOut, Palette, Pencil, Percent, QrCode, ShieldCheck, Store, Type, UserRound, type LucideIcon } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,13 +24,14 @@ import { MaterialGstCard } from '@/components/MaterialGstCard'
 import { DisplaySizeCard } from '@/components/DisplaySizeCard'
 import { ShopPageCard } from '@/components/ShopPageCard'
 import { YourProfileCard } from '@/components/YourProfileCard'
+import { KycSettingsCard } from '@/components/KycSettings'
 import { BillPrintCard } from '@/components/BillPrint'
 import { shopPageAvailable } from '@/services/shopPage'
 import { readDisplaySize } from '@/lib/displaySize'
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
 import { orderPageUrl } from '@/services/orders'
 
-type Section = 'business' | 'me' | 'shop' | 'orders' | 'upi' | 'gst' | 'language' | 'size' | 'pin' | 'password'
+type Section = 'business' | 'me' | 'kyc' | 'shop' | 'orders' | 'upi' | 'gst' | 'language' | 'size' | 'pin' | 'password'
 
 interface Row {
   id: Section
@@ -114,6 +115,8 @@ export default function Settings() {
       ...(isSupplier && supplier && 'owner_mobile' in supplier
         ? [{ id: 'me' as const, icon: UserRound, label: t('me.title'), detail: t('me.rowSub') }]
         : []),
+      // Verification (migration 045) — a supplier's own; never locks anything.
+      ...(isSupplier ? [{ id: 'kyc' as const, icon: BadgeCheck, label: t('kyc.title'), detail: t('kyc.rowSub') }] : []),
       // The shop's page for customers (migration 042) — only where the
       // database has it, so a build reaching an older one shows no dead row.
       ...(isSupplier && shopPageAvailable(supplier)
@@ -307,6 +310,7 @@ export default function Settings() {
           </>
         )}
         {section === 'me' && <YourProfileCard />}
+        {section === 'kyc' && <KycSettingsCard />}
 
         {section === 'shop' && <ShopPageCard />}
         {section === 'orders' && <OrderSettingsCard />}

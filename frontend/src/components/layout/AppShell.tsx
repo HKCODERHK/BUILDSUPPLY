@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { LogOut, MoreHorizontal, X, ShieldCheck, Boxes, SlidersHorizontal, AlertTriangle, Inbox, ArrowLeft, Sun, Moon, Smartphone } from 'lucide-react'
+import { LogOut, MoreHorizontal, X, ShieldCheck, Boxes, SlidersHorizontal, FileCheck2, AlertTriangle, Inbox, ArrowLeft, Sun, Moon, Smartphone } from 'lucide-react'
 import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { TopBarContext, type TopBarInfo } from '@/context/TopBarContext'
 import { cn } from '@/lib/utils'
@@ -404,6 +404,18 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <SlidersHorizontal size={17} />
                 Platform Settings
               </NavLink>
+              <NavLink
+                to="/admin/compliance"
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-text transition-colors hover:bg-white/5',
+                    isActive && 'bg-accent/15 text-white',
+                  )
+                }
+              >
+                <FileCheck2 size={17} />
+                Supplier Compliance
+              </NavLink>
             </>
           )}
         </div>
@@ -776,6 +788,15 @@ export function AppShell({ children }: { children: ReactNode }) {
                   >
                     <SlidersHorizontal size={26} strokeWidth={1.75} />
                     Platform
+                  </NavLink>
+                  <NavLink
+                    to="/admin/compliance"
+                    viewTransition
+                    onClick={() => setMoreOpen(false)}
+                    className="flex flex-col items-center gap-2 rounded-2xl p-3 text-xs font-medium transition-colors hover:bg-surface active:bg-surface text-ink"
+                  >
+                    <FileCheck2 size={26} strokeWidth={1.75} />
+                    Compliance
                   </NavLink>
                 </>
               )}

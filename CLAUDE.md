@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `041`, run in order. **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; 039 and 040 were already on live; **038 was pasted by the user on 2026-10-12** (the ten-minute duplicate rule is gone from `place_order`, checked read-only). **045 (supplier compliance, Phase 36) is the latest — written and tested locally, not yet applied**; 044 (three plans, Phase 34); **043 (your profile and bill details, Phase 32) is applied** (2026-10-12); 042 (the shop page, Phase 31) and 041 (customer accounts, Phase 30) were applied the same day. Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
+- **Schema migrations**: `supabase/migrations/` — `002` through `041`, run in order. **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; 039 and 040 were already on live; **038 was pasted by the user on 2026-10-12** (the ten-minute duplicate rule is gone from `place_order`, checked read-only). **046 (customer complaints, Phase 36 round 4) is the latest — written and tested locally, not yet applied**; **045 (supplier compliance) is applied** (2026-10-13); 044 (three plans, Phase 34); **043 (your profile and bill details, Phase 32) is applied** (2026-10-12); 042 (the shop page, Phase 31) and 041 (customer accounts, Phase 30) were applied the same day. Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -1743,6 +1743,124 @@ listed**; the first draft missed this and the local tests caught it.
   An isolated backup → restore drill on the local stack: 63 of 63, all seven
   tables value-for-value, the applicant's login recreated, 3 KYC files.
   **Re-run `install-backup.ps1 -NoTasks` after 045 is merged.**
+
+**Phase 36, round 2 — applying, the application screen, KYC for existing
+shops (2026-10-13, branch `compliance-2`). No migration.**
+- **`/apply`** (`routes/Apply.tsx`, public, no splash): shop name, owner,
+  mobile, district, state, email, password (the breach check from
+  `lib/passwordRules`) and the plan (Free trial / Basic / Pro / Yearly), then
+  signs them straight in. `/login`'s WhatsApp trial button became **Apply to
+  join BuildSupply**; the website's trial buttons are unchanged.
+- **A new Edge Function, `supplier-apply`** — `admin-manage-supplier` was left
+  byte-for-byte as it was (the user's "don't change the admin side"). It
+  creates the login (`email_confirm`) and a PENDING `is_applicant` row, and
+  nothing else: extra fields are ignored, the bot trap answers ok, only the
+  app's own origins are served, and **10 applications an hour platform-wide**
+  (`busy`). Origin is only a browser check — the hourly cap is what holds
+  against a script. **Deployed with `--no-verify-jwt`** (also
+  `[functions.supplier-apply]` in `supabase/config.toml`): the app calls it
+  signed out with the publishable key, which is not a JWT.
+- **`/application`** (`routes/Application.tsx`): an applicant has a login and
+  no `suppliers` row; `ProtectedRoute` sends that case here (any other
+  missing profile still gets `AccountLoadError`). Plan asked for, what happens
+  next, Message BuildSupply, the KYC steps, Sign out. When the admin accepts,
+  it reloads the profile and opens the Dashboard. **It shows its loader only
+  while there is no session** — an applicant never has a supplier, so the auth
+  provider's `loading` returns on every background reload, and hiding the page
+  then wiped what they had typed (caught in the browser test).
+- **`components/ComplianceForm.tsx`** — one form for both: business details
+  (PAN / GSTIN / PIN checked as typed; an applicant's email is their login and
+  locked), documents into the private `kyc` bucket (PDF/JPG/PNG/WebP ≤5 MB,
+  View through a 2-minute signed link), the agreement and the 7 declarations
+  (English, from the database), and Send — "Still needed: …" until
+  `compliance_missing` is empty. Editable only while PENDING / REJECTED.
+- **Existing shops**: Settings → Verification (KYC) (`KycSettingsCard`,
+  `?s=kyc`; a shop made after 045 opens its record there with
+  `start_compliance`) and a Dashboard notice (`KycNotice`, above Start-here):
+  complete it, correct it, or — while soft-suspended — the reason. Settings →
+  Online orders shows the suspension instead of a switch the database would
+  refuse. **Nothing locks a shop out.** `lib/useMyCompliance.ts` reads it.
+- Tested on a local stack with the function served: apply → signed in →
+  details → two uploads (6 MB and .exe refused) → agreement → declarations →
+  sent, all rows checked; accepted through `accept_supplier_application` →
+  Dashboard; a grandfathered shop's notice, KYC section and soft suspension;
+  the function's refusals one by one (rate limit at the 11th); 360px in three
+  languages, zero overflow.
+
+**Phase 36, round 3 — the admin's Supplier Compliance screen (2026-10-13,
+branch `compliance-3`, built on `compliance-2`). No migration.** The one new
+admin screen the user agreed to; the other admin screens are unchanged except
+that the sidebar and the More sheet gained one link ("Supplier Compliance" /
+"Compliance", `FileCheck2`). English only.
+- **`/admin/compliance`** (`routes/admin/Compliance.tsx`): the admin notice
+  (the active `admin_notice` text) on top, then three tabs (`?tab=`):
+  - **Review** — filter chips with counts (Needs a decision = UNDER_REVIEW,
+    New shops, KYC not sent, Approved, Rejected, Suspended, All) and search.
+  - **Legal texts** — each text's version in force; **New version** publishes
+    the next one (`publishTextVersion`: the old one off, the new one on, the old
+    one switched back on if the insert fails). Versions are never edited.
+  - **Record keeping** — `retention_settings`, 1–100 years or "until decided";
+    nothing is deleted by it.
+- **`/admin/compliance/:id`** (`routes/admin/ComplianceDetail.tsx`): status and
+  reasons, Call / WhatsApp, **Decisions** (only the ones that apply: Accept
+  application, Approve, Ask for a correction, Reject, Suspend online orders,
+  Reinstate, Terminate agreement — accept / approve wait until nothing is
+  missing; the PIN gate on all but correction and document review; Terminate
+  also needs the shop's name typed), business details, documents (View through
+  a signed link, Accept / Not OK with a note; earlier uploads under a fold),
+  acceptances (version, time, the start of the address code, device) and the
+  history. **Accept application** suggests the plan and dates from what the
+  shop asked for — Free trial = Pro to today + `TRIAL_DAYS`, Basic / Pro a
+  month, Yearly a year — and refuses an expiry before the start.
+- `services/adminCompliance.ts` holds the reads, the decision calls and the
+  status labels. Every decision is one of 045's functions; nothing writes a
+  status itself.
+- Tested on a local stack signed in as a local admin: queue counts, View,
+  both document reviews, accept (trial → Pro, 10 days, account created),
+  suspend (a reason; "Other" needs a note) → reinstate (back to Approved) →
+  terminate (a wrong name blocked; no way back), correction and reject on an
+  existing shop, a new disclosure version (the customer-facing function read
+  the new wording at once), a retention period; every row checked in the
+  database; 360px with no overflow on all five views.
+
+**Phase 36, round 4 — customer complaints and the order disclosure
+(migration 046, 2026-10-13, branch `compliance-4`, on `compliance-3`).**
+- **The customer** raises a complaint **only from inside one bill**: the khata
+  link's (or `/me`'s) "View bill" dialog ends with a quiet 12px link,
+  "Problem with this bill or the material?" (`components/BillComplaint.tsx`) —
+  the user's decision, so it is found when needed and not tapped for fun. A
+  category (quality, less quantity, wrong, damaged, delivery, bill or rate,
+  staff, other) and at least 10 characters; afterwards the complaint, its
+  status and the shop's reply show in that bill. Hidden on a database
+  without 046.
+- **Limits, in the database** (`_file_complaint`): only the customer's own live
+  bills; one open complaint per bill (a second is answered `already`); 3 a
+  day and 10 in 30 days per customer; nothing while the shop is not active.
+- **The shop**: a Dashboard notice (above Start-here, with the KYC notice) →
+  **`/complaints`** (`routes/Complaints.tsx`, Open / Done): the customer, the
+  bill, what they wrote, Call, **Working on it**, **Mark resolved** (needs a
+  reply). `respond_complaint` lets only the shop the complaint is about answer
+  it — not the admin.
+- **The admin** reads every complaint in full — the narrow exception to 019
+  the user approved — as a card on each shop's compliance page. The
+  customer's name does not show there: `customers` stays unreadable to the
+  admin, and that was left as it is.
+- **046**: `customer_complaints` (RLS: the shop's own, or the admin; select
+  only; every write through functions; what the customer wrote and the row
+  itself refuse change / delete even from the SQL editor, except a cascade),
+  `file_complaint` / `khata_complaints` (anon, by khata code),
+  `my_file_complaint` / `my_khata_complaints` (041 accounts),
+  `respond_complaint`. Nothing existing changed (structure diff: 11
+  additions). Tested on a throwaway Postgres: 33 of 33, 046 applied twice.
+- **The order page** shows 045's `order_disclosure` text (`platform_disclosure`,
+  admin-editable) under Place order, in English like the other legal texts.
+- **Backups**: `customer_complaints` is in the restore order after the bills
+  and has its own category; an isolated backup → drill passed 88 of 88 with a
+  complaint restored value for value.
+- Tested end to end on a local stack: filed from the khata link (category and
+  length checks), the shop's notice → in progress → resolved (a reply
+  required), the reply on the customer's bill, the admin's card, the
+  disclosure under Place order; 360px.
 
 ## The admin panel
 
