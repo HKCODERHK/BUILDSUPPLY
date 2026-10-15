@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `041`, run in order. **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; 039 and 040 were already on live; **038 was pasted by the user on 2026-10-12** (the ten-minute duplicate rule is gone from `place_order`, checked read-only). **046 (customer complaints, Phase 36 round 4) is the latest and is applied** (2026-10-15; checked read-only: table with RLS and one policy, select-only for signed-in users, nothing for anon — 401 over a real anonymous call — 8 functions one version each, counts unchanged); **045 (supplier compliance) is applied** (2026-10-13); 044 (three plans, Phase 34); **043 (your profile and bill details, Phase 32) is applied** (2026-10-12); 042 (the shop page, Phase 31) and 041 (customer accounts, Phase 30) were applied the same day. Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
+- **Schema migrations**: `supabase/migrations/` — `002` through `041`, run in order. **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; 039 and 040 were already on live; **038 was pasted by the user on 2026-10-12** (the ten-minute duplicate rule is gone from `place_order`, checked read-only). **047 (customer UX round, read functions only — Phase 37) is the latest and is applied** (2026-10-15; checked read-only: function bodies, both `security_invoker` views, counts unchanged, 0 bills out of step, every active shop's khata link still answers found with `has_estimate` on all 17 orders); **046 (customer complaints, Phase 36 round 4) is applied** (2026-10-15; checked read-only: table with RLS and one policy, select-only for signed-in users, nothing for anon — 401 over a real anonymous call — 8 functions one version each, counts unchanged); **045 (supplier compliance) is applied** (2026-10-13); 044 (three plans, Phase 34); **043 (your profile and bill details, Phase 32) is applied** (2026-10-12); 042 (the shop page, Phase 31) and 041 (customer accounts, Phase 30) were applied the same day. Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -1864,6 +1864,42 @@ deployed (`--no-verify-jwt`) and checked live without creating a login
   length checks), the shop's notice → in progress → resolved (a reply
   required), the reply on the customer's bill, the admin's card, the
   disclosure under Place order; 360px.
+
+**Phase 37 — the customer side, 37 UX issues (migration 047, 2026-10-15).
+Built on `customer-ux` in four phases, merged (3aee111) on "merge and
+deploy"; 047 pasted by the user the same day.** The user's rules for the
+round: fix every issue, keep the first-time welcome form and "Taken at the
+shop or by phone", change no business rule or data behaviour without asking,
+leave supplier and admin screens alone where possible.
+- **047** re-issues `customer_khata`, `order_status` and `my_shops` only (same
+  arguments, grants and security definer): orders carry `has_estimate`; an
+  estimate is owed (and offered by UPI) only while Draft or Sent; a shop that
+  is not active answers `{found: false, paused: true}` and stays on the
+  customer's account (name only) instead of looking like a stopped link;
+  estimate lines by `ctid`. Tested locally 38/38 from a fresh rebuild.
+- **The bar on every customer page is the shop's** (`CustomerHeader` in
+  `components/CustomerHome.tsx`): logo and full name, long names smaller and
+  up to three lines; BuildSupply is the footer badge. This replaced Phase 23's
+  BuildSupply/shop cross-fade.
+- Khata link: one Pay ("Pay now" by the figure, no shortcut), one ordering
+  name ("Order materials"), one received rule for a bill under Bills and
+  Orders (`receivedControl`), payments as "Paid ₹X · mode · date · For Bill",
+  the advance "kept for your next bill", Try again on a failed load.
+- Order page: "Not you? Change" keeps the details until Continue (prefilled,
+  with Cancel); the form shows "Ordering as … — Edit" instead of asking again;
+  dead ends get My khata / Call / Try again.
+- `/me`: Try again, visible errors on Remove / Sign out, an empty screen lists
+  the shops this phone has opened (`knownShops`), and **signing out also
+  forgets those shops' khata links, recent and last orders on the phone**
+  (`forgetShopOnPhone`; the welcome profile is kept).
+- Polish: 44px controls (`size="tap"`, `components/ui/button-variants.ts`) and
+  12px text on customer pages; on-screen dates and shop hours in the reader's
+  language (`lib/displayDate.ts` — PDFs stay English); a radio group for
+  Cash/Online; `role="alert"` errors; translated Close labels in `Modal`;
+  one avatar seed (`shop|customer`); a link preview that speaks to customers.
+- Tested on a local stack: every item in the browser, 360+ page loads at
+  320/360px × three languages × light/dark with no overflow or cut-off text.
+  Not yet judged on a real phone.
 
 ## The admin panel
 
