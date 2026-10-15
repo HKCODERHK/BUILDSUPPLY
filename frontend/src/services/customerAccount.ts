@@ -88,6 +88,14 @@ export function readCurrentShop(): string | null {
     return null
   }
 }
+/** Forget it — when that shop is removed, or the account signed out (#5). */
+export function forgetCurrentShop() {
+  try {
+    localStorage.removeItem(CURRENT_KEY)
+  } catch {
+    // nothing to forget
+  }
+}
 export function rememberCurrentShop(connection: string) {
   try {
     localStorage.setItem(CURRENT_KEY, connection)

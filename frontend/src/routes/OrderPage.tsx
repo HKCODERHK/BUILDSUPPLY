@@ -36,7 +36,7 @@ import { newRequestId } from '@/services/db'
 import { platformDisclosure } from '@/services/compliance'
 import { getOrderPage, orderStatusUrl, placeOrder, type OrderPage as OrderPageData } from '@/services/orders'
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
-import { readKhata, rememberOrder, type KhataLink } from '@/lib/customerLinks'
+import { readKhata, rememberOrder } from '@/lib/customerLinks'
 import { CustomerTabBar, QuickActions, SectionHeading, SoftCard, type QuickAction } from '@/components/CustomerHome'
 import { greetingKey } from '@/lib/customerHome'
 import { cn } from '@/lib/utils'
@@ -46,7 +46,7 @@ import { ShopAbout, ShopDelivery, ShopHero, ShopOffers } from '@/components/Shop
 import { MaterialPicture } from '@/components/MaterialPicture'
 import { CustomerWelcome } from '@/components/CustomerWelcome'
 import { BuildSupplyFooter } from '@/components/BuildSupplyFooter'
-import { clearProfile, readProfile, siteWithCity, type CustomerProfile } from '@/lib/customerProfile'
+import { clearProfile, profileKept, readProfile, siteWithCity, type CustomerProfile } from '@/lib/customerProfile'
 import { ImagePreview } from '@/components/ui/modal'
 import { brandAttr, shopWhatsapp } from '@/lib/shopPage'
 
@@ -67,15 +67,36 @@ type LastOrder = { items: { material_id: string; qty: number }[]; name: string; 
 const lastKey = (link: string) => `buildsupply-last-order:${link}`
 function readLast(link: string): LastOrder | null {
   try {
-    const value = JSON.parse(localStorage.getItem(lastKey(link)) ?? 'null')
+    const value = JSON.parse(localStorage.getItem(lastKey(link)) ?? sessionStorage.getItem(lastKey(link)) ?? 'null')
     return value && Array.isArray(value.items) ? (value as LastOrder) : null
   } catch {
     return null
   }
 }
+/**
+ * A quantity as typed, kept to what an order can carry (#4): the server takes
+ * up to 6 whole digits, 2 decimals and 1,00,000 per material, and used to drop
+ * anything else from the order without a word. Returns null for a keystroke
+ * that would go beyond that, so the box simply keeps its value.
+ */
+function orderQty(raw: string): string | null {
+  const v = sanitizeDecimal(raw)
+  if (!/^[0-9]{0,6}(\.[0-9]{0,2})?$/.test(v)) return null
+  if (Number(v) > 100000) return null
+  return v
+}
+
 function rememberLast(link: string, last: LastOrder) {
   try {
-    localStorage.setItem(lastKey(link), JSON.stringify(last))
+    // The same choice the customer made on the welcome screen (#8): with
+    // "Keep my details on this phone" unticked, the last order — which holds
+    // their name, phone and site — is kept only until the browser closes.
+    if (profileKept() === false) {
+      sessionStorage.setItem(lastKey(link), JSON.stringify(last))
+      localStorage.removeItem(lastKey(link))
+    } else {
+      localStorage.setItem(lastKey(link), JSON.stringify(last))
+    }
   } catch {
     // Storage blocked: they type it again next time, as before.
   }
@@ -87,9 +108,9 @@ function rememberLast(link: string, last: LastOrder) {
  * another's order — a shop's own phone, a shared one at a site — and then
  * nothing of the one should be offered as the other's.
  */
-function samePerson(khata: KhataLink | null, previous: LastOrder | null) {
-  if (!khata?.name || !previous?.name) return true
-  return khata.name.trim().toLowerCase() === previous.name.trim().toLowerCase()
+function samePerson(who: { name?: string | null } | null, previous: LastOrder | null) {
+  if (!who?.name || !previous?.name) return true
+  return who.name.trim().toLowerCase() === previous.name.trim().toLowerCase()
 }
 
 // The server writes its refusals in English; show the customer's language.
@@ -102,6 +123,8 @@ function errorKey(message: string): TranslationKey {
   if (/already have orders waiting/i.test(message)) return 'order.tooManyWaiting'
   if (/from this phone/i.test(message)) return 'order.deviceBusy'
   if (/too many orders/i.test(message)) return 'order.busy'
+  if (/site or address is too long/i.test(message)) return 'order.siteTooLong'
+  if (/note is too long/i.test(message)) return 'order.noteTooLong'
   return 'error.generic'
 }
 
@@ -132,6 +155,10 @@ export default function OrderPage() {
   const [form, setForm] = useState(() => {
     const previous = readLast(link)
     const mine = khata
+    // Who this phone says it is: the shop's own record (the khata) first, then
+    // the details typed on the welcome screen. The last order comes after
+    // both, so "Hello B" can never sit over a form filled with A (#9).
+    const who = mine?.name ? mine : profile ? { name: profile.name } : null
     // Who this phone is, to this shop: the khata's own customer when there is
     // one — that is the shop's own record — and otherwise whoever sent the
     // last order. Taking the name from one and the account from the other is
@@ -139,11 +166,13 @@ export default function OrderPage() {
     // khata. The site stays the last order's: it is where the load goes, not
     // who is asking.
     return {
-      name: mine?.name ?? previous?.name ?? profile?.name ?? '',
-      phone: mine?.phone ?? previous?.phone ?? profile?.phone ?? '',
+      name: mine?.name ?? profile?.name ?? previous?.name ?? '',
+      phone: mine?.phone ?? profile?.phone ?? previous?.phone ?? '',
       // The last order's site only if the same person sent it — otherwise it
       // is somebody else's site on this phone.
-      site: (samePerson(mine, previous) ? previous?.site : null) || mine?.site || (profile ? siteWithCity(profile) : ''),
+      // At most 120 characters — what the box and the server take (#29):
+      // a long site plus city used to fail with "Something went wrong".
+      site: ((samePerson(who, previous) ? previous?.site : null) || mine?.site || (profile ? siteWithCity(profile) : '')).slice(0, 120),
       date: '',
       note: '',
       trap: '',
@@ -239,11 +268,16 @@ export default function OrderPage() {
       ? chosen.reduce((sum, c) => sum + c.qty * (c.material.price ?? 0), 0)
       : null
   // Only what the supplier still lists can be ordered again.
-  const lastAvailable = last && samePerson(khata, last) ? last.items.filter((it) => materials.some((m) => m.id === it.material_id)) : []
+  // "Repeat" only for the same person (#9): the khata's customer, or else
+  // whoever the welcome screen says this phone is.
+  const lastAvailable = last && samePerson(khata?.name ? khata : profile ? { name: profile.name } : null, last) ? last.items.filter((it) => materials.some((m) => m.id === it.material_id)) : []
+
+  // The quantity box being typed in (#3).
+  const [editingQty, setEditingQty] = useState<string | null>(null)
 
   function step(id: string, delta: number) {
     setQty((prev) => {
-      const next = Math.max(0, (Number(prev[id]) || 0) + delta)
+      const next = Math.min(100000, Math.max(0, (Number(prev[id]) || 0) + delta))
       return { ...prev, [id]: next ? String(next) : '' }
     })
     setError(null)
@@ -393,7 +427,7 @@ export default function OrderPage() {
         onDone={(p) => {
           setProfile(p)
           setChanging(false)
-          setForm((f) => ({ ...f, name: p.name, phone: p.phone, site: siteWithCity(p) }))
+          setForm((f) => ({ ...f, name: p.name, phone: p.phone, site: siteWithCity(p).slice(0, 120) }))
           window.scrollTo({ top: 0 })
         }}
       />
@@ -591,7 +625,11 @@ export default function OrderPage() {
         <div className="grid grid-cols-2 gap-3">
           {visible.map((m) => {
             const value = qty[m.id] ?? ''
-            const inOrder = Number(value) > 0
+            // While its box is being typed in, the material stays in the
+            // stepper even when the box is momentarily empty — deleting the "1"
+            // to type "250" used to swap the box for "Add" and close the
+            // keyboard (#3). Leaving an empty box puts "Add" back.
+            const inOrder = Number(value) > 0 || editingQty === m.id
             return (
               <div
                 key={m.id}
@@ -627,8 +665,13 @@ export default function OrderPage() {
                       inputMode="decimal"
                       aria-label={t('order.qtyOf', { name: m.name })}
                       value={value}
+                      onFocus={() => setEditingQty(m.id)}
+                      onBlur={() => setEditingQty((id) => (id === m.id ? null : id))}
                       onChange={(e) => {
-                        setQty((prev) => ({ ...prev, [m.id]: sanitizeDecimal(e.target.value).slice(0, 8) }))
+                        const next = orderQty(e.target.value)
+                        // Beyond what an order can carry, the box keeps what it had (#4).
+                        if (next === null) return
+                        setQty((prev) => ({ ...prev, [m.id]: next }))
                         setError(null)
                       }}
                       className="h-9 w-full min-w-0 rounded-xl border border-border bg-card text-center text-sm font-semibold text-ink outline-none focus:border-accent"

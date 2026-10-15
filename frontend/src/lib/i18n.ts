@@ -2405,6 +2405,11 @@ const STRINGS = {
   'dash.complaintsOne': { en: 'A customer complaint is waiting', hi: 'एक ग्राहक की शिकायत बाकी है', mr: 'एका ग्राहकाची तक्रार बाकी आहे' },
   'dash.complaintsMany': { en: '{count} customer complaints are waiting', hi: '{count} ग्राहकों की शिकायतें बाकी हैं', mr: '{count} ग्राहकांच्या तक्रारी बाकी आहेत' },
   'dash.complaintsOpen': { en: 'Open', hi: 'खोलें', mr: 'उघडा' },
+  // Customer-side fixes (customer UX round, 2026-10-15).
+  'khata.payDirect': { en: 'Pay the shop directly — in cash, or the way you usually pay them.', hi: 'दुकान को सीधे भुगतान करें — नकद, या जैसे आप आमतौर पर करते हैं।', mr: 'दुकानाला थेट पैसे द्या — रोख, किंवा तुम्ही नेहमी देता तसे.' },
+  'order.siteTooLong': { en: 'The site or address is too long. Please shorten it.', hi: 'साइट या पता बहुत लंबा है। कृपया छोटा करें।', mr: 'साइट किंवा पत्ता खूप मोठा आहे. कृपया लहान करा.' },
+  'order.noteTooLong': { en: 'The note is too long. Please shorten it.', hi: 'नोट बहुत लंबा है। कृपया छोटा करें।', mr: 'नोट खूप मोठी आहे. कृपया लहान करा.' },
+  'est.noLongerOpen': { en: 'The shop has already moved this estimate on, so it can’t be answered now. Its latest state is shown below.', hi: 'दुकान ने यह एस्टिमेट आगे बढ़ा दिया है, इसलिए अब इसका जवाब नहीं दिया जा सकता। इसकी ताज़ा स्थिति नीचे है।', mr: 'दुकानाने हे एस्टिमेट पुढे नेले आहे, त्यामुळे आता उत्तर देता येणार नाही. त्याची सध्याची स्थिती खाली आहे.' },
 } satisfies Record<string, Entry>
 
 export type TranslationKey = keyof typeof STRINGS

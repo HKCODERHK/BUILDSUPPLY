@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { BookOpen, Check, House, MessageCircle, Package, Receipt, ShoppingBag } from 'lucide-react'
 import { readKhata, rememberOrder } from '@/lib/customerLinks'
+import { readProfile } from '@/lib/customerProfile'
+import type { TranslationKey } from '@/lib/i18n'
 import { Button } from '@/components/ui/button'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -49,7 +51,7 @@ export default function OrderStatus() {
   const [view, setView] = useState<OrderStatusView | null>(null)
   const [failed, setFailed] = useState(false)
   const [answering, setAnswering] = useState<'accepted' | 'call_me' | null>(null)
-  const [answerFailed, setAnswerFailed] = useState(false)
+  const [answerFailed, setAnswerFailed] = useState<TranslationKey | null>(null)
   // Their khata code with this shop, if this phone has ever opened it
   // (lib/customerLinks — kept on the phone, never on the server).
   const [khataCode, setKhataCode] = useState<string | null>(null)
@@ -86,13 +88,18 @@ export default function OrderStatus() {
   // The shop's own UPI ID, sent only to a customer who chose to pay online and
   // only while something is owed (migration 037). The amount is the bill's
   // outstanding once a bill exists, the estimate's total until then.
+  // The note is what the shop reads in its bank app to know who paid (#7):
+  // the customer's own name as this phone knows it, and the bill or estimate
+  // number. It used to carry the shop's own name, which told the shop nothing.
+  const payerName = (found?.order_link ? readKhata(found.order_link)?.name : null) || readProfile()?.name || ''
+  const payFor = found?.bill?.invoice_no ?? found?.estimate?.quote_no ?? ''
   const upiUrl =
     found?.upi_id && (found.due ?? 0) > 0.005
       ? upiPayUrl({
           upiId: found.upi_id,
           payee: found.business_name,
           amount: Math.round((found.due ?? 0) * 100) / 100,
-          note: found.business_name,
+          note: [payerName, payFor].filter(Boolean).join(' ') || found.business_name,
         })
       : null
 
@@ -109,8 +116,11 @@ export default function OrderStatus() {
           {
             key: 'estimate',
             label: t('tl.estimate'),
-            detail: found.status === 'approved' && found.decided_at ? formatDate(found.decided_at) : null,
-            done: found.status === 'approved',
+            // Ticked only when there really is an estimate (#1): since 037 the
+            // shop can say yes on the spot and price it later, and the title
+            // then reads "Order accepted — the price is on its way".
+            detail: found.status === 'approved' && found.estimate && found.decided_at ? formatDate(found.decided_at) : null,
+            done: found.status === 'approved' && !!found.estimate,
           },
           {
             key: 'accepted',
@@ -148,12 +158,19 @@ export default function OrderStatus() {
   async function answer(response: 'accepted' | 'call_me') {
     if (answering) return
     setAnswering(response)
-    setAnswerFailed(false)
+    setAnswerFailed(null)
     try {
       await respondToEstimate(token, response)
+    } catch (e) {
+      // The shop may have billed the estimate meanwhile: say so, rather than
+      // "something went wrong" over buttons that can never work (#29).
+      setAnswerFailed(/no longer be changed/i.test(e instanceof Error ? e.message : '') ? 'est.noLongerOpen' : 'error.generic')
+    }
+    // Either way, show the order as it stands now.
+    try {
       setView(await getOrderStatus(token))
     } catch {
-      setAnswerFailed(true)
+      // Keep what is on screen.
     } finally {
       setAnswering(null)
     }
@@ -399,7 +416,7 @@ export default function OrderStatus() {
                         <p className="text-xs text-muted">{t('est.askHint', { business: found.business_name })}</p>
                       )}
                       {answerFailed && (
-                        <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{t('error.generic')}</p>
+                        <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{t(answerFailed)}</p>
                       )}
                       <div className="flex flex-wrap gap-2">
                         {found.response !== 'accepted' && (

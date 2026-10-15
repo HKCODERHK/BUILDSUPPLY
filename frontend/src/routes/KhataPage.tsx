@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
   BookmarkCheck,
@@ -78,6 +78,7 @@ import {
   myConfirmReceived,
   myKhata,
   myKhataDocument,
+  rememberCurrentShop,
 } from '@/services/customerAccount'
 
 function formatINR(n: number) {
@@ -168,6 +169,7 @@ export default function KhataPage({
   const { token = '' } = useParams()
   const { t } = useLanguage()
   const navigate = useNavigate()
+  const location = useLocation()
   const [params, setParams] = useSearchParams()
   const [view, setView] = useState<KhataView | null>(null)
   const [failed, setFailed] = useState(false)
@@ -175,6 +177,7 @@ export default function KhataPage({
   const [downloading, setDownloading] = useState(false)
   // One bill's or estimate's PDF being made: "bill:INV-1024" or "estimate:QT-1003".
   const [docBusy, setDocBusy] = useState<string | null>(null)
+  const [ledgerFailed, setLedgerFailed] = useState(false)
   const [viewing, setViewing] = useState<KhataDocument | null>(null)
   const [sharingShop, setSharingShop] = useState(false)
   const [logoPreview, setLogoPreview] = useState(false)
@@ -190,13 +193,20 @@ export default function KhataPage({
   // Saving this khata to the customer's account (migration 041): only on the
   // link, never on /me, where it is already the account.
   const [saved, setSaved] = useState<'unknown' | 'no' | 'saving' | 'yes'>('unknown')
+  // Which saved shop this is on the account, so "Open" shows this shop and not
+  // whichever one /me opened last (#6).
+  const [savedConnection, setSavedConnection] = useState<string | null>(null)
   const [saveFailed, setSaveFailed] = useState(false)
   useEffect(() => {
     if (connection || !token) return
     let live = true
     accountsAvailable()
       .then((ok) => (ok ? khataConnected(token) : null))
-      .then((r) => live && r && setSaved(r.connected ? 'yes' : 'no'))
+      .then((r) => {
+        if (!live || !r) return
+        setSaved(r.connected ? 'yes' : 'no')
+        if (r.connection) setSavedConnection(r.connection)
+      })
       .catch(() => live && setSaved('no'))
     return () => {
       live = false
@@ -209,6 +219,7 @@ export default function KhataPage({
     try {
       const r = await connectKhata(token)
       setSaved(r.ok ? 'yes' : 'no')
+      if (r.connection) setSavedConnection(r.connection)
       if (!r.ok) setSaveFailed(true)
     } catch {
       setSaved('no')
@@ -292,12 +303,23 @@ export default function KhataPage({
 
   const asked = params.get('s')
   const section = (SECTIONS as readonly string[]).includes(asked ?? '') ? (asked as Section) : null
+  // One step of history per visit to a section, never more (#12). Opening a
+  // section from the home screen adds a step, so the phone's back returns
+  // home; moving between sections (the tabs) swaps that step rather than
+  // piling more on; and the in-page ← takes the step back off, so the phone's
+  // back after it leaves the page instead of reopening the section.
   function openSection(s: Section) {
-    setParams({ s })
+    if (section === null) setParams({ s }, { state: { khataSection: true } })
+    else setParams({ s }, { replace: true, state: { khataSection: true } })
   }
   function closeSection() {
-    setParams({})
+    if ((location.state as { khataSection?: boolean } | null)?.khataSection) navigate(-1)
+    else setParams({}, { replace: true })
   }
+  // A section opens at its top, not wherever the home screen was scrolled to (#13).
+  useEffect(() => {
+    window.scrollTo({ top: 0 })
+  }, [section])
 
   // The statement exactly as the supplier's Ledger builds it: one customer's
   // rows, so every row is "this customer".
@@ -422,9 +444,13 @@ export default function KhataPage({
   async function download() {
     if (!found || !ledger || downloading) return
     setDownloading(true)
+    setLedgerFailed(false)
     try {
       // Only the fields the PDF prints came back from the database.
       await downloadCustomerLedgerPdf(found.supplier as unknown as Supplier, found.customer as unknown as Customer, ledger)
+    } catch {
+      // It used to fail without a word (#29).
+      setLedgerFailed(true)
     } finally {
       setDownloading(false)
     }
@@ -790,7 +816,26 @@ export default function KhataPage({
               <span className="text-base font-bold text-ink">{sectionTitle[section]}</span>
             </button>
 
-            {section === 'pay' && !(upiUrl && found.upi_id) && (
+            {/* Money owed, but the shop takes no UPI here (#22): say what is
+                owed and how to pay, rather than "nothing to pay". */}
+            {section === 'pay' && !(upiUrl && found.upi_id) && net > 0.005 && (
+              <Card className="flex flex-col gap-3">
+                <div>
+                  <div className="text-sm text-muted">{t('khata.youOwe')}</div>
+                  <div className="text-2xl font-bold text-ink">{formatINR(net)}</div>
+                </div>
+                <p className="text-sm text-muted">{t('khata.payDirect')}</p>
+                {found.supplier.phone && (
+                  <a
+                    href={`tel:${found.supplier.phone}`}
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-border text-sm font-semibold text-ink hover:bg-surface"
+                  >
+                    <Phone size={16} /> {t('khata.call')}
+                  </a>
+                )}
+              </Card>
+            )}
+            {section === 'pay' && !(upiUrl && found.upi_id) && net <= 0.005 && (
               <Card className="text-sm text-muted">{t('khata.nothingToPay')}</Card>
             )}
             {section === 'pay' && upiUrl && found.upi_id && (
@@ -948,6 +993,7 @@ export default function KhataPage({
                 <Button variant="outline" onClick={download} disabled={downloading} className="w-full">
                   {downloading ? <LoaderCircle size={16} className="animate-spin" /> : <Download size={16} />} {t('khata.download')}
                 </Button>
+                {ledgerFailed && problem(t('error.generic'))}
                 <Card className="p-0">
                   {newestFirst.length === 0 ? (
                     <p className="p-4 text-sm text-muted">{t('khata.none')}</p>
@@ -1142,7 +1188,11 @@ export default function KhataPage({
                   {saveFailed && <div className="mt-1 text-xs text-red-600 dark:text-red-400">{t('error.generic')}</div>}
                 </div>
                 {saved === 'yes' ? (
-                  <Link to="/me" className="shrink-0 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-accent">
+                  <Link
+                    to="/me"
+                    onClick={() => savedConnection && rememberCurrentShop(savedConnection)}
+                    className="shrink-0 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-accent"
+                  >
                     {t('acct.open')}
                   </Link>
                 ) : (
@@ -1366,8 +1416,12 @@ export default function KhataPage({
               }
               disabled={docBusy !== null}
             >
-              <Download size={15} /> {t('khata.billPdf')}
+              {/* An estimate's own label, a spinner while it is made, and its
+                  error here in the dialog rather than behind it (#29). */}
+              {docBusy !== null ? <LoaderCircle size={15} className="animate-spin" /> : <Download size={15} />}{' '}
+              {t(viewing.kind === 'bill' ? 'khata.billPdf' : 'khata.estimatePdf')}
             </Button>
+            {docFailed && <p className="text-sm text-red-600 dark:text-red-400">{t('error.generic')}</p>}
             {/* A complaint about this bill (046) — here and nowhere more visible. */}
             {viewing.kind === 'bill' && found && (
               <BillComplaint

@@ -9,7 +9,7 @@ import { SoftCard } from '@/components/CustomerHome'
 import { useLanguage } from '@/context/LanguageContext'
 import { cn } from '@/lib/utils'
 import { signOutCustomer } from '@/lib/customerAuth'
-import { disconnectShop, myShops, readCurrentShop, rememberCurrentShop, type MyShop } from '@/services/customerAccount'
+import { disconnectShop, myShops, readCurrentShop, forgetCurrentShop, rememberCurrentShop, type MyShop } from '@/services/customerAccount'
 import KhataPage from './KhataPage'
 import { BuildSupplyFooter } from '@/components/BuildSupplyFooter'
 
@@ -74,6 +74,9 @@ export default function MyAccount() {
     setBusy(true)
     try {
       await disconnectShop(current)
+      // The customer removed it, the shop did not stop it: without this, the
+      // reload took the missing shop for a stopped link and said so (#5).
+      forgetCurrentShop()
       setAsking(null)
       navigate('/me', { replace: true })
       await load()
@@ -87,6 +90,7 @@ export default function MyAccount() {
     setBusy(true)
     try {
       await signOutCustomer()
+      forgetCurrentShop()
       setAsking(null)
       setGone(false)
       setShops([])
