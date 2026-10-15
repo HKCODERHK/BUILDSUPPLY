@@ -19,7 +19,18 @@ import { cn } from '@/lib/utils'
 // shown — the word and the globe are wider, and the brand's tagline beside
 // them wraps to a second line at 360px, making the bar taller. The list is
 // the same; only the button is narrower.
-export function LanguageToggle({ className, compact = false }: { className?: string; compact?: boolean }) {
+//
+// `globeOnly` is the customer pages' bar (#14): the shop's own name sits
+// there, so the button is the globe alone; the list is unchanged.
+export function LanguageToggle({
+  className,
+  compact = false,
+  globeOnly = false,
+}: {
+  className?: string
+  compact?: boolean
+  globeOnly?: boolean
+}) {
   const { lang, setLang, t } = useLanguage()
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -59,6 +70,8 @@ export function LanguageToggle({ className, compact = false }: { className?: str
       >
         {compact ? (
           current.short
+        ) : globeOnly ? (
+          <Globe size={16} className="shrink-0" />
         ) : (
           <>
             <Globe size={15} className="shrink-0" />

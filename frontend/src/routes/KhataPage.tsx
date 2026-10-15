@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -14,6 +14,7 @@ import {
   Package,
   Phone,
   Receipt,
+  RotateCcw,
   ScrollText,
   Share2,
   ShoppingBag,
@@ -27,8 +28,6 @@ import { formatRate, gstSlabs } from '@/lib/gst'
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { LanguageToggle } from '@/components/LanguageToggle'
-import { ThemeToggle } from '@/components/ThemeToggle'
 import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { TruckLoader } from '@/components/TruckLoader'
 import { useLanguage } from '@/context/LanguageContext'
@@ -60,6 +59,7 @@ import { QrCode } from '@/components/QrCode'
 import { upiPayUrl } from '@/lib/upi'
 import { receivedState } from '@/lib/received'
 import {
+  CustomerHeader,
   CustomerTabBar,
   DeliveryStrip,
   QuickActions,
@@ -183,6 +183,8 @@ export default function KhataPage({
   const [params, setParams] = useSearchParams()
   const [view, setView] = useState<KhataView | null>(null)
   const [failed, setFailed] = useState(false)
+  // Bumped by Try again after a failed load (#23).
+  const [attempt, setAttempt] = useState(0)
   const [showOlder, setShowOlder] = useState(false)
   const [downloading, setDownloading] = useState(false)
   // One bill's or estimate's PDF being made: "bill:INV-1024" or "estimate:QT-1003".
@@ -279,35 +281,8 @@ export default function KhataPage({
       .catch(() => setFailed(true))
     // onGone is the parent's callback; a new function each render must not refetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, connection])
+  }, [token, connection, attempt])
 
-  // The shop's band rising into the bar (the supplier's own Profile screen
-  // does the same with their name). A frame is asked for per scroll burst
-  // rather than measuring on every event.
-  const barRef = useRef<HTMLElement>(null)
-  const bandRef = useRef<HTMLDivElement>(null)
-  const [shopUp, setShopUp] = useState(false)
-  useEffect(() => {
-    let frame = 0
-    const check = () => {
-      frame = 0
-      const band = bandRef.current?.getBoundingClientRect()
-      const bar = barRef.current?.getBoundingClientRect()
-      // No band yet (still loading, or the link is dead): keep BuildSupply up.
-      setShopUp(!!band && !!bar && band.bottom <= bar.bottom)
-    }
-    const onChange = () => {
-      if (!frame) frame = requestAnimationFrame(check)
-    }
-    frame = requestAnimationFrame(check)
-    window.addEventListener('scroll', onChange, { passive: true })
-    window.addEventListener('resize', onChange)
-    return () => {
-      if (frame) cancelAnimationFrame(frame)
-      window.removeEventListener('scroll', onChange)
-      window.removeEventListener('resize', onChange)
-    }
-  }, [view, params])
 
   const found = view && view.found ? view : null
   // The per-document PDFs need khata_document, which came with the estimates list.
@@ -405,9 +380,10 @@ export default function KhataPage({
 
   const quickActions: QuickAction[] = [
     ...(found?.order_link
-      ? [{ key: 'order', icon: Truck, label: t('khata.tileOrder'), to: `/order/${found.order_link}` }]
+      ? [{ key: 'order', icon: Truck, label: t('khata.orderMaterials'), to: `/order/${found.order_link}` }]
       : []),
-    ...(upiUrl ? [{ key: 'pay', icon: CreditCard, label: t('khata.tilePay'), onClick: () => openSection('pay') }] : []),
+    // No Pay shortcut: "Pay now" sits beside the figure whenever UPI is on,
+    // and two buttons for one thing was the confusion (#15).
     { key: 'statement', icon: ScrollText, label: t('khata.tileStatement'), onClick: () => openSection('statement') },
     ...(shop ? [{ key: 'shop', icon: Store, label: t('khata.tileShop'), onClick: () => openSection('shop') }] : []),
     ...(found?.order_link
@@ -422,7 +398,8 @@ export default function KhataPage({
           {
             key: 'materials',
             icon: ShoppingBag,
-            label: t('khata.tabMaterials'),
+            // One name for ordering everywhere (#15).
+            label: t('khata.orderMaterials'),
             active: false,
             onClick: () => navigate(`/order/${found.order_link}`),
           },
@@ -564,9 +541,13 @@ export default function KhataPage({
     )
   }
 
-  /** The "Material received?" line and the bill's own PDF, under a bill. */
-  function billActions(bill: KhataInvoice) {
-    if (bill.kind !== 'bill') return null
+  /**
+   * Where a delivered bill has got to — the one rule (lib/received), used by
+   * the bill's row under Bills and by its row under Orders, so the same bill
+   * never says two different things (#16). While the customer's answer still
+   * matters it is the "Material received?" question itself.
+   */
+  function receivedControl(bill: KhataInvoice) {
     if (asking === bill.invoice_no) {
       return (
         <div className="mt-1.5 flex flex-wrap gap-2">
@@ -580,21 +561,29 @@ export default function KhataPage({
       )
     }
     const state = receivedState(bill)
+    // Asked only while the answer still means something: a day after
+    // delivery it counts as received either way (lib/received), so the
+    // question goes and the line simply says it arrived.
+    return state === 'confirmed' && bill.received_at ? (
+      <span className="font-medium text-accent">{t('khata.receivedOn', { date: formatDate(bill.received_at) })}</span>
+    ) : state === 'waiting' ? (
+      <button type="button" className="font-semibold text-accent" onClick={() => setAsking(bill.invoice_no)}>
+        {t('khata.receivedAsk')}
+      </button>
+    ) : state === 'assumed' ? (
+      <span className="font-medium text-accent">{t('khata.ordDelivered')}</span>
+    ) : null
+  }
+
+  /** The "Material received?" line and the bill's own PDF, under a bill. */
+  function billActions(bill: KhataInvoice) {
+    if (bill.kind !== 'bill') return null
+    if (asking === bill.invoice_no) return receivedControl(bill)
+    const state = receivedState(bill)
     if (state === 'none' && !hasDocuments) return null
     return (
       <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-        {/* Asked only while the answer still means something: a day after
-            delivery it counts as received either way (lib/received), so the
-            question goes and the line simply says it arrived. */}
-        {state === 'confirmed' && bill.received_at ? (
-          <span className="font-medium text-accent">{t('khata.receivedOn', { date: formatDate(bill.received_at) })}</span>
-        ) : state === 'waiting' ? (
-          <button type="button" className="font-semibold text-accent" onClick={() => setAsking(bill.invoice_no)}>
-            {t('khata.receivedAsk')}
-          </button>
-        ) : state === 'assumed' ? (
-          <span className="font-medium text-accent">{t('khata.ordDelivered')}</span>
-        ) : null}
+        {receivedControl(bill)}
         {hasDocuments && viewButton('bill', bill.invoice_no, t('khata.billView'))}
         {hasDocuments && pdfButton('bill', bill.invoice_no, t('khata.billPdf'))}
       </div>
@@ -619,8 +608,9 @@ export default function KhataPage({
       ...p.payment_allocations.map((a) => ({
         label: refLabel(a.invoices.kind, a.invoices.invoice_no),
         amount: Number(a.amount),
+        advance: false,
       })),
-      ...(kept > 0.005 ? [{ label: t('khata.keptAdvance'), amount: kept }] : []),
+      ...(kept > 0.005 ? [{ label: t('khata.keptAdvance'), amount: kept, advance: true }] : []),
     ]
   }
 
@@ -718,14 +708,11 @@ export default function KhataPage({
             {t('khata.bill', { no: b.invoice_no })}
             {b.site ? ` · ${b.site}` : ''}
           </div>
+          {/* The same delivery state as this bill under Bills (#16). */}
+          {receivedState(b) !== 'none' && <div className="mt-1 text-xs">{receivedControl(b)}</div>}
         </div>
         <div className="shrink-0 text-right">
           <div className="text-sm font-semibold text-ink">{formatINR(Number(b.total))}</div>
-          {b.received_at ? (
-            <div className="text-[11px] font-medium text-accent">{t('khata.receivedOn', { date: formatDate(b.received_at) })}</div>
-          ) : b.delivered ? (
-            <div className="text-[11px] font-medium text-accent">{t('khata.ordDelivered')}</div>
-          ) : null}
         </div>
       </div>
     )
@@ -747,76 +734,15 @@ export default function KhataPage({
 
   return (
     <div className="flex min-h-screen flex-col bg-surface" data-brand={brandAttr(shop?.brand_color)}>
-      {/* Two brands, one bar. At the top of a page it says BuildSupply, with
-          the language and day/night buttons, and the shop's own logo and name
-          sit under it on the page. Scroll, and the shop rises into the bar as
-          BuildSupply and the buttons step aside — so the platform is named
-          where a customer first lands, and the shop owns the bar while they
-          read their account. Scrolling back brings BuildSupply back. */}
-      <header
-        ref={barRef}
-        className="sticky top-0 z-30 bg-shell px-4 pb-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white"
-      >
-        <div className="relative mx-auto flex h-11 max-w-lg items-center">
-          <div
-            className={cn(
-              'absolute inset-0 flex items-center gap-3 transition-opacity duration-200 motion-reduce:transition-none',
-              shopUp && 'pointer-events-none opacity-0',
-            )}
-          >
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#35A85D"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="shrink-0"
-            >
-              <path d="M3 21h18" />
-              <path d="M5 21V8l5-4v17" />
-              <path d="M10 21V11l6 3v7" />
-              <path d="M16 21v-4l3 1.5V21" />
-            </svg>
-            <span className="text-lg font-bold">BuildSupply</span>
-            <div className="ml-auto flex shrink-0 items-center gap-2">
-              <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
-              <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
-            </div>
-          </div>
-          <div
-            className={cn(
-              'absolute inset-0 flex items-center gap-2.5 transition-opacity duration-200 motion-reduce:transition-none',
-              !shopUp && 'pointer-events-none opacity-0',
-            )}
-          >
-            {found?.supplier.logo_url ? (
-              <img src={found.supplier.logo_url} alt="" className="h-9 w-9 shrink-0 rounded-lg bg-white object-cover" />
-            ) : null}
-            <span className="min-w-0 truncate text-base font-bold">{found?.supplier.business_name ?? 'BuildSupply'}</span>
-          </div>
-        </div>
-      </header>
+      {/* The shop's own name and logo in the bar (#14); BuildSupply is the
+          badge at the foot of the page. */}
+      <CustomerHeader
+        shop={found?.supplier}
+        onLogo={() => setLogoPreview(true)}
+        logoLabel={t('shop.viewLogo')}
+      />
       <main className={cn('mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4', found && 'pb-28')}>
-        {/* The shop, large, where the page begins — this is what rises into
-            the bar. Measured, not guessed: `shopUp` turns on the moment this
-            block's last pixel passes under the bar. */}
         {accountTop}
-        {found && section && (
-          <div ref={bandRef} className="flex items-center gap-3">
-            {found.supplier.logo_url ? (
-              <button type="button" aria-label={t('shop.viewLogo')} onClick={() => setLogoPreview(true)} className="shrink-0">
-                <img src={found.supplier.logo_url} alt="" className="h-14 w-14 rounded-2xl bg-white object-cover" />
-              </button>
-            ) : null}
-            <div className="min-w-0">
-              <div className="truncate text-xl font-bold leading-tight text-ink">{found.supplier.business_name}</div>
-              <div className="text-xs text-muted">{t('khata.pageTitle')}</div>
-            </div>
-          </div>
-        )}
         {!view && !failed ? (
           <TruckLoader />
         ) : !found ? (
@@ -824,6 +750,19 @@ export default function KhataPage({
             <Card className="text-center text-sm text-ink">
               {failed ? t('error.generic') : view && !view.found && view.paused ? t('khata.paused') : t('khata.notFound')}
             </Card>
+            {/* A failed load is not a dead end (#23). */}
+            {failed && (
+              <Button
+                variant="outline"
+                className="h-11"
+                onClick={() => {
+                  setFailed(false)
+                  setAttempt((n) => n + 1)
+                }}
+              >
+                <RotateCcw size={16} /> {t('account.retry')}
+              </Button>
+            )}
             {/* On /me a paused shop stays on the account: it can still be removed (#11). */}
             {view && !view.found && view.paused && accountFooter}
           </>
@@ -917,18 +856,23 @@ export default function KhataPage({
                         const parts = paymentParts(p)
                         return (
                           <div key={i} className="p-4">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <div className="text-sm font-semibold text-ink">{formatDate(p.created_at)}</div>
-                                <div className="text-xs text-muted">{t(`mode.${p.mode}`)}</div>
-                              </div>
-                              <div className="shrink-0 text-base font-bold text-accent">− {formatINR(Number(p.amount))}</div>
+                            {/* Said the way a customer says it (#20): "Paid ₹1,463",
+                                how and when, and what it was for — no minus
+                                sign, no "put against". The statement keeps
+                                its signs, being a running balance. */}
+                            <div className="text-sm font-semibold text-ink">
+                              {t('khata.paidLine', { amount: formatINR(Number(p.amount)) })}
+                            </div>
+                            <div className="text-xs text-muted">
+                              {t(`mode.${p.mode}`)} · {formatDate(p.created_at)}
                             </div>
                             {/* One bill: a line is enough. Several: every bill
                                 and its share, so a customer can check their
                                 money landed where they meant it to. */}
                             {parts.length === 1 ? (
-                              <div className="mt-1 text-xs text-muted">{t('khata.paidInto', { ref: parts[0].label })}</div>
+                              <div className="mt-1 text-xs text-muted">
+                                {parts[0].advance ? parts[0].label : t('khata.forRef', { ref: parts[0].label })}
+                              </div>
                             ) : parts.length > 1 ? (
                               <div className="mt-2 flex flex-col gap-1 rounded-lg bg-surface p-2.5">
                                 <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">{t('khata.paymentSplit')}</div>
@@ -1056,17 +1000,16 @@ export default function KhataPage({
           </>
         ) : (
           <>
-            {/* The greeting, the way an app greets its user — and what rises
-                into the bar as the page scrolls. The round button is the
-                shop's phone, where the reference keeps its bell. */}
-            <div ref={bandRef} className="flex items-center gap-3 pt-1">
+            {/* The greeting, the way an app greets its user. The round button
+                is the shop's phone, where the reference keeps its bell. */}
+            <div className="flex items-center gap-3 pt-1">
               <CustomerAvatar id={token || connection || ''} name={found.customer.name} size={48} />
               <div className="min-w-0 flex-1">
                 <div className="text-xs text-muted">{t(greetingKey())}</div>
                 <div className="line-clamp-2 break-words text-xl font-bold leading-tight text-ink">
                   {t('khata.hello', { name: found.customer.name })}
                 </div>
-                <div className="truncate text-xs text-muted">
+                <div className="break-words text-xs text-muted">
                   {t('khata.yourAccountWith', { business: found.supplier.business_name })}
                 </div>
               </div>

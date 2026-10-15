@@ -1,7 +1,9 @@
-import type { ComponentType, ReactNode } from 'react'
+import type { ComponentType, ReactNode, Ref } from 'react'
 import { Link } from 'react-router-dom'
-import { MapPin } from 'lucide-react'
+import { MapPin, Store } from 'lucide-react'
 import { Tipper } from '@/components/art'
+import { LanguageToggle } from '@/components/LanguageToggle'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { cn } from '@/lib/utils'
 import { TINTS, type Tint } from '@/lib/customerHome'
 
@@ -24,6 +26,77 @@ export function SoftCard({ className, children }: { className?: string; children
   )
 }
 
+/**
+ * The customer pages' top bar (#14): the shop's logo and its full name, which
+ * is what the customer came for — BuildSupply stays as the small badge at the
+ * foot of the page. Until the shop is known (loading, a dead link), the
+ * BuildSupply mark and name stand in. The name wraps to two lines rather than
+ * being cut off.
+ */
+export function CustomerHeader({
+  shop,
+  onLogo,
+  logoLabel,
+  barRef,
+  title,
+}: {
+  shop?: { business_name: string; logo_url?: string | null } | null
+  /** Tapping the logo opens it full size. */
+  onLogo?: () => void
+  logoLabel?: string
+  barRef?: Ref<HTMLElement>
+  /** Shown instead of a shop, e.g. "My BuildSupply" on /me with no shop. */
+  title?: string
+}) {
+  const toggles = 'border-white/20 text-white hover:bg-white/10 hover:text-white'
+  let mark: ReactNode
+  if (shop?.logo_url) {
+    const img = <img src={shop.logo_url} alt="" className="h-9 w-9 rounded-lg bg-white object-cover" />
+    mark = onLogo ? (
+      <button type="button" aria-label={logoLabel} onClick={onLogo} className="shrink-0">
+        {img}
+      </button>
+    ) : (
+      <span className="shrink-0">{img}</span>
+    )
+  } else if (shop) {
+    mark = (
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10">
+        <Store size={18} />
+      </span>
+    )
+  } else {
+    mark = (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#35A85D" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden="true">
+        <path d="M3 21h18" />
+        <path d="M5 21V8l5-4v17" />
+        <path d="M10 21V11l6 3v7" />
+        <path d="M16 21v-4l3 1.5V21" />
+      </svg>
+    )
+  }
+  return (
+    <header ref={barRef} className="sticky top-0 z-30 bg-shell px-4 pb-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white">
+      <div className="mx-auto flex min-h-11 max-w-lg items-center gap-2.5">
+        {mark}
+        {/* A long name ("… Suppliers Private Limited") steps down a size and
+            may take a third line, so it is read whole rather than cut off. */}
+        <span
+          className={cn(
+            'min-w-0 flex-1 break-words font-bold leading-tight',
+            !shop ? 'text-lg' : shop.business_name.length > 24 ? 'line-clamp-3 text-sm' : 'line-clamp-2 text-base',
+          )}
+        >
+          {shop?.business_name ?? title ?? 'BuildSupply'}
+        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <LanguageToggle globeOnly className={toggles} />
+          <ThemeToggle className={toggles} />
+        </div>
+      </div>
+    </header>
+  )
+}
 
 export interface QuickAction {
   key: string
@@ -46,7 +119,8 @@ export function QuickActions({ actions }: { actions: QuickAction[] }) {
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-bg text-accent-text">
                 <a.icon size={19} strokeWidth={1.9} />
               </span>
-              <span className="w-full truncate text-center text-xs font-medium text-ink">{a.label}</span>
+              {/* Two lines rather than cut off (#15, #32). */}
+              <span className="line-clamp-2 w-full break-words text-center text-xs font-medium leading-tight text-ink">{a.label}</span>
             </>
           )
           const className =

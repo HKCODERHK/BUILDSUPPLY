@@ -5,7 +5,7 @@ import { PhoneInput } from '@/components/ui/phone-input'
 import { AuthShell, GradientButton, IconField, iconInputClass } from '@/components/AuthShell'
 import { BuildSupplyFooter } from '@/components/BuildSupplyFooter'
 import { useLanguage } from '@/context/LanguageContext'
-import { saveProfile, type CustomerProfile } from '@/lib/customerProfile'
+import { profileKept, saveProfile, type CustomerProfile } from '@/lib/customerProfile'
 
 /**
  * The first thing a customer sees on a shop's QR or order link, once per
@@ -19,11 +19,17 @@ export function CustomerWelcome({
   logoUrl,
   initial,
   onDone,
+  onCancel,
 }: {
   shopName: string
   logoUrl?: string | null
   initial?: Partial<CustomerProfile> | null
   onDone: (profile: CustomerProfile) => void
+  /**
+   * "Not you? Change" (#17): the saved details stay until Continue, so the
+   * customer can go back without retyping them.
+   */
+  onCancel?: () => void
 }) {
   const { t } = useLanguage()
   const [form, setForm] = useState<CustomerProfile>({
@@ -32,7 +38,8 @@ export function CustomerWelcome({
     site: initial?.site ?? '',
     city: initial?.city ?? '',
   })
-  const [keep, setKeep] = useState(true)
+  // Changing details keeps the choice made last time; a first visit keeps them.
+  const [keep, setKeep] = useState(() => profileKept() !== false)
   const [tried, setTried] = useState(false)
   const [busy, setBusy] = useState(false)
 
@@ -135,6 +142,16 @@ export function CustomerWelcome({
         <GradientButton type="submit" busy={busy} className="mt-1">
           {t('cw.continue')}
         </GradientButton>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={busy}
+            className="h-11 w-full rounded-xl text-sm font-semibold text-muted hover:text-ink"
+          >
+            {t('ord.cancel')}
+          </button>
+        )}
       </form>
     </AuthShell>
   )

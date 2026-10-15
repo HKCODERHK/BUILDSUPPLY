@@ -3,6 +3,7 @@ import { useRouteError } from 'react-router-dom'
 import { RefreshCw } from 'lucide-react'
 import { BrandMark } from '@/components/BrandMark'
 import { useLanguage } from '@/context/LanguageContext'
+import { hasCustomerSession } from '@/lib/customerAuth'
 
 /**
  * What any screen shows when it fails to load or crashes (2026-10-13), in
@@ -53,6 +54,8 @@ export function RouteError() {
     if (reloading) reload()
   }, [reloading])
 
+  const customerPage = /^\/(order|order-status|khata)\/|^\/me(\/|$)/.test(window.location.pathname)
+
   return (
     <div className="flex min-h-app items-center justify-center bg-surface p-6 text-ink">
       <div className="w-full max-w-sm rounded-3xl border border-border bg-card p-7 text-center shadow-sm">
@@ -70,13 +73,25 @@ export function RouteError() {
           >
             <RefreshCw size={16} className={reloading ? 'animate-spin' : undefined} /> {t('err.reload')}
           </button>
-          {!stale && (
+          {/* A customer's page must not send them to the shop owners' website
+              (#27): their own BuildSupply if this phone has one, otherwise
+              Reload alone. Everyone else keeps Home. */}
+          {!stale && !customerPage && (
             <button
               type="button"
               onClick={() => window.location.assign('/')}
               className="h-11 w-full rounded-xl border border-border text-sm font-semibold text-ink hover:bg-surface"
             >
               {t('err.home')}
+            </button>
+          )}
+          {!stale && customerPage && hasCustomerSession() && window.location.pathname !== '/me' && (
+            <button
+              type="button"
+              onClick={() => window.location.assign('/me')}
+              className="h-11 w-full rounded-xl border border-border text-sm font-semibold text-ink hover:bg-surface"
+            >
+              {t('acct.title')}
             </button>
           )}
         </div>

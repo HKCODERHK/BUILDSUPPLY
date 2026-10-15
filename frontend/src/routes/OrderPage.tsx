@@ -24,8 +24,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PhoneInput } from '@/components/ui/phone-input'
-import { ThemeToggle } from '@/components/ThemeToggle'
-import { LanguageToggle } from '@/components/LanguageToggle'
 import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { SuccessHeader } from '@/components/SuccessTick'
 import { TruckLoader } from '@/components/TruckLoader'
@@ -37,7 +35,8 @@ import { platformDisclosure } from '@/services/compliance'
 import { getOrderPage, orderStatusUrl, placeOrder, type OrderPage as OrderPageData } from '@/services/orders'
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
 import { readKhata, rememberOrder } from '@/lib/customerLinks'
-import { CustomerTabBar, QuickActions, SectionHeading, SoftCard, type QuickAction } from '@/components/CustomerHome'
+import { hasCustomerSession } from '@/lib/customerAuth'
+import { CustomerHeader, CustomerTabBar, QuickActions, SectionHeading, SoftCard, type QuickAction } from '@/components/CustomerHome'
 import { greetingKey } from '@/lib/customerHome'
 import { cn } from '@/lib/utils'
 import { myShops, rememberCurrentShop, type MyShop } from '@/services/customerAccount'
@@ -46,7 +45,7 @@ import { ShopAbout, ShopDelivery, ShopHero, ShopOffers } from '@/components/Shop
 import { MaterialPicture } from '@/components/MaterialPicture'
 import { CustomerWelcome } from '@/components/CustomerWelcome'
 import { BuildSupplyFooter } from '@/components/BuildSupplyFooter'
-import { clearProfile, profileKept, readProfile, siteWithCity, type CustomerProfile } from '@/lib/customerProfile'
+import { profileKept, readProfile, siteWithCity, type CustomerProfile } from '@/lib/customerProfile'
 import { ImagePreview } from '@/components/ui/modal'
 import { brandAttr, shopWhatsapp } from '@/lib/shopPage'
 
@@ -113,6 +112,10 @@ function samePerson(who: { name?: string | null } | null, previous: LastOrder | 
   return who.name.trim().toLowerCase() === previous.name.trim().toLowerCase()
 }
 
+/** A way on from a screen that would otherwise end the visit (#23). */
+const deadEndLink =
+  'inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-accent'
+
 // The server writes its refusals in English; show the customer's language.
 function errorKey(message: string): TranslationKey {
   if (/unavailable/i.test(message)) return 'order.unavailable'
@@ -152,6 +155,9 @@ export default function OrderPage() {
   const [profile, setProfile] = useState<CustomerProfile | null>(readProfile)
   // "Not you? Change": the first-time screen again, to put new details in.
   const [changing, setChanging] = useState(false)
+  // The details the welcome screen (or the khata) already gave are shown as
+  // one line, "Ordering as …", with Edit opening the same fields (#18).
+  const [editingDetails, setEditingDetails] = useState(false)
   const [form, setForm] = useState(() => {
     const previous = readLast(link)
     const mine = khata
@@ -202,11 +208,18 @@ export default function OrderPage() {
   const [sentToken, setSentToken] = useState<string | null | undefined>(undefined)
   const [copied, setCopied] = useState(false)
 
+  // Bumped by Try again (#23), so a failed load can be retried in place.
+  const [attempt, setAttempt] = useState(0)
   useEffect(() => {
     getOrderPage(link)
       .then(setPage)
       .catch(() => setLoadFailed(true))
-  }, [link])
+  }, [link, attempt])
+  function retryLoad() {
+    setLoadFailed(false)
+    setPage(null)
+    setAttempt((n) => n + 1)
+  }
 
   // The shop's own page (migration 042): cover, colour, offers, photos and the
   // rest. Absent on a database without 042, and the page is as before.
@@ -299,8 +312,14 @@ export default function OrderPage() {
     e.preventDefault()
     if (!open || sendingRef.current) return
     if (chosen.length === 0) return setError(t('order.pickSomething'))
-    if (form.name.trim().length < 2) return setError(t('order.nameInvalid'))
-    if (form.phone.length !== 10) return setError(t('order.phoneInvalid'))
+    if (form.name.trim().length < 2) {
+      setEditingDetails(true)
+      return setError(t('order.nameInvalid'))
+    }
+    if (form.phone.length !== 10) {
+      setEditingDetails(true)
+      return setError(t('order.phoneInvalid'))
+    }
     sendingRef.current = true
     setSending(true)
     setError(null)
@@ -331,7 +350,10 @@ export default function OrderPage() {
       setSentToken(result.token)
       window.scrollTo({ top: 0 })
     } catch (err) {
-      setError(t(errorKey(err instanceof Error ? err.message : '')))
+      const key = errorKey(err instanceof Error ? err.message : '')
+      // A refused name, phone or site: open the fields so it can be fixed (#18).
+      if (key === 'order.phoneInvalid' || key === 'order.nameInvalid' || key === 'order.siteTooLong') setEditingDetails(true)
+      setError(t(key))
     } finally {
       sendingRef.current = false
       setSending(false)
@@ -341,6 +363,8 @@ export default function OrderPage() {
   function startAgain() {
     setQty({})
     setForm((f) => ({ ...f, date: '', note: '', trap: '' }))
+    // The next order starts from the one line again, with whatever was edited.
+    setEditingDetails(false)
     requestId.current = newRequestId()
     setSentToken(undefined)
     setCopied(false)
@@ -355,34 +379,14 @@ export default function OrderPage() {
     }
   }
 
+  // The shop's own name and logo in the bar (#14), on every state of the
+  // page; BuildSupply until the shop is known.
   const header = (
-    <header className="sticky top-0 z-30 bg-shell px-4 pb-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white">
-      <div className="mx-auto flex h-11 max-w-lg items-center gap-3">
-        {/* The platform's name, as on the khata link — the shop has its own
-            card on the page, so the bar no longer repeats it cut short. */}
-        <svg
-          width="22"
-          height="22"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="#35A85D"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="shrink-0"
-        >
-          <path d="M3 21h18" />
-          <path d="M5 21V8l5-4v17" />
-          <path d="M10 21V11l6 3v7" />
-          <path d="M16 21v-4l3 1.5V21" />
-        </svg>
-        <span className="min-w-0 flex-1 truncate text-lg font-bold">BuildSupply</span>
-        <div className="flex shrink-0 items-center gap-2">
-          <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
-          <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
-        </div>
-      </div>
-    </header>
+    <CustomerHeader
+      shop={open}
+      onLogo={() => setLogoPreview(true)}
+      logoLabel={t('shop.viewLogo')}
+    />
   )
 
   if (!page && !loadFailed) {
@@ -399,8 +403,24 @@ export default function OrderPage() {
     return (
       <div className="flex min-h-screen flex-col bg-surface">
         {header}
-        <main className="mx-auto flex w-full max-w-lg flex-1 flex-col p-4">
+        <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-3 p-4">
           <Card className="text-center text-sm text-ink">{message}</Card>
+          {/* Never a dead end (#23): try again after a failed load, and the
+              customer's own khata (or saved shops) from here. */}
+          {loadFailed && (
+            <Button variant="outline" className="h-11" onClick={retryLoad}>
+              <RotateCcw size={16} /> {t('account.retry')}
+            </Button>
+          )}
+          {khata ? (
+            <Link to={`/khata/${khata.code}`} className={deadEndLink}>
+              <BookOpen size={16} /> {t('order.tileKhata')}
+            </Link>
+          ) : hasCustomerSession() ? (
+            <Link to="/me" className={deadEndLink}>
+              <BookOpen size={16} /> {t('acct.title')}
+            </Link>
+          ) : null}
           <BuildSupplyFooter />
         </main>
       </div>
@@ -423,7 +443,8 @@ export default function OrderPage() {
       <CustomerWelcome
         shopName={page.business_name}
         logoUrl={page.logo_url}
-        initial={changing ? null : undefined}
+        initial={changing ? profile : undefined}
+        onCancel={changing ? () => setChanging(false) : undefined}
         onDone={(p) => {
           setProfile(p)
           setChanging(false)
@@ -459,6 +480,25 @@ export default function OrderPage() {
             <Button variant="outline" onClick={startAgain}>
               {t('order.another')}
             </Button>
+            {/* And the ways on from here (#23): the shop, and their khata. */}
+            {(page.phone || account || khata) && (
+              <div className="flex flex-wrap gap-2">
+                {page.phone && (
+                  <a href={`tel:${page.phone}`} className={deadEndLink}>
+                    <Phone size={16} /> {t('khata.menuCall')}
+                  </a>
+                )}
+                {account ? (
+                  <button type="button" onClick={() => openAccount('')} className={deadEndLink}>
+                    <BookOpen size={16} /> {t('order.tileKhata')}
+                  </button>
+                ) : khata ? (
+                  <Link to={`/khata/${khata.code}`} className={deadEndLink}>
+                    <BookOpen size={16} /> {t('order.tileKhata')}
+                  </Link>
+                ) : null}
+              </div>
+            )}
           </SoftCard>
           <BuildSupplyFooter />
         </main>
@@ -503,14 +543,14 @@ export default function OrderPage() {
   const tabs = account
     ? [
         { key: 'home', icon: House, label: t('khata.tabHome'), active: false, onClick: () => openAccount('') },
-        { key: 'materials', icon: ShoppingBag, label: t('khata.tabMaterials'), active: true, onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
+        { key: 'materials', icon: ShoppingBag, label: t('khata.orderMaterials'), active: true, onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
         { key: 'bills', icon: Receipt, label: t('khata.tabBills'), active: false, onClick: () => openAccount('?s=bills') },
         { key: 'orders', icon: Package, label: t('khata.tabOrders'), active: false, onClick: () => openAccount('?s=orders') },
       ]
     : khata
     ? [
         { key: 'home', icon: House, label: t('khata.tabHome'), active: false, onClick: () => navigate(`/khata/${khata.code}`) },
-        { key: 'materials', icon: ShoppingBag, label: t('khata.tabMaterials'), active: true, onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
+        { key: 'materials', icon: ShoppingBag, label: t('khata.orderMaterials'), active: true, onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
         { key: 'bills', icon: Receipt, label: t('khata.tabBills'), active: false, onClick: () => navigate(`/khata/${khata.code}?s=bills`) },
         { key: 'orders', icon: Package, label: t('khata.tabOrders'), active: false, onClick: () => navigate(`/khata/${khata.code}?s=orders`) },
       ]
@@ -532,10 +572,8 @@ export default function OrderPage() {
               {canChange && (
                 <button
                   type="button"
-                  onClick={() => {
-                    clearProfile()
-                    setChanging(true)
-                  }}
+                  // Nothing is cleared until they press Continue (#17).
+                  onClick={() => setChanging(true)}
                   className="mt-0.5 text-xs font-medium text-accent-text"
                 >
                   {t('cw.notYou')}
@@ -738,18 +776,41 @@ export default function OrderPage() {
           <SectionHeading title={t('order.yourDetails')} />
           <SoftCard className="p-4">
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <div>
-                <Label htmlFor="order-name" required>{t('order.name')}</Label>
-                <Input id="order-name" autoComplete="name" value={form.name} maxLength={60} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-              </div>
-              <div>
-                <Label htmlFor="order-phone" required>{t('order.phone')}</Label>
-                <PhoneInput id="order-phone" value={form.phone} onValueChange={(phone) => setForm({ ...form, phone })} />
-              </div>
-              <div>
-                <Label htmlFor="order-site">{t('order.site')}</Label>
-                <Input id="order-site" value={form.site} maxLength={120} onChange={(e) => setForm({ ...form, site: e.target.value })} />
-              </div>
+              {!editingDetails && form.name.trim().length >= 2 && form.phone.length === 10 ? (
+                // Already given once: not asked again. Edit opens the same
+                // three fields, and what the shop receives is unchanged.
+                <div className="flex items-start gap-3 rounded-2xl bg-surface p-3">
+                  <div className="min-w-0 flex-1 text-sm">
+                    <div className="text-xs text-muted">{t('order.orderingAs')}</div>
+                    <div className="break-words font-semibold text-ink">{form.name.trim()}</div>
+                    <div className="break-words text-muted">
+                      {[form.phone, form.site.trim()].filter(Boolean).join(' · ')}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingDetails(true)}
+                    className="flex h-11 shrink-0 items-center rounded-full border border-border px-4 text-sm font-semibold text-accent"
+                  >
+                    {t('order.editDetails')}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <Label htmlFor="order-name" required>{t('order.name')}</Label>
+                    <Input id="order-name" autoComplete="name" value={form.name} maxLength={60} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label htmlFor="order-phone" required>{t('order.phone')}</Label>
+                    <PhoneInput id="order-phone" value={form.phone} onValueChange={(phone) => setForm({ ...form, phone })} />
+                  </div>
+                  <div>
+                    <Label htmlFor="order-site">{t('order.site')}</Label>
+                    <Input id="order-site" value={form.site} maxLength={120} onChange={(e) => setForm({ ...form, site: e.target.value })} />
+                  </div>
+                </>
+              )}
               <div>
                 <Label htmlFor="order-date">{t('order.date')}</Label>
                 <Input

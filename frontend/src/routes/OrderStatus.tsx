@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { BookOpen, Check, House, MessageCircle, Package, Receipt, ShoppingBag } from 'lucide-react'
+import { BookOpen, Check, House, MessageCircle, Package, Phone, Receipt, ShoppingBag } from 'lucide-react'
 import { readKhata, rememberOrder } from '@/lib/customerLinks'
 import { readProfile } from '@/lib/customerProfile'
 import type { TranslationKey } from '@/lib/i18n'
 import { Button } from '@/components/ui/button'
-import { LanguageToggle } from '@/components/LanguageToggle'
-import { ThemeToggle } from '@/components/ThemeToggle'
 import {
+  CustomerHeader,
   CustomerTabBar,
   DeliveryStrip,
   QuickActions,
@@ -190,6 +189,9 @@ export default function OrderStatus() {
       ? [{ key: 'more', icon: ShoppingBag, label: t('order.tileMore'), to: `/order/${found.order_link}` }]
       : []),
     ...(home ? [{ key: 'khata', icon: BookOpen, label: t('order.tileKhata'), onClick: () => go(home) }] : []),
+    // The page tells customers to contact the shop (rejected, expired, "call
+    // me"), so it gives them the shop's own published number to do it (#24).
+    ...(shop?.phone ? [{ key: 'call', icon: Phone, label: t('khata.call'), href: `tel:${shop.phone}` }] : []),
     ...(shopWhatsapp(shop) ? [{ key: 'wa', icon: MessageCircle, label: t('shop.tileWhatsapp'), href: shopWhatsapp(shop)! }] : []),
   ]
   // The same four tabs as the khata link and the order page, once this phone
@@ -202,7 +204,7 @@ export default function OrderStatus() {
               {
                 key: 'materials',
                 icon: ShoppingBag,
-                label: t('khata.tabMaterials'),
+                label: t('khata.orderMaterials'),
                 active: false,
                 onClick: () => navigate(`/order/${found.order_link}`),
               },
@@ -221,29 +223,10 @@ export default function OrderStatus() {
 
   return (
     <div className="flex min-h-screen flex-col bg-surface" data-brand={brandAttr(shop?.brand_color)}>
-      <header className="sticky top-0 z-30 bg-shell px-4 pb-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white">
-        <div className="mx-auto flex h-11 max-w-lg items-center gap-3">
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#35A85D"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="shrink-0"
-          >
-            <path d="M3 21h18" />
-            <path d="M5 21V8l5-4v17" />
-            <path d="M10 21V11l6 3v7" />
-            <path d="M16 21v-4l3 1.5V21" />
-          </svg>
-          <span className="min-w-0 flex-1 truncate text-lg font-bold">BuildSupply</span>
-          <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
-          <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
-        </div>
-      </header>
+      {/* The shop's own name and logo in the bar (#14). */}
+      <CustomerHeader
+        shop={found ? { business_name: found.business_name, logo_url: shop?.logo_url ?? null } : null}
+      />
       <main className={cn('mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4', tabs && 'pb-28')}>
         {!view && !failed ? (
           <TruckLoader />
