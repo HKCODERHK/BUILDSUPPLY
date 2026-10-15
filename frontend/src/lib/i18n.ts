@@ -785,6 +785,18 @@ const STRINGS = {
     hi: 'ग्राहक लिंक खोलकर या QR स्कैन करके ऑर्डर कर सकते हैं — कोई ऐप या लॉगिन नहीं।',
     mr: 'ग्राहक लिंक उघडून किंवा QR स्कॅन करून ऑर्डर करू शकतात — कोणतेही ॲप किंवा लॉगिन नको.',
   },
+  // The same dialog opened by a customer (#19).
+  'ordShare.cTitle': { en: 'Share this shop', hi: 'यह दुकान शेयर करें', mr: 'हे दुकान शेअर करा' },
+  'ordShare.cHint': {
+    en: 'Send this shop’s order page to a friend. They can order from it — no app or sign-in needed.',
+    hi: '{business} का ऑर्डर पेज किसी दोस्त को भेजें। वे इससे ऑर्डर कर सकते हैं — कोई ऐप या लॉगिन नहीं।',
+    mr: '{business} चे ऑर्डर पेज मित्राला पाठवा. ते यावरून ऑर्डर करू शकतात — कोणतेही ॲप किंवा लॉगिन नको.',
+  },
+  'ordShare.cQrHint': {
+    en: 'Someone next to you can scan this with their phone camera to open the shop’s order page. Or share the image.',
+    hi: 'आपके पास खड़ा कोई भी फ़ोन के कैमरे से इसे स्कैन करके {business} का ऑर्डर पेज खोल सकता है। या इमेज शेयर करें।',
+    mr: 'तुमच्या शेजारी असलेले कोणीही फोनच्या कॅमेऱ्याने हे स्कॅन करून {business} चे ऑर्डर पेज उघडू शकतात. किंवा इमेज शेअर करा.',
+  },
   'ordShare.sendLink': { en: 'Send link', hi: 'लिंक भेजें', mr: 'लिंक पाठवा' },
   'ordShare.showQr': { en: 'Show QR code', hi: 'QR कोड दिखाएँ', mr: 'QR कोड दाखवा' },
   'ordShare.qrHint': {
@@ -1352,6 +1364,11 @@ const STRINGS = {
     mr: 'तुम्ही {business} यांना कॉल करायला सांगितले ({date}).',
   },
   'est.converted': { en: 'This estimate has been turned into a bill.', hi: 'इस एस्टिमेट का बिल बन चुका है।', mr: 'या एस्टिमेटचे बिल झाले आहे.' },
+  'est.closed': {
+    en: 'This estimate is no longer open. Please contact {business}.',
+    hi: 'यह एस्टिमेट अब खुला नहीं है। कृपया {business} से संपर्क करें।',
+    mr: 'हे एस्टिमेट आता खुले नाही. कृपया {business} यांच्याशी संपर्क साधा.',
+  },
   'est.expired': {
     en: 'This estimate has expired. Please contact {business}.',
     hi: 'यह एस्टिमेट पुराना हो गया है। कृपया {business} से संपर्क करें।',
@@ -1597,10 +1614,14 @@ const STRINGS = {
   'khata.billsUnpaid': { en: 'Still to pay ({count})', hi: 'देना बाकी ({count})', mr: 'द्यायचे बाकी ({count})' },
   'khata.billsPaidGroup': { en: 'Fully paid ({count})', hi: 'पूरे चुकता ({count})', mr: 'पूर्ण चुकते ({count})' },
   'khata.billPaidPart': { en: '{amount} already paid', hi: '{amount} जमा हो चुका', mr: '{amount} जमा झाले' },
+  // Shown only beside bills still to pay. An advance that sits next to
+  // unpaid bills was not used on them — "Receive advance" money waits for
+  // bills raised after it, and so does money freed by a cancelled bill — so
+  // it is kept for the next bill (#21); the figure at the top already counts it.
   'khata.advanceGoesTo': {
-    en: 'Your {amount} advance with the shop goes against these.',
-    hi: 'दुकान के पास आपका {amount} जमा इन्हीं में लगेगा।',
-    mr: 'दुकानाकडे तुमचे {amount} जमा याच बिलांत वापरले जाईल.',
+    en: 'Your {amount} advance with the shop is kept for your next bill.',
+    hi: 'दुकान के पास आपका {amount} जमा आपके अगले बिल के लिए रखा है।',
+    mr: 'दुकानाकडे तुमचे {amount} जमा तुमच्या पुढच्या बिलासाठी ठेवले आहे.',
   },
   'khata.noBills': { en: 'No bills yet.', hi: 'अभी कोई बिल नहीं।', mr: 'अजून कोणतेही बिल नाही.' },
   'khata.menuPayments': { en: 'My payments', hi: 'मेरे भुगतान', mr: 'माझी पेमेंट' },
@@ -1610,8 +1631,11 @@ const STRINGS = {
     mr: '{count} पेमेंट · शेवटचे {date}',
   },
   'khata.paymentsDetailOne': { en: '1 payment · {date}', hi: '1 भुगतान · {date}', mr: '1 पेमेंट · {date}' },
-  'khata.paymentsGroup': { en: 'Received ({count})', hi: 'मिले ({count})', mr: 'मिळाले ({count})' },
-  'khata.paidInto': { en: 'Put against {ref}', hi: '{ref} में लगा', mr: '{ref} मध्यе लावले' },
+  'khata.paymentsGroup': { en: 'Your payments ({count})', hi: 'आपके भुगतान ({count})', mr: 'तुमची पेमेंट्स ({count})' },
+  'khata.paidInto': { en: 'Put against {ref}', hi: '{ref} में लगा', mr: '{ref} मध्ये लावले' },
+  // One payment on the khata link, in the customer's words (#20).
+  'khata.paidLine': { en: 'Paid {amount}', hi: '{amount} दिए', mr: '{amount} दिले' },
+  'khata.forRef': { en: 'For {ref}', hi: '{ref} के लिए', mr: '{ref} साठी' },
   'khata.keptAdvance': { en: 'Kept as advance', hi: 'जमा के रूप में रखा', mr: 'जमा म्हणून ठेवले' },
   'khata.paymentSplit': { en: 'Where it went', hi: 'कहाँ लगा', mr: 'कुठे लावले' },
   'khata.noPayments': { en: 'No payments yet.', hi: 'अभी कोई भुगतान नहीं।', mr: 'अजून कोणतेही पेमेंट नाही.' },
@@ -1684,6 +1708,11 @@ const STRINGS = {
   'khata.estimatePdf': { en: 'Estimate PDF', hi: 'एस्टिमेट PDF', mr: 'एस्टिमेट PDF' },
   'khata.estBilled': { en: 'Billed', hi: 'बिल बन गया', mr: 'बिल झाले' },
   'khata.orderItems': { en: 'Materials: {count}', hi: 'सामान: {count}', mr: 'साहित्य: {count}' },
+  'khata.paused': {
+    en: 'This shop isn’t available on BuildSupply right now. Your link still works — please check again later, or call the shop.',
+    hi: 'यह दुकान अभी BuildSupply पर उपलब्ध नहीं है। आपका लिंक अब भी चलता है — कृपया बाद में देखें, या दुकान को कॉल करें।',
+    mr: 'हे दुकान सध्या BuildSupply वर उपलब्ध नाही. तुमची लिंक अजूनही चालते — कृपया नंतर पाहा, किंवा दुकानाला कॉल करा.',
+  },
   'khata.notFound': {
     en: 'This khata link is not valid, or it has been stopped. Please ask your supplier for a new one.',
     hi: 'यह खाता लिंक सही नहीं है या बंद कर दिया गया है। कृपया अपने सप्लायर से नया लिंक माँगें।',
@@ -1702,6 +1731,11 @@ const STRINGS = {
   'khata.liveMore': { en: '+{count} more', hi: '+{count} और', mr: '+{count} आणखी' },
   'khata.tileOrder': { en: 'Order', hi: 'ऑर्डर', mr: 'ऑर्डर' },
   'khata.tilePay': { en: 'Pay', hi: 'भुगतान', mr: 'पेमेंट' },
+  // Ordering's one name on the khata link (#15): the shortcut, the tab, and
+  // inside "Order materials now".
+  'order.orderingAs': { en: 'Ordering as', hi: 'इनके नाम से ऑर्डर', mr: 'यांच्या नावाने ऑर्डर' },
+  'order.editDetails': { en: 'Edit', hi: 'बदलें', mr: 'बदला' },
+  'khata.orderMaterials': { en: 'Order materials', hi: 'सामान ऑर्डर', mr: 'साहित्य ऑर्डर' },
   'khata.tileStatement': { en: 'Statement', hi: 'खाता', mr: 'खाते' },
   'khata.tileEstimates': { en: 'Estimates', hi: 'एस्टिमेट', mr: 'एस्टिमेट' },
   'khata.tileShare': { en: 'Share', hi: 'शेयर', mr: 'शेअर' },
@@ -1761,10 +1795,16 @@ const STRINGS = {
   },
   'acct.signOut': { en: 'Sign out on this phone', hi: 'इस फ़ोन पर साइन आउट करें', mr: 'या फोनवर साइन आउट करा' },
   'acct.signOutConfirm': {
-    en: 'Sign out? To come back, open your khata link again and tap Save.',
-    hi: 'साइन आउट करें? वापस आने के लिए अपना खाता लिंक फिर खोलें और सेव करें दबाएँ।',
-    mr: 'साइन आउट करायचे? परत येण्यासाठी तुमची खाते लिंक पुन्हा उघडा आणि सेव्ह करा दाबा.',
+    en: 'Sign out? This phone also forgets your khata link. To come back, open it again and tap Save.',
+    hi: 'साइन आउट करें? यह फ़ोन आपका खाता लिंक भी भूल जाएगा। वापस आने के लिए उसे फिर खोलें और सेव करें दबाएँ।',
+    mr: 'साइन आउट करायचे? हा फोन तुमची खाते लिंकही विसरेल. परत येण्यासाठी ती पुन्हा उघडा आणि सेव्ह करा दाबा.',
   },
+  'acct.signOutConfirmMany': {
+    en: 'Sign out? All {count} shops leave this phone, and it forgets their khata links. To come back, open each khata link again and tap Save.',
+    hi: 'साइन आउट करें? सभी {count} दुकानें इस फ़ोन से हट जाएँगी, और फ़ोन उनके खाता लिंक भूल जाएगा। वापस आने के लिए हर खाता लिंक फिर खोलें और सेव करें दबाएँ।',
+    mr: 'साइन आउट करायचे? सर्व {count} दुकाने या फोनवरून जातील, आणि फोन त्यांच्या खाते लिंक विसरेल. परत येण्यासाठी प्रत्येक खाते लिंक पुन्हा उघडा आणि सेव्ह करा दाबा.',
+  },
+  'acct.onThisPhone': { en: 'Opened on this phone', hi: 'इस फ़ोन पर खोली गई', mr: 'या फोनवर उघडलेली' },
   'acct.yes': { en: 'Yes', hi: 'हाँ', mr: 'हो' },
   'acct.gone': {
     en: 'A shop is no longer on your account — the shop stopped your link. Ask them to send it again.',
@@ -1789,7 +1829,8 @@ const STRINGS = {
   // Phone-style sign-in and the customer's first-time screen (2026-10-12).
   'login.welcome': { en: 'Welcome back', hi: 'फिर से स्वागत है', mr: 'पुन्हा स्वागत आहे' },
   'login.badEmail': { en: 'That email doesn’t look right', hi: 'यह ईमेल सही नहीं लगता', mr: 'हा ईमेल बरोबर वाटत नाही' },
-  'cw.orderFrom': { en: 'Ordering from', hi: 'ऑर्डर करें', mr: 'ऑर्डर करा' },
+  // A label over the shop's name, not a command (#33).
+  'cw.orderFrom': { en: 'Ordering from', hi: 'यहाँ से ऑर्डर', mr: 'येथून ऑर्डर' },
   'cw.tagline': { en: 'Cement, sand, bricks and steel — ordered from your phone.', hi: 'सीमेंट, रेत, ईंट और सरिया — अपने फ़ोन से ऑर्डर करें।', mr: 'सिमेंट, वाळू, विटा आणि सळई — तुमच्या फोनवरून ऑर्डर करा.' },
   'cw.title': { en: 'Welcome', hi: 'स्वागत है', mr: 'स्वागत आहे' },
   'cw.sub': { en: 'Tell us who you are — just once. Your details fill in every order.', hi: 'बस एक बार बताइए आप कौन हैं — हर ऑर्डर में आपकी जानकारी अपने आप भर जाएगी।', mr: 'फक्त एकदा सांगा तुम्ही कोण आहात — प्रत्येक ऑर्डरमध्ये तुमची माहिती आपोआप भरली जाईल.' },
@@ -2405,6 +2446,11 @@ const STRINGS = {
   'dash.complaintsOne': { en: 'A customer complaint is waiting', hi: 'एक ग्राहक की शिकायत बाकी है', mr: 'एका ग्राहकाची तक्रार बाकी आहे' },
   'dash.complaintsMany': { en: '{count} customer complaints are waiting', hi: '{count} ग्राहकों की शिकायतें बाकी हैं', mr: '{count} ग्राहकांच्या तक्रारी बाकी आहेत' },
   'dash.complaintsOpen': { en: 'Open', hi: 'खोलें', mr: 'उघडा' },
+  // Customer-side fixes (customer UX round, 2026-10-15).
+  'khata.payDirect': { en: 'Pay the shop directly — in cash, or the way you usually pay them.', hi: 'दुकान को सीधे भुगतान करें — नकद, या जैसे आप आमतौर पर करते हैं।', mr: 'दुकानाला थेट पैसे द्या — रोख, किंवा तुम्ही नेहमी देता तसे.' },
+  'order.siteTooLong': { en: 'The site or address is too long. Please shorten it.', hi: 'साइट या पता बहुत लंबा है। कृपया छोटा करें।', mr: 'साइट किंवा पत्ता खूप मोठा आहे. कृपया लहान करा.' },
+  'order.noteTooLong': { en: 'The note is too long. Please shorten it.', hi: 'नोट बहुत लंबा है। कृपया छोटा करें।', mr: 'नोट खूप मोठी आहे. कृपया लहान करा.' },
+  'est.noLongerOpen': { en: 'The shop has already moved this estimate on, so it can’t be answered now. Its latest state is shown below.', hi: 'दुकान ने यह एस्टिमेट आगे बढ़ा दिया है, इसलिए अब इसका जवाब नहीं दिया जा सकता। इसकी ताज़ा स्थिति नीचे है।', mr: 'दुकानाने हे एस्टिमेट पुढे नेले आहे, त्यामुळे आता उत्तर देता येणार नाही. त्याची सध्याची स्थिती खाली आहे.' },
 } satisfies Record<string, Entry>
 
 export type TranslationKey = keyof typeof STRINGS

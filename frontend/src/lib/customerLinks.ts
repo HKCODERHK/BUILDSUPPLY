@@ -90,3 +90,43 @@ export function forgetKhataCode(code: string) {
     // Nothing to forget on a phone that stores nothing.
   }
 }
+
+const LINK_PREFIXES = ['buildsupply-khata:', 'buildsupply-orders:', 'buildsupply-last-order:']
+
+/**
+ * Every shop this phone has opened or ordered from, by its order link, with
+ * the khata code when it knows one — so an empty /me can lead back to them
+ * (#25) instead of being a dead end. Nothing here comes from the server.
+ */
+export function knownShops(): { link: string; khata: string | null }[] {
+  const links = new Set<string>()
+  try {
+    for (const store of [localStorage, sessionStorage]) {
+      for (let i = 0; i < store.length; i++) {
+        const key = store.key(i)
+        const prefix = key ? LINK_PREFIXES.find((p) => key.startsWith(p)) : undefined
+        if (key && prefix) links.add(key.slice(prefix.length))
+      }
+    }
+  } catch {
+    return []
+  }
+  return [...links].sort().map((link) => ({ link, khata: readKhata(link)?.code ?? null }))
+}
+
+/**
+ * Signing out of /me (#26): this phone also forgets that shop's khata link,
+ * its recent orders and the last order sent — the customer's name, number
+ * and site with that shop — so a phone that has been signed out keeps none
+ * of the account behind.
+ */
+export function forgetShopOnPhone(link: string) {
+  try {
+    for (const prefix of LINK_PREFIXES) {
+      localStorage.removeItem(prefix + link)
+      sessionStorage.removeItem(prefix + link)
+    }
+  } catch {
+    // Nothing stored, or storage blocked.
+  }
+}

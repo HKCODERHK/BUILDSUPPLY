@@ -1,7 +1,9 @@
-import type { ComponentType, ReactNode } from 'react'
+import type { ComponentType, ReactNode, Ref } from 'react'
 import { Link } from 'react-router-dom'
-import { MapPin } from 'lucide-react'
+import { MapPin, Store } from 'lucide-react'
 import { Tipper } from '@/components/art'
+import { LanguageToggle } from '@/components/LanguageToggle'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { cn } from '@/lib/utils'
 import { TINTS, type Tint } from '@/lib/customerHome'
 
@@ -24,6 +26,78 @@ export function SoftCard({ className, children }: { className?: string; children
   )
 }
 
+/**
+ * The customer pages' top bar (#14): the shop's logo and its full name, which
+ * is what the customer came for — BuildSupply stays as the small badge at the
+ * foot of the page. Until the shop is known (loading, a dead link), the
+ * BuildSupply mark and name stand in. The name wraps to two lines rather than
+ * being cut off.
+ */
+export function CustomerHeader({
+  shop,
+  onLogo,
+  logoLabel,
+  barRef,
+  title,
+}: {
+  shop?: { business_name: string; logo_url?: string | null } | null
+  /** Tapping the logo opens it full size. */
+  onLogo?: () => void
+  logoLabel?: string
+  barRef?: Ref<HTMLElement>
+  /** Shown instead of a shop, e.g. "My BuildSupply" on /me with no shop. */
+  title?: string
+}) {
+  // 44px, like every other control on these pages (#30).
+  const toggles = 'h-11 min-w-11 w-11 border-white/20 text-white hover:bg-white/10 hover:text-white'
+  let mark: ReactNode
+  if (shop?.logo_url) {
+    const img = <img src={shop.logo_url} alt="" className="h-9 w-9 rounded-lg bg-white object-cover" />
+    mark = onLogo ? (
+      <button type="button" aria-label={logoLabel} onClick={onLogo} className="shrink-0">
+        {img}
+      </button>
+    ) : (
+      <span className="shrink-0">{img}</span>
+    )
+  } else if (shop) {
+    mark = (
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10">
+        <Store size={18} />
+      </span>
+    )
+  } else {
+    mark = (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#35A85D" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden="true">
+        <path d="M3 21h18" />
+        <path d="M5 21V8l5-4v17" />
+        <path d="M10 21V11l6 3v7" />
+        <path d="M16 21v-4l3 1.5V21" />
+      </svg>
+    )
+  }
+  return (
+    <header ref={barRef} className="sticky top-0 z-30 bg-shell px-4 pb-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white">
+      <div className="mx-auto flex min-h-11 max-w-lg items-center gap-2.5">
+        {mark}
+        {/* A long name ("… Suppliers Private Limited") steps down a size and
+            may take a third line, so it is read whole rather than cut off. */}
+        <span
+          className={cn(
+            'min-w-0 flex-1 break-words font-bold leading-tight',
+            !shop ? 'text-lg' : shop.business_name.length > 24 ? 'line-clamp-3 text-sm' : 'line-clamp-2 text-base',
+          )}
+        >
+          {shop?.business_name ?? title ?? 'BuildSupply'}
+        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <LanguageToggle globeOnly className={toggles} />
+          <ThemeToggle className={toggles} />
+        </div>
+      </div>
+    </header>
+  )
+}
 
 export interface QuickAction {
   key: string
@@ -46,7 +120,8 @@ export function QuickActions({ actions }: { actions: QuickAction[] }) {
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-bg text-accent-text">
                 <a.icon size={19} strokeWidth={1.9} />
               </span>
-              <span className="w-full truncate text-center text-xs font-medium text-ink">{a.label}</span>
+              {/* Two lines rather than cut off (#15, #32). */}
+              <span className="line-clamp-2 w-full break-words text-center text-xs font-medium leading-tight text-ink">{a.label}</span>
             </>
           )
           const className =
@@ -80,7 +155,7 @@ export function SectionHeading({ title, action, onAction }: { title: string; act
     <div className="flex items-baseline justify-between gap-3 px-1">
       <h2 className="text-base font-bold text-ink">{title}</h2>
       {action && onAction && (
-        <button type="button" onClick={onAction} className="shrink-0 text-xs font-semibold text-accent">
+        <button type="button" onClick={onAction} className="inline-flex min-h-11 shrink-0 items-center text-xs font-semibold text-accent">
           {action}
         </button>
       )}
@@ -106,14 +181,15 @@ export function SoftTile({
     <button
       type="button"
       onClick={onClick}
-      className="flex min-w-0 items-center gap-3 rounded-2xl border border-border bg-card p-3 text-left shadow-[0_2px_10px_rgba(10,36,39,0.04)] transition-colors hover:bg-surface active:bg-surface"
+      className="flex min-w-0 items-center gap-3 rounded-2xl border border-border bg-card p-3 text-left shadow-[0_2px_10px_rgba(10,36,39,0.04)] transition-colors hover:bg-surface active:bg-surface max-[359px]:gap-2"
     >
-      <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', TINTS[tint])}>
+      {/* A smaller icon on the narrowest phones, so "Payments" fits whole (#32). */}
+      <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl max-[359px]:h-8 max-[359px]:w-8', TINTS[tint])}>
         <I size={19} strokeWidth={1.9} />
       </span>
       <span className="min-w-0">
         <span className="block truncate text-sm font-semibold text-ink">{title}</span>
-        {detail && <span className="line-clamp-2 block text-[11px] leading-snug text-muted">{detail}</span>}
+        {detail && <span className="line-clamp-2 block text-xs leading-snug text-muted">{detail}</span>}
       </span>
     </button>
   )
@@ -177,12 +253,13 @@ export function CustomerTabBar({ tabs }: { tabs: TabItem[] }) {
             onClick={tab.onClick}
             aria-current={tab.active ? 'page' : undefined}
             className={cn(
-              'flex min-w-0 flex-col items-center gap-0.5 rounded-2xl py-1.5 text-[11px] font-medium transition-colors max-[359px]:text-[10px]',
+              'flex min-w-0 flex-col items-center gap-0.5 rounded-2xl py-1.5 text-xs font-medium transition-colors',
               tab.active ? 'bg-accent-bg text-accent-text' : 'text-muted hover:text-ink',
             )}
           >
             <tab.icon size={20} strokeWidth={tab.active ? 2.2 : 1.8} />
-            <span className="w-full truncate text-center">{tab.label}</span>
+            {/* Two short lines rather than a cut-off word at 12px (#31, #32). */}
+            <span className="line-clamp-2 w-full break-words text-center leading-tight">{tab.label}</span>
           </button>
         ))}
       </div>

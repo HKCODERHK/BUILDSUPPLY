@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   BookOpen,
+  Check,
   ChevronRight,
   House,
   MapPin,
@@ -21,11 +22,10 @@ import {
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button-variants'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PhoneInput } from '@/components/ui/phone-input'
-import { ThemeToggle } from '@/components/ThemeToggle'
-import { LanguageToggle } from '@/components/LanguageToggle'
 import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { SuccessHeader } from '@/components/SuccessTick'
 import { TruckLoader } from '@/components/TruckLoader'
@@ -36,8 +36,9 @@ import { newRequestId } from '@/services/db'
 import { platformDisclosure } from '@/services/compliance'
 import { getOrderPage, orderStatusUrl, placeOrder, type OrderPage as OrderPageData } from '@/services/orders'
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
-import { readKhata, rememberOrder, type KhataLink } from '@/lib/customerLinks'
-import { CustomerTabBar, QuickActions, SectionHeading, SoftCard, type QuickAction } from '@/components/CustomerHome'
+import { readKhata, rememberOrder } from '@/lib/customerLinks'
+import { hasCustomerSession } from '@/lib/customerAuth'
+import { CustomerHeader, CustomerTabBar, QuickActions, SectionHeading, SoftCard, type QuickAction } from '@/components/CustomerHome'
 import { greetingKey } from '@/lib/customerHome'
 import { cn } from '@/lib/utils'
 import { myShops, rememberCurrentShop, type MyShop } from '@/services/customerAccount'
@@ -46,7 +47,7 @@ import { ShopAbout, ShopDelivery, ShopHero, ShopOffers } from '@/components/Shop
 import { MaterialPicture } from '@/components/MaterialPicture'
 import { CustomerWelcome } from '@/components/CustomerWelcome'
 import { BuildSupplyFooter } from '@/components/BuildSupplyFooter'
-import { clearProfile, readProfile, siteWithCity, type CustomerProfile } from '@/lib/customerProfile'
+import { profileKept, readProfile, siteWithCity, type CustomerProfile } from '@/lib/customerProfile'
 import { ImagePreview } from '@/components/ui/modal'
 import { brandAttr, shopWhatsapp } from '@/lib/shopPage'
 
@@ -67,15 +68,36 @@ type LastOrder = { items: { material_id: string; qty: number }[]; name: string; 
 const lastKey = (link: string) => `buildsupply-last-order:${link}`
 function readLast(link: string): LastOrder | null {
   try {
-    const value = JSON.parse(localStorage.getItem(lastKey(link)) ?? 'null')
+    const value = JSON.parse(localStorage.getItem(lastKey(link)) ?? sessionStorage.getItem(lastKey(link)) ?? 'null')
     return value && Array.isArray(value.items) ? (value as LastOrder) : null
   } catch {
     return null
   }
 }
+/**
+ * A quantity as typed, kept to what an order can carry (#4): the server takes
+ * up to 6 whole digits, 2 decimals and 1,00,000 per material, and used to drop
+ * anything else from the order without a word. Returns null for a keystroke
+ * that would go beyond that, so the box simply keeps its value.
+ */
+function orderQty(raw: string): string | null {
+  const v = sanitizeDecimal(raw)
+  if (!/^[0-9]{0,6}(\.[0-9]{0,2})?$/.test(v)) return null
+  if (Number(v) > 100000) return null
+  return v
+}
+
 function rememberLast(link: string, last: LastOrder) {
   try {
-    localStorage.setItem(lastKey(link), JSON.stringify(last))
+    // The same choice the customer made on the welcome screen (#8): with
+    // "Keep my details on this phone" unticked, the last order — which holds
+    // their name, phone and site — is kept only until the browser closes.
+    if (profileKept() === false) {
+      sessionStorage.setItem(lastKey(link), JSON.stringify(last))
+      localStorage.removeItem(lastKey(link))
+    } else {
+      localStorage.setItem(lastKey(link), JSON.stringify(last))
+    }
   } catch {
     // Storage blocked: they type it again next time, as before.
   }
@@ -87,10 +109,14 @@ function rememberLast(link: string, last: LastOrder) {
  * another's order — a shop's own phone, a shared one at a site — and then
  * nothing of the one should be offered as the other's.
  */
-function samePerson(khata: KhataLink | null, previous: LastOrder | null) {
-  if (!khata?.name || !previous?.name) return true
-  return khata.name.trim().toLowerCase() === previous.name.trim().toLowerCase()
+function samePerson(who: { name?: string | null } | null, previous: LastOrder | null) {
+  if (!who?.name || !previous?.name) return true
+  return who.name.trim().toLowerCase() === previous.name.trim().toLowerCase()
 }
+
+/** A way on from a screen that would otherwise end the visit (#23). */
+const deadEndLink =
+  'inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-accent'
 
 // The server writes its refusals in English; show the customer's language.
 function errorKey(message: string): TranslationKey {
@@ -102,6 +128,8 @@ function errorKey(message: string): TranslationKey {
   if (/already have orders waiting/i.test(message)) return 'order.tooManyWaiting'
   if (/from this phone/i.test(message)) return 'order.deviceBusy'
   if (/too many orders/i.test(message)) return 'order.busy'
+  if (/site or address is too long/i.test(message)) return 'order.siteTooLong'
+  if (/note is too long/i.test(message)) return 'order.noteTooLong'
   return 'error.generic'
 }
 
@@ -129,9 +157,16 @@ export default function OrderPage() {
   const [profile, setProfile] = useState<CustomerProfile | null>(readProfile)
   // "Not you? Change": the first-time screen again, to put new details in.
   const [changing, setChanging] = useState(false)
+  // The details the welcome screen (or the khata) already gave are shown as
+  // one line, "Ordering as …", with Edit opening the same fields (#18).
+  const [editingDetails, setEditingDetails] = useState(false)
   const [form, setForm] = useState(() => {
     const previous = readLast(link)
     const mine = khata
+    // Who this phone says it is: the shop's own record (the khata) first, then
+    // the details typed on the welcome screen. The last order comes after
+    // both, so "Hello B" can never sit over a form filled with A (#9).
+    const who = mine?.name ? mine : profile ? { name: profile.name } : null
     // Who this phone is, to this shop: the khata's own customer when there is
     // one — that is the shop's own record — and otherwise whoever sent the
     // last order. Taking the name from one and the account from the other is
@@ -139,11 +174,13 @@ export default function OrderPage() {
     // khata. The site stays the last order's: it is where the load goes, not
     // who is asking.
     return {
-      name: mine?.name ?? previous?.name ?? profile?.name ?? '',
-      phone: mine?.phone ?? previous?.phone ?? profile?.phone ?? '',
+      name: mine?.name ?? profile?.name ?? previous?.name ?? '',
+      phone: mine?.phone ?? profile?.phone ?? previous?.phone ?? '',
       // The last order's site only if the same person sent it — otherwise it
       // is somebody else's site on this phone.
-      site: (samePerson(mine, previous) ? previous?.site : null) || mine?.site || (profile ? siteWithCity(profile) : ''),
+      // At most 120 characters — what the box and the server take (#29):
+      // a long site plus city used to fail with "Something went wrong".
+      site: ((samePerson(who, previous) ? previous?.site : null) || mine?.site || (profile ? siteWithCity(profile) : '')).slice(0, 120),
       date: '',
       note: '',
       trap: '',
@@ -173,11 +210,18 @@ export default function OrderPage() {
   const [sentToken, setSentToken] = useState<string | null | undefined>(undefined)
   const [copied, setCopied] = useState(false)
 
+  // Bumped by Try again (#23), so a failed load can be retried in place.
+  const [attempt, setAttempt] = useState(0)
   useEffect(() => {
     getOrderPage(link)
       .then(setPage)
       .catch(() => setLoadFailed(true))
-  }, [link])
+  }, [link, attempt])
+  function retryLoad() {
+    setLoadFailed(false)
+    setPage(null)
+    setAttempt((n) => n + 1)
+  }
 
   // The shop's own page (migration 042): cover, colour, offers, photos and the
   // rest. Absent on a database without 042, and the page is as before.
@@ -239,11 +283,16 @@ export default function OrderPage() {
       ? chosen.reduce((sum, c) => sum + c.qty * (c.material.price ?? 0), 0)
       : null
   // Only what the supplier still lists can be ordered again.
-  const lastAvailable = last && samePerson(khata, last) ? last.items.filter((it) => materials.some((m) => m.id === it.material_id)) : []
+  // "Repeat" only for the same person (#9): the khata's customer, or else
+  // whoever the welcome screen says this phone is.
+  const lastAvailable = last && samePerson(khata?.name ? khata : profile ? { name: profile.name } : null, last) ? last.items.filter((it) => materials.some((m) => m.id === it.material_id)) : []
+
+  // The quantity box being typed in (#3).
+  const [editingQty, setEditingQty] = useState<string | null>(null)
 
   function step(id: string, delta: number) {
     setQty((prev) => {
-      const next = Math.max(0, (Number(prev[id]) || 0) + delta)
+      const next = Math.min(100000, Math.max(0, (Number(prev[id]) || 0) + delta))
       return { ...prev, [id]: next ? String(next) : '' }
     })
     setError(null)
@@ -265,8 +314,14 @@ export default function OrderPage() {
     e.preventDefault()
     if (!open || sendingRef.current) return
     if (chosen.length === 0) return setError(t('order.pickSomething'))
-    if (form.name.trim().length < 2) return setError(t('order.nameInvalid'))
-    if (form.phone.length !== 10) return setError(t('order.phoneInvalid'))
+    if (form.name.trim().length < 2) {
+      setEditingDetails(true)
+      return setError(t('order.nameInvalid'))
+    }
+    if (form.phone.length !== 10) {
+      setEditingDetails(true)
+      return setError(t('order.phoneInvalid'))
+    }
     sendingRef.current = true
     setSending(true)
     setError(null)
@@ -297,7 +352,10 @@ export default function OrderPage() {
       setSentToken(result.token)
       window.scrollTo({ top: 0 })
     } catch (err) {
-      setError(t(errorKey(err instanceof Error ? err.message : '')))
+      const key = errorKey(err instanceof Error ? err.message : '')
+      // A refused name, phone or site: open the fields so it can be fixed (#18).
+      if (key === 'order.phoneInvalid' || key === 'order.nameInvalid' || key === 'order.siteTooLong') setEditingDetails(true)
+      setError(t(key))
     } finally {
       sendingRef.current = false
       setSending(false)
@@ -307,6 +365,8 @@ export default function OrderPage() {
   function startAgain() {
     setQty({})
     setForm((f) => ({ ...f, date: '', note: '', trap: '' }))
+    // The next order starts from the one line again, with whatever was edited.
+    setEditingDetails(false)
     requestId.current = newRequestId()
     setSentToken(undefined)
     setCopied(false)
@@ -321,34 +381,14 @@ export default function OrderPage() {
     }
   }
 
+  // The shop's own name and logo in the bar (#14), on every state of the
+  // page; BuildSupply until the shop is known.
   const header = (
-    <header className="sticky top-0 z-30 bg-shell px-4 pb-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white">
-      <div className="mx-auto flex h-11 max-w-lg items-center gap-3">
-        {/* The platform's name, as on the khata link — the shop has its own
-            card on the page, so the bar no longer repeats it cut short. */}
-        <svg
-          width="22"
-          height="22"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="#35A85D"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="shrink-0"
-        >
-          <path d="M3 21h18" />
-          <path d="M5 21V8l5-4v17" />
-          <path d="M10 21V11l6 3v7" />
-          <path d="M16 21v-4l3 1.5V21" />
-        </svg>
-        <span className="min-w-0 flex-1 truncate text-lg font-bold">BuildSupply</span>
-        <div className="flex shrink-0 items-center gap-2">
-          <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
-          <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
-        </div>
-      </div>
-    </header>
+    <CustomerHeader
+      shop={open}
+      onLogo={() => setLogoPreview(true)}
+      logoLabel={t('shop.viewLogo')}
+    />
   )
 
   if (!page && !loadFailed) {
@@ -365,8 +405,24 @@ export default function OrderPage() {
     return (
       <div className="flex min-h-screen flex-col bg-surface">
         {header}
-        <main className="mx-auto flex w-full max-w-lg flex-1 flex-col p-4">
+        <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-3 p-4">
           <Card className="text-center text-sm text-ink">{message}</Card>
+          {/* Never a dead end (#23): try again after a failed load, and the
+              customer's own khata (or saved shops) from here. */}
+          {loadFailed && (
+            <Button variant="outline" className="h-11" onClick={retryLoad}>
+              <RotateCcw size={16} /> {t('account.retry')}
+            </Button>
+          )}
+          {khata ? (
+            <Link to={`/khata/${khata.code}`} className={deadEndLink}>
+              <BookOpen size={16} /> {t('order.tileKhata')}
+            </Link>
+          ) : hasCustomerSession() ? (
+            <Link to="/me" className={deadEndLink}>
+              <BookOpen size={16} /> {t('acct.title')}
+            </Link>
+          ) : null}
           <BuildSupplyFooter />
         </main>
       </div>
@@ -389,11 +445,12 @@ export default function OrderPage() {
       <CustomerWelcome
         shopName={page.business_name}
         logoUrl={page.logo_url}
-        initial={changing ? null : undefined}
+        initial={changing ? profile : undefined}
+        onCancel={changing ? () => setChanging(false) : undefined}
         onDone={(p) => {
           setProfile(p)
           setChanging(false)
-          setForm((f) => ({ ...f, name: p.name, phone: p.phone, site: siteWithCity(p) }))
+          setForm((f) => ({ ...f, name: p.name, phone: p.phone, site: siteWithCity(p).slice(0, 120) }))
           window.scrollTo({ top: 0 })
         }}
       />
@@ -413,18 +470,38 @@ export default function OrderPage() {
                 <p className="mb-2 text-xs text-muted">{t('order.keepLink')}</p>
                 <p className="break-all text-xs font-medium text-ink">{orderStatusUrl(sentToken)}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" onClick={() => copyStatusLink(sentToken)}>
+                  <Button size="tap" variant="outline" onClick={() => copyStatusLink(sentToken)}>
                     {copied ? t('order.copied') : t('order.copyLink')}
                   </Button>
-                  <Link to={`/order-status/${sentToken}`}>
-                    <Button size="sm">{t('order.viewStatus')}</Button>
+                  {/* A link styled as a button, not a button inside a link (#35). */}
+                  <Link to={`/order-status/${sentToken}`} className={buttonVariants({ size: 'tap' })}>
+                    {t('order.viewStatus')}
                   </Link>
                 </div>
               </div>
             )}
-            <Button variant="outline" onClick={startAgain}>
+            <Button variant="outline" size="tap" onClick={startAgain}>
               {t('order.another')}
             </Button>
+            {/* And the ways on from here (#23): the shop, and their khata. */}
+            {(page.phone || account || khata) && (
+              <div className="flex flex-wrap gap-2">
+                {page.phone && (
+                  <a href={`tel:${page.phone}`} className={deadEndLink}>
+                    <Phone size={16} /> {t('khata.menuCall')}
+                  </a>
+                )}
+                {account ? (
+                  <button type="button" onClick={() => openAccount('')} className={deadEndLink}>
+                    <BookOpen size={16} /> {t('order.tileKhata')}
+                  </button>
+                ) : khata ? (
+                  <Link to={`/khata/${khata.code}`} className={deadEndLink}>
+                    <BookOpen size={16} /> {t('order.tileKhata')}
+                  </Link>
+                ) : null}
+              </div>
+            )}
           </SoftCard>
           <BuildSupplyFooter />
         </main>
@@ -469,14 +546,14 @@ export default function OrderPage() {
   const tabs = account
     ? [
         { key: 'home', icon: House, label: t('khata.tabHome'), active: false, onClick: () => openAccount('') },
-        { key: 'materials', icon: ShoppingBag, label: t('khata.tabMaterials'), active: true, onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
+        { key: 'materials', icon: ShoppingBag, label: t('khata.orderMaterials'), active: true, onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
         { key: 'bills', icon: Receipt, label: t('khata.tabBills'), active: false, onClick: () => openAccount('?s=bills') },
         { key: 'orders', icon: Package, label: t('khata.tabOrders'), active: false, onClick: () => openAccount('?s=orders') },
       ]
     : khata
     ? [
         { key: 'home', icon: House, label: t('khata.tabHome'), active: false, onClick: () => navigate(`/khata/${khata.code}`) },
-        { key: 'materials', icon: ShoppingBag, label: t('khata.tabMaterials'), active: true, onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
+        { key: 'materials', icon: ShoppingBag, label: t('khata.orderMaterials'), active: true, onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
         { key: 'bills', icon: Receipt, label: t('khata.tabBills'), active: false, onClick: () => navigate(`/khata/${khata.code}?s=bills`) },
         { key: 'orders', icon: Package, label: t('khata.tabOrders'), active: false, onClick: () => navigate(`/khata/${khata.code}?s=orders`) },
       ]
@@ -489,7 +566,7 @@ export default function OrderPage() {
       <main className={cn('mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4', tabs ? 'pb-44' : 'pb-28')}>
         {knownName && (
           <div className="flex items-center gap-3 pt-1">
-            <CustomerAvatar id={khata?.code ?? link} name={knownName} size={44} />
+            <CustomerAvatar id={`${page.business_name}|${knownName}`} name={knownName} size={44} />
             <div className="min-w-0 flex-1">
               <div className="text-xs text-muted">{t(greetingKey())}</div>
               <div className="line-clamp-2 break-words text-lg font-bold leading-tight text-ink">
@@ -498,11 +575,9 @@ export default function OrderPage() {
               {canChange && (
                 <button
                   type="button"
-                  onClick={() => {
-                    clearProfile()
-                    setChanging(true)
-                  }}
-                  className="mt-0.5 text-xs font-medium text-accent-text"
+                  // Nothing is cleared until they press Continue (#17).
+                  onClick={() => setChanging(true)}
+                  className="inline-flex min-h-11 items-center text-xs font-medium text-accent-text"
                 >
                   {t('cw.notYou')}
                 </button>
@@ -591,7 +666,11 @@ export default function OrderPage() {
         <div className="grid grid-cols-2 gap-3">
           {visible.map((m) => {
             const value = qty[m.id] ?? ''
-            const inOrder = Number(value) > 0
+            // While its box is being typed in, the material stays in the
+            // stepper even when the box is momentarily empty — deleting the "1"
+            // to type "250" used to swap the box for "Add" and close the
+            // keyboard (#3). Leaving an empty box puts "Add" back.
+            const inOrder = Number(value) > 0 || editingQty === m.id
             return (
               <div
                 key={m.id}
@@ -618,7 +697,7 @@ export default function OrderPage() {
                       type="button"
                       aria-label={t('order.less', { name: m.name })}
                       onClick={() => step(m.id, -1)}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface text-ink"
+                      className="flex h-11 w-9 shrink-0 items-center justify-center rounded-xl bg-surface text-ink"
                     >
                       <Minus size={15} />
                     </button>
@@ -627,17 +706,22 @@ export default function OrderPage() {
                       inputMode="decimal"
                       aria-label={t('order.qtyOf', { name: m.name })}
                       value={value}
+                      onFocus={() => setEditingQty(m.id)}
+                      onBlur={() => setEditingQty((id) => (id === m.id ? null : id))}
                       onChange={(e) => {
-                        setQty((prev) => ({ ...prev, [m.id]: sanitizeDecimal(e.target.value).slice(0, 8) }))
+                        const next = orderQty(e.target.value)
+                        // Beyond what an order can carry, the box keeps what it had (#4).
+                        if (next === null) return
+                        setQty((prev) => ({ ...prev, [m.id]: next }))
                         setError(null)
                       }}
-                      className="h-9 w-full min-w-0 rounded-xl border border-border bg-card text-center text-sm font-semibold text-ink outline-none focus:border-accent"
+                      className="h-11 w-full min-w-0 rounded-xl border border-border bg-card text-center text-sm font-semibold text-ink outline-none focus:border-accent"
                     />
                     <button
                       type="button"
                       aria-label={t('order.more', { name: m.name })}
                       onClick={() => step(m.id, 1)}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent text-white"
+                      className="flex h-11 w-9 shrink-0 items-center justify-center rounded-xl bg-accent text-white"
                     >
                       <Plus size={15} />
                     </button>
@@ -647,7 +731,7 @@ export default function OrderPage() {
                     type="button"
                     aria-label={t('order.more', { name: m.name })}
                     onClick={() => step(m.id, 1)}
-                    className="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-accent-bg text-sm font-semibold text-accent-text"
+                    className="flex h-11 items-center justify-center gap-1.5 rounded-xl bg-accent-bg text-sm font-semibold text-accent-text"
                   >
                     <Plus size={15} /> {t('order.add')}
                   </button>
@@ -695,21 +779,45 @@ export default function OrderPage() {
           <SectionHeading title={t('order.yourDetails')} />
           <SoftCard className="p-4">
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <div>
-                <Label htmlFor="order-name" required>{t('order.name')}</Label>
-                <Input id="order-name" autoComplete="name" value={form.name} maxLength={60} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-              </div>
-              <div>
-                <Label htmlFor="order-phone" required>{t('order.phone')}</Label>
-                <PhoneInput id="order-phone" value={form.phone} onValueChange={(phone) => setForm({ ...form, phone })} />
-              </div>
-              <div>
-                <Label htmlFor="order-site">{t('order.site')}</Label>
-                <Input id="order-site" value={form.site} maxLength={120} onChange={(e) => setForm({ ...form, site: e.target.value })} />
-              </div>
+              {!editingDetails && form.name.trim().length >= 2 && form.phone.length === 10 ? (
+                // Already given once: not asked again. Edit opens the same
+                // three fields, and what the shop receives is unchanged.
+                <div className="flex items-start gap-3 rounded-2xl bg-surface p-3">
+                  <div className="min-w-0 flex-1 text-sm">
+                    <div className="text-xs text-muted">{t('order.orderingAs')}</div>
+                    <div className="break-words font-semibold text-ink">{form.name.trim()}</div>
+                    <div className="break-words text-muted">
+                      {[form.phone, form.site.trim()].filter(Boolean).join(' · ')}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingDetails(true)}
+                    className="flex h-11 shrink-0 items-center rounded-full border border-border px-4 text-sm font-semibold text-accent"
+                  >
+                    {t('order.editDetails')}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <Label htmlFor="order-name" required>{t('order.name')}</Label>
+                    <Input id="order-name" className="h-11" autoComplete="name" value={form.name} maxLength={60} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label htmlFor="order-phone" required>{t('order.phone')}</Label>
+                    <PhoneInput id="order-phone" className="h-11" value={form.phone} onValueChange={(phone) => setForm({ ...form, phone })} />
+                  </div>
+                  <div>
+                    <Label htmlFor="order-site">{t('order.site')}</Label>
+                    <Input id="order-site" className="h-11" value={form.site} maxLength={120} onChange={(e) => setForm({ ...form, site: e.target.value })} />
+                  </div>
+                </>
+              )}
               <div>
                 <Label htmlFor="order-date">{t('order.date')}</Label>
                 <Input
+                  className="h-11"
                   id="order-date"
                   type="date"
                   min={localIsoDate(0)}
@@ -720,17 +828,22 @@ export default function OrderPage() {
               </div>
               {takesUpi && (
                 <div>
-                  <Label>{t('order.payHow')}</Label>
-                  <div className="mt-1 grid grid-cols-2 gap-2">
+                  <Label id="order-pay-how">{t('order.payHow')}</Label>
+                  {/* A choice a screen reader can hear, and a tick, not colour
+                      alone, on the one chosen (#35). */}
+                  <div role="radiogroup" aria-labelledby="order-pay-how" className="mt-1 grid grid-cols-2 gap-2">
                     {(['cash', 'online'] as const).map((mode) => (
                       <button
                         key={mode}
                         type="button"
+                        role="radio"
+                        aria-checked={payment === mode}
                         onClick={() => setPayment(mode)}
-                        className={`rounded-xl border px-3 py-2.5 text-sm font-medium ${
+                        className={`flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm font-medium ${
                           payment === mode ? 'border-accent bg-accent-bg text-accent-text' : 'border-border text-muted'
                         }`}
                       >
+                        {payment === mode && <Check size={15} className="shrink-0" aria-hidden="true" />}
                         {t(mode === 'cash' ? 'order.payCash' : 'order.payOnline')}
                       </button>
                     ))}
@@ -755,7 +868,7 @@ export default function OrderPage() {
                 <label htmlFor="order-website">Website</label>
                 <input id="order-website" tabIndex={-1} autoComplete="off" value={form.trap} onChange={(e) => setForm({ ...form, trap: e.target.value })} />
               </div>
-              {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>}
+              {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>}
               {/* Big, and wrapping rather than clipped: a long business name
                   must still read as one sentence with the button's word. */}
               <Button

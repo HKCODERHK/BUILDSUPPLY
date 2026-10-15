@@ -48,6 +48,21 @@ export function saveProfile(profile: CustomerProfile, keep: boolean) {
   }
 }
 
+/**
+ * Whether the customer chose to keep their details on this phone: true when
+ * the profile is in localStorage, false when it lives only until the browser
+ * is closed (sessionStorage), null when this phone has no profile at all.
+ */
+export function profileKept(): boolean | null {
+  try {
+    if (localStorage.getItem(KEY)) return true
+    if (sessionStorage.getItem(KEY)) return false
+  } catch {
+    // storage blocked
+  }
+  return null
+}
+
 export function clearProfile() {
   try {
     localStorage.removeItem(KEY)

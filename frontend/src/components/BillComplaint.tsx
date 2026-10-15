@@ -53,7 +53,8 @@ export function BillComplaint({
   // No 046 (or it could not be read): no complaint option at all.
   if (list === undefined || list === null) return null
   const mine = list.filter((c) => c.invoice_no === invoiceNo)
-  const hasOpen = mine.some((c) => c.status === 'open' || c.status === 'in_progress')
+  // Just sent: open until the list confirms it, even if re-reading failed.
+  const hasOpen = sent || mine.some((c) => c.status === 'open' || c.status === 'in_progress')
 
   async function send() {
     if (!category) return setError(t('cmp.choose'))
@@ -62,11 +63,23 @@ export function BillComplaint({
     setError(null)
     try {
       await fileComplaint({ token, connection }, invoiceNo, category, text.trim())
-      setSent(true)
-      setOpen(false)
-      setList(await listCustomerComplaints({ token, connection }))
     } catch (e) {
       setError(/several/i.test(e instanceof Error ? e.message : '') ? t('cmp.limit') : t('cmp.failed'))
+      setBusy(false)
+      return
+    }
+    // Sent. Re-reading the list is separate (#29): a failure there must not
+    // show "could not send" for a complaint that went, nor bring the link
+    // back as if nothing had been sent.
+    setSent(true)
+    setOpen(false)
+    setText('')
+    setCategory('')
+    try {
+      const fresh = await listCustomerComplaints({ token, connection })
+      if (fresh) setList(fresh)
+    } catch {
+      // The complaint stays shown as sent; the list catches up next time.
     } finally {
       setBusy(false)
     }
@@ -100,7 +113,7 @@ export function BillComplaint({
             setOpen(true)
             setSent(false)
           }}
-          className="flex items-center gap-1.5 text-xs font-medium text-muted underline-offset-2 hover:text-ink hover:underline"
+          className="flex min-h-11 items-center gap-1.5 text-xs font-medium text-muted underline-offset-2 hover:text-ink hover:underline"
         >
           <MessageSquareWarning size={14} /> {t('cmp.link')}
         </button>
@@ -113,7 +126,7 @@ export function BillComplaint({
             aria-label={t('cmp.what')}
             value={category}
             onChange={(e) => setCategory(e.target.value as ComplaintCategory)}
-            className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm text-ink"
+            className="h-11 w-full rounded-lg border border-border bg-card px-3 text-sm text-ink"
           >
             <option value="">{t('cmp.what')}</option>
             {COMPLAINT_CATEGORIES.map((c) => (
@@ -131,12 +144,12 @@ export function BillComplaint({
             className="min-h-24 w-full rounded-lg border border-border bg-card p-3 text-sm text-ink"
           />
           <p className="text-xs text-muted">{t('cmp.note', { shop: shopName })}</p>
-          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+          {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
           <div className="flex gap-2">
-            <Button variant="ghost" className="flex-1" onClick={() => setOpen(false)}>
+            <Button variant="ghost" size="tap" className="flex-1" onClick={() => setOpen(false)}>
               {t('common.cancel')}
             </Button>
-            <Button className="flex-1" disabled={busy} onClick={() => void send()}>
+            <Button size="tap" className="flex-1" disabled={busy} onClick={() => void send()}>
               {busy ? t('common.saving') : t('cmp.send')}
             </Button>
           </div>

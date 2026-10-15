@@ -56,6 +56,10 @@ export function OrderLinkShareModal({
   const sourceLogo = businessProp !== undefined ? (logoProp ?? null) : (supplier?.logo_url ?? null)
   const logo = !logoFailed ? sourceLogo : null
   const shortUrl = url.replace(/^https?:\/\//, '')
+  // Opened by a customer (the khata link, the order page): words for them,
+  // not the shop owner's "print it for your shop" (#19). The supplier's own
+  // screens pass no business and keep their wording exactly.
+  const forCustomer = businessProp !== undefined
 
   async function sendLink() {
     await shareOrderLinkText(message)
@@ -73,16 +77,16 @@ export function OrderLinkShareModal({
         logoUrl: sourceLogo,
         initialsKey: supplier?.id ?? business,
       })
-      await shareDocumentOnWhatsApp({ file, message, title: 'Order QR' })
+      await shareDocumentOnWhatsApp({ file, message, title: t('ordShare.scanToOrder') })
     } finally {
       setSharing(false)
     }
   }
 
   return (
-    <Modal title={t('ord.shareLink')} onClose={onClose}>
+    <Modal title={forCustomer ? t('ordShare.cTitle') : t('ord.shareLink')} onClose={onClose}>
       <div className="flex flex-col gap-3">
-        <p className="text-xs text-muted">{t('ordShare.hint')}</p>
+        <p className="text-xs text-muted">{forCustomer ? t('ordShare.cHint', { business }) : t('ordShare.hint')}</p>
         <Button onClick={sendLink}>
           <WhatsAppIcon size={16} /> {t('ordShare.sendLink')}
         </Button>
@@ -114,7 +118,7 @@ export function OrderLinkShareModal({
             <button
               type="button"
               onClick={onClose}
-              aria-label="Close"
+              aria-label={t('common.close')}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white"
             >
               <X size={20} />
@@ -135,7 +139,9 @@ export function OrderLinkShareModal({
             <div className="mt-1 break-all text-xs text-neutral-500">{shortUrl}</div>
           </div>
 
-          <p className="mt-5 max-w-[320px] text-xs text-white/85">{t('ordShare.qrHint')}</p>
+          <p className="mt-5 max-w-[320px] text-xs text-white/85">
+            {forCustomer ? t('ordShare.cQrHint', { business }) : t('ordShare.qrHint')}
+          </p>
 
           {/* Pushes Share to the bottom on a tall phone, and keeps a gap on a short one. */}
           <div className="min-h-6 flex-1" />

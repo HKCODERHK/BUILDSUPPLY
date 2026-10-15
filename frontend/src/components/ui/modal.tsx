@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { X } from 'lucide-react'
+import { useLanguage } from '@/context/LanguageContext'
 
 // Dialogs that own a history entry, oldest first. Back closes only the top
 // one, and a dialog taking its own entry off again (history.back() below)
@@ -122,6 +123,8 @@ export function Modal({
   captureBack?: boolean
 }) {
   useDialogBehaviour(onClose, captureBack)
+  // Read in the person's own language, not always "Close" (#35).
+  const closeLabel = useLanguage().t('common.close')
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
@@ -133,8 +136,8 @@ export function Modal({
           <h2 className="text-base font-semibold text-ink">{title}</h2>
           <button
             onClick={onClose}
-            aria-label="Close"
-            className="-m-2 p-2 text-muted hover:text-ink"
+            aria-label={closeLabel}
+            className="-m-3 flex h-11 w-11 items-center justify-center text-muted hover:text-ink"
           >
             <X size={18} />
           </button>
@@ -152,6 +155,7 @@ export function Modal({
  */
 export function ImagePreview({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
   useDialogBehaviour(onClose, true)
+  const closeLabel = useLanguage().t('common.close')
   const closeRef = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     closeRef.current?.focus()
@@ -168,7 +172,7 @@ export function ImagePreview({ src, alt, onClose }: { src: string; alt: string; 
         ref={closeRef}
         type="button"
         onClick={onClose}
-        aria-label="Close"
+        aria-label={closeLabel}
         className="absolute right-3 top-[calc(0.75rem_+_var(--safe-top))] flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
       >
         <X size={22} />

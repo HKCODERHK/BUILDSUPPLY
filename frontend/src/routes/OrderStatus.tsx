@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { BookOpen, Check, House, MessageCircle, Package, Receipt, ShoppingBag } from 'lucide-react'
+import { BookOpen, Check, House, MessageCircle, Package, Phone, Receipt, ShoppingBag } from 'lucide-react'
 import { readKhata, rememberOrder } from '@/lib/customerLinks'
+import { readProfile } from '@/lib/customerProfile'
+import type { TranslationKey } from '@/lib/i18n'
 import { Button } from '@/components/ui/button'
-import { LanguageToggle } from '@/components/LanguageToggle'
-import { ThemeToggle } from '@/components/ThemeToggle'
+import { buttonVariants } from '@/components/ui/button-variants'
 import {
+  CustomerHeader,
   CustomerTabBar,
   DeliveryStrip,
   QuickActions,
@@ -18,6 +20,7 @@ import { getShopProfile, type ShopProfile } from '@/services/shopPage'
 import { brandAttr, shopWhatsapp } from '@/lib/shopPage'
 import { TruckLoader } from '@/components/TruckLoader'
 import { useLanguage } from '@/context/LanguageContext'
+import { showDate } from '@/lib/displayDate'
 import { getOrderStatus, respondToEstimate, type OrderStatusView } from '@/services/orders'
 import { rejectReasonText } from '@/lib/orderFormat'
 import { receivedState } from '@/lib/received'
@@ -26,9 +29,7 @@ import { upiPayUrl } from '@/lib/upi'
 import { cn } from '@/lib/utils'
 import { BuildSupplyFooter } from '@/components/BuildSupplyFooter'
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-}
+
 
 function formatINR(n: number) {
   return `₹${Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
@@ -44,12 +45,14 @@ function formatINR(n: number) {
  */
 export default function OrderStatus() {
   const { token = '' } = useParams()
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
+  // On screen in the reader's language; the PDFs stay English (#34).
+  const formatDate = (iso: string) => showDate(iso, lang)
   const navigate = useNavigate()
   const [view, setView] = useState<OrderStatusView | null>(null)
   const [failed, setFailed] = useState(false)
   const [answering, setAnswering] = useState<'accepted' | 'call_me' | null>(null)
-  const [answerFailed, setAnswerFailed] = useState(false)
+  const [answerFailed, setAnswerFailed] = useState<TranslationKey | null>(null)
   // Their khata code with this shop, if this phone has ever opened it
   // (lib/customerLinks — kept on the phone, never on the server).
   const [khataCode, setKhataCode] = useState<string | null>(null)
@@ -86,13 +89,18 @@ export default function OrderStatus() {
   // The shop's own UPI ID, sent only to a customer who chose to pay online and
   // only while something is owed (migration 037). The amount is the bill's
   // outstanding once a bill exists, the estimate's total until then.
+  // The note is what the shop reads in its bank app to know who paid (#7):
+  // the customer's own name as this phone knows it, and the bill or estimate
+  // number. It used to carry the shop's own name, which told the shop nothing.
+  const payerName = (found?.order_link ? readKhata(found.order_link)?.name : null) || readProfile()?.name || ''
+  const payFor = found?.bill?.invoice_no ?? found?.estimate?.quote_no ?? ''
   const upiUrl =
     found?.upi_id && (found.due ?? 0) > 0.005
       ? upiPayUrl({
           upiId: found.upi_id,
           payee: found.business_name,
           amount: Math.round((found.due ?? 0) * 100) / 100,
-          note: found.business_name,
+          note: [payerName, payFor].filter(Boolean).join(' ') || found.business_name,
         })
       : null
 
@@ -101,7 +109,9 @@ export default function OrderStatus() {
   // track once an order is rejected — the reason above says it all. A bill
   // made straight from the estimate counts as accepted.
   const bill = found?.bill ?? null
-  const billed = estimate?.status === 'Converted' || !!bill
+  // Only a live bill counts (#10): a converted estimate whose bill was
+  // cancelled is not billed, and is not owed either (047).
+  const billed = !!bill
   const steps =
     found && found.status !== 'rejected'
       ? [
@@ -109,8 +119,11 @@ export default function OrderStatus() {
           {
             key: 'estimate',
             label: t('tl.estimate'),
-            detail: found.status === 'approved' && found.decided_at ? formatDate(found.decided_at) : null,
-            done: found.status === 'approved',
+            // Ticked only when there really is an estimate (#1): since 037 the
+            // shop can say yes on the spot and price it later, and the title
+            // then reads "Order accepted — the price is on its way".
+            detail: found.status === 'approved' && found.estimate && found.decided_at ? formatDate(found.decided_at) : null,
+            done: found.status === 'approved' && !!found.estimate,
           },
           {
             key: 'accepted',
@@ -148,12 +161,19 @@ export default function OrderStatus() {
   async function answer(response: 'accepted' | 'call_me') {
     if (answering) return
     setAnswering(response)
-    setAnswerFailed(false)
+    setAnswerFailed(null)
     try {
       await respondToEstimate(token, response)
+    } catch (e) {
+      // The shop may have billed the estimate meanwhile: say so, rather than
+      // "something went wrong" over buttons that can never work (#29).
+      setAnswerFailed(/no longer be changed/i.test(e instanceof Error ? e.message : '') ? 'est.noLongerOpen' : 'error.generic')
+    }
+    // Either way, show the order as it stands now.
+    try {
       setView(await getOrderStatus(token))
     } catch {
-      setAnswerFailed(true)
+      // Keep what is on screen.
     } finally {
       setAnswering(null)
     }
@@ -171,6 +191,9 @@ export default function OrderStatus() {
       ? [{ key: 'more', icon: ShoppingBag, label: t('order.tileMore'), to: `/order/${found.order_link}` }]
       : []),
     ...(home ? [{ key: 'khata', icon: BookOpen, label: t('order.tileKhata'), onClick: () => go(home) }] : []),
+    // The page tells customers to contact the shop (rejected, expired, "call
+    // me"), so it gives them the shop's own published number to do it (#24).
+    ...(shop?.phone ? [{ key: 'call', icon: Phone, label: t('khata.call'), href: `tel:${shop.phone}` }] : []),
     ...(shopWhatsapp(shop) ? [{ key: 'wa', icon: MessageCircle, label: t('shop.tileWhatsapp'), href: shopWhatsapp(shop)! }] : []),
   ]
   // The same four tabs as the khata link and the order page, once this phone
@@ -183,7 +206,7 @@ export default function OrderStatus() {
               {
                 key: 'materials',
                 icon: ShoppingBag,
-                label: t('khata.tabMaterials'),
+                label: t('khata.orderMaterials'),
                 active: false,
                 onClick: () => navigate(`/order/${found.order_link}`),
               },
@@ -202,29 +225,10 @@ export default function OrderStatus() {
 
   return (
     <div className="flex min-h-screen flex-col bg-surface" data-brand={brandAttr(shop?.brand_color)}>
-      <header className="sticky top-0 z-30 bg-shell px-4 pb-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white">
-        <div className="mx-auto flex h-11 max-w-lg items-center gap-3">
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#35A85D"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="shrink-0"
-          >
-            <path d="M3 21h18" />
-            <path d="M5 21V8l5-4v17" />
-            <path d="M10 21V11l6 3v7" />
-            <path d="M16 21v-4l3 1.5V21" />
-          </svg>
-          <span className="min-w-0 flex-1 truncate text-lg font-bold">BuildSupply</span>
-          <LanguageToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
-          <ThemeToggle className="border-white/20 text-white hover:bg-white/10 hover:text-white" />
-        </div>
-      </header>
+      {/* The shop's own name and logo in the bar (#14). */}
+      <CustomerHeader
+        shop={found ? { business_name: found.business_name, logo_url: shop?.logo_url ?? null } : null}
+      />
       <main className={cn('mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4', tabs && 'pb-28')}>
         {!view && !failed ? (
           <TruckLoader />
@@ -237,7 +241,7 @@ export default function OrderStatus() {
             <SoftCard className="overflow-hidden">
               {found.status !== 'rejected' && <DeliveryStrip at={arrived ? 'site' : 'shop'} />}
               <div className="flex flex-col gap-2 p-4">
-                <div className="text-[11px] font-medium text-muted">
+                <div className="text-xs font-medium text-muted">
                   {t('khata.liveOrder')} · {found.business_name}
                 </div>
                 {/* Approved reads "Estimate ready" only once there is one; an
@@ -274,8 +278,8 @@ export default function OrderStatus() {
                   <QrCode text={upiUrl} size={200} label={t('upi.payTitle')} />
                 </div>
                 <div className="text-xs text-muted">{found.upi_id}</div>
-                <a href={upiUrl} className="w-full">
-                  <Button className="w-full rounded-2xl">{t('upi.openApp', { amount: formatINR(found.due ?? 0) })}</Button>
+                <a href={upiUrl} className={buttonVariants({ size: 'tap', className: 'w-full rounded-2xl' })}>
+                  {t('upi.openApp', { amount: formatINR(found.due ?? 0) })}
                 </a>
                 <p className="text-xs text-muted">{t('upi.payHint')}</p>
               </SoftCard>
@@ -383,8 +387,10 @@ export default function OrderStatus() {
                     </div>
                   </div>
 
-                  {estimate.status === 'Converted' ? (
+                  {estimate.status === 'Converted' && bill ? (
                     <p className="rounded-2xl bg-accent-bg p-3 text-sm font-medium text-accent-text">{t('est.converted')}</p>
+                  ) : estimate.status === 'Converted' ? (
+                    <p className="text-sm text-muted">{t('est.closed', { business: found.business_name })}</p>
                   ) : estimate.status === 'Expired' ? (
                     <p className="text-sm text-muted">{t('est.expired', { business: found.business_name })}</p>
                   ) : (
@@ -399,16 +405,16 @@ export default function OrderStatus() {
                         <p className="text-xs text-muted">{t('est.askHint', { business: found.business_name })}</p>
                       )}
                       {answerFailed && (
-                        <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{t('error.generic')}</p>
+                        <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{t(answerFailed)}</p>
                       )}
                       <div className="flex flex-wrap gap-2">
                         {found.response !== 'accepted' && (
-                          <Button className="rounded-full px-5" onClick={() => answer('accepted')} disabled={answering !== null}>
+                          <Button size="tap" className="rounded-full px-5" onClick={() => answer('accepted')} disabled={answering !== null}>
                             {answering === 'accepted' ? t('common.saving') : t('est.accept')}
                           </Button>
                         )}
                         {found.response !== 'call_me' && (
-                          <Button variant="outline" className="rounded-full px-5" onClick={() => answer('call_me')} disabled={answering !== null}>
+                          <Button variant="outline" size="tap" className="rounded-full px-5" onClick={() => answer('call_me')} disabled={answering !== null}>
                             {answering === 'call_me' ? t('common.saving') : t('est.callMe')}
                           </Button>
                         )}

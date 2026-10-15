@@ -17,6 +17,11 @@ export interface MyShop {
   order_link: string | null
   pending: number
   advance: number
+  /**
+   * The platform has paused this shop (migration 047): it stays on the
+   * account, named, with no figures and no order link.
+   */
+  paused?: boolean
 }
 
 async function call<T>(fn: string, args: Record<string, unknown> = {}): Promise<T> {
@@ -86,6 +91,14 @@ export function readCurrentShop(): string | null {
     return localStorage.getItem(CURRENT_KEY)
   } catch {
     return null
+  }
+}
+/** Forget it — when that shop is removed, or the account signed out (#5). */
+export function forgetCurrentShop() {
+  try {
+    localStorage.removeItem(CURRENT_KEY)
+  } catch {
+    // nothing to forget
   }
 }
 export function rememberCurrentShop(connection: string) {
