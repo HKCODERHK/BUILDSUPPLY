@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { BookOpen, BookmarkPlus, LogOut, RotateCcw, ShoppingBag, Store, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TruckLoader } from '@/components/TruckLoader'
@@ -11,6 +11,7 @@ import { forgetShopOnPhone, knownShops } from '@/lib/customerLinks'
 import { disconnectShop, myShops, readCurrentShop, forgetCurrentShop, rememberCurrentShop, type MyShop } from '@/services/customerAccount'
 import KhataPage from './KhataPage'
 import { BuildSupplyFooter } from '@/components/BuildSupplyFooter'
+import { KhataLinkEntry } from '@/components/KhataLinkEntry'
 
 /**
  * /me — the customer's own BuildSupply (migration 041). Once a khata link has
@@ -25,6 +26,7 @@ import { BuildSupplyFooter } from '@/components/BuildSupplyFooter'
 export default function MyAccount() {
   const { t } = useLanguage()
   const navigate = useNavigate()
+  const location = useLocation()
   const [shops, setShops] = useState<MyShop[] | null>(null)
   const [failed, setFailed] = useState(false)
   const [current, setCurrent] = useState<string | null>(null)
@@ -210,9 +212,16 @@ export default function MyAccount() {
 
   // No account on this phone, or no shops on it yet.
   const phoneShops = shops && shops.length === 0 ? knownShops().slice(0, 5) : []
+  // Opened from another page of the app: ← goes back to it. Opened from the
+  // home-screen icon there is nothing behind it, so no arrow (2026-10-19).
+  const canGoBack = location.key !== 'default'
   return (
     <div className="flex min-h-screen flex-col bg-surface">
-      <CustomerHeader title={t('acct.title')} />
+      <CustomerHeader
+        title={t('acct.title')}
+        onBack={canGoBack ? () => navigate(-1) : undefined}
+        backLabel={t('common.back')}
+      />
       <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4">
         {!shops && !failed ? (
           <TruckLoader />
@@ -258,6 +267,19 @@ export default function MyAccount() {
                 ))}
               </SoftCard>
             )}
+            {/* The way back in on a phone with no saved shop: paste the
+                khata link from WhatsApp (2026-10-19). */}
+            {!failed && (
+              <SoftCard className="p-4">
+                <KhataLinkEntry />
+              </SoftCard>
+            )}
+            <Link
+              to="/login"
+              className="flex min-h-11 items-center justify-center gap-2 text-sm font-semibold text-muted hover:text-ink"
+            >
+              <Store size={16} /> {t('acct.ownerSignIn')}
+            </Link>
           </>
         )}
         <BuildSupplyFooter />

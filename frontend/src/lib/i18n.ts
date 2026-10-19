@@ -1804,6 +1804,30 @@ const STRINGS = {
     hi: 'साइन आउट करें? सभी {count} दुकानें इस फ़ोन से हट जाएँगी, और फ़ोन उनके खाता लिंक भूल जाएगा। वापस आने के लिए हर खाता लिंक फिर खोलें और सेव करें दबाएँ।',
     mr: 'साइन आउट करायचे? सर्व {count} दुकाने या फोनवरून जातील, आणि फोन त्यांच्या खाते लिंक विसरेल. परत येण्यासाठी प्रत्येक खाते लिंक पुन्हा उघडा आणि सेव्ह करा दाबा.',
   },
+  // Sign-in: who is signing in (2026-10-19).
+  'login.whoTitle': { en: 'Who is signing in?', hi: 'कौन साइन इन कर रहा है?', mr: 'कोण साइन इन करत आहे?' },
+  'login.tabShop': { en: 'Shop owner', hi: 'दुकानदार', mr: 'दुकानदार' },
+  'login.tabCustomer': { en: 'Customer', hi: 'ग्राहक', mr: 'ग्राहक' },
+  'login.customerSub': {
+    en: 'Open your account with the khata link your shop sent you on WhatsApp.',
+    hi: 'अपनी दुकान ने WhatsApp पर जो खाता लिंक भेजा है, उससे अपना खाता खोलें।',
+    mr: 'तुमच्या दुकानाने WhatsApp वर पाठवलेल्या खाते लिंकने तुमचे खाते उघडा.',
+  },
+  // Pasting a khata link to get back in.
+  'kle.label': { en: 'Your khata link', hi: 'आपका खाता लिंक', mr: 'तुमची खाते लिंक' },
+  'kle.placeholder': { en: 'Paste the link from WhatsApp', hi: 'WhatsApp से लिंक पेस्ट करें', mr: 'WhatsApp वरून लिंक पेस्ट करा' },
+  'kle.open': { en: 'Open my khata', hi: 'मेरा खाता खोलें', mr: 'माझे खाते उघडा' },
+  'kle.invalid': {
+    en: 'That isn’t a khata link. Copy the whole link from your shop’s WhatsApp message.',
+    hi: 'यह खाता लिंक नहीं है। दुकान के WhatsApp संदेश से पूरा लिंक कॉपी करें।',
+    mr: 'ही खाते लिंक नाही. दुकानाच्या WhatsApp संदेशातून पूर्ण लिंक कॉपी करा.',
+  },
+  'kle.hint': {
+    en: 'Lost the link? Ask your shop to send your khata link again on WhatsApp.',
+    hi: 'लिंक नहीं मिल रहा? अपनी दुकान से WhatsApp पर खाता लिंक फिर से भेजने को कहें।',
+    mr: 'लिंक सापडत नाही? तुमच्या दुकानाला WhatsApp वर खाते लिंक पुन्हा पाठवायला सांगा.',
+  },
+  'acct.ownerSignIn': { en: 'Shop owner? Sign in', hi: 'दुकानदार हैं? साइन इन करें', mr: 'दुकानदार आहात? साइन इन करा' },
   'acct.onThisPhone': { en: 'Opened on this phone', hi: 'इस फ़ोन पर खोली गई', mr: 'या फोनवर उघडलेली' },
   'acct.yes': { en: 'Yes', hi: 'हाँ', mr: 'हो' },
   'acct.gone': {

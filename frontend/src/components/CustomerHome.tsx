@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode, Ref } from 'react'
 import { Link } from 'react-router-dom'
-import { MapPin, Store } from 'lucide-react'
+import { ArrowLeft, MapPin, Store } from 'lucide-react'
 import { Tipper } from '@/components/art'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -39,6 +39,8 @@ export function CustomerHeader({
   logoLabel,
   barRef,
   title,
+  onBack,
+  backLabel,
 }: {
   shop?: { business_name: string; logo_url?: string | null } | null
   /** Tapping the logo opens it full size. */
@@ -47,6 +49,9 @@ export function CustomerHeader({
   barRef?: Ref<HTMLElement>
   /** Shown instead of a shop, e.g. "My BuildSupply" on /me with no shop. */
   title?: string
+  /** A ← before the mark, for a page reached from somewhere it can go back to. */
+  onBack?: () => void
+  backLabel?: string
 }) {
   // 44px, like every other control on these pages (#30).
   const toggles = 'h-11 min-w-11 w-11 border-white/20 text-white hover:bg-white/10 hover:text-white'
@@ -79,6 +84,16 @@ export function CustomerHeader({
   return (
     <header ref={barRef} className="sticky top-0 z-30 bg-shell px-4 pb-3 pt-[calc(0.75rem_+_var(--safe-top))] text-white">
       <div className="mx-auto flex min-h-11 max-w-lg items-center gap-2.5">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label={backLabel}
+            className="-ml-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full hover:bg-white/10"
+          >
+            <ArrowLeft size={20} />
+          </button>
+        )}
         {mark}
         {/* A long name ("… Suppliers Private Limited") steps down a size and
             may take a third line, so it is read whole rather than cut off. */}

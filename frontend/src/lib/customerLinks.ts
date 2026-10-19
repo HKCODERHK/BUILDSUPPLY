@@ -130,3 +130,11 @@ export function forgetShopOnPhone(link: string) {
     // Nothing stored, or storage blocked.
   }
 }
+
+/** The 32-hex code out of a pasted khata link (any address it came from), or a bare code. */
+export function khataCodeFrom(text: string): string | null {
+  const s = text.trim()
+  const inLink = s.match(/\/khata\/([0-9a-fA-F]{32})(?![0-9a-fA-F])/)
+  if (inLink) return inLink[1].toLowerCase()
+  return /^[0-9a-fA-F]{32}$/.test(s) ? s.toLowerCase() : null
+}
