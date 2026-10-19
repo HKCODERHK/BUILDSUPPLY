@@ -69,25 +69,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<{ token: strin
     p_trap: input.trap || null,
     p_payment_method: input.paymentMethod ?? null,
   }
-  let raw: { token: string | null; duplicate?: boolean }
-  try {
-    raw = await callRpc<{ token: string | null; duplicate?: boolean }>('place_order', args)
-  } catch (error) {
-    // Migration 037 changed this function's parameters. A build can reach a
-    // database that has not had it pasted yet — a preview always does — and a
-    // customer must not be told ordering is broken in that window.
-    // Delete this once 037 is applied everywhere.
-    if (!isMissingFunction(error)) throw error
-    delete args.p_payment_method
-    raw = await callRpc<{ token: string | null; duplicate?: boolean }>('place_order', args)
-  }
+  const raw = await callRpc<{ token: string | null; duplicate?: boolean }>('place_order', args)
   return { token: raw.token, duplicate: !!raw.duplicate }
-}
-
-function isMissingFunction(error: unknown): boolean {
-  const code = (error as { code?: string } | null)?.code
-  const message = (error as { message?: string } | null)?.message ?? ''
-  return code === 'PGRST202' || /could not find the function/i.test(message)
 }
 
 /** The estimate made from an approved order, as its customer sees it (migration 030). */
