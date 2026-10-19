@@ -65,7 +65,8 @@ const HANDLED = {
 // that is in no category is reported as "new or other", never hidden.
 const CATEGORIES = [
   ['Admin, suppliers and settings', ['suppliers', 'platform_settings']],
-  ['Customers', ['customers']],
+  // A customer asking their shop to resend their khata link (048).
+  ['Customers', ['customers', 'khata_link_requests']],
   ['Bills and invoices', ['invoices', 'invoice_items']],
   ['Payments', ['payments', 'payment_allocations']],
   // A customer's complaint about one of their bills, and the shop's reply (046).

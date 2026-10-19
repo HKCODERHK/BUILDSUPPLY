@@ -100,6 +100,8 @@ const ORDER = [
   'payment_allocations',
   // Complaints about a bill (046): after the shop, the customer and the bill.
   'customer_complaints',
+  // A request for a khata link to be resent (048): after the shop and the customer.
+  'khata_link_requests',
   'order_requests',
   'order_request_clients',
   'order_blocked_phones',
