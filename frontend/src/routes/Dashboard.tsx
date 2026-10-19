@@ -24,6 +24,7 @@ import type { TranslationKey } from '@/lib/i18n'
 import { AdminDashboardView } from '@/routes/admin/AdminDashboardView'
 import { StartHereCard } from '@/components/StartHereCard'
 import { KycNotice } from '@/components/KycSettings'
+import { KhataRequestsNotice } from '@/components/KhataRequestsNotice'
 import { countOpenComplaints } from '@/services/complaints'
 import { DraftBanners } from '@/components/Drafts'
 import { TruckLoader } from '@/components/TruckLoader'
@@ -410,6 +411,8 @@ function SupplierDashboardView() {
           are paused. Above the Start-here card too: a shop with no bills yet
           still needs to see it. */}
       <KycNotice />
+      {/* Customers who asked for their khata link again (048). */}
+      <KhataRequestsNotice />
       {complaints > 0 && (
         <Link
           to="/complaints"
