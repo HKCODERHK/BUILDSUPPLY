@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `041`, run in order. **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; 039 and 040 were already on live; **038 was pasted by the user on 2026-10-12** (the ten-minute duplicate rule is gone from `place_order`, checked read-only). **047 (customer UX round, read functions only — Phase 37) is the latest and is applied** (2026-10-15; checked read-only: function bodies, both `security_invoker` views, counts unchanged, 0 bills out of step, every active shop's khata link still answers found with `has_estimate` on all 17 orders); **046 (customer complaints, Phase 36 round 4) is applied** (2026-10-15; checked read-only: table with RLS and one policy, select-only for signed-in users, nothing for anon — 401 over a real anonymous call — 8 functions one version each, counts unchanged); **045 (supplier compliance) is applied** (2026-10-13); 044 (three plans, Phase 34); **043 (your profile and bill details, Phase 32) is applied** (2026-10-12); 042 (the shop page, Phase 31) and 041 (customer accounts, Phase 30) were applied the same day. Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
+- **Schema migrations**: `supabase/migrations/` — `002` through `041`, run in order. **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; 039 and 040 were already on live; **038 was pasted by the user on 2026-10-12** (the ten-minute duplicate rule is gone from `place_order`, checked read-only). **048 (a customer asking their shop to resend the khata link — Phase 38) is the latest and is applied** (2026-10-19; checked from outside: a bad number refused, the table, the shop's list and handling all refused signed out — 401); **047 (customer UX round, read functions only — Phase 37) is applied** (2026-10-15; checked read-only: function bodies, both `security_invoker` views, counts unchanged, 0 bills out of step, every active shop's khata link still answers found with `has_estimate` on all 17 orders); **046 (customer complaints, Phase 36 round 4) is applied** (2026-10-15; checked read-only: table with RLS and one policy, select-only for signed-in users, nothing for anon — 401 over a real anonymous call — 8 functions one version each, counts unchanged); **045 (supplier compliance) is applied** (2026-10-13); 044 (three plans, Phase 34); **043 (your profile and bill details, Phase 32) is applied** (2026-10-12); 042 (the shop page, Phase 31) and 041 (customer accounts, Phase 30) were applied the same day. Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -1900,6 +1900,33 @@ leave supplier and admin screens alone where possible.
 - Tested on a local stack: every item in the browser, 360+ page loads at
   320/360px × three languages × light/dark with no overflow or cut-off text.
   Not yet judged on a real phone.
+
+**Phase 38 — a customer's way back in (migration 048, 2026-10-19). Merged
+(2d89814, 6a8dbd2) and 048 applied by the user the same day.** From the user's
+phone: an empty `/me` was a dead end.
+- **`/login` has two tabs**: Shop owner (the sign-in, unchanged, the default)
+  and Customer (`?as=customer`). An empty `/me` has the same box, the shops
+  opened on this phone, "Shop owner? Sign in", and ← when reached from inside
+  the app (`location.key !== 'default'`).
+- **No phone-number login — the user's choice, twice.** A number alone proves
+  nothing (customers' numbers are on bills and in contractors' phones), and
+  an SMS code would be the app's first paid service. **`KhataLinkEntry`**
+  takes the khata link (or a whole WhatsApp message containing it,
+  `khataCodeFrom`) **and** the mobile number, and opens the khata only when the
+  number is the one that customer has on file (the user's rule: check both).
+- **"Lost the link? Ask my shop to send it"** (048): `request_khata_link(phone)`
+  (anon) files a request at every active shop with that number —
+  `khata_link_requests`, RLS own rows, select only, no admin access — and
+  always answers `{ok: true}`, so it can't be used to find who buys where. One
+  open request per customer per 24h, 100 an hour platform-wide. The shop's
+  Dashboard shows "‹name› asked for their khata link" (`KhataRequestsNotice`);
+  Send link opens the existing `KhataLinkModal` (WhatsApp to the number on
+  file), and closing it handles the request (`handle_khata_link_request`).
+  Backups: the table is in the Customers category and the restore order.
+- Tested on a local stack: 24/24 database checks (048 applied twice), every
+  customer message, the request reaching both shops, Send link opening
+  WhatsApp to the customer's own number, 36 page loads at 320/360px × three
+  languages × light/dark.
 
 ## The admin panel
 
