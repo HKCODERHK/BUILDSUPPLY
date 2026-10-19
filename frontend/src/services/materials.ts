@@ -3,26 +3,6 @@ import type { Material } from '@/lib/database.types'
 import { logActivity } from './activityLog'
 import { callRpc, fetchAll } from './db'
 
-/**
- * Per-material GST arrived with migration 035. A build can reach a database
- * that has not had it pasted yet — a preview deployment always does — and a
- * supplier adding a material must not hit "column does not exist" in the
- * window between the two. The write is simply made again without it, and the
- * database's own 18 applies, which is what every bill charged anyway.
- *
- * Delete this once 035 is applied everywhere.
- */
-function missingGstColumn(error: { code?: string; message?: string }): boolean {
-  return (
-    (error.code === 'PGRST204' || error.code === '42703') && (error.message ?? '').includes('gst_rate')
-  )
-}
-
-function withoutGst<T extends { gst_rate?: number }>(input: T): Omit<T, 'gst_rate'> {
-  const { gst_rate: _drop, ...rest } = input
-  return rest
-}
-
 export async function listMaterials(): Promise<Material[]> {
   return fetchAll<Material>((from, to) =>
     supabase
@@ -50,18 +30,11 @@ export async function createMaterial(
     stock_unit?: string | null
   },
 ): Promise<Material> {
-  let { data, error } = await supabase
+  const { data, error } = await supabase
     .from('materials')
     .insert({ supplier_id: supplierId, ...input })
     .select()
     .single()
-  if (error && missingGstColumn(error)) {
-    ;({ data, error } = await supabase
-      .from('materials')
-      .insert({ supplier_id: supplierId, ...withoutGst(input) })
-      .select()
-      .single())
-  }
   if (error) {
     if (error.code === '23514') throw new Error('Stock quantity cannot be negative.')
     throw error
@@ -71,10 +44,7 @@ export async function createMaterial(
 }
 
 export async function updateMaterial(id: string, input: Partial<Material>): Promise<Material> {
-  let { data, error } = await supabase.from('materials').update(input).eq('id', id).select().single()
-  if (error && missingGstColumn(error)) {
-    ;({ data, error } = await supabase.from('materials').update(withoutGst(input)).eq('id', id).select().single())
-  }
+  const { data, error } = await supabase.from('materials').update(input).eq('id', id).select().single()
   if (error) {
     if (error.code === '23514') throw new Error('Stock quantity cannot be negative.')
     throw error

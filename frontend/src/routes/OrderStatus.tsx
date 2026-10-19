@@ -387,6 +387,12 @@ export default function OrderStatus() {
                     </div>
                   </div>
 
+                  {/* Shown whatever the estimate has become: an answer refused
+                      because the shop billed it meanwhile reloads into the
+                      billed state, and the reason must still be read (#29). */}
+                  {answerFailed && (
+                    <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{t(answerFailed)}</p>
+                  )}
                   {estimate.status === 'Converted' && bill ? (
                     <p className="rounded-2xl bg-accent-bg p-3 text-sm font-medium text-accent-text">{t('est.converted')}</p>
                   ) : estimate.status === 'Converted' ? (
@@ -403,9 +409,6 @@ export default function OrderStatus() {
                         </p>
                       ) : (
                         <p className="text-xs text-muted">{t('est.askHint', { business: found.business_name })}</p>
-                      )}
-                      {answerFailed && (
-                        <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{t(answerFailed)}</p>
                       )}
                       <div className="flex flex-wrap gap-2">
                         {found.response !== 'accepted' && (
