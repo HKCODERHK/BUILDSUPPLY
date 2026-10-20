@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { BookOpen, Check, House, MessageCircle, Package, Phone, Receipt, ShoppingBag } from 'lucide-react'
-import { readKhata, rememberOrder } from '@/lib/customerLinks'
+import { readKhata, rememberOrder, rememberShopName } from '@/lib/customerLinks'
 import { readProfile } from '@/lib/customerProfile'
 import type { TranslationKey } from '@/lib/i18n'
 import { Button } from '@/components/ui/button'
@@ -70,6 +70,7 @@ export default function OrderStatus() {
         if (v.found && v.order_link) {
           const link = v.order_link
           rememberOrder(link, token, v.created_at)
+          rememberShopName(link, v.business_name)
           setKhataCode(readKhata(link)?.code ?? null)
           getShopProfile({ link }).then(setShop)
           myShops()

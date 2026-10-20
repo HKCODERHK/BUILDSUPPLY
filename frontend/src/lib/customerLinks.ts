@@ -91,14 +91,37 @@ export function forgetKhataCode(code: string) {
   }
 }
 
-const LINK_PREFIXES = ['buildsupply-khata:', 'buildsupply-orders:', 'buildsupply-last-order:']
+const LINK_PREFIXES = ['buildsupply-khata:', 'buildsupply-orders:', 'buildsupply-last-order:', 'buildsupply-shop-name:']
+const shopNameKey = (link: string) => `buildsupply-shop-name:${link}`
+
+/**
+ * The shop's name, kept beside its order link on this phone (2026-10-20), so
+ * "Lost your khata link?" can list the shops this phone has used by name.
+ * Written by the pages that already show the name; nothing is looked up.
+ */
+export function rememberShopName(link: string, name: string | null | undefined) {
+  if (!name) return
+  try {
+    localStorage.setItem(shopNameKey(link), name.slice(0, 120))
+  } catch {
+    // Not remembered: the list shows the link instead.
+  }
+}
+
+export function readShopName(link: string): string | null {
+  try {
+    return localStorage.getItem(shopNameKey(link))
+  } catch {
+    return null
+  }
+}
 
 /**
  * Every shop this phone has opened or ordered from, by its order link, with
  * the khata code when it knows one — so an empty /me can lead back to them
  * (#25) instead of being a dead end. Nothing here comes from the server.
  */
-export function knownShops(): { link: string; khata: string | null }[] {
+export function knownShops(): { link: string; khata: string | null; name: string | null }[] {
   const links = new Set<string>()
   try {
     for (const store of [localStorage, sessionStorage]) {
@@ -111,7 +134,7 @@ export function knownShops(): { link: string; khata: string | null }[] {
   } catch {
     return []
   }
-  return [...links].sort().map((link) => ({ link, khata: readKhata(link)?.code ?? null }))
+  return [...links].sort().map((link) => ({ link, khata: readKhata(link)?.code ?? null, name: readShopName(link) }))
 }
 
 /**

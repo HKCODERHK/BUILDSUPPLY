@@ -48,6 +48,7 @@ const OrderPage = lazy(screens.OrderPage)
 const OrderStatus = lazy(screens.OrderStatus)
 const KhataPage = lazy(screens.KhataPage)
 const MyAccount = lazy(screens.MyAccount)
+const KhataHelp = lazy(screens.KhataHelp)
 const Orders = lazy(screens.Orders)
 const OrderDetail = lazy(screens.OrderDetail)
 
@@ -59,6 +60,7 @@ function isPublicOrderPath(path: string) {
     path.startsWith('/order-status/') ||
     path.startsWith('/khata/') ||
     path === '/me' ||
+    path === '/khata-help' ||
     // The public website: a visitor reading about BuildSupply should not sit
     // through an app's splash first.
     path === '/' ||
@@ -125,6 +127,8 @@ const routes: RouteObject[] = [
   { path: '/khata/:token', element: <Page><KhataPage /></Page> },
   // The customer's own account (migration 041) — never the supplier's session.
   { path: '/me', element: <Page><MyAccount /></Page> },
+  // "Lost your khata link?" (049): signed out, like the other customer pages.
+  { path: '/khata-help', element: <Page><KhataHelp /></Page> },
   { path: '/dashboard', element: <Protected><Dashboard /></Protected> },
   { path: '/customers', element: <Protected supplierOnly><Customers /></Protected> },
   { path: '/customers/:id', element: <Protected supplierOnly><CustomerProfile /></Protected> },

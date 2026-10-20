@@ -54,7 +54,7 @@ export function RouteError() {
     if (reloading) reload()
   }, [reloading])
 
-  const customerPage = /^\/(order|order-status|khata)\/|^\/me(\/|$)/.test(window.location.pathname)
+  const customerPage = /^\/(order|order-status|khata)\/|^\/(me|khata-help)(\/|$)/.test(window.location.pathname)
 
   return (
     <div className="flex min-h-app items-center justify-center bg-surface p-6 text-ink">

@@ -17,6 +17,7 @@ export const screens = {
   OrderStatus: () => import('@/routes/OrderStatus'),
   KhataPage: () => import('@/routes/KhataPage'),
   MyAccount: () => import('@/routes/MyAccount'),
+  KhataHelp: () => import('@/routes/KhataHelp'),
   Dashboard: () => import('@/routes/Dashboard'),
   Customers: () => import('@/routes/Customers'),
   CustomerProfile: () => import('@/routes/CustomerProfile'),

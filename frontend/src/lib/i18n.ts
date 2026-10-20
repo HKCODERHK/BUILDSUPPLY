@@ -1852,6 +1852,33 @@ const STRINGS = {
     hi: 'हो गया। अगर यह नंबर BuildSupply पर किसी दुकान के पास है, तो दुकान से WhatsApp पर आपका खाता लिंक भेजने को कहा गया है।',
     mr: 'झाले. हा नंबर BuildSupply वरील एखाद्या दुकानाकडे असल्यास, दुकानाला WhatsApp वर तुमची खाते लिंक पाठवायला सांगितले आहे.',
   },
+  // /khata-help — "Lost your khata link?" (2026-10-20).
+  'help.title': { en: 'Lost your khata link?', hi: 'खाता लिंक खो गया?', mr: 'खाते लिंक हरवली?' },
+  'help.intro': {
+    en: 'Your khata link is the link your shop sent you on WhatsApp. Type the mobile number your shop has for you, then ask the shop to send it again.',
+    hi: 'खाता लिंक वह लिंक है जो आपकी दुकान ने WhatsApp पर भेजा था। दुकान के पास जो मोबाइल नंबर है वह लिखें, फिर दुकान से लिंक दोबारा भेजने को कहें।',
+    mr: 'खाते लिंक म्हणजे तुमच्या दुकानाने WhatsApp वर पाठवलेली लिंक. दुकानाकडे असलेला तुमचा मोबाइल नंबर लिहा, आणि दुकानाला ती पुन्हा पाठवायला सांगा.',
+  },
+  'help.yourShops': { en: 'Shops used on this phone', hi: 'इस फ़ोन पर इस्तेमाल की गई दुकानें', mr: 'या फोनवर वापरलेली दुकाने' },
+  'help.linkOnPhone': { en: 'Your khata link is still on this phone', hi: 'आपका खाता लिंक अब भी इस फ़ोन पर है', mr: 'तुमची खाते लिंक अजून या फोनवर आहे' },
+  'help.askShop': { en: 'Ask this shop', hi: 'इस दुकान से माँगें', mr: 'या दुकानाकडे मागा' },
+  'help.asked': { en: 'Asked', hi: 'माँग लिया', mr: 'मागितले' },
+  'help.otherShops': {
+    en: 'Your shop isn’t listed? Ask every shop that has your number.',
+    hi: 'आपकी दुकान सूची में नहीं है? जिन दुकानों के पास आपका नंबर है, सबसे माँगें।',
+    mr: 'तुमचे दुकान यादीत नाही? तुमचा नंबर असलेल्या सर्व दुकानांकडे मागा.',
+  },
+  'help.noShops': {
+    en: 'Every shop that has your number will be asked to send you your khata link on WhatsApp.',
+    hi: 'जिन दुकानों के पास आपका नंबर है, उन सबसे WhatsApp पर आपका खाता लिंक भेजने को कहा जाएगा।',
+    mr: 'तुमचा नंबर असलेल्या प्रत्येक दुकानाला WhatsApp वर तुमची खाते लिंक पाठवायला सांगितले जाईल.',
+  },
+  'help.askAll': { en: 'Ask every shop that has my number', hi: 'जिनके पास मेरा नंबर है, सबसे माँगें', mr: 'माझा नंबर असलेल्या सर्वांकडे मागा' },
+  'help.private': {
+    en: 'For your privacy, BuildSupply never shows which shops a number belongs to. The shop sends the link only to the number it has for you.',
+    hi: 'आपकी गोपनीयता के लिए BuildSupply कभी नहीं दिखाता कि कोई नंबर किन दुकानों के पास है। दुकान लिंक सिर्फ़ उसी नंबर पर भेजती है जो उसके पास आपका है।',
+    mr: 'तुमच्या गोपनीयतेसाठी BuildSupply कधीच दाखवत नाही की एखादा नंबर कोणत्या दुकानांकडे आहे. दुकान लिंक फक्त त्याच्याकडे असलेल्या तुमच्या नंबरवर पाठवते.',
+  },
   'acct.ownerSignIn': { en: 'Shop owner? Sign in', hi: 'दुकानदार हैं? साइन इन करें', mr: 'दुकानदार आहात? साइन इन करा' },
   'acct.onThisPhone': { en: 'Opened on this phone', hi: 'इस फ़ोन पर खोली गई', mr: 'या फोनवर उघडलेली' },
   'acct.yes': { en: 'Yes', hi: 'हाँ', mr: 'हो' },
