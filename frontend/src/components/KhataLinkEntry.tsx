@@ -9,7 +9,6 @@ import type { TranslationKey } from '@/lib/i18n'
 import { khataCodeFrom } from '@/lib/customerLinks'
 import { sanitizePhone } from '@/lib/numberInput'
 import { getKhata } from '@/services/khata'
-import { requestKhataLink } from '@/services/khataRequests'
 
 /**
  * A customer's way back in on a phone that has no saved shop (2026-10-19):
@@ -25,26 +24,6 @@ export function KhataLinkEntry() {
   const [phone, setPhone] = useState('')
   const [problem, setProblem] = useState<TranslationKey | null>(null)
   const [busy, setBusy] = useState(false)
-  // Lost the link (048): the shop is asked to resend it. The answer is the
-  // same whether or not the number belongs to anyone.
-  const [asked, setAsked] = useState(false)
-  const [asking, setAsking] = useState(false)
-
-  async function askShop() {
-    if (asking) return
-    if (phone.length !== 10) return setProblem('kle.phoneShort')
-    setAsking(true)
-    setProblem(null)
-    try {
-      await requestKhataLink(phone)
-      setAsked(true)
-    } catch {
-      setProblem('error.generic')
-    } finally {
-      setAsking(false)
-    }
-  }
-
   async function submit(e: FormEvent) {
     e.preventDefault()
     if (busy) return
@@ -105,20 +84,15 @@ export function KhataLinkEntry() {
       <Button type="submit" size="tap" className="w-full" disabled={busy}>
         {busy ? <LoaderCircle size={16} className="animate-spin" /> : <BookOpen size={16} />} {t('kle.open')}
       </Button>
-      {asked ? (
-        <p role="status" className="rounded-xl bg-accent-bg p-3 text-xs text-accent-text">
-          {t('kle.requested')}
-        </p>
-      ) : (
-        <button
-          type="button"
-          onClick={() => void askShop()}
-          disabled={asking}
-          className="flex min-h-11 items-center justify-center gap-2 text-sm font-semibold text-accent disabled:opacity-60"
-        >
-          {asking && <LoaderCircle size={14} className="animate-spin" />} {t('kle.lost')}
-        </button>
-      )}
+      {/* Lost the link: its own page, where the customer picks which shop
+          to ask (2026-10-20). The number typed here goes along. */}
+      <button
+        type="button"
+        onClick={() => navigate('/khata-help', { state: { phone } })}
+        className="flex min-h-11 items-center justify-center gap-2 text-sm font-semibold text-accent"
+      >
+        {t('kle.lost')}
+      </button>
     </form>
   )
 }

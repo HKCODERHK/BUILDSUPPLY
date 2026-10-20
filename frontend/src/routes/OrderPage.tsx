@@ -36,7 +36,7 @@ import { newRequestId } from '@/services/db'
 import { platformDisclosure } from '@/services/compliance'
 import { getOrderPage, orderStatusUrl, placeOrder, type OrderPage as OrderPageData } from '@/services/orders'
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
-import { readKhata, rememberOrder } from '@/lib/customerLinks'
+import { readKhata, rememberOrder, rememberShopName } from '@/lib/customerLinks'
 import { hasCustomerSession } from '@/lib/customerAuth'
 import { CustomerHeader, CustomerTabBar, QuickActions, SectionHeading, SoftCard, type QuickAction } from '@/components/CustomerHome'
 import { greetingKey } from '@/lib/customerHome'
@@ -214,7 +214,11 @@ export default function OrderPage() {
   const [attempt, setAttempt] = useState(0)
   useEffect(() => {
     getOrderPage(link)
-      .then(setPage)
+      .then((p) => {
+        setPage(p)
+        // Named on this phone for "Lost your khata link?" (2026-10-20).
+        if (p.found && p.open) rememberShopName(link, p.business_name)
+      })
       .catch(() => setLoadFailed(true))
   }, [link, attempt])
   function retryLoad() {

@@ -19,6 +19,11 @@ export async function requestKhataLink(phone: string): Promise<void> {
   await callRpc('request_khata_link', { p_phone: phone })
 }
 
+/** Signed out, to one shop this phone has used (049), named by its order link. Same answer either way. */
+export async function requestKhataLinkFrom(phone: string, link: string): Promise<void> {
+  await callRpc('request_khata_link_from', { p_phone: phone, p_link: link })
+}
+
 /** The shop's own open requests; none on a database without 048. */
 export async function openKhataLinkRequests(): Promise<KhataLinkRequest[]> {
   const { data, error } = await supabase.rpc('open_khata_link_requests')

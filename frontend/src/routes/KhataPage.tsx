@@ -55,7 +55,7 @@ import {
   type KhataPayment,
   type KhataView,
 } from '@/services/khata'
-import { forgetKhataCode, rememberKhataCode } from '@/lib/customerLinks'
+import { forgetKhataCode, rememberKhataCode, rememberShopName } from '@/lib/customerLinks'
 import { warmPdfKit } from '@/lib/pdfKit'
 import { QrCode } from '@/components/QrCode'
 import { upiPayUrl } from '@/lib/upi'
@@ -274,7 +274,10 @@ export default function KhataPage({
         setView(v)
         // Kept on the customer's phone so the supplier's order page can offer
         // "My khata"; a link the supplier has stopped is forgotten.
-        if (v.found && v.order_link) rememberKhataCode(v.order_link, token, v.customer)
+        if (v.found && v.order_link) {
+          rememberKhataCode(v.order_link, token, v.customer)
+          rememberShopName(v.order_link, v.supplier.business_name)
+        }
         // A paused shop's link is still good (047, #11): keep it.
         if (!v.found && !v.paused) forgetKhataCode(token)
         // Every button on this page makes a PDF: have the PDF tools ready.
