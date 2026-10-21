@@ -3,7 +3,6 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   BookOpen,
   Check,
-  ChevronRight,
   House,
   MapPin,
   Minus,
@@ -696,7 +695,7 @@ export default function OrderPage() {
   return (
     <div className="flex min-h-screen flex-col bg-surface" data-brand={brandAttr(shop?.brand_color)}>
       {header}
-      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4 pb-48 sm:max-w-2xl">
+      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4 pb-36 sm:max-w-2xl">
         {view === 'home' && (
           <>
         {/* The top band: who they are, what this page is for, and the search —
@@ -1350,30 +1349,6 @@ export default function OrderPage() {
 
         <BuildSupplyFooter />
       </main>
-
-      {/* The cart, floating above the tab bar once something is in it: how
-          many materials, the estimate if prices show, and a tap down to the
-          summary and the form. */}
-      {chosenCount > 0 && view === 'home' && (
-        <div className="fixed inset-x-0 bottom-[calc(6.75rem_+_var(--safe-bottom))] z-30 px-3">
-          <button
-            type="button"
-            onClick={() => go('cart')}
-            className="mx-auto flex w-full max-w-md items-center gap-3 rounded-2xl bg-accent px-4 py-3 text-left text-white shadow-[0_6px_24px_rgba(10,36,39,0.25)]"
-          >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15">
-              <ShoppingBag size={18} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-bold">{t('order.selectedCount', { count: chosenCount })}</span>
-              {estimatedTotal != null && <span className="block truncate text-xs text-white/85">{formatINR(estimatedTotal)}</span>}
-            </span>
-            <span className="flex shrink-0 items-center gap-1 text-sm font-semibold">
-              {t('order.review')} <ChevronRight size={16} />
-            </span>
-          </button>
-        </div>
-      )}
 
       <ShopAppBar
         left={[

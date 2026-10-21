@@ -2029,7 +2029,9 @@ call).** `CustomerHeader minimal`: only the shop's logo and the owner's photo
 shop's name stays as an `sr-only` h1; language and day/night live in Profile.
 While these pages are open `meta[name=theme-color]` takes the page's own
 background (restored on leaving). The status page, `/me` and `/khata-help`
-keep the old bar.
+keep the old bar. The floating "N selected · Review" strip above the
+bottom bar was removed the same day (the user's call): the round cart button
+and its count are the way to the cart.
 
 ## The admin panel
 
