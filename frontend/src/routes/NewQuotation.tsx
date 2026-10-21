@@ -22,6 +22,7 @@ import type { Customer, Material } from '@/lib/database.types'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { sanitizeDigits, sanitizeDecimal } from '@/lib/numberInput'
+import { isVehicleOption, loadsKey, totalMaterialText } from '@/lib/sellingType'
 import { formatRate, gstSlabs, taxLines } from '@/lib/gst'
 import { recordAdvance } from '@/services/payments'
 import { usePin } from '@/context/PinContext'
@@ -166,6 +167,14 @@ export default function NewQuotation() {
         }
       }),
     )
+    // The shop's own delivery charges for what was ordered (050): per load
+    // for a vehicle, once per material otherwise. Offered, not fixed.
+    const delivery = o.items.reduce((sum, it) => {
+      const mat = byId.get(it.material_id)
+      if (!mat?.delivery_charge) return sum
+      return sum + (isVehicleOption(mat) ? Number(it.qty) : 1) * Number(mat.delivery_charge)
+    }, 0)
+    if (delivery > 0) setTransportLabour(String(delivery))
   }
 
   function pickCustomer(id: string) {
@@ -418,6 +427,15 @@ export default function NewQuotation() {
                   value={item.qty}
                   onChange={(e) => updateItem(item.key, { qty: Number(sanitizeDigits(e.target.value)) || 0 })}
                 />
+                {(() => {
+                  // A vehicle load says how much material it comes to (050).
+                  const mat = materials.find((x) => x.id === item.material_id)
+                  return mat && isVehicleOption(mat) && item.qty > 0 ? (
+                    <p className="mt-1 text-[11px] text-muted">
+                      {t(loadsKey(item.qty), { count: item.qty })} = {totalMaterialText(item.qty, mat.capacity!, mat.capacity_unit!)}
+                    </p>
+                  ) : null
+                })()}
               </div>
               <div>
                 <Label>{t('common.rate')} (₹)</Label>

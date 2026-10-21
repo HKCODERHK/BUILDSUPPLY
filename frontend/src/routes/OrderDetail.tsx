@@ -15,7 +15,7 @@ import { openWhatsAppShare } from '@/lib/whatsapp'
 import type { Customer, OrderRequest } from '@/lib/database.types'
 import { listCustomers } from '@/services/customers'
 import { acceptOrder, blockOrderPhone, getOrder, listBlockedPhones, unblockOrderPhone } from '@/services/orders'
-import { formatOrderDate, rejectReasonText } from '@/lib/orderFormat'
+import { formatOrderDate, orderItemQtyText, rejectReasonText } from '@/lib/orderFormat'
 
 /** One online order in full, with the customer match and Approve / Reject. */
 export default function OrderDetail() {
@@ -144,9 +144,7 @@ export default function OrderDetail() {
             {order.items.map((item, i) => (
               <div key={i} className="flex justify-between gap-3 py-2">
                 <span className="text-ink">{item.name}</span>
-                <span className="shrink-0 font-semibold text-ink">
-                  {Number(item.qty).toLocaleString('en-IN')} {item.unit}
-                </span>
+                <span className="shrink-0 text-right font-semibold text-ink">{orderItemQtyText(item, t)}</span>
               </div>
             ))}
           </div>

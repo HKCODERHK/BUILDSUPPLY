@@ -31,6 +31,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { usePin } from '@/context/PinContext'
 import { sanitizeDigits, sanitizeDecimal } from '@/lib/numberInput'
+import { isVehicleOption, loadsKey, totalMaterialText } from '@/lib/sellingType'
 import { formatRate, gstSlabs, rateForMaterial, taxLines } from '@/lib/gst'
 import { cn } from '@/lib/utils'
 import { TruckLoader } from '@/components/TruckLoader'
@@ -642,6 +643,15 @@ export default function NewInvoice() {
                     )}
                   </div>
                   <LastRateHint item={item} />
+                  {(() => {
+                    // A vehicle load says how much material it comes to (050).
+                    const mat = materials.find((x) => x.id === item.material_id)
+                    return mat && isVehicleOption(mat) && item.qty > 0 ? (
+                      <p className="text-[11px] text-muted">
+                        {t(loadsKey(item.qty), { count: item.qty })} = {totalMaterialText(item.qty, mat.capacity!, mat.capacity_unit!)}
+                      </p>
+                    ) : null
+                  })()}
                 </div>
                 <div className="mt-2 grid grid-cols-2 gap-2 sm:mt-0 sm:contents">
                   <div>

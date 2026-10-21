@@ -1,4 +1,5 @@
 import type { OrderRequest, RejectCode } from '@/lib/database.types'
+import { loadsKey, totalMaterialText } from '@/lib/sellingType'
 
 /** "11 Sept, 9:30 pm" — when an online order arrived. */
 export function formatOrderDate(iso: string) {
@@ -25,4 +26,21 @@ export function rejectReasonText(
 ): string | null {
   if (o.reject_code && o.reject_code !== 'other') return t(`rejectCode.${o.reject_code}`)
   return o.reject_reason?.trim() || null
+}
+
+/**
+ * How much of a material an order line asks for, never a bare number
+ * (migration 050): "2 loads = 1,600 CFT" for a vehicle load as ordered,
+ * "2 loads" for a line kept before 050 counted in loads, else "20 Bag".
+ */
+export function orderItemQtyText(
+  item: { qty: number; unit: string; capacity?: number; capacity_unit?: string },
+  t: (key: 'sell.oneLoad' | 'sell.loads', vars: { count: number }) => string,
+): string {
+  const qty = Number(item.qty)
+  if (item.capacity && item.capacity_unit) {
+    return `${t(loadsKey(qty), { count: qty })} = ${totalMaterialText(qty, item.capacity, item.capacity_unit)}`
+  }
+  if (/^loads?$/i.test(item.unit.trim())) return t(loadsKey(qty), { count: qty })
+  return `${qty.toLocaleString('en-IN')} ${item.unit}`.trim()
 }

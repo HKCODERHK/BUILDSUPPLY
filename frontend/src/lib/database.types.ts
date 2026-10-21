@@ -83,6 +83,11 @@ export interface OrderItem {
   name: string
   unit: string
   qty: number
+  /** A vehicle option's load as it was when ordered (migration 050); qty is then the number of loads. */
+  listing_name?: string
+  vehicle?: string
+  capacity?: number
+  capacity_unit?: string
 }
 
 /** A customer's order request (migration 026). Becomes an estimate only when the supplier approves it. */
@@ -239,6 +244,21 @@ export interface Material {
   gst_rate: number
   /** The shop's own photo of it (migration 042); absent before 042. */
   photo_url?: string | null
+  /** How it is sold (migration 050): by vehicle load or by its unit. Null before 050, and on materials never set — sold by their unit. */
+  sold_by?: 'vehicle' | 'unit' | null
+  /** A vehicle option's material ("River Sand"); the options of one material share it. */
+  listing_name?: string | null
+  vehicle?: string | null
+  /** What one load carries, in `capacity_unit` (never converted). */
+  capacity?: number | null
+  capacity_unit?: string | null
+  /** The least a customer may order, and the steps it comes in (not for vehicle options: whole loads). */
+  min_qty?: number | null
+  qty_step?: number | null
+  /** Per load for a vehicle option, per order otherwise. */
+  delivery_charge?: number | null
+  /** False: listed but not orderable. */
+  available?: boolean
   created_at: string
 }
 

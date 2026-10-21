@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Plus, Pencil } from 'lucide-react'
+import { Plus, Pencil, Package, Truck } from 'lucide-react'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Modal } from '@/components/ui/modal'
 import { ActionMenu } from '@/components/ui/action-menu'
 import { EmptyState } from '@/components/EmptyState'
-import { listMaterials, createMaterial, updateMaterial, adjustStock } from '@/services/materials'
+import { listMaterials, createMaterial, updateMaterial, adjustStock, sellingTypesAvailable } from '@/services/materials'
 import { searchCatalog, type VariantWithLookups } from '@/services/materialCatalog'
 import { summarizeAttributes } from '@/lib/catalogAttributes'
 import { rateListMaterials, rateListPdfFile } from '@/lib/rateListPdf'
@@ -24,6 +24,8 @@ import { sanitizeDecimal } from '@/lib/numberInput'
 import { useFlash, flashId } from '@/lib/useFlash'
 import { TruckLoader } from '@/components/TruckLoader'
 import { StockLogs } from '@/components/StockLogs'
+import { VehicleListingForm, type VehicleListingInitial } from '@/components/VehicleListingForm'
+import { SALE_UNITS, blankVehicleOption, byLoad, isVehicleOption, listingKey, loadsKey, vehicleOptionLabel, vehicleOptionName, type SoldBy } from '@/lib/sellingType'
 
 const emptyForm = {
   name: '',
@@ -33,12 +35,35 @@ const emptyForm = {
   unit_label: '',
   per_label: '',
   low_stock_threshold: '',
+  // How the customer may order it (migration 050); empty is no rule.
+  min_qty: '',
+  qty_step: '',
+  delivery_charge: '',
 }
 
 type View = 'mine' | 'catalog' | 'logs'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
+}
+
+/** A vehicle listing: every option of it, so the supplier edits them together. */
+function listingOf(m: Material, list: Material[]): VehicleListingInitial {
+  const siblings = list.filter((x) => isVehicleOption(x) && listingKey(x) === listingKey(m)).sort(byLoad)
+  return {
+    listing_name: m.listing_name ?? '',
+    category: m.category ?? '',
+    gst_rate: String(Number(m.gst_rate ?? 18)),
+    options: siblings.map((x) => ({
+      id: x.id,
+      vehicle: x.vehicle ?? '',
+      capacity: x.capacity != null ? String(Number(x.capacity)) : '',
+      capacity_unit: x.capacity_unit ?? 'CFT',
+      rate: String(x.rate),
+      delivery_charge: x.delivery_charge != null ? String(Number(x.delivery_charge)) : '',
+      available: x.available !== false,
+    })),
+  }
 }
 
 function isLowStock(m: Material) {
@@ -68,6 +93,11 @@ export default function Materials() {
   const [sharingRates, setSharingRates] = useState(false)
   const [rateListNote, setRateListNote] = useState<string | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
+  // 050's columns: until they exist the form is exactly what it always was.
+  const [sellingOn, setSellingOn] = useState(false)
+  // In the add / edit dialog: how it is sold — null while a new one is still being asked.
+  const [soldBy, setSoldBy] = useState<SoldBy | null>('unit')
+  const [listing, setListing] = useState<VehicleListingInitial | null>(null)
 
   async function refresh() {
     setMaterials(await listMaterials())
@@ -75,6 +105,7 @@ export default function Materials() {
 
   useEffect(() => {
     refresh().finally(() => setLoading(false))
+    void sellingTypesAvailable().then(setSellingOn)
   }, [])
 
   useEffect(() => {
@@ -156,10 +187,40 @@ export default function Materials() {
   function openCreate() {
     setEditing(null)
     setForm(emptyForm)
+    setListing(null)
+    // Asked first, once the database can hold the answer (see shownSoldBy).
+    setSoldBy(null)
     setModalOpen(true)
   }
 
-  function openEdit(m: Material) {
+  /**
+   * A material sold by its unit becoming a vehicle option: it keeps its id,
+   * price and stock, and its name is written from the parts once saved.
+   */
+  function chooseSoldBy(next: SoldBy) {
+    setSoldBy(next)
+    if (next === 'vehicle' && !listing) {
+      setListing({
+        listing_name: editing ? editing.name : form.name,
+        category: editing ? (editing.category ?? '') : form.category,
+        gst_rate: editing ? String(Number(editing.gst_rate ?? 18)) : form.gst_rate,
+        options: editing
+          ? [{ ...blankVehicleOption(), id: editing.id, rate: String(editing.rate), available: editing.available !== false }]
+          : [],
+      })
+    }
+  }
+
+  function openEdit(m: Material, list: Material[] = materials) {
+    if (isVehicleOption(m)) {
+      setEditing(m)
+      setListing(listingOf(m, list))
+      setSoldBy('vehicle')
+      setModalOpen(true)
+      return
+    }
+    setListing(null)
+    setSoldBy('unit')
     setEditing(m)
     setForm({
       name: m.name,
@@ -169,6 +230,9 @@ export default function Materials() {
       unit_label: m.unit_label ?? '',
       per_label: m.per_label ?? '',
       low_stock_threshold: m.low_stock_threshold != null ? String(m.low_stock_threshold) : '',
+      min_qty: m.min_qty != null ? String(Number(m.min_qty)) : '',
+      qty_step: m.qty_step != null ? String(Number(m.qty_step)) : '',
+      delivery_charge: m.delivery_charge != null ? String(Number(m.delivery_charge)) : '',
     })
     setModalOpen(true)
   }
@@ -186,6 +250,15 @@ export default function Materials() {
       unit_label: form.unit_label || null,
       per_label: form.per_label || null,
       low_stock_threshold: form.low_stock_threshold ? Number(form.low_stock_threshold) : null,
+      // Sold by its unit, said in so many words, with the shop's ordering rules.
+      ...(sellingOn
+        ? {
+            sold_by: 'unit' as const,
+            min_qty: Number(form.min_qty) > 0 ? Number(form.min_qty) : null,
+            qty_step: Number(form.qty_step) > 0 ? Number(form.qty_step) : null,
+            delivery_charge: form.delivery_charge.trim() ? Number(form.delivery_charge) : null,
+          }
+        : {}),
     }
     try {
       if (editing) {
@@ -207,19 +280,30 @@ export default function Materials() {
       const label = [item.material_types?.name, item.brands?.name, summarizeAttributes(item.attributes)]
         .filter(Boolean)
         .join(' — ')
+      // A catalog vehicle variant with a capacity ("River Sand · Truck · 400
+      // CFT") joins that material's listing as one more option.
+      const attrs = (item.attributes ?? {}) as Record<string, unknown>
+      const vehicle = typeof attrs.vehicle === 'string' ? attrs.vehicle : ''
+      const capacity = Number(attrs.capacity_cft)
+      const listingName = item.material_types?.name ?? ''
+      const asVehicle = sellingOn && !!vehicle && capacity > 0 && !!listingName
       const created = await createMaterial(supplier.id, {
         master_material_id: item.id,
-        name: label || item.name,
+        name: asVehicle ? vehicleOptionName(listingName, vehicle, capacity, 'CFT') : label || item.name,
         category: item.material_types?.material_categories?.name ?? null,
         rate: 0,
-        unit_label: item.unit,
+        unit_label: asVehicle ? 'Load' : item.unit,
         per_label: null,
         stock_qty: 0,
-        stock_unit: null,
+        stock_unit: asVehicle ? 'Load' : null,
+        ...(asVehicle
+          ? { sold_by: 'vehicle' as const, listing_name: listingName, vehicle, capacity, capacity_unit: 'CFT' }
+          : {}),
       })
-      await refresh()
+      const list = await listMaterials()
+      setMaterials(list)
       setView('mine')
-      openEdit(created)
+      openEdit(created, list)
     } finally {
       setAddingCatalogId(null)
     }
@@ -228,6 +312,24 @@ export default function Materials() {
   const filtered = materials.filter(
     (m) => m.name.toLowerCase().includes(query.toLowerCase()) || (m.category ?? '').toLowerCase().includes(query.toLowerCase()),
   )
+  // A new material is asked how it is sold — unless the database cannot
+  // hold the answer yet, when it is the form it always was. Worked out here,
+  // not when the dialog opens: ?new=1 opens it before that is known.
+  const shownSoldBy: SoldBy | null = soldBy ?? (sellingOn ? null : 'unit')
+
+  // A vehicle listing's options are one card; everything else its own.
+  const cards: Material[][] = []
+  const cardOf = new Map<string, Material[]>()
+  for (const m of filtered) {
+    const key = listingKey(m)
+    const card = cardOf.get(key)
+    if (card) card.push(m)
+    else {
+      const fresh = [m]
+      cardOf.set(key, fresh)
+      cards.push(fresh)
+    }
+  }
 
   const addedMasterIds = new Set(materials.map((m) => m.master_material_id).filter(Boolean))
   const selectedStockMaterial = materials.find((m) => m.id === addStockForm.materialId) ?? null
@@ -343,7 +445,54 @@ export default function Materials() {
             {filtered.length === 0 && <p className="text-sm text-muted">{t('empty.materialsNoMatch')}</p>}
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((m) => (
+              {cards.map((group) => {
+                const m = group[0]
+                if (isVehicleOption(m)) {
+                  group.sort(byLoad)
+                  return (
+                    <Card key={listingKey(m)}>
+                      <div className="mb-2 flex items-start justify-between">
+                        <div>
+                          <div className="font-semibold text-ink">{mt(m.listing_name)}</div>
+                          <div className="flex items-center gap-1 text-xs text-muted">
+                            <Truck size={12} /> {t('sell.byVehicle')} · {mt(m.category) || '—'}
+                          </div>
+                        </div>
+                        <button onClick={() => openEdit(m)} className="-m-3 p-3 text-muted hover:text-ink" aria-label="Edit">
+                          <Pencil size={15} />
+                        </button>
+                      </div>
+                      <div className="flex flex-col divide-y divide-border border-t border-border">
+                        {group.map((o) => (
+                          <div
+                            key={o.id}
+                            id={flashId(o.id)}
+                            className={`flex items-center justify-between gap-2 py-2 text-sm ${stocked?.id === o.id ? 'flash-success' : ''}`}
+                          >
+                            <div className="min-w-0">
+                              <div className="font-medium text-ink">{vehicleOptionLabel(o.vehicle!, o.capacity!, o.capacity_unit!)}</div>
+                              <div className="text-xs text-muted">
+                                {t('sell.perLoadPrice', { price: formatINR(o.rate) })}
+                                {o.available === false && ` · ${t('sell.notAvailable')}`}
+                              </div>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                              {stocked?.id === o.id && (
+                                <span className="flash-chip text-xs font-bold text-accent-text">{stocked.added}</span>
+                              )}
+                              <Badge tone={o.stock_qty <= (o.low_stock_threshold ?? 5) ? 'danger' : 'success'}>
+                                {!o.stock_unit || /^loads?$/i.test(o.stock_unit.trim())
+                                  ? t(loadsKey(Number(o.stock_qty)), { count: Number(o.stock_qty) })
+                                  : `${o.stock_qty} ${mt(o.stock_unit)}`}
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </Card>
+                  )
+                }
+                return (
                 <Card key={m.id} id={flashId(m.id)} className={stocked?.id === m.id ? 'flash-success' : undefined}>
                   <div className="mb-2 flex items-start justify-between">
                     <div>
@@ -371,7 +520,8 @@ export default function Materials() {
                     </div>
                   </div>
                 </Card>
-              ))}
+                )
+              })}
             </div>
           </>
         )
@@ -434,6 +584,48 @@ export default function Materials() {
 
       {modalOpen && (
         <Modal title={editing ? t('common.edit') : t('mat.addMaterial')} onClose={() => setModalOpen(false)}>
+          {sellingOn && !(editing && isVehicleOption(editing)) && (
+            <div className="mb-4">
+              <div className="mb-2 text-sm font-semibold text-ink">{t('sell.howSold')}</div>
+              <div className="grid grid-cols-1 gap-2" role="radiogroup" aria-label={t('sell.howSold')}>
+                {(['vehicle', 'unit'] as const).map((kind) => (
+                  <button
+                    key={kind}
+                    type="button"
+                    role="radio"
+                    aria-checked={shownSoldBy === kind}
+                    onClick={() => chooseSoldBy(kind)}
+                    className={`flex items-start gap-3 rounded-xl border p-3 text-left ${shownSoldBy === kind ? 'border-accent bg-accent-bg' : 'border-border'}`}
+                  >
+                    <span className="mt-0.5 shrink-0 text-accent">{kind === 'vehicle' ? <Truck size={18} /> : <Package size={18} />}</span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-ink">
+                        {t(kind === 'vehicle' ? 'sell.vehicleTitle' : 'sell.unitTitle')}
+                      </span>
+                      <span className="block text-xs text-muted">{t(kind === 'vehicle' ? 'sell.vehicleHintLong' : 'sell.unitHintLong')}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {shownSoldBy === 'vehicle' && listing && supplier ? (
+            <VehicleListingForm
+              supplierId={supplier.id}
+              initial={listing}
+              notice={
+                // A material with stock becoming a vehicle option: its stock
+                // is left exactly as counted, in its own unit, to check.
+                editing && !isVehicleOption(editing) && Number(editing.stock_qty) > 0
+                  ? t('sell.stockKept', { qty: `${Number(editing.stock_qty)} ${mt(editing.stock_unit)}`.trim() })
+                  : null
+              }
+              onSaved={() => {
+                setModalOpen(false)
+                void refresh()
+              }}
+            />
+          ) : shownSoldBy === 'unit' ? (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
               <Label htmlFor="name" required>{t('common.name')}</Label>
@@ -471,8 +663,63 @@ export default function Materials() {
             </div>
             <div>
               <Label htmlFor="unit_label">{t('mat.unitLabel')}</Label>
-              <Input id="unit_label" value={form.unit_label} onChange={(e) => setForm({ ...form, unit_label: e.target.value })} />
+              <Input
+                id="unit_label"
+                list="sale-units"
+                value={form.unit_label}
+                onChange={(e) => setForm({ ...form, unit_label: e.target.value })}
+              />
+              <datalist id="sale-units">
+                {SALE_UNITS.map((u) => (
+                  <option key={u} value={u} />
+                ))}
+              </datalist>
+              {form.unit_label.trim() && Number(form.rate) > 0 && (
+                <p className="mt-1.5 text-xs text-muted">
+                  {t('sell.pricePerUnit', {
+                    price: `₹${Number(form.rate).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`,
+                    unit: form.unit_label.trim(),
+                  })}
+                </p>
+              )}
             </div>
+            {sellingOn && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="min_qty">{t('sell.minOrder')}</Label>
+                  <Input
+                    id="min_qty"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder={t('sell.optional')}
+                    value={form.min_qty}
+                    onChange={(e) => setForm({ ...form, min_qty: sanitizeDecimal(e.target.value).slice(0, 8) })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="qty_step">{t('sell.qtyStep')}</Label>
+                  <Input
+                    id="qty_step"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder={t('sell.optional')}
+                    value={form.qty_step}
+                    onChange={(e) => setForm({ ...form, qty_step: sanitizeDecimal(e.target.value).slice(0, 8) })}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label htmlFor="delivery_charge">{t('sell.deliveryPerOrder')}</Label>
+                  <Input
+                    id="delivery_charge"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder={t('sell.optional')}
+                    value={form.delivery_charge}
+                    onChange={(e) => setForm({ ...form, delivery_charge: sanitizeDecimal(e.target.value).slice(0, 9) })}
+                  />
+                </div>
+              </div>
+            )}
             <div>
               <Label htmlFor="low_stock_threshold">{t('mat.lowStockBelow')}</Label>
               <Input
@@ -488,6 +735,7 @@ export default function Materials() {
               {saving ? t('common.saving') : t('common.save')}
             </Button>
           </form>
+          ) : null}
         </Modal>
       )}
 

@@ -31,10 +31,28 @@ import { SuccessHeader } from '@/components/SuccessTick'
 import { TruckLoader } from '@/components/TruckLoader'
 import { useLanguage } from '@/context/LanguageContext'
 import type { TranslationKey } from '@/lib/i18n'
-import { sanitizeDecimal } from '@/lib/numberInput'
+import { sanitizeDecimal, sanitizeDigits } from '@/lib/numberInput'
 import { newRequestId } from '@/services/db'
 import { platformDisclosure } from '@/services/compliance'
-import { getOrderPage, orderStatusUrl, placeOrder, type OrderPage as OrderPageData } from '@/services/orders'
+import {
+  getOrderPage,
+  orderStatusUrl,
+  placeOrder,
+  type OrderPage as OrderPageData,
+  type OrderPageMaterial,
+} from '@/services/orders'
+import {
+  byLoad,
+  capacityText,
+  firstQty,
+  isVehicleOption,
+  listingKey,
+  loadsKey,
+  quantityProblem,
+  stepOf,
+  totalMaterialText,
+  vehicleOptionLabel,
+} from '@/lib/sellingType'
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
 import { readKhata, rememberOrder, rememberShopName } from '@/lib/customerLinks'
 import { hasCustomerSession } from '@/lib/customerAuth'
@@ -114,6 +132,38 @@ function samePerson(who: { name?: string | null } | null, previous: LastOrder | 
   return who.name.trim().toLowerCase() === previous.name.trim().toLowerCase()
 }
 
+/**
+ * One chosen material in words: "River Sand / Truck • 800 CFT · 2 loads =
+ * 1,600 CFT", or "Cement / 20 Bag × ₹350". Never a bare number (050).
+ */
+function OrderLine({ line, showPrice }: { line: { material: OrderPageMaterial; qty: number }; showPrice: boolean }) {
+  const { t } = useLanguage()
+  const m = line.material
+  if (isVehicleOption(m)) {
+    return (
+      <span className="min-w-0">
+        <span className="block break-words text-sm font-medium text-ink">{m.listing_name}</span>
+        <span className="block text-xs text-muted">
+          {vehicleOptionLabel(m.vehicle!, m.capacity!, m.capacity_unit!)} · {t(loadsKey(line.qty), { count: line.qty })} ={' '}
+          <span className="font-semibold text-ink">{totalMaterialText(line.qty, m.capacity!, m.capacity_unit!)}</span>
+        </span>
+        {showPrice && m.price != null && (
+          <span className="block text-xs text-muted">{t('sell.loadsTimesPrice', { count: line.qty, price: formatINR(m.price) })}</span>
+        )}
+      </span>
+    )
+  }
+  return (
+    <span className="min-w-0">
+      <span className="block break-words text-sm font-medium text-ink">{m.name}</span>
+      <span className="block text-xs text-muted">
+        {line.qty} {m.unit}
+        {showPrice && m.price != null ? ` × ${formatINR(m.price)}` : ''}
+      </span>
+    </span>
+  )
+}
+
 /** A way on from a screen that would otherwise end the visit (#23). */
 const deadEndLink =
   'inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-accent'
@@ -130,6 +180,8 @@ function errorKey(message: string): TranslationKey {
   if (/too many orders/i.test(message)) return 'order.busy'
   if (/site or address is too long/i.test(message)) return 'order.siteTooLong'
   if (/note is too long/i.test(message)) return 'order.noteTooLong'
+  if (/not available right now/i.test(message)) return 'order.notAvailableNow'
+  if (/how the shop sells it/i.test(message)) return 'order.qtyRule'
   return 'error.generic'
 }
 
@@ -276,28 +328,83 @@ export default function OrderPage() {
   const showSearch = materials.length > 8
   const search = query.trim().toLowerCase()
   const visible = search
-    ? materials.filter((m) => m.name.toLowerCase().includes(search) || (m.category ?? '').toLowerCase().includes(search))
+    ? materials.filter(
+        (m) =>
+          m.name.toLowerCase().includes(search) ||
+          (m.listing_name ?? '').toLowerCase().includes(search) ||
+          (m.category ?? '').toLowerCase().includes(search),
+      )
     : materials
 
   const chosen = materials
     .map((m) => ({ material: m, qty: Number(qty[m.id]) || 0 }))
     .filter((c) => c.qty > 0)
-  const estimatedTotal =
+  // The material and its delivery, kept apart (migration 050): delivery is
+  // per load for a vehicle, once per material otherwise, and only where the
+  // shop shows prices.
+  const deliveryOf = (c: { material: OrderPageMaterial; qty: number }) =>
+    c.material.delivery_charge ? (isVehicleOption(c.material) ? c.qty : 1) * c.material.delivery_charge : 0
+  const materialTotal =
     open?.show_prices && chosen.length > 0 && chosen.every((c) => c.material.price != null)
       ? chosen.reduce((sum, c) => sum + c.qty * (c.material.price ?? 0), 0)
       : null
+  const deliveryTotal = chosen.reduce((sum, c) => sum + deliveryOf(c), 0)
+  const estimatedTotal = materialTotal != null ? materialTotal + deliveryTotal : null
+
+  // A vehicle material's options are one tile with a choice of vehicle;
+  // everything else is a tile of its own, in the order the shop lists them.
+  type Tile =
+    | { kind: 'one'; m: OrderPageMaterial }
+    | { kind: 'vehicle'; key: string; name: string; category: string | null; options: OrderPageMaterial[] }
+  const tiles: Tile[] = []
+  const vehicleTiles = new Map<string, Extract<Tile, { kind: 'vehicle' }>>()
+  for (const m of visible) {
+    if (!isVehicleOption(m)) {
+      tiles.push({ kind: 'one', m })
+      continue
+    }
+    const key = listingKey(m)
+    const tile = vehicleTiles.get(key)
+    if (tile) tile.options.push(m)
+    else {
+      const fresh = { kind: 'vehicle' as const, key, name: m.listing_name!, category: m.category, options: [m] }
+      vehicleTiles.set(key, fresh)
+      tiles.push(fresh)
+    }
+  }
+  for (const tile of vehicleTiles.values()) tile.options.sort(byLoad)
   // Only what the supplier still lists can be ordered again.
   // "Repeat" only for the same person (#9): the khata's customer, or else
   // whoever the welcome screen says this phone is.
-  const lastAvailable = last && samePerson(khata?.name ? khata : profile ? { name: profile.name } : null, last) ? last.items.filter((it) => materials.some((m) => m.id === it.material_id)) : []
+  const lastAvailable = last && samePerson(khata?.name ? khata : profile ? { name: profile.name } : null, last) ? last.items.filter((it) => materials.some((m) => m.id === it.material_id && m.available !== false)) : []
 
   // The quantity box being typed in (#3).
   const [editingQty, setEditingQty] = useState<string | null>(null)
 
-  function step(id: string, delta: number) {
+  /**
+   * One tap of − or +: whole loads for a vehicle, otherwise the shop's own
+   * steps, starting at its minimum and dropping out below it (migration 050).
+   */
+  function step(m: OrderPageMaterial, dir: 1 | -1) {
     setQty((prev) => {
-      const next = Math.min(100000, Math.max(0, (Number(prev[id]) || 0) + delta))
-      return { ...prev, [id]: next ? String(next) : '' }
+      const current = Number(prev[m.id]) || 0
+      let next = current === 0 && dir > 0 ? firstQty(m) : Math.round((current + dir * stepOf(m)) * 100) / 100
+      const least = isVehicleOption(m) ? 1 : Number(m.min_qty) || 0
+      if (next < least) next = 0
+      next = Math.min(100000, Math.max(0, next))
+      return { ...prev, [m.id]: next ? String(next) : '' }
+    })
+    setError(null)
+  }
+
+  /** Choosing another vehicle carries the loads across to it. */
+  function pickVehicle(options: OrderPageMaterial[], chosenOption: OrderPageMaterial) {
+    setQty((prev) => {
+      const loads = options.reduce((n, o) => Math.max(n, Number(prev[o.id]) || 0), 0)
+      const next = { ...prev }
+      for (const o of options) next[o.id] = ''
+      next[chosenOption.id] = String(loads || 1)
+      return next
     })
     setError(null)
   }
@@ -318,6 +425,8 @@ export default function OrderPage() {
     e.preventDefault()
     if (!open || sendingRef.current) return
     if (chosen.length === 0) return setError(t('order.pickSomething'))
+    // The same rule place_order checks: whole loads, the minimum, the steps.
+    if (chosen.some((c) => quantityProblem(c.material, c.qty))) return setError(t('order.qtyRule'))
     if (form.name.trim().length < 2) {
       setEditingDetails(true)
       return setError(t('order.nameInvalid'))
@@ -469,6 +578,15 @@ export default function OrderPage() {
           <SoftCard className="flex flex-col gap-4 p-5">
             <SuccessHeader title={t('order.sentTitle')} />
             <p className="text-sm text-ink">{t('order.sentBody', { business: page.business_name })}</p>
+            {chosen.length > 0 && (
+              <ul className="flex flex-col divide-y divide-border rounded-lg bg-surface px-3">
+                {chosen.map((c) => (
+                  <li key={c.material.id} className="py-2">
+                    <OrderLine line={c} showPrice={false} />
+                  </li>
+                ))}
+              </ul>
+            )}
             {sentToken && (
               <div className="rounded-lg bg-surface p-3">
                 <p className="mb-2 text-xs text-muted">{t('order.keepLink')}</p>
@@ -668,7 +786,139 @@ export default function OrderPage() {
             and Add — which becomes − qty + once it is in the order. The
             quantity box still takes typing, for 250 bags or 1.5 brass. */}
         <div className="grid grid-cols-2 gap-3">
-          {visible.map((m) => {
+          {tiles.map((tile) => {
+            if (tile.kind === 'vehicle') {
+              const picked = tile.options.find((o) => Number(qty[o.id]) > 0 || editingQty === o.id) ?? null
+              const loads = picked ? Number(qty[picked.id]) || 0 : 0
+              const photo = tile.options.map((o) => shop?.photos[o.id]).find(Boolean)
+              return (
+                <div
+                  key={tile.key}
+                  className={cn(
+                    'col-span-2 flex min-w-0 flex-col gap-3 rounded-2xl border bg-card p-3 shadow-[0_2px_10px_rgba(10,36,39,0.04)]',
+                    picked ? 'border-accent' : 'border-border',
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-20 shrink-0">
+                      <MaterialPicture name={tile.name} category={tile.category} photo={photo} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="break-words text-sm font-semibold leading-snug text-ink">{tile.name}</div>
+                      <div className="mt-0.5 flex items-center gap-1 text-xs text-muted">
+                        <Truck size={12} /> {t('sell.soldByLoad')}
+                      </div>
+                    </div>
+                  </div>
+                  <div role="radiogroup" aria-label={t('sell.chooseVehicle', { name: tile.name })} className="flex flex-col gap-2">
+                    <div className="text-xs font-semibold text-ink">{t('sell.chooseVehicleShort')}</div>
+                    {tile.options.map((o) => {
+                      const on = picked?.id === o.id
+                      const off = o.available === false
+                      return (
+                        <button
+                          key={o.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={on}
+                          disabled={off}
+                          onClick={() => pickVehicle(tile.options, o)}
+                          className={cn(
+                            'flex min-h-11 items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left',
+                            on ? 'border-accent bg-accent-bg' : 'border-border',
+                            off && 'opacity-60',
+                          )}
+                        >
+                          <span className="min-w-0">
+                            <span className="block text-sm font-semibold text-ink">{o.vehicle}</span>
+                            <span className="block text-xs text-muted">
+                              {t('sell.capacityPerLoad', { capacity: capacityText(o.capacity!, o.capacity_unit!) })}
+                            </span>
+                          </span>
+                          <span className="shrink-0 text-right text-xs">
+                            {off ? (
+                              <span className="font-semibold text-muted">{t('sell.notAvailable')}</span>
+                            ) : page.show_prices && o.price != null ? (
+                              <span className="font-semibold text-ink">{t('sell.perLoadPrice', { price: formatINR(o.price) })}</span>
+                            ) : page.show_prices ? (
+                              <span className="text-muted">{t('order.priceOnRequest')}</span>
+                            ) : null}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {picked && (
+                    <div className="flex flex-col gap-2 rounded-xl bg-surface p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-xs font-semibold text-ink">{t('sell.numberOfLoads')}</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            aria-label={t('order.less', { name: picked.name })}
+                            onClick={() => step(picked, -1)}
+                            className="flex h-11 w-10 shrink-0 items-center justify-center rounded-xl bg-card text-ink"
+                          >
+                            <Minus size={15} />
+                          </button>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            aria-label={t('sell.loadsOf', { name: picked.name })}
+                            value={qty[picked.id] ?? ''}
+                            onFocus={() => setEditingQty(picked.id)}
+                            onBlur={() => setEditingQty((id) => (id === picked.id ? null : id))}
+                            onChange={(e) => {
+                              // Whole loads only, and no more than an order carries.
+                              const next = sanitizeDigits(e.target.value).slice(0, 4)
+                              setQty((prev) => ({ ...prev, [picked.id]: next }))
+                              setError(null)
+                            }}
+                            className="h-11 w-14 rounded-xl border border-border bg-card text-center text-sm font-semibold text-ink outline-none focus:border-accent"
+                          />
+                          <button
+                            type="button"
+                            aria-label={t('order.more', { name: picked.name })}
+                            onClick={() => step(picked, 1)}
+                            className="flex h-11 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-white"
+                          >
+                            <Plus size={15} />
+                          </button>
+                        </div>
+                      </div>
+                      {loads > 0 && (
+                        <dl className="flex flex-col gap-1 border-t border-border pt-2 text-xs">
+                          <div className="flex justify-between gap-3">
+                            <dt className="text-muted">{t('sell.selectedVehicle')}</dt>
+                            <dd className="text-right font-medium text-ink">{vehicleOptionLabel(picked.vehicle!, picked.capacity!, picked.capacity_unit!)}</dd>
+                          </div>
+                          <div className="flex justify-between gap-3">
+                            <dt className="text-muted">{t('sell.totalMaterial')}</dt>
+                            <dd className="text-right font-semibold text-ink">
+                              {t(loadsKey(loads), { count: loads })} × {capacityText(picked.capacity!, picked.capacity_unit!)} ={' '}
+                              {totalMaterialText(loads, picked.capacity!, picked.capacity_unit!)}
+                            </dd>
+                          </div>
+                          {page.show_prices && picked.price != null && (
+                            <div className="flex justify-between gap-3">
+                              <dt className="text-muted">{t('sell.materialSubtotal')}</dt>
+                              <dd className="text-right font-semibold text-ink">{formatINR(loads * picked.price)}</dd>
+                            </div>
+                          )}
+                          {picked.delivery_charge ? (
+                            <div className="flex justify-between gap-3">
+                              <dt className="text-muted">{t('sell.delivery')}</dt>
+                              <dd className="text-right text-ink">{formatINR(loads * picked.delivery_charge)}</dd>
+                            </div>
+                          ) : null}
+                        </dl>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            }
+            const m = tile.m
             const value = qty[m.id] ?? ''
             // While its box is being typed in, the material stays in the
             // stepper even when the box is momentarily empty — deleting the "1"
@@ -694,13 +944,31 @@ export default function OrderPage() {
                         : t('order.priceOnRequest')
                       : m.unit}
                   </div>
+                  {/* The shop's ordering rule, before it can be broken (050). */}
+                  {(m.min_qty || m.qty_step) && (
+                    <div className="text-[11px] text-muted">
+                      {[
+                        m.min_qty ? t('sell.minShort', { qty: `${Number(m.min_qty)} ${m.unit}`.trim() }) : null,
+                        m.qty_step && Number(m.qty_step) !== 1 ? t('sell.stepShort', { qty: `${Number(m.qty_step)} ${m.unit}`.trim() }) : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </div>
+                  )}
+                  {Number(value) > 0 && quantityProblem(m, Number(value)) && (
+                    <div className="text-[11px] font-medium text-red-600">{t('order.qtyRule')}</div>
+                  )}
                 </div>
-                {inOrder ? (
+                {m.available === false ? (
+                  <div className="flex h-11 items-center justify-center rounded-xl bg-surface text-xs font-semibold text-muted">
+                    {t('sell.notAvailable')}
+                  </div>
+                ) : inOrder ? (
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
                       aria-label={t('order.less', { name: m.name })}
-                      onClick={() => step(m.id, -1)}
+                      onClick={() => step(m, -1)}
                       className="flex h-11 w-9 shrink-0 items-center justify-center rounded-xl bg-surface text-ink"
                     >
                       <Minus size={15} />
@@ -724,7 +992,7 @@ export default function OrderPage() {
                     <button
                       type="button"
                       aria-label={t('order.more', { name: m.name })}
-                      onClick={() => step(m.id, 1)}
+                      onClick={() => step(m, 1)}
                       className="flex h-11 w-9 shrink-0 items-center justify-center rounded-xl bg-accent text-white"
                     >
                       <Plus size={15} />
@@ -734,7 +1002,7 @@ export default function OrderPage() {
                   <button
                     type="button"
                     aria-label={t('order.more', { name: m.name })}
-                    onClick={() => step(m.id, 1)}
+                    onClick={() => step(m, 1)}
                     className="flex h-11 items-center justify-center gap-1.5 rounded-xl bg-accent-bg text-sm font-semibold text-accent-text"
                   >
                     <Plus size={15} /> {t('order.add')}
@@ -754,19 +1022,26 @@ export default function OrderPage() {
                 <ul className="flex flex-col divide-y divide-border">
                   {chosen.map((c) => (
                     <li key={c.material.id} className="flex items-start justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
-                      <span className="min-w-0">
-                        <span className="block break-words text-sm font-medium text-ink">{c.material.name}</span>
-                        <span className="block text-xs text-muted">
-                          {c.qty} {c.material.unit}
-                          {page.show_prices && c.material.price != null ? ` × ${formatINR(c.material.price)}` : ''}
-                        </span>
-                      </span>
+                      <OrderLine line={c} showPrice={page.show_prices} />
                       {page.show_prices && c.material.price != null && (
                         <span className="shrink-0 text-sm font-semibold text-ink">{formatINR(c.qty * c.material.price)}</span>
                       )}
                     </li>
                   ))}
                 </ul>
+                {/* Material and delivery apart, so neither hides in the other. */}
+                {materialTotal != null && deliveryTotal > 0 && (
+                  <dl className="mt-3 flex flex-col gap-1 border-t border-border pt-3 text-sm">
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-muted">{t('sell.materialSubtotal')}</dt>
+                      <dd className="font-semibold text-ink">{formatINR(materialTotal)}</dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-muted">{t('sell.delivery')}</dt>
+                      <dd className="font-semibold text-ink">{formatINR(deliveryTotal)}</dd>
+                    </div>
+                  </dl>
+                )}
                 {estimatedTotal != null && (
                   <div className="mt-4 rounded-2xl bg-accent-bg px-4 py-3">
                     <div className="flex items-center justify-between gap-3">
