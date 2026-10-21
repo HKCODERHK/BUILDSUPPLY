@@ -218,7 +218,7 @@ function MinimalTop({
     </span>
   )
   return (
-    <header className="px-4 pt-[calc(0.75rem_+_var(--safe-top))]">
+    <header data-customer-top className="sticky top-0 z-30 bg-surface px-4 pb-2 pt-[calc(0.75rem_+_var(--safe-top))]">
       <div className="mx-auto flex max-w-lg items-center sm:max-w-2xl">
         {/* Read aloud, since the name is no longer written at the top. */}
         {shop && <h1 className="sr-only">{shop.business_name}</h1>}

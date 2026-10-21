@@ -37,6 +37,7 @@ import { showDate } from '@/lib/displayDate'
 import type { TranslationKey } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { BuildSupplyFooter } from '@/components/BuildSupplyFooter'
+import { CollapsingHero, CoverSheet, ShopQrCard } from '@/components/ScrollEffects'
 import { buildCustomerLedger } from '@/lib/customerLedger'
 import { downloadCustomerLedgerPdf, type LedgerEntry } from '@/lib/customerLedgerPdf'
 import { downloadInvoicePdf } from '@/lib/invoicePdf'
@@ -987,6 +988,7 @@ export default function KhataPage({
                 own colour — the order page's top band (2026-10-21). The round
                 button is the shop's phone. One figure, not three (Phase 23):
                 the bills' dues less any advance, the parts spelled out. */}
+            <CollapsingHero under="[data-customer-top]" inGap>
             <section className="rounded-3xl bg-accent p-4 text-white shadow-[0_8px_24px_rgba(10,36,39,0.16)]">
               <div className="flex items-center gap-3">
                 {/* The same seed on the khata link, /me and the order page (#37). */}
@@ -1042,6 +1044,8 @@ export default function KhataPage({
                 )}
               </div>
             </section>
+            </CollapsingHero>
+            <CoverSheet className="-mx-4 px-4">
 
             {live && (
               <SoftCard className="overflow-hidden">
@@ -1257,6 +1261,17 @@ export default function KhataPage({
               </>
             )}
             {accountFooter}
+            {/* The shop's own QR — scanned, it opens the shop's order page. */}
+            {found.order_link && (
+              <ShopQrCard
+                url={`${window.location.origin}/order/${found.order_link}`}
+                business={found.supplier.business_name}
+                logoUrl={found.supplier.logo_url ?? shop?.logo_url ?? null}
+                title={t('qr.shopTitle')}
+                caption={t('qr.scanToOrder', { shop: found.supplier.business_name })}
+              />
+            )}
+            </CoverSheet>
           </>
         )}
         <BuildSupplyFooter />

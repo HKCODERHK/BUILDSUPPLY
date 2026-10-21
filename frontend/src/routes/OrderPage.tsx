@@ -36,6 +36,7 @@ import { newRequestId } from '@/services/db'
 import { platformDisclosure } from '@/services/compliance'
 import {
   getOrderPage,
+  orderPageUrl,
   orderStatusUrl,
   placeOrder,
   type OrderPage as OrderPageData,
@@ -65,6 +66,7 @@ import { myShops, rememberCurrentShop, type MyShop } from '@/services/customerAc
 import { getShopProfile, type ShopProfile } from '@/services/shopPage'
 import { ShopAbout, ShopDelivery, ShopHero, ShopOffers } from '@/components/ShopProfileView'
 import { MaterialPicture } from '@/components/MaterialPicture'
+import { CollapsingHero, CoverSheet, ShopQrCard } from '@/components/ScrollEffects'
 import { CustomerWelcome } from '@/components/CustomerWelcome'
 import { BuildSupplyFooter } from '@/components/BuildSupplyFooter'
 import { clearProfile, profileKept, readProfile, siteWithCity, type CustomerProfile } from '@/lib/customerProfile'
@@ -711,6 +713,7 @@ export default function OrderPage() {
           <>
         {/* The top band: who they are, what this page is for, and the search —
             the shop's own colour, white text (each brand colour is ≥5:1). */}
+        <CollapsingHero under="[data-customer-top]" inGap>
         <section className="rounded-3xl bg-accent p-4 text-white shadow-[0_8px_24px_rgba(10,36,39,0.16)]">
           {knownName && (
             <div className="mb-3 flex items-center gap-3">
@@ -747,6 +750,8 @@ export default function OrderPage() {
             </div>
           )}
         </section>
+        </CollapsingHero>
+        <CoverSheet className="-mx-4 px-4">
 
         {/* The shop: its own page (042) when it has one, the plain card otherwise. */}
         {shop ? (
@@ -1098,6 +1103,15 @@ export default function OrderPage() {
         </div>
 
           {shop && <ShopAbout shop={shop} showContact={false} />}
+          {/* The shop's own QR — scanned, it opens this order page. */}
+          <ShopQrCard
+            url={orderPageUrl(link)}
+            business={page.business_name}
+            logoUrl={open?.logo_url ?? shop?.logo_url ?? null}
+            title={t('qr.shopTitle')}
+            caption={t('qr.scanToOrder', { shop: page.business_name })}
+          />
+          </CoverSheet>
           </>
         )}
 

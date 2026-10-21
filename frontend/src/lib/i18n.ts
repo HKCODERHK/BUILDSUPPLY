@@ -2630,6 +2630,13 @@ const STRINGS = {
   // The Order | Khata switch at the top of both customer home screens.
   'switch.order': { en: 'Order', hi: 'ऑर्डर', mr: 'ऑर्डर' },
   'switch.khata': { en: 'Khata', hi: 'खाता', mr: 'खाते' },
+  // The shop QR at the foot of the home screens (2026-10-21).
+  'qr.shopTitle': { en: 'Shop QR', hi: 'दुकान QR', mr: 'दुकान QR' },
+  'qr.myTitle': { en: 'My QR', hi: 'मेरा QR', mr: 'माझा QR' },
+  'qr.scanToOrder': { en: 'Scan to order from {shop}', hi: '{shop} से ऑर्डर करने के लिए स्कैन करें', mr: '{shop} कडून ऑर्डर करण्यासाठी स्कॅन करा' },
+  'qr.myCaption': { en: 'Customers scan this to order from you', hi: 'ग्राहक इसे स्कैन करके आपसे ऑर्डर करें', mr: 'ग्राहक हा स्कॅन करून तुमच्याकडे ऑर्डर करतात' },
+  'qr.copy': { en: 'Copy link', hi: 'लिंक कॉपी', mr: 'लिंक कॉपी' },
+  'qr.share': { en: 'Share QR', hi: 'QR भेजें', mr: 'QR पाठवा' },
 } satisfies Record<string, Entry>
 
 export type TranslationKey = keyof typeof STRINGS
