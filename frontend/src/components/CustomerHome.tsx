@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode, Ref } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, MapPin, Store } from 'lucide-react'
+import { ArrowLeft, MapPin, ShoppingCart, Store } from 'lucide-react'
 import { Tipper } from '@/components/art'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -277,6 +277,75 @@ export function CustomerTabBar({ tabs }: { tabs: TabItem[] }) {
             <span className="line-clamp-2 w-full break-words text-center leading-tight">{tab.label}</span>
           </button>
         ))}
+      </div>
+    </nav>
+  )
+}
+
+export interface AppBarItem {
+  key: string
+  icon: Icon
+  label: string
+  active?: boolean
+  onClick: () => void
+}
+
+/**
+ * The order page's own bar, from the user's grocery-app reference
+ * (2026-10-21): tabs either side of a raised round cart button carrying how
+ * many materials are in the order. Rounded, frosted and clear of the edges,
+ * like the other customer tab bar. The page keeps `pb-44` free for it.
+ */
+export function ShopAppBar({
+  left,
+  right,
+  cart,
+}: {
+  left: AppBarItem[]
+  right: AppBarItem[]
+  cart: { label: string; count: number; active: boolean; onClick: () => void; icon?: Icon }
+}) {
+  const CartIcon = cart.icon ?? ShoppingCart
+  const tab = (item: AppBarItem) => (
+    <button
+      key={item.key}
+      type="button"
+      onClick={item.onClick}
+      aria-current={item.active ? 'page' : undefined}
+      className={cn(
+        'flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-2xl py-1.5 text-[11px] font-medium transition-colors',
+        item.active ? 'text-accent-text' : 'text-muted hover:text-ink',
+      )}
+    >
+      <item.icon size={21} strokeWidth={item.active ? 2.3 : 1.8} />
+      <span className="line-clamp-1 w-full break-all text-center leading-tight">{item.label}</span>
+    </button>
+  )
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-30 px-3 pb-[calc(0.5rem_+_var(--safe-bottom))] pl-[calc(0.75rem_+_var(--safe-left))] pr-[calc(0.75rem_+_var(--safe-right))]">
+      <div className="relative mx-auto flex max-w-md items-end rounded-3xl border border-border bg-card/90 px-1.5 py-1.5 shadow-[0_6px_24px_rgba(10,36,39,0.14)] backdrop-blur-lg backdrop-saturate-150">
+        <div className="flex flex-1">{left.map(tab)}</div>
+        {/* The cart: a raised round button in the middle, as in the reference. */}
+        <div className="flex w-20 shrink-0 justify-center">
+          <button
+            type="button"
+            onClick={cart.onClick}
+            aria-label={cart.label}
+            aria-current={cart.active ? 'page' : undefined}
+            className={cn(
+              'relative -mt-8 flex h-16 w-16 items-center justify-center rounded-full border-4 border-surface text-white shadow-[0_8px_20px_rgba(10,36,39,0.25)] transition-transform active:scale-95',
+              'bg-accent',
+            )}
+          >
+            <CartIcon size={24} strokeWidth={2} />
+            {cart.count > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-surface bg-amber-500 px-1 text-[11px] font-bold text-white">
+                {cart.count > 99 ? '99+' : cart.count}
+              </span>
+            )}
+          </button>
+        </div>
+        <div className="flex flex-1">{right.map(tab)}</div>
       </div>
     </nav>
   )

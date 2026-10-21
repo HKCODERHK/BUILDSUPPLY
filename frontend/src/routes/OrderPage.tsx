@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   BookOpen,
   Check,
@@ -11,7 +11,8 @@ import {
   Package,
   Phone,
   Plus,
-  Receipt,
+  Trash2,
+  UserRound,
   RotateCcw,
   Search,
   Send,
@@ -54,9 +55,11 @@ import {
   vehicleOptionLabel,
 } from '@/lib/sellingType'
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
-import { readKhata, rememberOrder, rememberShopName } from '@/lib/customerLinks'
+import { forgetShopOnPhone, readKhata, rememberOrder, rememberShopName } from '@/lib/customerLinks'
 import { hasCustomerSession } from '@/lib/customerAuth'
-import { CustomerHeader, CustomerTabBar, QuickActions, SectionHeading, SoftCard, type QuickAction } from '@/components/CustomerHome'
+import { CustomerHeader, QuickActions, SectionHeading, ShopAppBar, SoftCard, type QuickAction } from '@/components/CustomerHome'
+import { ShopOrdersView } from '@/components/ShopOrdersView'
+import { CustomerMeView } from '@/components/CustomerMeView'
 import { greetingKey } from '@/lib/customerHome'
 import { cn } from '@/lib/utils'
 import { myShops, rememberCurrentShop, type MyShop } from '@/services/customerAccount'
@@ -65,8 +68,8 @@ import { ShopAbout, ShopDelivery, ShopHero, ShopOffers } from '@/components/Shop
 import { MaterialPicture } from '@/components/MaterialPicture'
 import { CustomerWelcome } from '@/components/CustomerWelcome'
 import { BuildSupplyFooter } from '@/components/BuildSupplyFooter'
-import { profileKept, readProfile, siteWithCity, type CustomerProfile } from '@/lib/customerProfile'
-import { ImagePreview } from '@/components/ui/modal'
+import { clearProfile, profileKept, readProfile, siteWithCity, type CustomerProfile } from '@/lib/customerProfile'
+import { ImagePreview, Modal } from '@/components/ui/modal'
 import { brandAttr, shopWhatsapp } from '@/lib/shopPage'
 
 function formatINR(n: number) {
@@ -244,6 +247,18 @@ export default function OrderPage() {
   // Cash unless the customer says otherwise — which is nearly every order.
   const [payment, setPayment] = useState<'cash' | 'online'>('cash')
   const summaryRef = useRef<HTMLDivElement>(null)
+  // The page as an app (2026-10-21): Home, Cart, Orders and Profile, kept in
+  // ?v= so the phone's back button steps back through them, like the khata
+  // link's ?s=. An unknown value is Home.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const view = (['cart', 'orders', 'profile'] as const).find((v) => v === searchParams.get('v')) ?? 'home'
+  function go(next: 'home' | 'cart' | 'orders' | 'profile') {
+    if (next === view) return
+    setSearchParams(next === 'home' ? {} : { v: next })
+    window.scrollTo({ top: 0 })
+  }
+  // The material whose detail sheet is open.
+  const [detail, setDetail] = useState<OrderPageMaterial | null>(null)
   const [logoPreview, setLogoPreview] = useState(false)
   const [sharingShop, setSharingShop] = useState(false)
   // Who provides what (045): shown under Place order, as the admin wrote it.
@@ -487,6 +502,8 @@ export default function OrderPage() {
     requestId.current = newRequestId()
     setSentToken(undefined)
     setCopied(false)
+    // Back to the shop, not an empty cart.
+    setSearchParams({}, { replace: true })
   }
 
   async function copyStatusLink(token: string) {
@@ -669,27 +686,14 @@ export default function OrderPage() {
     rememberCurrentShop(account.connection)
     navigate(`/me${search}`)
   }
-  const tabs = account
-    ? [
-        { key: 'home', icon: House, label: t('khata.tabHome'), active: false, onClick: () => openAccount('') },
-        { key: 'materials', icon: ShoppingBag, label: t('khata.orderMaterials'), active: true, onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
-        { key: 'bills', icon: Receipt, label: t('khata.tabBills'), active: false, onClick: () => openAccount('?s=bills') },
-        { key: 'orders', icon: Package, label: t('khata.tabOrders'), active: false, onClick: () => openAccount('?s=orders') },
-      ]
-    : khata
-    ? [
-        { key: 'home', icon: House, label: t('khata.tabHome'), active: false, onClick: () => navigate(`/khata/${khata.code}`) },
-        { key: 'materials', icon: ShoppingBag, label: t('khata.orderMaterials'), active: true, onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
-        { key: 'bills', icon: Receipt, label: t('khata.tabBills'), active: false, onClick: () => navigate(`/khata/${khata.code}?s=bills`) },
-        { key: 'orders', icon: Package, label: t('khata.tabOrders'), active: false, onClick: () => navigate(`/khata/${khata.code}?s=orders`) },
-      ]
-    : null
   const chosenCount = chosen.length
 
   return (
     <div className="flex min-h-screen flex-col bg-surface" data-brand={brandAttr(shop?.brand_color)}>
       {header}
-      <main className={cn('mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4 sm:max-w-2xl', tabs ? 'pb-44' : 'pb-28')}>
+      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4 pb-48 sm:max-w-2xl">
+        {view === 'home' && (
+          <>
         {/* The top band: who they are, what this page is for, and the search —
             the shop's own colour, white text (each brand colour is ≥5:1). */}
         <section className="rounded-3xl bg-accent p-4 text-white shadow-[0_8px_24px_rgba(10,36,39,0.16)]">
@@ -990,10 +994,13 @@ export default function OrderPage() {
                   inOrder ? 'border-accent ring-1 ring-accent' : 'border-border',
                 )}
               >
-                {/* The shop's own photo, or a calm panel with the material's icon. */}
-                <MaterialPicture name={m.name} category={m.category} photo={shop?.photos[m.id]} />
+                {/* The shop's own photo, or a calm panel with the material's
+                    icon — tapping it, or the name, opens the material's sheet. */}
+                <button type="button" onClick={() => setDetail(m)} aria-label={t('ccart.details', { name: m.name })} className="block w-full">
+                  <MaterialPicture name={m.name} category={m.category} photo={shop?.photos[m.id]} />
+                </button>
                 <div className="flex min-w-0 flex-1 flex-col gap-1 p-3">
-                  <div className="line-clamp-2 break-words text-sm font-semibold leading-snug text-ink">{m.name}</div>
+                  <button type="button" onClick={() => setDetail(m)} className="line-clamp-2 break-words text-left text-sm font-semibold leading-snug text-ink">{m.name}</button>
                   <div className="flex flex-wrap items-baseline gap-x-1">
                     {page.show_prices && m.price != null ? (
                       <>
@@ -1075,19 +1082,114 @@ export default function OrderPage() {
           })}
         </div>
 
-        {/* What has been added, in words and in rupees, then who it is for. */}
-        <div ref={summaryRef} className="flex scroll-mt-20 flex-col gap-4">
+          {shop && <ShopAbout shop={shop} showContact={false} />}
+          </>
+        )}
+
+        {view === 'orders' && <ShopOrdersView link={link} onBrowse={() => go('home')} />}
+
+        {view === 'profile' && (
+          <CustomerMeView
+            shopName={page.business_name}
+            name={knownName}
+            phone={form.phone || null}
+            site={form.site.trim() || null}
+            onChangeDetails={canChange ? () => setChanging(true) : undefined}
+            khata={account ? { onClick: () => openAccount('') } : khata ? { to: `/khata/${khata.code}` } : null}
+            shopPhone={page.phone}
+            onShare={() => setSharingShop(true)}
+            onForget={
+              account
+                ? undefined
+                : () => {
+                    // This shop's links, orders and the details typed here,
+                    // gone from this phone. Nothing on the server changes.
+                    forgetShopOnPhone(link)
+                    clearProfile()
+                    setProfile(null)
+                    setLast(null)
+                    setQty({})
+                    setForm((f) => ({ ...f, name: '', phone: '', site: '', note: '', date: '' }))
+                    setSearchParams({}, { replace: true })
+                    window.location.reload()
+                  }
+            }
+          />
+        )}
+
+        {/* The cart: what has been added, in words and in rupees, then who it is for. */}
+        {view === 'cart' && (
+        <div ref={summaryRef} className="flex flex-col gap-4">
+          <div className="flex items-baseline justify-between gap-3 px-1">
+            <h1 className="text-xl font-bold text-ink">{t('ccart.title')}</h1>
+            {chosen.length > 0 && <span className="text-xs text-muted">{t('order.itemCount', { count: chosen.length })}</span>}
+          </div>
+          {chosen.length === 0 && (
+            <SoftCard className="flex flex-col items-center gap-3 p-6 text-center">
+              <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-bg text-accent-text">
+                <ShoppingBag size={26} />
+              </span>
+              <div className="text-base font-semibold text-ink">{t('ccart.emptyTitle')}</div>
+              <p className="text-sm text-muted">{t('ccart.emptyBody')}</p>
+              <button
+                type="button"
+                onClick={() => go('home')}
+                className="mt-1 inline-flex h-11 items-center gap-2 rounded-xl bg-accent px-5 text-sm font-semibold text-white"
+              >
+                {t('corder.browse')}
+              </button>
+            </SoftCard>
+          )}
           {chosen.length > 0 && (
             <>
               <SectionHeading title={t('order.summaryTitle')} />
               <SoftCard className="p-4">
                 <ul className="flex flex-col divide-y divide-border">
                   {chosen.map((c) => (
-                    <li key={c.material.id} className="flex items-start justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
-                      <OrderLine line={c} showPrice={page.show_prices} />
-                      {page.show_prices && c.material.price != null && (
-                        <span className="shrink-0 text-sm font-semibold text-ink">{formatINR(c.qty * c.material.price)}</span>
-                      )}
+                    <li key={c.material.id} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
+                      <div className="flex items-start justify-between gap-3">
+                        <OrderLine line={c} showPrice={page.show_prices} />
+                        {page.show_prices && c.material.price != null && (
+                          <span className="shrink-0 text-sm font-semibold text-ink">{formatINR(c.qty * c.material.price)}</span>
+                        )}
+                      </div>
+                      {/* Change it here: the same steps as on the card. */}
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 rounded-xl bg-surface p-1">
+                          <button
+                            type="button"
+                            aria-label={t('order.less', { name: c.material.name })}
+                            onClick={() => step(c.material, -1)}
+                            className="flex h-10 w-10 items-center justify-center rounded-lg bg-card text-ink"
+                          >
+                            <Minus size={15} />
+                          </button>
+                          <span className="min-w-12 px-1 text-center text-sm font-semibold text-ink">
+                            {isVehicleOption(c.material) ? t(loadsKey(c.qty), { count: c.qty }) : `${c.qty} ${c.material.unit}`.trim()}
+                          </span>
+                          <button
+                            type="button"
+                            aria-label={t('order.more', { name: c.material.name })}
+                            onClick={() => step(c.material, 1)}
+                            className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-white"
+                          >
+                            <Plus size={15} />
+                          </button>
+                        </div>
+                        {isVehicleOption(c.material) && (
+                          <button type="button" onClick={() => go('home')} className="inline-flex min-h-10 items-center text-xs font-semibold text-accent">
+                            {t('ccart.changeVehicle')}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          aria-label={t('ccart.remove', { name: c.material.name })}
+                          onClick={() => setQty((prev) => ({ ...prev, [c.material.id]: '' }))}
+                          className="ml-auto flex h-10 w-10 items-center justify-center rounded-lg text-muted hover:text-red-600"
+                        >
+                          <Trash2 size={17} />
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -1117,6 +1219,8 @@ export default function OrderPage() {
             </>
           )}
 
+          {chosen.length > 0 && (
+          <>
           <SectionHeading title={t('order.yourDetails')} />
           <SoftCard className="p-4">
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -1234,25 +1338,22 @@ export default function OrderPage() {
               )}
             </form>
           </SoftCard>
+          </>
+          )}
         </div>
+        )}
 
-        {shop && <ShopAbout shop={shop} showContact={false} />}
         <BuildSupplyFooter />
       </main>
 
       {/* The cart, floating above the tab bar once something is in it: how
           many materials, the estimate if prices show, and a tap down to the
           summary and the form. */}
-      {chosenCount > 0 && (
-        <div
-          className={cn(
-            'fixed inset-x-0 z-30 px-3',
-            tabs ? 'bottom-[calc(4.75rem_+_var(--safe-bottom))]' : 'bottom-[calc(0.5rem_+_var(--safe-bottom))]',
-          )}
-        >
+      {chosenCount > 0 && view === 'home' && (
+        <div className="fixed inset-x-0 bottom-[calc(6.75rem_+_var(--safe-bottom))] z-30 px-3">
           <button
             type="button"
-            onClick={() => summaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            onClick={() => go('cart')}
             className="mx-auto flex w-full max-w-md items-center gap-3 rounded-2xl bg-accent px-4 py-3 text-left text-white shadow-[0_6px_24px_rgba(10,36,39,0.25)]"
           >
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15">
@@ -1269,7 +1370,103 @@ export default function OrderPage() {
         </div>
       )}
 
-      {tabs && <CustomerTabBar tabs={tabs} />}
+      <ShopAppBar
+        left={[
+          { key: 'home', icon: House, label: t('khata.tabHome'), active: view === 'home', onClick: () => go('home') },
+          { key: 'orders', icon: Package, label: t('khata.tabOrders'), active: view === 'orders', onClick: () => go('orders') },
+        ]}
+        cart={{ label: t('ccart.title'), count: chosenCount, active: view === 'cart', onClick: () => go('cart') }}
+        right={[
+          ...(account
+            ? [{ key: 'khata', icon: BookOpen, label: t('khata.tabBills'), onClick: () => openAccount('') }]
+            : khata
+              ? [{ key: 'khata', icon: BookOpen, label: t('khata.tabBills'), onClick: () => navigate(`/khata/${khata.code}`) }]
+              : page.phone
+                ? [{ key: 'call', icon: Phone, label: t('khata.call'), onClick: () => window.location.assign(`tel:${page.phone}`) }]
+                : []),
+          { key: 'profile', icon: UserRound, label: t('cme.tab'), active: view === 'profile', onClick: () => go('profile') },
+        ]}
+      />
+
+      {/* A material's own sheet: the picture large, its price, rules and a way to add it. */}
+      {detail && (
+        <Modal title={detail.name} onClose={() => setDetail(null)}>
+          <div className="flex flex-col gap-3">
+            <div className="overflow-hidden rounded-2xl border border-border">
+              <MaterialPicture name={detail.name} category={detail.category} photo={shop?.photos[detail.id]} />
+            </div>
+            {detail.category && <div className="text-xs font-medium text-muted">{detail.category}</div>}
+            <div className="flex flex-wrap items-baseline gap-x-1">
+              {page.show_prices && detail.price != null ? (
+                <>
+                  <span className="text-2xl font-bold text-accent-text">{formatINR(detail.price)}</span>
+                  {detail.unit && <span className="text-sm text-muted">/ {detail.unit}</span>}
+                </>
+              ) : (
+                <span className="text-sm text-muted">{page.show_prices ? t('order.priceOnRequest') : detail.unit}</span>
+              )}
+            </div>
+            {(detail.min_qty || detail.qty_step) && (
+              <p className="text-xs text-muted">
+                {[
+                  detail.min_qty ? t('sell.minShort', { qty: `${Number(detail.min_qty)} ${detail.unit}`.trim() }) : null,
+                  detail.qty_step && Number(detail.qty_step) !== 1 ? t('sell.stepShort', { qty: `${Number(detail.qty_step)} ${detail.unit}`.trim() }) : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </p>
+            )}
+            {detail.delivery_charge ? (
+              <p className="text-xs text-muted">{t('ccart.deliveryNote', { price: formatINR(detail.delivery_charge) })}</p>
+            ) : null}
+            {page.show_prices && <p className="text-xs text-muted">{t('order.estimatedNote')}</p>}
+            {detail.available === false ? (
+              <div className="flex h-12 items-center justify-center rounded-xl bg-surface text-sm font-semibold text-muted">{t('sell.notAvailable')}</div>
+            ) : Number(qty[detail.id]) > 0 ? (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1 rounded-xl bg-surface p-1">
+                  <button type="button" aria-label={t('order.less', { name: detail.name })} onClick={() => step(detail, -1)} className="flex h-11 w-11 items-center justify-center rounded-lg bg-card text-ink">
+                    <Minus size={16} />
+                  </button>
+                  <span className="min-w-14 text-center text-base font-bold text-ink">{`${Number(qty[detail.id])} ${detail.unit}`.trim()}</span>
+                  <button type="button" aria-label={t('order.more', { name: detail.name })} onClick={() => step(detail, 1)} className="flex h-11 w-11 items-center justify-center rounded-lg bg-accent text-white">
+                    <Plus size={16} />
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // The sheet takes its history entry back off first (it
+                    // checks the path, which ?v= does not change); only then
+                    // the cart, or that step back would undo it. Phase 14 B1.
+                    setDetail(null)
+                    let done = false
+                    const open = () => {
+                      if (done) return
+                      done = true
+                      window.removeEventListener('popstate', open)
+                      go('cart')
+                    }
+                    window.addEventListener('popstate', open)
+                    window.setTimeout(open, 400)
+                  }}
+                  className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-accent text-sm font-semibold text-accent"
+                >
+                  <ShoppingBag size={16} /> {t('ccart.goToCart')}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => step(detail, 1)}
+                className="flex h-12 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white"
+              >
+                <Plus size={17} /> {t('ccart.addToCart')}
+              </button>
+            )}
+          </div>
+        </Modal>
+      )}
 
       {logoPreview && open?.logo_url && (
         <ImagePreview src={open.logo_url} alt={open.business_name} onClose={() => setLogoPreview(false)} />
