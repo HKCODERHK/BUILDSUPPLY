@@ -2003,6 +2003,26 @@ unit, a full-width green Add; three columns from `sm`. Vehicle cards got
 radio dots and a tinted loads panel. No request, quantity rule or total
 changed. The khata link, status page and `/me` were not restyled.
 
+**The customer side as one app (2026-10-21, UI only, branch `customer-app`).**
+From the same grocery reference. The order page has screens in `?v=`
+(`cart`, `orders`, `profile`; Home otherwise — the back button steps through
+them) and `ShopAppBar` (`components/CustomerHome.tsx`): tabs either side of a
+raised round cart button with the line count. **Cart**: per-line − / + and
+remove, Change vehicle, material and delivery apart, the estimate, then the
+details and Place order. **A material's sheet** (tap its picture or name).
+**Orders** (`components/ShopOrdersView.tsx`): this phone's stored status links
+for the shop (`readRecentOrders`, now up to 20), each read through
+`order_status`, with tabs. **Profile** (`components/CustomerMeView.tsx`):
+details, site, khata, lost khata link, share, call, language, day/night and
+"Forget me on this phone" (`forgetShopOnPhone` + `clearProfile`, then a
+reload; not shown for a 041 account). The khata link got the same green band
+and the same bar (centre button: Order materials, or the statement while
+ordering is off; Profile opens the order page's). Not copied, by design: a
+map / driver tracking, password and payment-method rows. **Opening a screen
+from the material sheet**: `modal.tsx` only compares the path, so a `?v=`
+change made while it closes is undone by its history step — close it, wait
+for `popstate` (or 400ms), then navigate (Phase 14 B1's pattern).
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.
