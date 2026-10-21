@@ -2050,6 +2050,9 @@ and its count are the way to the cart.
   The minimal customer top is now sticky on `bg-surface`.
 - The day/night button is back at the top right of that minimal top (after
   the switch), on every screen of both pages — the user's ask, same day.
+- The switch now always shows on the order page's home (the user's ask): Khata
+  opens the khata (or `/me`) when the phone knows it, otherwise `/khata-help`
+  with the number typed, where the customer asks this shop to send it.
 
 ## The admin panel
 
