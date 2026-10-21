@@ -381,13 +381,28 @@ export default function OrderPage() {
   // A vehicle material's options are one tile with a choice of vehicle;
   // everything else is a tile of its own, in the order the shop lists them.
   type Tile =
-    | { kind: 'one'; m: OrderPageMaterial }
+    | { kind: 'one'; m: OrderPageMaterial; truck?: { key: string; label: string; capacity: number } }
     | { kind: 'vehicle'; key: string; name: string; category: string | null; options: OrderPageMaterial[]; supply: 'tractor' | 'truck' }
   const tiles: Tile[] = []
   const vehicleTiles = new Map<string, Extract<Tile, { kind: 'vehicle' }>>()
   for (const m of visible) {
     if (!isVehicleOption(m)) {
       tiles.push({ kind: 'one', m })
+      continue
+    }
+    // A truck option: its own card under its truck type (Truck - 400 CFT,
+    // Truck - 600 CFT ...), the supplier's own vehicle and capacity (the
+    // user's ask, 2026-10-21). Tractor options stay grouped by material.
+    if (supplyOf(m) === 'truck') {
+      tiles.push({
+        kind: 'one',
+        m,
+        truck: {
+          key: `${m.vehicle!.trim().toLowerCase()}|${Number(m.capacity)}|${m.capacity_unit!.trim().toLowerCase()}`,
+          label: vehicleOptionLabel(m.vehicle!, m.capacity!, m.capacity_unit!),
+          capacity: Number(m.capacity),
+        },
+      })
       continue
     }
     // Which supply section, from the supplier's own vehicle: a tractor
@@ -1039,12 +1054,23 @@ export default function OrderPage() {
                   <MaterialPicture name={m.name} category={m.category} photo={shop?.photos[m.id]} />
                 </button>
                 <div className="flex min-w-0 flex-1 flex-col gap-1 p-3">
-                  <button type="button" onClick={() => setDetail(m)} className="line-clamp-2 break-words text-left text-sm font-semibold leading-snug text-ink">{m.name}</button>
+                  <button type="button" onClick={() => setDetail(m)} className="line-clamp-2 break-words text-left text-sm font-semibold leading-snug text-ink">
+                    {tile.truck ? m.listing_name : m.name}
+                  </button>
+                  {tile.truck && (
+                    <div className="text-[11px] font-medium text-accent-text">
+                      {t('sell.oneLoad', { count: 1 })} = {capacityText(m.capacity!, m.capacity_unit!)}
+                    </div>
+                  )}
                   <div className="flex flex-wrap items-baseline gap-x-1">
                     {page.show_prices && m.price != null ? (
                       <>
                         <span className="text-base font-bold text-accent-text">{formatINR(m.price)}</span>
-                        {m.unit && <span className="text-xs text-muted">/ {m.unit}</span>}
+                        {tile.truck ? (
+                          <span className="text-xs text-muted">{t('sec.perLoad')}</span>
+                        ) : (
+                          m.unit && <span className="text-xs text-muted">/ {m.unit}</span>
+                        )}
                       </>
                     ) : (
                       <span className="text-xs text-muted">{page.show_prices ? t('order.priceOnRequest') : m.unit}</span>
@@ -1088,7 +1114,7 @@ export default function OrderPage() {
                       onFocus={() => setEditingQty(m.id)}
                       onBlur={() => setEditingQty((id) => (id === m.id ? null : id))}
                       onChange={(e) => {
-                        const next = orderQty(e.target.value)
+                        const next = tile.truck ? sanitizeDigits(e.target.value).slice(0, 4) : orderQty(e.target.value)
                         // Beyond what an order can carry, the box keeps what it had (#4).
                         if (next === null) return
                         setQty((prev) => ({ ...prev, [m.id]: next }))
@@ -1122,9 +1148,9 @@ export default function OrderPage() {
           // Direct Purchase, Tractor Supply, Truck Supply - by how the
           // supplier sells each option; empty sections are not shown.
           const sections = [
-            { key: 'direct', icon: Package, title: t('sec.direct'), sub: t('sec.directSub'), items: tiles.filter((x) => x.kind === 'one') },
+            { key: 'direct', icon: Package, title: t('sec.direct'), sub: t('sec.directSub'), items: tiles.filter((x) => x.kind === 'one' && !x.truck) },
             { key: 'tractor', icon: Tractor, title: t('sec.tractor'), sub: t('sec.tractorSub'), items: tiles.filter((x) => x.kind === 'vehicle' && x.supply === 'tractor') },
-            { key: 'truck', icon: Truck, title: t('sec.truck'), sub: t('sec.truckSub'), items: tiles.filter((x) => x.kind === 'vehicle' && x.supply === 'truck') },
+            { key: 'truck', icon: Truck, title: t('sec.truck'), sub: t('sec.truckSub'), items: tiles.filter((x) => x.kind === 'one' && !!x.truck) },
           ].filter((x) => x.items.length > 0)
           return sections.map((sec) => (
             <section key={sec.key} aria-labelledby={`sec-${sec.key}`} className="flex flex-col gap-3">
@@ -1138,7 +1164,33 @@ export default function OrderPage() {
                 </div>
                 <span className="ml-auto shrink-0 rounded-full bg-card px-2 py-0.5 text-xs font-semibold text-accent-text">{sec.items.length}</span>
               </div>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{sec.items.map(renderTile)}</div>
+              {sec.key === 'truck' ? (
+                // One block per truck type, smallest first.
+                (() => {
+                  const groups = new Map<string, { label: string; capacity: number; items: Tile[] }>()
+                  for (const tile of sec.items) {
+                    if (tile.kind !== 'one' || !tile.truck) continue
+                    const g = groups.get(tile.truck.key) ?? { label: tile.truck.label, capacity: tile.truck.capacity, items: [] }
+                    g.items.push(tile)
+                    groups.set(tile.truck.key, g)
+                  }
+                  return [...groups.entries()]
+                    .sort((a, b) => a[1].capacity - b[1].capacity || a[1].label.localeCompare(b[1].label))
+                    .map(([key, g]) => (
+                      <div key={key} className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2 px-1">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1 text-xs font-bold text-white">
+                            <Truck size={13} /> {g.label}
+                          </span>
+                          <span className="text-xs text-muted">{t('order.itemCount', { count: g.items.length })}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{g.items.map(renderTile)}</div>
+                      </div>
+                    ))
+                })()
+              ) : (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{sec.items.map(renderTile)}</div>
+              )}
             </section>
           ))
         })()}

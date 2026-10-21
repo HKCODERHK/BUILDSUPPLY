@@ -2067,6 +2067,19 @@ them vehicle-based. The bar lost Call (the shop card keeps it) and always
 has Khata (`/khata-help` without a link). A first push of the branch never
 reached Vercel; an empty commit pushed again woke it.
 
+**Truck Supply by truck type, and every material cleared (2026-10-21).**
+Truck Supply now has one block per truck type (supplier's vehicle +
+capacity + unit, smallest first: "Truck • 400 CFT", "Truck • 600 CFT" …),
+each truck option its own card ("1 load = 600 CFT", price per load, whole
+loads). The supplier form offers 400 / 600 / 800 / 1,000 / 1,200 CFT as
+one-tap sizes (`TRUCK_CFT_SIZES`). **At the user's explicit request all 10
+materials of all four shops were deleted from live** (run by the user in the
+SQL editor after the permission classifier blocked it; snapshot of the
+materials, their 5 stock logs and 178 bill/estimate line links in
+`backups/2026-10-21-before-materials-clear/`). Checked afterwards: 0
+materials, 0 linked lines, 60 bills / 106 payments unchanged, 0 bills out of
+step. Live also has a seventh, empty supplier row "Rahul traders".
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.

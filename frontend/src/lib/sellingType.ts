@@ -10,6 +10,8 @@
 /** What the supplier picks from; any other word can be typed. */
 export const VEHICLE_SUGGESTIONS = ['Tractor', 'Small truck', 'Truck', 'Large truck', 'Dumper', 'Tipper']
 export const CAPACITY_UNITS = ['CFT', 'Brass', 'Tonne', 'Cubic metre']
+/** Truck sizes a supplier picks with one tap; any other can be typed. */
+export const TRUCK_CFT_SIZES = [400, 600, 800, 1000, 1200]
 export const SALE_UNITS = ['Bag', 'Piece', 'Kg', 'Tonne', 'Bundle', 'Box', 'Nos', '1000 pieces', 'Sq ft', 'Metre', 'Litre']
 
 export type SoldBy = 'vehicle' | 'unit'
