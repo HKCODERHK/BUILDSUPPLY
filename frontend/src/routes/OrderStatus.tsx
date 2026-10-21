@@ -22,7 +22,7 @@ import { TruckLoader } from '@/components/TruckLoader'
 import { useLanguage } from '@/context/LanguageContext'
 import { showDate } from '@/lib/displayDate'
 import { getOrderStatus, respondToEstimate, type OrderStatusView } from '@/services/orders'
-import { rejectReasonText } from '@/lib/orderFormat'
+import { orderItemQtyText, rejectReasonText } from '@/lib/orderFormat'
 import { receivedState } from '@/lib/received'
 import { QrCode } from '@/components/QrCode'
 import { upiPayUrl } from '@/lib/upi'
@@ -327,9 +327,7 @@ export default function OrderStatus() {
                 {found.items.map((item, i) => (
                   <div key={i} className="flex justify-between gap-3 py-2 first:pt-0 last:pb-0">
                     <span className="min-w-0 break-words text-ink">{item.name}</span>
-                    <span className="shrink-0 font-medium text-ink">
-                      {Number(item.qty).toLocaleString('en-IN')} {item.unit}
-                    </span>
+                    <span className="shrink-0 text-right font-medium text-ink">{orderItemQtyText(item, t)}</span>
                   </div>
                 ))}
               </div>

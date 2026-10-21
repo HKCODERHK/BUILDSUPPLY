@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `041`, run in order. **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; 039 and 040 were already on live; **038 was pasted by the user on 2026-10-12** (the ten-minute duplicate rule is gone from `place_order`, checked read-only). **049 (asking one chosen shop to resend the khata link — Phase 38) is the latest and is applied** (2026-10-20; checked from outside: a bad number refused, the table still 401); **048 (a customer asking their shop to resend the khata link — Phase 38) is applied** (2026-10-19; checked from outside: a bad number refused, the table, the shop's list and handling all refused signed out — 401); **047 (customer UX round, read functions only — Phase 37) is applied** (2026-10-15; checked read-only: function bodies, both `security_invoker` views, counts unchanged, 0 bills out of step, every active shop's khata link still answers found with `has_estimate` on all 17 orders); **046 (customer complaints, Phase 36 round 4) is applied** (2026-10-15; checked read-only: table with RLS and one policy, select-only for signed-in users, nothing for anon — 401 over a real anonymous call — 8 functions one version each, counts unchanged); **045 (supplier compliance) is applied** (2026-10-13); 044 (three plans, Phase 34); **043 (your profile and bill details, Phase 32) is applied** (2026-10-12); 042 (the shop page, Phase 31) and 041 (customer accounts, Phase 30) were applied the same day. Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
+- **Schema migrations**: `supabase/migrations/` — `002` through `041`, run in order. **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; 039 and 040 were already on live; **038 was pasted by the user on 2026-10-12** (the ten-minute duplicate rule is gone from `place_order`, checked read-only). **050 (how a material is sold — vehicle load or unit, Phase 39) is the latest and is applied** (2026-10-21, run by Claude through the CLI on the user's "run", after a snapshot in `backups/2026-10-21-before-050/`; the after-check was blocked by the permission classifier and run by the user in the SQL editor, who reported it matched); **049 (asking one chosen shop to resend the khata link — Phase 38) is applied** (2026-10-20; checked from outside: a bad number refused, the table still 401); **048 (a customer asking their shop to resend the khata link — Phase 38) is applied** (2026-10-19; checked from outside: a bad number refused, the table, the shop's list and handling all refused signed out — 401); **047 (customer UX round, read functions only — Phase 37) is applied** (2026-10-15; checked read-only: function bodies, both `security_invoker` views, counts unchanged, 0 bills out of step, every active shop's khata link still answers found with `has_estimate` on all 17 orders); **046 (customer complaints, Phase 36 round 4) is applied** (2026-10-15; checked read-only: table with RLS and one policy, select-only for signed-in users, nothing for anon — 401 over a real anonymous call — 8 functions one version each, counts unchanged); **045 (supplier compliance) is applied** (2026-10-13); 044 (three plans, Phase 34); **043 (your profile and bill details, Phase 32) is applied** (2026-10-12); 042 (the shop page, Phase 31) and 041 (customer accounts, Phase 30) were applied the same day. Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
@@ -45,6 +45,7 @@ every verified backup's `.manifest.json` lists them, and so does
 | **KALYANI TRADERS** | `gajendrakhalatkar6@gmail.com` | Real supplier data — **don't touch** |
 | **Rahul Traders** | `nimbalkar.rahul96@gmail.com` | Real supplier, created 2026-09-11 — **don't touch** |
 | **Shree Balaji Building Materials** | `shreebalaji@buildsupply.test` | The user's test account; safe to click through, never to delete or reset |
+| **INDRA TRADERS & HARDWARE** | — | Real supplier found on live 2026-10-21 (ordering on, Pro) — **don't touch**. Six supplier rows in all that day, admin included |
 
 **The user's data rule (2026-09-23):** every supplier's and customer's data is
 production-critical. Anything that deletes, resets, truncates, overwrites or
@@ -1938,6 +1939,58 @@ phone: an empty `/me` was a dead end.
   belongs to**: that would let anyone — a rival shop included — see where a
   customer buys. Tested: 10/10 for 049, 048 still 24/24, the browser flow,
   24 page loads at 320/360px × three languages × light/dark.
+
+**Phase 39 — vehicle-based and direct-sale materials (migration 050,
+2026-10-21). Merged and applied the same day, each on the user's approval.**
+Asked for as a long marketplace spec (vehicle → capacity → loads; direct sale
+by unit). Most of the spec's "cart / checkout / payment / admin approval /
+multi-supplier" does not exist in this app, and was mapped onto what does:
+the order page is the cart, an order request is the checkout, an estimate and
+a bill follow as always.
+- **Each vehicle option is its own `materials` row**, grouped into one
+  material by `listing_name` ("River Sand"). That is the shape live already
+  had ("10mm Gitti — Tractor" / "— Truck • 400 CFT" as separate rows), and it
+  keeps bills, GST, stock on delivery, stock logs and backups untouched. Its
+  `name` is written from the parts ("River Sand — Truck • 800 CFT"), which is
+  what every bill, estimate, rate list and stock screen shows, so history
+  stays readable. `lib/sellingType.ts` is the one place for names, totals and
+  the quantity rule — don't re-derive them per screen.
+- **050**: `materials` gains `sold_by` ('vehicle' | 'unit', null = before 050,
+  behaves as unit), `listing_name`, `vehicle`, `capacity`, `capacity_unit`
+  (never converted — CFT and tonnes are not interchangeable), `min_qty`,
+  `qty_step`, `delivery_charge` (per load for a vehicle, per order
+  otherwise) and `available`; three checks and a unique index (one listing
+  cannot offer the same vehicle + capacity twice). `order_page` returns them
+  (delivery charge only while prices show); `place_order` refuses a switched-off
+  material, a part load, or a quantity under the minimum / off the steps, and
+  keeps each line's vehicle and capacity in the order. Same signatures, grants
+  kept. 33 checks in `supabase/tests/050_selling_types_test.sql` (throwaway
+  container built from schema + 002→050, 050 twice).
+- **Supplier**: Add material asks "How is this material sold?" (only once 050
+  exists — `sellingTypesAvailable()`; before it, the form is exactly the old
+  one). Vehicle: `components/VehicleListingForm.tsx`, options added, edited,
+  switched off or removed — an option on a bill or in the stock history is
+  switched off rather than deleted (`removeVehicleOption`). A material
+  converted to a vehicle option keeps its id, price and stock, and **its
+  stock unit is never relabelled** (1 brass stays 1 brass, with a note to
+  recount in loads). Catalog vehicle variants with a capacity join their
+  material's listing. The list shows one card per vehicle material.
+- **Customer order page**: one card per vehicle material — choose a vehicle,
+  number of loads, "2 loads × 800 CFT = 1,600 CFT", material and delivery
+  apart; switching vehicle carries the loads. Direct sale starts at its
+  minimum and steps by its own steps. Summary and the sent screen say the
+  same words (`OrderLine`).
+- Approving an order offers the delivery charges as the estimate's transport;
+  bill and estimate lines for a vehicle option show "2 loads = 1,600 CFT".
+  Supplier order screen and the customer's status page use `orderItemQtyText`.
+- **Deliberately not built**: a stock check at order time (stock is optional;
+  9 of 10 live materials sat at 0 — the "not available" switch does the job),
+  per-product service areas (the shop page's delivery note covers it), admin
+  product approval (019's boundary), total CFT on PDFs and on the status link
+  (would mean re-issuing `order_status`).
+- The preview uses the **live** Supabase project (Vercel's two VITE_ variables
+  are set for Production and Preview alike) — there is no separate preview
+  database.
 
 ## The admin panel
 

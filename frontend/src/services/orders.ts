@@ -17,6 +17,17 @@ export interface OrderPageMaterial {
   unit: string
   /** Only when the supplier shows prices, and only for a priced material. */
   price: number | null
+  /** How it is sold, and a vehicle option's load (migration 050 — absent before it). */
+  sold_by?: 'vehicle' | 'unit' | null
+  listing_name?: string | null
+  vehicle?: string | null
+  capacity?: number | null
+  capacity_unit?: string | null
+  min_qty?: number | null
+  qty_step?: number | null
+  /** Per load for a vehicle option, per order otherwise; only when prices show. */
+  delivery_charge?: number | null
+  available?: boolean
 }
 
 export type OrderPage =
