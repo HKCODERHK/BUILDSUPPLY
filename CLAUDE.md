@@ -1992,6 +1992,17 @@ a bill follow as always.
   are set for Production and Preview alike) — there is no separate preview
   database.
 
+**Customer order page restyle (2026-10-21, UI only).** From a grocery-app
+reference the user shared. `routes/OrderPage.tsx`: a green top band in the
+shop's brand colour (greeting, "Order building materials", the search —
+now always shown), category chips from the shop's own categories plus an
+item count (both only narrow which cards show — the order and totals are
+untouched), material cards with a picture panel on top
+(`MaterialPicture`, `thumb` for the vehicle card), price in green with its
+unit, a full-width green Add; three columns from `sm`. Vehicle cards got
+radio dots and a tinted loads panel. No request, quantity rule or total
+changed. The khata link, status page and `/me` were not restyled.
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.
