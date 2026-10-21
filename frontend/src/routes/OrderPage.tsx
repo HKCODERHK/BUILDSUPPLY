@@ -529,13 +529,21 @@ export default function OrderPage() {
       onOwner={() => setOwnerPreview(true)}
       ownerLabel={t('shop.ownerPhoto')}
       switcher={
-        view === 'home' && (account || khata)
+        view === 'home'
           ? {
               active: 'order',
               orderLabel: t('switch.order'),
               khataLabel: t('switch.khata'),
               onOrder: () => {},
-              onKhata: () => (account ? openAccount('') : khata && navigate(`/khata/${khata.code}`)),
+              // Always there (the user's ask): their khata when the phone
+              // knows it, otherwise "Lost your khata link?", where they can
+              // ask this shop to send it.
+              onKhata: () =>
+                account
+                  ? openAccount('')
+                  : khata
+                    ? navigate(`/khata/${khata.code}`)
+                    : navigate('/khata-help', { state: { phone: form.phone } }),
             }
           : null
       }
