@@ -10,11 +10,11 @@ const CODE = /^[0-9a-f]{32}$/
 const recentKey = (link: string) => `buildsupply-orders:${link}`
 const khataKey = (link: string) => `buildsupply-khata:${link}`
 
-/** Their orders from this supplier, newest first, at most 5. */
+/** Their orders from this supplier, newest first, at most 20 (the order page's Orders tab). */
 export function readRecentOrders(link: string): RecentOrder[] {
   try {
     const list = JSON.parse(localStorage.getItem(recentKey(link)) ?? '[]')
-    return Array.isArray(list) ? list.filter((r) => r && CODE.test(r.token)).slice(0, 5) : []
+    return Array.isArray(list) ? list.filter((r) => r && CODE.test(r.token)).slice(0, 20) : []
   } catch {
     return []
   }
@@ -24,7 +24,7 @@ export function readRecentOrders(link: string): RecentOrder[] {
 export function rememberOrder(link: string, token: string, at: string = new Date().toISOString()): RecentOrder[] {
   const existing = readRecentOrders(link)
   if (existing.some((r) => r.token === token)) return existing
-  const list = [{ token, at }, ...existing].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 5)
+  const list = [{ token, at }, ...existing].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 20)
   try {
     localStorage.setItem(recentKey(link), JSON.stringify(list))
   } catch {

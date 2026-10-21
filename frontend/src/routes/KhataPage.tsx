@@ -8,6 +8,8 @@ import {
   CreditCard,
   Download,
   FileText,
+  ShoppingCart,
+  UserRound,
   House,
   IndianRupee,
   LoaderCircle,
@@ -17,7 +19,6 @@ import {
   RotateCcw,
   ScrollText,
   Share2,
-  ShoppingBag,
   Store,
   Truck,
 } from 'lucide-react'
@@ -62,7 +63,7 @@ import { upiPayUrl } from '@/lib/upi'
 import { receivedState } from '@/lib/received'
 import {
   CustomerHeader,
-  CustomerTabBar,
+  ShopAppBar,
   DeliveryStrip,
   QuickActions,
   SectionHeading,
@@ -396,45 +397,6 @@ export default function KhataPage({
       : []),
   ]
 
-  const tabs = [
-    { key: 'home', icon: House, label: t('khata.tabHome'), active: section === null, onClick: closeSection },
-    ...(found?.order_link
-      ? [
-          {
-            key: 'materials',
-            icon: ShoppingBag,
-            // One name for ordering everywhere (#15).
-            label: t('khata.orderMaterials'),
-            active: false,
-            onClick: () => navigate(`/order/${found.order_link}`),
-          },
-        ]
-      : []),
-    { key: 'bills', icon: Receipt, label: t('khata.tabBills'), active: section === 'bills', onClick: () => openSection('bills') },
-    ...(orderCount > 0 || found?.order_link
-      ? [
-          {
-            key: 'orders',
-            icon: Package,
-            label: t('khata.tabOrders'),
-            active: section === 'orders',
-            onClick: () => openSection('orders'),
-          },
-        ]
-      : []),
-    ...(found?.order_link
-      ? []
-      : [
-          {
-            key: 'payments',
-            icon: IndianRupee,
-            label: t('khata.tabPayments'),
-            active: section === 'payments',
-            onClick: () => openSection('payments'),
-          },
-        ]),
-  ]
-
   async function download() {
     if (!found || !ledger || downloading) return
     setDownloading(true)
@@ -746,7 +708,7 @@ export default function KhataPage({
         onLogo={() => setLogoPreview(true)}
         logoLabel={t('shop.viewLogo')}
       />
-      <main className={cn('mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4', found && 'pb-28')}>
+      <main className={cn('mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4', found && 'pb-40')}>
         {accountTop}
         {!view && !failed ? (
           <TruckLoader />
@@ -1005,63 +967,65 @@ export default function KhataPage({
           </>
         ) : (
           <>
-            {/* The greeting, the way an app greets its user. The round button
-                is the shop's phone, where the reference keeps its bell. */}
-            <div className="flex items-center gap-3 pt-1">
-              {/* The same seed on the khata link, /me and the order page, so one
-                  customer keeps one colour (#37). */}
-              <CustomerAvatar id={`${found.supplier.business_name}|${found.customer.name}`} name={found.customer.name} size={48} />
-              <div className="min-w-0 flex-1">
-                <div className="text-xs text-muted">{t(greetingKey())}</div>
-                <div className="line-clamp-2 break-words text-xl font-bold leading-tight text-ink">
-                  {t('khata.hello', { name: found.customer.name })}
-                </div>
-                <div className="break-words text-xs text-muted">
-                  {t('khata.yourAccountWith', { business: found.supplier.business_name })}
-                </div>
-              </div>
-              {found.supplier.phone && (
-                <a
-                  href={`tel:${found.supplier.phone}`}
-                  aria-label={t('khata.menuCall')}
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-card text-accent shadow-sm"
-                >
-                  <Phone size={18} />
-                </a>
-              )}
-            </div>
-
-            {/* One figure, not three (Phase 23): the bills' dues less any
-                advance, with the parts spelled out when there is an advance. */}
-            <SoftCard className="p-5">
-              <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-3">
-                <div className="min-w-0">
-                  <div className="text-xs font-medium text-muted">
-                    {net > 0.005 ? t('khata.youOwe') : net < -0.005 ? t('khata.advance') : ''}
+            {/* The greeting and the one figure in a green band in the shop's
+                own colour — the order page's top band (2026-10-21). The round
+                button is the shop's phone. One figure, not three (Phase 23):
+                the bills' dues less any advance, the parts spelled out. */}
+            <section className="rounded-3xl bg-accent p-4 text-white shadow-[0_8px_24px_rgba(10,36,39,0.16)]">
+              <div className="flex items-center gap-3">
+                {/* The same seed on the khata link, /me and the order page (#37). */}
+                <CustomerAvatar id={`${found.supplier.business_name}|${found.customer.name}`} name={found.customer.name} size={44} />
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs text-white/80">{t(greetingKey())}</div>
+                  <div className="line-clamp-2 break-words text-lg font-bold leading-tight">{t('khata.hello', { name: found.customer.name })}</div>
+                  <div className="break-words text-xs text-white/80">
+                    {t('khata.yourAccountWith', { business: found.supplier.business_name })}
                   </div>
-                  {net > 0.005 ? (
-                    <div className="text-4xl font-bold leading-none text-red-600 dark:text-red-400">{formatINR(net)}</div>
-                  ) : net < -0.005 ? (
-                    <div className="text-4xl font-bold leading-none text-accent">{formatINR(-net)}</div>
-                  ) : (
-                    <div className="text-lg font-bold text-accent">{t('khata.settled')}</div>
-                  )}
                 </div>
-                {upiUrl && (
-                  <Button size="tap" className="ml-auto shrink-0 rounded-full px-4" onClick={() => openSection('pay')}>
-                    <CreditCard size={15} /> {t('khata.menuPay')}
-                  </Button>
+                {found.supplier.phone && (
+                  <a
+                    href={`tel:${found.supplier.phone}`}
+                    aria-label={t('khata.menuCall')}
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-accent-text shadow-sm"
+                  >
+                    <Phone size={18} />
+                  </a>
                 )}
               </div>
-              {found.pending > 0.005 && found.advance > 0.005 && (
-                <p className="mt-2 text-xs text-muted">
-                  {t('khata.netNote', {
-                    bills: formatINR(Number(found.pending)),
-                    advance: formatINR(Number(found.advance)),
-                  })}
-                </p>
-              )}
-            </SoftCard>
+              <div className="mt-4 rounded-2xl bg-white/12 p-4 ring-1 ring-white/20">
+                <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-3">
+                  <div className="min-w-0">
+                    <div className="text-xs font-medium text-white/85">
+                      {net > 0.005 ? t('khata.youOwe') : net < -0.005 ? t('khata.advance') : ''}
+                    </div>
+                    {net > 0.005 ? (
+                      <div className="text-4xl font-bold leading-none">{formatINR(net)}</div>
+                    ) : net < -0.005 ? (
+                      <div className="text-4xl font-bold leading-none">{formatINR(-net)}</div>
+                    ) : (
+                      <div className="text-lg font-bold">{t('khata.settled')}</div>
+                    )}
+                  </div>
+                  {upiUrl && (
+                    <button
+                      type="button"
+                      onClick={() => openSection('pay')}
+                      className="ml-auto inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-white px-4 text-sm font-semibold text-accent-text shadow-sm"
+                    >
+                      <CreditCard size={15} /> {t('khata.menuPay')}
+                    </button>
+                  )}
+                </div>
+                {found.pending > 0.005 && found.advance > 0.005 && (
+                  <p className="mt-2 text-xs text-white/85">
+                    {t('khata.netNote', {
+                      bills: formatINR(Number(found.pending)),
+                      advance: formatINR(Number(found.advance)),
+                    })}
+                  </p>
+                )}
+              </div>
+            </section>
 
             {live && (
               <SoftCard className="overflow-hidden">
@@ -1282,7 +1246,35 @@ export default function KhataPage({
         <BuildSupplyFooter />
       </main>
 
-      {found && <CustomerTabBar tabs={tabs} />}
+      {found && (
+        <ShopAppBar
+          left={[
+            { key: 'home', icon: House, label: t('khata.tabHome'), active: section === null, onClick: closeSection },
+            { key: 'bills', icon: Receipt, label: t('khata.tabBills'), active: section === 'bills', onClick: () => openSection('bills') },
+          ]}
+          // The round button: ordering, where the shop takes orders; the full
+          // statement otherwise.
+          cart={
+            found.order_link
+              ? { label: t('khata.orderMaterials'), count: 0, active: false, icon: ShoppingCart, onClick: () => navigate(`/order/${found.order_link}`) }
+              : { label: t('khata.menuStatement'), count: 0, active: section === 'statement', icon: FileText, onClick: () => openSection('statement') }
+          }
+          right={
+            found.order_link
+              ? [
+                  { key: 'orders', icon: Package, label: t('khata.tabOrders'), active: section === 'orders', onClick: () => openSection('orders') },
+                  // The same Profile screen as the order page's — one app.
+                  { key: 'profile', icon: UserRound, label: t('cme.tab'), onClick: () => navigate(`/order/${found.order_link}?v=profile`) },
+                ]
+              : [
+                  ...(orderCount > 0
+                    ? [{ key: 'orders', icon: Package, label: t('khata.tabOrders'), active: section === 'orders', onClick: () => openSection('orders') }]
+                    : []),
+                  { key: 'payments', icon: IndianRupee, label: t('khata.tabPayments'), active: section === 'payments', onClick: () => openSection('payments') },
+                ]
+          }
+        />
+      )}
 
       {/* Link or QR, the same two steps the supplier's own Share order link
           offers — a customer standing in the shop may want to photograph the
