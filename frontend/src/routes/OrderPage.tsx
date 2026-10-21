@@ -260,6 +260,7 @@ export default function OrderPage() {
   // The material whose detail sheet is open.
   const [detail, setDetail] = useState<OrderPageMaterial | null>(null)
   const [logoPreview, setLogoPreview] = useState(false)
+  const [ownerPreview, setOwnerPreview] = useState(false)
   const [sharingShop, setSharingShop] = useState(false)
   // Who provides what (045): shown under Place order, as the admin wrote it.
   const [disclosure, setDisclosure] = useState<string | null>(null)
@@ -519,9 +520,13 @@ export default function OrderPage() {
   // page; BuildSupply until the shop is known.
   const header = (
     <CustomerHeader
-      shop={open}
+      shop={open ? { business_name: open.business_name, logo_url: open.logo_url ?? shop?.logo_url ?? null } : null}
       onLogo={() => setLogoPreview(true)}
       logoLabel={t('shop.viewLogo')}
+      minimal
+      ownerPhoto={shop?.owner_photo_url}
+      onOwner={() => setOwnerPreview(true)}
+      ownerLabel={t('shop.ownerPhoto')}
     />
   )
 
@@ -1468,6 +1473,9 @@ export default function OrderPage() {
         </Modal>
       )}
 
+      {ownerPreview && shop?.owner_photo_url && (
+        <ImagePreview src={shop.owner_photo_url} alt={t('shop.ownerPhoto')} onClose={() => setOwnerPreview(false)} />
+      )}
       {logoPreview && open?.logo_url && (
         <ImagePreview src={open.logo_url} alt={open.business_name} onClose={() => setLogoPreview(false)} />
       )}
