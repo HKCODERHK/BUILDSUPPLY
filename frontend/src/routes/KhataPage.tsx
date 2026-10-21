@@ -196,6 +196,7 @@ export default function KhataPage({
   const [viewing, setViewing] = useState<KhataDocument | null>(null)
   const [sharingShop, setSharingShop] = useState(false)
   const [logoPreview, setLogoPreview] = useState(false)
+  const [ownerPreview, setOwnerPreview] = useState(false)
   const [docFailed, setDocFailed] = useState(false)
   // "Material received" (migration 030): asked, then confirmed — two taps, so a
   // stray one can't record it.
@@ -707,6 +708,10 @@ export default function KhataPage({
         shop={found?.supplier}
         onLogo={() => setLogoPreview(true)}
         logoLabel={t('shop.viewLogo')}
+      minimal
+      ownerPhoto={shop?.owner_photo_url}
+      onOwner={() => setOwnerPreview(true)}
+      ownerLabel={t('shop.ownerPhoto')}
       />
       <main className={cn('mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4', found && 'pb-40')}>
         {accountTop}
@@ -1293,6 +1298,9 @@ export default function KhataPage({
         />
       )}
 
+      {ownerPreview && shop?.owner_photo_url && (
+        <ImagePreview src={shop.owner_photo_url} alt={t('shop.ownerPhoto')} onClose={() => setOwnerPreview(false)} />
+      )}
       {logoPreview && found?.supplier.logo_url && (
         <ImagePreview src={found.supplier.logo_url} alt={found.supplier.business_name} onClose={() => setLogoPreview(false)} />
       )}

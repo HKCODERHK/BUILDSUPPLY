@@ -1,9 +1,10 @@
-import type { ComponentType, ReactNode, Ref } from 'react'
+import { useEffect, type ComponentType, type ReactNode, type Ref } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, MapPin, ShoppingCart, Store } from 'lucide-react'
 import { Tipper } from '@/components/art'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { useTheme } from '@/context/ThemeContext'
 import { cn } from '@/lib/utils'
 import { TINTS, type Tint } from '@/lib/customerHome'
 
@@ -41,6 +42,10 @@ export function CustomerHeader({
   title,
   onBack,
   backLabel,
+  minimal = false,
+  ownerPhoto,
+  onOwner,
+  ownerLabel,
 }: {
   shop?: { business_name: string; logo_url?: string | null } | null
   /** Tapping the logo opens it full size. */
@@ -52,7 +57,19 @@ export function CustomerHeader({
   /** A ← before the mark, for a page reached from somewhere it can go back to. */
   onBack?: () => void
   backLabel?: string
+  /**
+   * No bar at all (the user's call, 2026-10-21, for the order page and the
+   * khata link): only the shop's logo and the owner's photo at the top left.
+   * Language and day/night are in Profile.
+   */
+  minimal?: boolean
+  ownerPhoto?: string | null
+  onOwner?: () => void
+  ownerLabel?: string
 }) {
+  if (minimal) {
+    return <MinimalTop shop={shop} onLogo={onLogo} logoLabel={logoLabel} ownerPhoto={ownerPhoto} onOwner={onOwner} ownerLabel={ownerLabel} />
+  }
   // 44px, like every other control on these pages (#30).
   const toggles = 'h-11 min-w-11 w-11 border-white/20 text-white hover:bg-white/10 hover:text-white'
   let mark: ReactNode
@@ -109,6 +126,72 @@ export function CustomerHeader({
           <LanguageToggle globeOnly className={toggles} />
           <ThemeToggle className={toggles} />
         </div>
+      </div>
+    </header>
+  )
+}
+
+/** The minimal top: the shop's logo and the owner's photo, nothing else. */
+function MinimalTop({
+  shop,
+  onLogo,
+  logoLabel,
+  ownerPhoto,
+  onOwner,
+  ownerLabel,
+}: {
+  shop?: { business_name: string; logo_url?: string | null } | null
+  onLogo?: () => void
+  logoLabel?: string
+  ownerPhoto?: string | null
+  onOwner?: () => void
+  ownerLabel?: string
+}) {
+  const { theme } = useTheme()
+  // With no dark bar under it, the phone's status bar takes the page's own
+  // colour, and gets the old one back when the page goes.
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if (!meta) return
+    const before = meta.getAttribute('content')
+    const id = window.requestAnimationFrame(() => {
+      meta.setAttribute('content', getComputedStyle(document.body).backgroundColor || (theme === 'dark' ? '#0a2427' : '#f5f7f6'))
+    })
+    return () => {
+      window.cancelAnimationFrame(id)
+      if (before) meta.setAttribute('content', before)
+    }
+  }, [theme])
+  const tile = 'h-12 w-12 shrink-0 overflow-hidden rounded-2xl bg-white shadow-[0_2px_10px_rgba(10,36,39,0.12)] ring-1 ring-border'
+  const logo = shop?.logo_url ? (
+    <img src={shop.logo_url} alt="" className="h-full w-full object-cover" />
+  ) : (
+    <span className="flex h-full w-full items-center justify-center bg-accent-bg text-accent-text">
+      <Store size={22} />
+    </span>
+  )
+  return (
+    <header className="px-4 pt-[calc(0.75rem_+_var(--safe-top))]">
+      <div className="mx-auto flex max-w-lg items-center sm:max-w-2xl">
+        {/* Read aloud, since the name is no longer written at the top. */}
+        {shop && <h1 className="sr-only">{shop.business_name}</h1>}
+        {onLogo && shop?.logo_url ? (
+          <button type="button" aria-label={logoLabel} onClick={onLogo} className={tile}>
+            {logo}
+          </button>
+        ) : (
+          <span className={tile}>{logo}</span>
+        )}
+        {ownerPhoto && (
+          <button
+            type="button"
+            aria-label={ownerLabel}
+            onClick={onOwner}
+            className="-ml-2.5 h-12 w-12 shrink-0 overflow-hidden rounded-full border-2 border-surface bg-surface shadow-[0_2px_10px_rgba(10,36,39,0.12)]"
+          >
+            <img src={ownerPhoto} alt="" className="h-full w-full object-cover" />
+          </button>
+        )}
       </div>
     </header>
   )
