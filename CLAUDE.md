@@ -2048,6 +2048,8 @@ and its count are the way to the cart.
   black on white, Copy link / Share QR via `orderQrPngFile`), "MY QR" at the
   foot of the supplier Dashboard once ordering is on; it grows into view.
   The minimal customer top is now sticky on `bg-surface`.
+- The day/night button is back at the top right of that minimal top (after
+  the switch), on every screen of both pages — the user's ask, same day.
 
 ## The admin panel
 
