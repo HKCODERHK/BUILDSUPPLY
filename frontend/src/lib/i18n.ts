@@ -2637,6 +2637,15 @@ const STRINGS = {
   'qr.myCaption': { en: 'Customers scan this to order from you', hi: 'ग्राहक इसे स्कैन करके आपसे ऑर्डर करें', mr: 'ग्राहक हा स्कॅन करून तुमच्याकडे ऑर्डर करतात' },
   'qr.copy': { en: 'Copy link', hi: 'लिंक कॉपी', mr: 'लिंक कॉपी' },
   'qr.share': { en: 'Share QR', hi: 'QR भेजें', mr: 'QR पाठवा' },
+  // The Materials screen's three supply sections (2026-10-21).
+  'sec.direct': { en: 'Direct Purchase', hi: 'सीधी खरीद', mr: 'थेट खरेदी' },
+  'sec.directSub': { en: 'Materials sold by bag, piece, or unit.', hi: 'बोरी, नग या यूनिट में बिकने वाला सामान।', mr: 'गोणी, नग किंवा युनिटने विकले जाणारे साहित्य.' },
+  'sec.tractor': { en: 'Tractor Supply', hi: 'ट्रैक्टर से सप्लाई', mr: 'ट्रॅक्टरने पुरवठा' },
+  'sec.tractorSub': { en: 'Materials delivered by tractor.', hi: 'ट्रैक्टर से पहुँचाया जाने वाला सामान।', mr: 'ट्रॅक्टरने पोहोचवले जाणारे साहित्य.' },
+  'sec.truck': { en: 'Truck Supply', hi: 'ट्रक से सप्लाई', mr: 'ट्रकने पुरवठा' },
+  'sec.truckSub': { en: 'Choose the truck type that suits your requirement.', hi: 'अपनी ज़रूरत के हिसाब से ट्रक चुनें।', mr: 'तुमच्या गरजेनुसार ट्रक निवडा.' },
+  'sec.byTractor': { en: 'By tractor', hi: 'ट्रैक्टर से', mr: 'ट्रॅक्टरने' },
+  'sec.byTruck': { en: 'By truck', hi: 'ट्रक से', mr: 'ट्रकने' },
 } satisfies Record<string, Entry>
 
 export type TranslationKey = keyof typeof STRINGS
