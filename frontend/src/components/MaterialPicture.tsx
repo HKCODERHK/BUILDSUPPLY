@@ -16,17 +16,32 @@ export function MaterialPicture({
   name,
   category,
   photo,
+  thumb = false,
 }: {
   name: string
   category?: string | null
   photo?: string | null
+  /** A small square beside a title (the vehicle card), not the top of a tile. */
+  thumb?: boolean
 }) {
-  if (photo && photo.includes('/storage/v1/object/public/logos/')) {
-    return <img src={photo} alt="" loading="lazy" decoding="async" className="aspect-[4/3] w-full rounded-xl bg-surface object-cover" />
+  const own = !!photo && photo.includes('/storage/v1/object/public/logos/')
+  if (thumb) {
+    return own ? (
+      <img src={photo!} alt="" loading="lazy" decoding="async" className="h-16 w-16 shrink-0 rounded-xl bg-surface object-cover" />
+    ) : (
+      <span className={cn('flex h-16 w-16 shrink-0 items-center justify-center rounded-xl', TINTS[tintFor(category ?? name)])}>
+        <Package size={26} strokeWidth={1.7} />
+      </span>
+    )
   }
-  return (
-    <span className={cn('flex h-10 w-10 items-center justify-center rounded-xl', TINTS[tintFor(category ?? name)])}>
-      <Package size={19} strokeWidth={1.9} />
+  // The top of a tile: the photo edge to edge, or a calm panel with the icon.
+  return own ? (
+    <img src={photo!} alt="" loading="lazy" decoding="async" className="aspect-[4/3] w-full bg-surface object-cover" />
+  ) : (
+    <span className="flex h-24 w-full items-center justify-center bg-surface">
+      <span className={cn('flex h-14 w-14 items-center justify-center rounded-2xl', TINTS[tintFor(category ?? name)])}>
+        <Package size={26} strokeWidth={1.7} />
+      </span>
     </span>
   )
 }

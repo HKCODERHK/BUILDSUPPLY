@@ -2581,6 +2581,13 @@ const STRINGS = {
   'sell.stepShort': { en: 'In steps of {qty}', hi: '{qty} के हिसाब से', mr: '{qty} प्रमाणे' },
   'order.notAvailableNow': { en: 'Something you chose is not available right now. Please remove it and send again.', hi: 'आपका चुना कुछ सामान अभी नहीं मिलेगा। उसे हटाकर फिर भेजें।', mr: 'तुम्ही निवडलेले काही साहित्य सध्या मिळणार नाही. ते काढून पुन्हा पाठवा.' },
   'order.qtyRule': { en: 'Check the quantity: loads are whole numbers, and some materials have a minimum or steps.', hi: 'मात्रा देखें: गाड़ी पूरी गिनती में, और कुछ सामान की कम से कम मात्रा या तय हिस्से हैं।', mr: 'प्रमाण तपासा: खेपा पूर्ण संख्येत, आणि काही साहित्याला किमान प्रमाण किंवा ठरलेले टप्पे आहेत.' },
+  // The order page's top band and filters (customer redesign, 2026-10-21).
+  'order.heroTitle': { en: 'Order building materials', hi: 'निर्माण सामग्री मंगाएँ', mr: 'बांधकाम साहित्य मागवा' },
+  'order.itemCount': { en: '{count} items', hi: '{count} सामान', mr: '{count} साहित्य' },
+  'order.categories': { en: 'Categories', hi: 'श्रेणियाँ', mr: 'प्रकार' },
+  'order.allCategories': { en: 'All', hi: 'सभी', mr: 'सर्व' },
+  'order.noMatch': { en: 'No materials match. Try another word or category.', hi: 'कोई सामान नहीं मिला। दूसरा शब्द या श्रेणी आज़माएँ।', mr: 'जुळणारे साहित्य नाही. दुसरा शब्द किंवा प्रकार वापरून पाहा.' },
+  'order.showAll': { en: 'Show all materials', hi: 'सारा सामान दिखाएँ', mr: 'सर्व साहित्य दाखवा' },
 } satisfies Record<string, Entry>
 
 export type TranslationKey = keyof typeof STRINGS
