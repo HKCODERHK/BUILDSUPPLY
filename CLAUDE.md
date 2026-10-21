@@ -2054,6 +2054,19 @@ and its count are the way to the cart.
   opens the khata (or `/me`) when the phone knows it, otherwise `/khata-help`
   with the number typed, where the customer asks this shop to send it.
 
+**Materials in three supply sections (2026-10-21, UI only).** The order
+page's browsing screen is **Materials** (bar label and heading) and its
+cards sit under **Direct Purchase** (anything not a 050 vehicle option),
+**Tractor Supply** (vehicle options whose supplier-written vehicle says
+tractor — `supplyOf`) and **Truck Supply** (every other vehicle option,
+labelled with the supplier's own vehicle name). Placement comes only from
+the data, never from material names; a vehicle listing splits into one card
+per section, each with its own vehicle choice. Pre-050 rows such as
+"10mm Gitti — Tractor" stay in Direct Purchase until the supplier marks
+them vehicle-based. The bar lost Call (the shop card keeps it) and always
+has Khata (`/khata-help` without a link). A first push of the branch never
+reached Vercel; an empty commit pushed again woke it.
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.

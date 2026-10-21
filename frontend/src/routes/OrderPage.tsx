@@ -17,6 +17,7 @@ import {
   Send,
   Share2,
   ShoppingBag,
+  Tractor,
   Truck,
   MessageCircle,
 } from 'lucide-react'
@@ -166,6 +167,11 @@ function OrderLine({ line, showPrice }: { line: { material: OrderPageMaterial; q
       </span>
     </span>
   )
+}
+
+/** Which supply section a vehicle option belongs in, from its own vehicle. */
+function supplyOf(m: OrderPageMaterial): 'tractor' | 'truck' {
+  return /tractor|ट्रैक्टर|ट्रॅक्टर/i.test(m.vehicle ?? '') ? 'tractor' : 'truck'
 }
 
 /** A way on from a screen that would otherwise end the visit (#23). */
@@ -376,7 +382,7 @@ export default function OrderPage() {
   // everything else is a tile of its own, in the order the shop lists them.
   type Tile =
     | { kind: 'one'; m: OrderPageMaterial }
-    | { kind: 'vehicle'; key: string; name: string; category: string | null; options: OrderPageMaterial[] }
+    | { kind: 'vehicle'; key: string; name: string; category: string | null; options: OrderPageMaterial[]; supply: 'tractor' | 'truck' }
   const tiles: Tile[] = []
   const vehicleTiles = new Map<string, Extract<Tile, { kind: 'vehicle' }>>()
   for (const m of visible) {
@@ -384,11 +390,15 @@ export default function OrderPage() {
       tiles.push({ kind: 'one', m })
       continue
     }
-    const key = listingKey(m)
+    // Which supply section, from the supplier's own vehicle: a tractor
+    // option under Tractor Supply, every other vehicle under Truck Supply.
+    // Never from the material's name.
+    const supply = supplyOf(m)
+    const key = `${listingKey(m)}|${supply}`
     const tile = vehicleTiles.get(key)
     if (tile) tile.options.push(m)
     else {
-      const fresh = { kind: 'vehicle' as const, key, name: m.listing_name!, category: m.category, options: [m] }
+      const fresh = { kind: 'vehicle' as const, key, name: m.listing_name!, category: m.category, options: [m], supply }
       vehicleTiles.set(key, fresh)
       tiles.push(fresh)
     }
@@ -866,8 +876,8 @@ export default function OrderPage() {
         {/* Every material a tile: a tinted icon, its name, its price or unit,
             and Add — which becomes − qty + once it is in the order. The
             quantity box still takes typing, for 250 bags or 1.5 brass. */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {tiles.map((tile) => {
+        {(() => {
+          const renderTile = (tile: Tile) => {
             if (tile.kind === 'vehicle') {
               const picked = tile.options.find((o) => Number(qty[o.id]) > 0 || editingQty === o.id) ?? null
               const loads = picked ? Number(qty[picked.id]) || 0 : 0
@@ -885,7 +895,8 @@ export default function OrderPage() {
                     <div className="min-w-0 flex-1">
                       <div className="break-words text-base font-bold leading-snug text-ink">{tile.name}</div>
                       <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-accent-bg px-2 py-0.5 text-[11px] font-semibold text-accent-text">
-                        <Truck size={12} /> {t('sell.soldByLoad')}
+                        {tile.supply === 'tractor' ? <Tractor size={12} /> : <Truck size={12} />}{' '}
+                        {t(tile.supply === 'tractor' ? 'sec.byTractor' : 'sec.byTruck')}
                       </span>
                     </div>
                   </div>
@@ -919,7 +930,7 @@ export default function OrderPage() {
                             {on && <Check size={12} strokeWidth={3} />}
                           </span>
                           <span className="min-w-0 flex-1">
-                            <span className="block text-sm font-semibold text-ink">{o.vehicle}</span>
+                            <span className="block text-sm font-bold text-ink">{vehicleOptionLabel(o.vehicle!, o.capacity!, o.capacity_unit!)}</span>
                             <span className="block text-xs text-muted">
                               {t('sell.capacityPerLoad', { capacity: capacityText(o.capacity!, o.capacity_unit!) })}
                             </span>
@@ -1107,8 +1118,30 @@ export default function OrderPage() {
                 </div>
               </div>
             )
-          })}
-        </div>
+          }
+          // Direct Purchase, Tractor Supply, Truck Supply - by how the
+          // supplier sells each option; empty sections are not shown.
+          const sections = [
+            { key: 'direct', icon: Package, title: t('sec.direct'), sub: t('sec.directSub'), items: tiles.filter((x) => x.kind === 'one') },
+            { key: 'tractor', icon: Tractor, title: t('sec.tractor'), sub: t('sec.tractorSub'), items: tiles.filter((x) => x.kind === 'vehicle' && x.supply === 'tractor') },
+            { key: 'truck', icon: Truck, title: t('sec.truck'), sub: t('sec.truckSub'), items: tiles.filter((x) => x.kind === 'vehicle' && x.supply === 'truck') },
+          ].filter((x) => x.items.length > 0)
+          return sections.map((sec) => (
+            <section key={sec.key} aria-labelledby={`sec-${sec.key}`} className="flex flex-col gap-3">
+              <div className="flex items-center gap-3 rounded-2xl border border-accent/20 bg-accent-bg/60 px-3 py-2.5">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-white">
+                  <sec.icon size={20} />
+                </span>
+                <div className="min-w-0">
+                  <h3 id={`sec-${sec.key}`} className="text-base font-bold leading-tight text-ink">{sec.title}</h3>
+                  <p className="text-xs text-muted">{sec.sub}</p>
+                </div>
+                <span className="ml-auto shrink-0 rounded-full bg-card px-2 py-0.5 text-xs font-semibold text-accent-text">{sec.items.length}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{sec.items.map(renderTile)}</div>
+            </section>
+          ))
+        })()}
 
           {shop && <ShopAbout shop={shop} showContact={false} />}
           {/* The shop's own QR — scanned, it opens this order page. */}
@@ -1385,18 +1418,24 @@ export default function OrderPage() {
 
       <ShopAppBar
         left={[
-          { key: 'home', icon: House, label: t('khata.tabHome'), active: view === 'home', onClick: () => go('home') },
+          { key: 'home', icon: House, label: t('order.materialsHeading'), active: view === 'home', onClick: () => go('home') },
           { key: 'orders', icon: Package, label: t('khata.tabOrders'), active: view === 'orders', onClick: () => go('orders') },
         ]}
         cart={{ label: t('ccart.title'), count: chosenCount, active: view === 'cart', onClick: () => go('cart') }}
         right={[
-          ...(account
-            ? [{ key: 'khata', icon: BookOpen, label: t('khata.tabBills'), onClick: () => openAccount('') }]
-            : khata
-              ? [{ key: 'khata', icon: BookOpen, label: t('khata.tabBills'), onClick: () => navigate(`/khata/${khata.code}`) }]
-              : page.phone
-                ? [{ key: 'call', icon: Phone, label: t('khata.call'), onClick: () => window.location.assign(`tel:${page.phone}`) }]
-                : []),
+          // No Call here (the user's ask, 2026-10-21) - the shop card keeps it.
+          // Khata always: theirs when the phone knows it, else the way to ask for it.
+          {
+            key: 'khata',
+            icon: BookOpen,
+            label: t('switch.khata'),
+            onClick: () =>
+              account
+                ? openAccount('')
+                : khata
+                  ? navigate(`/khata/${khata.code}`)
+                  : navigate('/khata-help', { state: { phone: form.phone } }),
+          },
           { key: 'profile', icon: UserRound, label: t('cme.tab'), active: view === 'profile', onClick: () => go('profile') },
         ]}
       />
