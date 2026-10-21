@@ -2023,6 +2023,14 @@ from the material sheet**: `modal.tsx` only compares the path, so a `?v=`
 change made while it closes is undone by its history step — close it, wait
 for `popstate` (or 400ms), then navigate (Phase 14 B1's pattern).
 
+**No top bar on the order page and the khata link (2026-10-21, the user's
+call).** `CustomerHeader minimal`: only the shop's logo and the owner's photo
+(`shop_profile.owner_photo_url`) at the top left, each opening full size; the
+shop's name stays as an `sr-only` h1; language and day/night live in Profile.
+While these pages are open `meta[name=theme-color]` takes the page's own
+background (restored on leaving). The status page, `/me` and `/khata-help`
+keep the old bar.
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.
