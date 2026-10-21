@@ -169,7 +169,7 @@ function PageSwitcher({ s }: { s: PageSwitch }) {
     )
   }
   return (
-    <div role="tablist" className="ml-auto flex shrink-0 items-center rounded-full border border-border bg-card p-1 shadow-[0_2px_10px_rgba(10,36,39,0.08)]">
+    <div role="tablist" className="flex shrink-0 items-center rounded-full border border-border bg-card p-1 shadow-[0_2px_10px_rgba(10,36,39,0.08)]">
       {item('order', s.orderLabel, ShoppingCart, s.onOrder)}
       {item('khata', s.khataLabel, BookOpen, s.onKhata)}
     </div>
@@ -239,7 +239,12 @@ function MinimalTop({
             <img src={ownerPhoto} alt="" className="h-full w-full object-cover" />
           </button>
         )}
-        {switcher && <PageSwitcher s={switcher} />}
+        {/* Top right: the Order | Khata switch where both pages exist, and
+            day / night always (the user's ask, 2026-10-21). */}
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          {switcher && <PageSwitcher s={switcher} />}
+          <ThemeToggle className="h-10 w-10 bg-card text-ink shadow-[0_2px_10px_rgba(10,36,39,0.08)]" />
+        </div>
       </div>
     </header>
   )
