@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useLanguage } from '@/context/LanguageContext'
 import { sanitizeDecimal } from '@/lib/numberInput'
-import { CAPACITY_UNITS, VEHICLE_SUGGESTIONS, blankVehicleOption as blankOption, vehicleOptionLabel, vehicleOptionName, type VehicleOptionDraft } from '@/lib/sellingType'
+import { CAPACITY_UNITS, TRUCK_CFT_SIZES, VEHICLE_SUGGESTIONS, blankVehicleOption as blankOption, vehicleOptionLabel, vehicleOptionName, type VehicleOptionDraft } from '@/lib/sellingType'
 import { removeVehicleOption, saveVehicleListing, type VehicleOptionInput } from '@/services/materials'
 import { cn } from '@/lib/utils'
 
@@ -226,6 +226,23 @@ export function VehicleListingForm({
                     </option>
                   ))}
                 </select>
+              </div>
+              {/* The sizes trucks commonly carry here, one tap each (the user's ask). */}
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] text-muted">{t('sell.quickSizes')}:</span>
+                {TRUCK_CFT_SIZES.map((cft) => (
+                  <button
+                    key={cft}
+                    type="button"
+                    onClick={() => update(o.key, { capacity: String(cft), capacity_unit: 'CFT' })}
+                    className={cn(
+                      'h-8 rounded-full border px-2.5 text-xs font-semibold',
+                      Number(o.capacity) === cft && o.capacity_unit === 'CFT' ? 'border-accent bg-accent text-white' : 'border-border text-ink',
+                    )}
+                  >
+                    {cft.toLocaleString('en-IN')} CFT
+                  </button>
+                ))}
               </div>
               {bad.includes('capacity') && <p className="mt-1 text-xs text-red-600">{t('sell.capacityNeeded')}</p>}
             </div>
