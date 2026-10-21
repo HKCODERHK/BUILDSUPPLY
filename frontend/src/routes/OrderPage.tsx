@@ -199,6 +199,8 @@ export default function OrderPage() {
   const [loadFailed, setLoadFailed] = useState(false)
   const [qty, setQty] = useState<Record<string, string>>({})
   const [query, setQuery] = useState('')
+  // A category chip: only which tiles show, never what is in the order.
+  const [category, setCategory] = useState<string | null>(null)
   // Their khata with this shop — the code and the customer it belongs to — if
   // this phone has ever opened it (lib/customerLinks — on the phone only,
   // never on the server).
@@ -325,9 +327,10 @@ export default function OrderPage() {
   // otherwise every order is cash and there is nothing to choose between.
   const takesUpi = !!open?.upi
   const materials = open?.materials ?? []
-  const showSearch = materials.length > 8
   const search = query.trim().toLowerCase()
-  const visible = search
+  // The shop's own categories, in the order its list has them.
+  const categories = [...new Set(materials.map((m) => (m.category ?? '').trim()).filter(Boolean))]
+  const visible = (search
     ? materials.filter(
         (m) =>
           m.name.toLowerCase().includes(search) ||
@@ -335,6 +338,7 @@ export default function OrderPage() {
           (m.category ?? '').toLowerCase().includes(search),
       )
     : materials
+  ).filter((m) => !category || (m.category ?? '').trim() === category)
 
   const chosen = materials
     .map((m) => ({ material: m, qty: Number(qty[m.id]) || 0 }))
@@ -685,28 +689,45 @@ export default function OrderPage() {
   return (
     <div className="flex min-h-screen flex-col bg-surface" data-brand={brandAttr(shop?.brand_color)}>
       {header}
-      <main className={cn('mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4', tabs ? 'pb-44' : 'pb-28')}>
-        {knownName && (
-          <div className="flex items-center gap-3 pt-1">
-            <CustomerAvatar id={`${page.business_name}|${knownName}`} name={knownName} size={44} />
-            <div className="min-w-0 flex-1">
-              <div className="text-xs text-muted">{t(greetingKey())}</div>
-              <div className="line-clamp-2 break-words text-lg font-bold leading-tight text-ink">
-                {t('khata.hello', { name: knownName })}
+      <main className={cn('mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4 sm:max-w-2xl', tabs ? 'pb-44' : 'pb-28')}>
+        {/* The top band: who they are, what this page is for, and the search —
+            the shop's own colour, white text (each brand colour is ≥5:1). */}
+        <section className="rounded-3xl bg-accent p-4 text-white shadow-[0_8px_24px_rgba(10,36,39,0.16)]">
+          {knownName && (
+            <div className="mb-3 flex items-center gap-3">
+              <CustomerAvatar id={`${page.business_name}|${knownName}`} name={knownName} size={40} />
+              <div className="min-w-0 flex-1">
+                <div className="text-xs text-white/80">{t(greetingKey())}</div>
+                <div className="line-clamp-2 break-words text-base font-bold leading-tight">{t('khata.hello', { name: knownName })}</div>
               </div>
               {canChange && (
                 <button
                   type="button"
                   // Nothing is cleared until they press Continue (#17).
                   onClick={() => setChanging(true)}
-                  className="inline-flex min-h-11 items-center text-xs font-medium text-accent-text"
+                  className="inline-flex min-h-11 shrink-0 items-center rounded-full px-2 text-xs font-semibold text-white underline underline-offset-2"
                 >
                   {t('cw.notYou')}
                 </button>
               )}
             </div>
-          </div>
-        )}
+          )}
+          <h1 className="text-xl font-bold leading-tight">{t('order.heroTitle')}</h1>
+          <p className="mt-1 text-xs leading-snug text-white/85">{t('order.intro')}</p>
+          {materials.length > 0 && (
+            <div className="relative mt-3">
+              <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                type="search"
+                aria-label={t('order.search')}
+                placeholder={t('order.search')}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="h-11 w-full rounded-2xl border-0 bg-white pl-10 pr-3 text-sm text-[#0a2427] outline-none placeholder:text-slate-500 focus:ring-2 focus:ring-white/60"
+              />
+            </div>
+          )}
+        </section>
 
         {/* The shop: its own page (042) when it has one, the plain card otherwise. */}
         {shop ? (
@@ -767,25 +788,53 @@ export default function OrderPage() {
         {shop && <ShopOffers shop={shop} />}
         {shop && <ShopDelivery shop={shop} />}
 
-        <SectionHeading title={t('order.materialsHeading')} />
-        <p className="-mt-2 px-1 text-xs text-muted">{t('order.intro')}</p>
-        {showSearch && (
-          <div className="relative">
-            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-            <Input
-              placeholder={t('order.search')}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="rounded-2xl pl-9"
-            />
+        <div className="flex items-baseline justify-between gap-3 px-1">
+          <h2 className="text-base font-bold text-ink">{t('order.materialsHeading')}</h2>
+          {materials.length > 0 && <span className="shrink-0 text-xs text-muted">{t('order.itemCount', { count: tiles.length })}</span>}
+        </div>
+        {/* The shop's categories as chips — they only narrow what is shown. */}
+        {categories.length > 1 && (
+          <div className="-mx-4 -mt-1 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label={t('order.categories')}>
+            {[null, ...categories].map((c) => {
+              const on = category === c
+              return (
+                <button
+                  key={c ?? '*'}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setCategory(c)}
+                  className={cn(
+                    'h-9 shrink-0 rounded-full border px-4 text-xs font-semibold transition-colors',
+                    on ? 'border-accent bg-accent text-white' : 'border-border bg-card text-ink hover:bg-surface',
+                  )}
+                >
+                  {c ?? t('order.allCategories')}
+                </button>
+              )
+            })}
           </div>
         )}
         {materials.length === 0 && <SoftCard className="p-4 text-sm text-muted">{t('order.noMaterials')}</SoftCard>}
+        {materials.length > 0 && tiles.length === 0 && (
+          <SoftCard className="flex flex-col items-start gap-2 p-4 text-sm text-muted">
+            {t('order.noMatch')}
+            <button
+              type="button"
+              onClick={() => {
+                setQuery('')
+                setCategory(null)
+              }}
+              className="inline-flex min-h-11 items-center text-sm font-semibold text-accent"
+            >
+              {t('order.showAll')}
+            </button>
+          </SoftCard>
+        )}
 
         {/* Every material a tile: a tinted icon, its name, its price or unit,
             and Add — which becomes − qty + once it is in the order. The
             quantity box still takes typing, for 250 bags or 1.5 brass. */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {tiles.map((tile) => {
             if (tile.kind === 'vehicle') {
               const picked = tile.options.find((o) => Number(qty[o.id]) > 0 || editingQty === o.id) ?? null
@@ -795,19 +844,17 @@ export default function OrderPage() {
                 <div
                   key={tile.key}
                   className={cn(
-                    'col-span-2 flex min-w-0 flex-col gap-3 rounded-2xl border bg-card p-3 shadow-[0_2px_10px_rgba(10,36,39,0.04)]',
-                    picked ? 'border-accent' : 'border-border',
+                    'col-span-2 flex min-w-0 flex-col gap-3 rounded-2xl border bg-card p-3 shadow-[0_4px_14px_rgba(10,36,39,0.06)] sm:col-span-3',
+                    picked ? 'border-accent ring-1 ring-accent' : 'border-border',
                   )}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="w-20 shrink-0">
-                      <MaterialPicture name={tile.name} category={tile.category} photo={photo} />
-                    </div>
+                  <div className="flex items-center gap-3">
+                    <MaterialPicture name={tile.name} category={tile.category} photo={photo} thumb />
                     <div className="min-w-0 flex-1">
-                      <div className="break-words text-sm font-semibold leading-snug text-ink">{tile.name}</div>
-                      <div className="mt-0.5 flex items-center gap-1 text-xs text-muted">
+                      <div className="break-words text-base font-bold leading-snug text-ink">{tile.name}</div>
+                      <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-accent-bg px-2 py-0.5 text-[11px] font-semibold text-accent-text">
                         <Truck size={12} /> {t('sell.soldByLoad')}
-                      </div>
+                      </span>
                     </div>
                   </div>
                   <div role="radiogroup" aria-label={t('sell.chooseVehicle', { name: tile.name })} className="flex flex-col gap-2">
@@ -824,12 +871,22 @@ export default function OrderPage() {
                           disabled={off}
                           onClick={() => pickVehicle(tile.options, o)}
                           className={cn(
-                            'flex min-h-11 items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left',
-                            on ? 'border-accent bg-accent-bg' : 'border-border',
+                            'flex min-h-12 items-center gap-3 rounded-xl border px-3 py-2 text-left transition-colors',
+                            on ? 'border-accent bg-accent-bg' : 'border-border bg-card hover:bg-surface',
                             off && 'opacity-60',
                           )}
                         >
-                          <span className="min-w-0">
+                          {/* A radio dot, so the choice reads as one of several. */}
+                          <span
+                            aria-hidden
+                            className={cn(
+                              'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2',
+                              on ? 'border-accent bg-accent text-white' : 'border-border',
+                            )}
+                          >
+                            {on && <Check size={12} strokeWidth={3} />}
+                          </span>
+                          <span className="min-w-0 flex-1">
                             <span className="block text-sm font-semibold text-ink">{o.vehicle}</span>
                             <span className="block text-xs text-muted">
                               {t('sell.capacityPerLoad', { capacity: capacityText(o.capacity!, o.capacity_unit!) })}
@@ -839,7 +896,7 @@ export default function OrderPage() {
                             {off ? (
                               <span className="font-semibold text-muted">{t('sell.notAvailable')}</span>
                             ) : page.show_prices && o.price != null ? (
-                              <span className="font-semibold text-ink">{t('sell.perLoadPrice', { price: formatINR(o.price) })}</span>
+                              <span className="font-bold text-accent-text">{t('sell.perLoadPrice', { price: formatINR(o.price) })}</span>
                             ) : page.show_prices ? (
                               <span className="text-muted">{t('order.priceOnRequest')}</span>
                             ) : null}
@@ -849,7 +906,7 @@ export default function OrderPage() {
                     })}
                   </div>
                   {picked && (
-                    <div className="flex flex-col gap-2 rounded-xl bg-surface p-3">
+                    <div className="flex flex-col gap-2 rounded-xl border border-accent/30 bg-accent-bg/60 p-3">
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-xs font-semibold text-ink">{t('sell.numberOfLoads')}</span>
                         <div className="flex items-center gap-1">
@@ -929,20 +986,23 @@ export default function OrderPage() {
               <div
                 key={m.id}
                 className={cn(
-                  'flex min-w-0 flex-col gap-2 rounded-2xl border bg-card p-3 shadow-[0_2px_10px_rgba(10,36,39,0.04)]',
-                  inOrder ? 'border-accent' : 'border-border',
+                  'flex min-w-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-[0_4px_14px_rgba(10,36,39,0.06)]',
+                  inOrder ? 'border-accent ring-1 ring-accent' : 'border-border',
                 )}
               >
-                {/* The shop's photo, the catalog's, or a drawing of the material. */}
+                {/* The shop's own photo, or a calm panel with the material's icon. */}
                 <MaterialPicture name={m.name} category={m.category} photo={shop?.photos[m.id]} />
-                <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 flex-1 flex-col gap-1 p-3">
                   <div className="line-clamp-2 break-words text-sm font-semibold leading-snug text-ink">{m.name}</div>
-                  <div className="truncate text-xs text-muted">
-                    {page.show_prices
-                      ? m.price != null
-                        ? `${formatINR(m.price)}${m.unit ? ` / ${m.unit}` : ''}`
-                        : t('order.priceOnRequest')
-                      : m.unit}
+                  <div className="flex flex-wrap items-baseline gap-x-1">
+                    {page.show_prices && m.price != null ? (
+                      <>
+                        <span className="text-base font-bold text-accent-text">{formatINR(m.price)}</span>
+                        {m.unit && <span className="text-xs text-muted">/ {m.unit}</span>}
+                      </>
+                    ) : (
+                      <span className="text-xs text-muted">{page.show_prices ? t('order.priceOnRequest') : m.unit}</span>
+                    )}
                   </div>
                   {/* The shop's ordering rule, before it can be broken (050). */}
                   {(m.min_qty || m.qty_step) && (
@@ -956,9 +1016,10 @@ export default function OrderPage() {
                     </div>
                   )}
                   {Number(value) > 0 && quantityProblem(m, Number(value)) && (
-                    <div className="text-[11px] font-medium text-red-600">{t('order.qtyRule')}</div>
+                    <div role="alert" className="text-[11px] font-medium text-red-600">{t('order.qtyRule')}</div>
                   )}
                 </div>
+                <div className="px-3 pb-3">
                 {m.available === false ? (
                   <div className="flex h-11 items-center justify-center rounded-xl bg-surface text-xs font-semibold text-muted">
                     {t('sell.notAvailable')}
@@ -1003,11 +1064,12 @@ export default function OrderPage() {
                     type="button"
                     aria-label={t('order.more', { name: m.name })}
                     onClick={() => step(m, 1)}
-                    className="flex h-11 items-center justify-center gap-1.5 rounded-xl bg-accent-bg text-sm font-semibold text-accent-text"
+                    className="flex h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-accent text-sm font-semibold text-white shadow-sm active:opacity-90"
                   >
-                    <Plus size={15} /> {t('order.add')}
+                    <Plus size={16} /> {t('order.add')}
                   </button>
                 )}
+                </div>
               </div>
             )
           })}
