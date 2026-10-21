@@ -1,6 +1,6 @@
 import { useEffect, type ComponentType, type ReactNode, type Ref } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, MapPin, ShoppingCart, Store } from 'lucide-react'
+import { ArrowLeft, BookOpen, MapPin, ShoppingCart, Store } from 'lucide-react'
 import { Tipper } from '@/components/art'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -46,6 +46,7 @@ export function CustomerHeader({
   ownerPhoto,
   onOwner,
   ownerLabel,
+  switcher,
 }: {
   shop?: { business_name: string; logo_url?: string | null } | null
   /** Tapping the logo opens it full size. */
@@ -66,9 +67,13 @@ export function CustomerHeader({
   ownerPhoto?: string | null
   onOwner?: () => void
   ownerLabel?: string
+  /** The Order | Khata switch at the top right (minimal top only). */
+  switcher?: PageSwitch | null
 }) {
   if (minimal) {
-    return <MinimalTop shop={shop} onLogo={onLogo} logoLabel={logoLabel} ownerPhoto={ownerPhoto} onOwner={onOwner} ownerLabel={ownerLabel} />
+    return (
+      <MinimalTop shop={shop} onLogo={onLogo} logoLabel={logoLabel} ownerPhoto={ownerPhoto} onOwner={onOwner} ownerLabel={ownerLabel} switcher={switcher} />
+    )
   }
   // 44px, like every other control on these pages (#30).
   const toggles = 'h-11 min-w-11 w-11 border-white/20 text-white hover:bg-white/10 hover:text-white'
@@ -131,7 +136,47 @@ export function CustomerHeader({
   )
 }
 
-/** The minimal top: the shop's logo and the owner's photo, nothing else. */
+export interface PageSwitch {
+  active: 'order' | 'khata'
+  orderLabel: string
+  khataLabel: string
+  onOrder: () => void
+  onKhata: () => void
+}
+
+/**
+ * A small two-way switch between a shop's order page and the customer's
+ * khata (the user's ask, 2026-10-21) — the same customer's two pages, one
+ * tap apart. Only shown where both exist.
+ */
+function PageSwitcher({ s }: { s: PageSwitch }) {
+  const item = (key: 'order' | 'khata', label: string, Icon: Icon, onClick: () => void) => {
+    const on = s.active === key
+    return (
+      <button
+        type="button"
+        role="tab"
+        aria-selected={on}
+        onClick={on ? undefined : onClick}
+        className={cn(
+          'flex h-9 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-colors',
+          on ? 'bg-accent text-white shadow-sm' : 'text-muted hover:text-ink',
+        )}
+      >
+        <Icon size={14} strokeWidth={2} />
+        {label}
+      </button>
+    )
+  }
+  return (
+    <div role="tablist" className="ml-auto flex shrink-0 items-center rounded-full border border-border bg-card p-1 shadow-[0_2px_10px_rgba(10,36,39,0.08)]">
+      {item('order', s.orderLabel, ShoppingCart, s.onOrder)}
+      {item('khata', s.khataLabel, BookOpen, s.onKhata)}
+    </div>
+  )
+}
+
+/** The minimal top: the shop's logo and the owner's photo, and the switch where both pages exist. */
 function MinimalTop({
   shop,
   onLogo,
@@ -139,6 +184,7 @@ function MinimalTop({
   ownerPhoto,
   onOwner,
   ownerLabel,
+  switcher,
 }: {
   shop?: { business_name: string; logo_url?: string | null } | null
   onLogo?: () => void
@@ -146,6 +192,7 @@ function MinimalTop({
   ownerPhoto?: string | null
   onOwner?: () => void
   ownerLabel?: string
+  switcher?: PageSwitch | null
 }) {
   const { theme } = useTheme()
   // With no dark bar under it, the phone's status bar takes the page's own
@@ -171,7 +218,7 @@ function MinimalTop({
     </span>
   )
   return (
-    <header className="px-4 pt-[calc(0.75rem_+_var(--safe-top))]">
+    <header data-customer-top className="sticky top-0 z-30 bg-surface px-4 pb-2 pt-[calc(0.75rem_+_var(--safe-top))]">
       <div className="mx-auto flex max-w-lg items-center sm:max-w-2xl">
         {/* Read aloud, since the name is no longer written at the top. */}
         {shop && <h1 className="sr-only">{shop.business_name}</h1>}
@@ -192,6 +239,7 @@ function MinimalTop({
             <img src={ownerPhoto} alt="" className="h-full w-full object-cover" />
           </button>
         )}
+        {switcher && <PageSwitcher s={switcher} />}
       </div>
     </header>
   )

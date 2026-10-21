@@ -23,6 +23,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import type { TranslationKey } from '@/lib/i18n'
 import { AdminDashboardView } from '@/routes/admin/AdminDashboardView'
 import { StartHereCard } from '@/components/StartHereCard'
+import { CollapsingHero, CoverSheet, ShopQrCard } from '@/components/ScrollEffects'
 import { KycNotice } from '@/components/KycSettings'
 import { KhataRequestsNotice } from '@/components/KhataRequestsNotice'
 import { countOpenComplaints } from '@/services/complaints'
@@ -385,16 +386,21 @@ function SupplierDashboardView() {
       {/* accent-bg rather than a literal green: it is the same token the app
           uses for every other soft-green surface, and it already has a dark
           counterpart, so this stays readable when the theme flips. */}
-      <div className="mb-6 flex items-center gap-4 rounded-xl bg-accent-bg p-4">
-        {/* Tap: Profile. Hold: the order QR. */}
-        <WelcomeLogo />
-        <div className="min-w-0">
-          <h1 className="text-xl font-bold text-ink sm:text-2xl">
-            {t(firstRun ? 'dash.welcomeNew' : 'dash.welcome', { name: supplier?.business_name ?? '' })}
-          </h1>
-          <p className="mt-0.5 text-sm text-muted">{t(showStart ? 'dash.subtitleNew' : 'dash.subtitle')}</p>
+      {/* The welcome closes under the top bar while the rest slides up over
+          it (the user's PhonePe recording, 2026-10-21). */}
+      <CollapsingHero under="[data-app-header]">
+        <div className="flex items-center gap-4 rounded-xl bg-accent-bg p-4">
+          {/* Tap: Profile. Hold: the order QR. */}
+          <WelcomeLogo />
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-ink sm:text-2xl">
+              {t(firstRun ? 'dash.welcomeNew' : 'dash.welcome', { name: supplier?.business_name ?? '' })}
+            </h1>
+            <p className="mt-0.5 text-sm text-muted">{t(showStart ? 'dash.subtitleNew' : 'dash.subtitle')}</p>
+          </div>
         </div>
-      </div>
+      </CollapsingHero>
+      <CoverSheet plain className="mt-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:rounded-none lg:px-0 lg:shadow-none">
 
       {/* An unfinished bill or estimate — most often because the phone closed
           the app. First on the screen, because the app reopens here rather
@@ -623,6 +629,20 @@ function SupplierDashboardView() {
           </div>
         </>
       )}
+
+      {/* My QR: the shop's own order QR at the foot, as the recording's. */}
+      {supplier?.order_link && supplier.ordering_enabled && (
+        <div className="mt-2 pb-2">
+          <ShopQrCard
+            url={orderPageUrl(supplier.order_link)}
+            business={supplier.business_name}
+            logoUrl={supplier.logo_url ?? null}
+            title={t('qr.myTitle')}
+            caption={t('qr.myCaption')}
+          />
+        </div>
+      )}
+      </CoverSheet>
 
       {sendingRates && supplier && (
         <SendRatesModal supplier={supplier} materials={priced} onClose={() => setSendingRates(false)} />

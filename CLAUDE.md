@@ -2033,6 +2033,22 @@ keep the old bar. The floating "N selected · Review" strip above the
 bottom bar was removed the same day (the user's call): the round cart button
 and its count are the way to the cart.
 
+**Order | Khata switch, the close effect and the shop QR (2026-10-21).**
+- A small `PageSwitcher` (Order | Khata) at the top right of the minimal top
+  on both customer home screens — only where the phone knows both pages
+  (khata or 041 account on the order page; `order_link` on the khata link).
+- From the user's PhonePe recording (frames pulled in the browser pane):
+  `components/ScrollEffects.tsx`. **`CollapsingHero`** pins the top block
+  (the order page's green band, the khata balance band, the Dashboard
+  welcome) under the sticky header (`[data-customer-top]` /
+  `[data-app-header]`, measured) and fades / shrinks it while **`CoverSheet`**
+  (rounded top, `bg-surface`, z-10) slides over it. Only transform and
+  opacity move; reduced motion skips the scale. **`ShopQrCard`**: "SHOP QR"
+  at the foot of the order page and the khata link (the shop's order link,
+  black on white, Copy link / Share QR via `orderQrPngFile`), "MY QR" at the
+  foot of the supplier Dashboard once ordering is on; it grows into view.
+  The minimal customer top is now sticky on `bg-surface`.
+
 ## The admin panel
 
 **It answers three questions and nothing else**, at the user's explicit direction: *who needs attention, who needs renewing, who do I contact* — each with a one-tap action. Resist turning it into an accounting system.

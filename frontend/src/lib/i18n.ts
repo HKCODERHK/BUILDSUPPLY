@@ -2627,6 +2627,16 @@ const STRINGS = {
   'cme.forget': { en: 'Forget me on this phone', hi: 'इस फ़ोन से मेरी जानकारी हटाएँ', mr: 'या फोनवरून माझी माहिती काढा' },
   'cme.forgetConfirm': { en: 'Your details, khata link and orders from {shop} will be removed from this phone. Nothing at the shop changes.', hi: '{shop} की आपकी जानकारी, खाता लिंक और ऑर्डर इस फ़ोन से हट जाएँगे। दुकान में कुछ नहीं बदलेगा।', mr: '{shop} ची तुमची माहिती, खाते लिंक आणि ऑर्डर या फोनवरून काढल्या जातील. दुकानात काहीही बदलणार नाही.' },
   'cme.forgetYes': { en: 'Yes, forget', hi: 'हाँ, हटाएँ', mr: 'हो, काढा' },
+  // The Order | Khata switch at the top of both customer home screens.
+  'switch.order': { en: 'Order', hi: 'ऑर्डर', mr: 'ऑर्डर' },
+  'switch.khata': { en: 'Khata', hi: 'खाता', mr: 'खाते' },
+  // The shop QR at the foot of the home screens (2026-10-21).
+  'qr.shopTitle': { en: 'Shop QR', hi: 'दुकान QR', mr: 'दुकान QR' },
+  'qr.myTitle': { en: 'My QR', hi: 'मेरा QR', mr: 'माझा QR' },
+  'qr.scanToOrder': { en: 'Scan to order from {shop}', hi: '{shop} से ऑर्डर करने के लिए स्कैन करें', mr: '{shop} कडून ऑर्डर करण्यासाठी स्कॅन करा' },
+  'qr.myCaption': { en: 'Customers scan this to order from you', hi: 'ग्राहक इसे स्कैन करके आपसे ऑर्डर करें', mr: 'ग्राहक हा स्कॅन करून तुमच्याकडे ऑर्डर करतात' },
+  'qr.copy': { en: 'Copy link', hi: 'लिंक कॉपी', mr: 'लिंक कॉपी' },
+  'qr.share': { en: 'Share QR', hi: 'QR भेजें', mr: 'QR पाठवा' },
 } satisfies Record<string, Entry>
 
 export type TranslationKey = keyof typeof STRINGS
