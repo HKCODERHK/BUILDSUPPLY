@@ -526,6 +526,17 @@ export default function OrderPage() {
       ownerPhoto={shop?.owner_photo_url}
       onOwner={() => setOwnerPreview(true)}
       ownerLabel={t('shop.ownerPhoto')}
+      switcher={
+        view === 'home' && (account || khata)
+          ? {
+              active: 'order',
+              orderLabel: t('switch.order'),
+              khataLabel: t('switch.khata'),
+              onOrder: () => {},
+              onKhata: () => (account ? openAccount('') : khata && navigate(`/khata/${khata.code}`)),
+            }
+          : null
+      }
     />
   )
 

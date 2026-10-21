@@ -2627,6 +2627,9 @@ const STRINGS = {
   'cme.forget': { en: 'Forget me on this phone', hi: 'इस फ़ोन से मेरी जानकारी हटाएँ', mr: 'या फोनवरून माझी माहिती काढा' },
   'cme.forgetConfirm': { en: 'Your details, khata link and orders from {shop} will be removed from this phone. Nothing at the shop changes.', hi: '{shop} की आपकी जानकारी, खाता लिंक और ऑर्डर इस फ़ोन से हट जाएँगे। दुकान में कुछ नहीं बदलेगा।', mr: '{shop} ची तुमची माहिती, खाते लिंक आणि ऑर्डर या फोनवरून काढल्या जातील. दुकानात काहीही बदलणार नाही.' },
   'cme.forgetYes': { en: 'Yes, forget', hi: 'हाँ, हटाएँ', mr: 'हो, काढा' },
+  // The Order | Khata switch at the top of both customer home screens.
+  'switch.order': { en: 'Order', hi: 'ऑर्डर', mr: 'ऑर्डर' },
+  'switch.khata': { en: 'Khata', hi: 'खाता', mr: 'खाते' },
 } satisfies Record<string, Entry>
 
 export type TranslationKey = keyof typeof STRINGS

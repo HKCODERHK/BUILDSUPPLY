@@ -712,6 +712,17 @@ export default function KhataPage({
       ownerPhoto={shop?.owner_photo_url}
       onOwner={() => setOwnerPreview(true)}
       ownerLabel={t('shop.ownerPhoto')}
+      switcher={
+        section === null && found?.order_link
+          ? {
+              active: 'khata',
+              orderLabel: t('switch.order'),
+              khataLabel: t('switch.khata'),
+              onOrder: () => navigate(`/order/${found.order_link}`),
+              onKhata: () => {},
+            }
+          : null
+      }
       />
       <main className={cn('mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4', found && 'pb-40')}>
         {accountTop}
