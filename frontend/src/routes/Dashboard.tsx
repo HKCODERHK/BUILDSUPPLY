@@ -275,10 +275,10 @@ function SupplierDashboardView() {
   // rest, so the card costs no extra query.
   const [materials, setMaterials] = useState<Material[]>([])
   const [sendingDetails, setSendingDetails] = useState(false)
-  // Opened by the app icon's long-press shortcut (/dashboard?send=details,
-  // manifest.webmanifest). The address is cleaned first and the dialog opened
-  // only once it is: a dialog adds its own history entry, which the router's
-  // replace would otherwise overwrite.
+  // Opened by the app icon's long-press shortcut (/go/details lands here with
+  // ?send=details — lib/shortcuts.ts). The address is cleaned first and the
+  // dialog opened only once it is: a dialog adds its own history entry, which
+  // the router's replace would otherwise overwrite.
   const [params, setParams] = useSearchParams()
   const fromShortcut = params.get('send') === 'details'
   const [shortcutAsked, setShortcutAsked] = useState(fromShortcut)
