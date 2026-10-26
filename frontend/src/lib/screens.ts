@@ -11,6 +11,7 @@ export const screens = {
   Apply: () => import('@/routes/Apply'),
   Application: () => import('@/routes/Application'),
   Complaints: () => import('@/routes/Complaints'),
+  Notifications: () => import('@/routes/Notifications'),
   ForgotPassword: () => import('@/routes/ForgotPassword'),
   ResetPassword: () => import('@/routes/ResetPassword'),
   OrderPage: () => import('@/routes/OrderPage'),
@@ -49,9 +50,9 @@ type Screen = keyof typeof screens
 const SUPPLIER_SCREENS: Screen[] = [
   'Dashboard', 'NewInvoice', 'Customers', 'CustomerProfile', 'Invoices', 'InvoiceDetail', 'Materials',
   'Payments', 'Orders', 'OrderDetail', 'Settings', 'Quotations', 'NewQuotation', 'QuotationDetail',
-  'Deliveries', 'Reminders', 'Reports',
+  'Deliveries', 'Reminders', 'Reports', 'Notifications',
 ]
-const ADMIN_SCREENS: Screen[] = ['Dashboard', 'AdminSuppliers', 'AdminSupplierProfile', 'AdminMaterialCatalog', 'AdminPlatformSettings', 'AdminCompliance', 'AdminComplianceDetail', 'Settings']
+const ADMIN_SCREENS: Screen[] = ['Dashboard', 'AdminSuppliers', 'AdminSupplierProfile', 'AdminMaterialCatalog', 'AdminPlatformSettings', 'AdminCompliance', 'AdminComplianceDetail', 'Settings', 'Notifications']
 
 let started = false
 

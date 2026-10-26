@@ -88,6 +88,10 @@ const CATEGORIES = [
   // declarations each account accepted, document records (the files are in
   // the private `kyc` bucket and travel with the file backup), the audit log
   // and the admin's legal texts and settings.
+  // Notifications (051): the bell's list for every shop, the admin and each
+  // customer, and the phones that agreed to alerts. A phone signed up through
+  // a customer's anonymous login comes back only with that login.
+  ['Notifications and phone alerts', ['notifications', 'push_subscriptions']],
   ['Supplier verification and agreements', ['supplier_compliance', 'supplier_documents', 'supplier_acceptances',
     'compliance_audit_log', 'compliance_texts', 'compliance_requirements', 'retention_settings']],
 ]

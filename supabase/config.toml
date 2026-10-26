@@ -31,3 +31,6 @@ additional_redirect_urls = [
 # demand one; the function checks everything itself.
 [functions.supplier-apply]
 verify_jwt = false
+
+[functions.send-push]
+verify_jwt = false

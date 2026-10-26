@@ -120,6 +120,10 @@ const ORDER = [
   'supplier_documents',
   'supplier_acceptances',
   'compliance_audit_log',
+  // Notifications and the phones that agreed to alerts (051): after every
+  // shop, customer, order and login they point at.
+  'notifications',
+  'push_subscriptions',
 ]
 
 // A table the backup holds but ORDER has never heard of - one a later
@@ -170,6 +174,11 @@ const RELINKED = {
   customer_accounts: 'exists (select 1 from auth.users u where u.id = x.user_id)',
   customer_connections:
     'exists (select 1 from auth.users u where u.id = x.user_id) and exists (select 1 from public.customer_accounts a where a.user_id = x.user_id)',
+  // A phone signed up through a customer's anonymous login (051) comes back
+  // with that login only; phones of shops, the admin, khata links and order
+  // links always come back. The customer's phone signs up again on its own
+  // the next time they open their account.
+  push_subscriptions: '(x.user_id is null or exists (select 1 from auth.users u where u.id = x.user_id))',
 }
 
 // Held back on the way in and filled by an UPDATE once invoices exist.

@@ -7,6 +7,7 @@ import { BrandMark } from '@/components/BrandMark'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { TruckLoader } from '@/components/TruckLoader'
+import { PushSwitch } from '@/components/PushSwitch'
 import { ComplianceForm } from '@/components/ComplianceForm'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { Card } from '@/components/ui/card'
@@ -126,6 +127,9 @@ export default function Application() {
                 <WhatsAppIcon size={16} /> {t('app.contact')}
               </Button>
             </Card>
+
+            {/* Told the moment the application is decided (051). */}
+            <PushSwitch offText="push.offApplicant" />
 
             <ComplianceForm record={record} onChanged={load} lockEmail />
 

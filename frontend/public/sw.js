@@ -143,3 +143,50 @@ self.addEventListener('fetch', (event) => {
     })(),
   )
 })
+
+// ── Phone alerts (migration 051) ─────────────────────────────────────────
+// The send-push function sends { title, body, tag, url }, already in the
+// phone's language. Tapping one opens that screen in the app — the window
+// already open if there is one, a new one otherwise.
+self.addEventListener('push', (event) => {
+  let data = {}
+  try {
+    data = event.data ? event.data.json() : {}
+  } catch {
+    data = { title: 'BuildSupply', body: event.data ? event.data.text() : '' }
+  }
+  const url = typeof data.url === 'string' && data.url.startsWith('/') ? data.url : '/dashboard'
+  event.waitUntil(
+    self.registration
+      .showNotification(data.title || 'BuildSupply', {
+        body: data.body || '',
+        tag: data.tag,
+        icon: '/icon-192.png?v=3',
+        badge: '/badge-96.png',
+        data: { url },
+      })
+      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      // An open app refreshes its bell at once.
+      .then((list) => list.forEach((c) => c.postMessage({ type: 'buildsupply-notification' }))),
+  )
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const url = new URL(event.notification.data?.url || '/dashboard', self.location.origin).href
+  event.waitUntil(
+    (async () => {
+      const list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      for (const client of list) {
+        if (new URL(client.url).origin === self.location.origin && 'focus' in client) {
+          await client.focus()
+          // The app moves there itself (App.tsx), without reloading — a
+          // reload would drop a half-typed bill back to its draft.
+          client.postMessage({ type: 'buildsupply-open', url })
+          return
+        }
+      }
+      return self.clients.openWindow(url)
+    })(),
+  )
+})

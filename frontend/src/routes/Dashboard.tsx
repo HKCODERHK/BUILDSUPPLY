@@ -26,6 +26,7 @@ import { StartHereCard } from '@/components/StartHereCard'
 import { CollapsingHero, CoverSheet, ShopQrCard } from '@/components/ScrollEffects'
 import { KycNotice } from '@/components/KycSettings'
 import { KhataRequestsNotice } from '@/components/KhataRequestsNotice'
+import { PushNudge } from '@/components/PushNudge'
 import { countOpenComplaints } from '@/services/complaints'
 import { DraftBanners } from '@/components/Drafts'
 import { TruckLoader } from '@/components/TruckLoader'
@@ -419,6 +420,8 @@ function SupplierDashboardView() {
       <KycNotice />
       {/* Customers who asked for their khata link again (048). */}
       <KhataRequestsNotice />
+      {/* Phone alerts (051): asked once, on a phone that could take them. */}
+      <PushNudge />
       {complaints > 0 && (
         <Link
           to="/complaints"
