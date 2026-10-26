@@ -1017,7 +1017,9 @@ a wall of options. Built one item at a time on `khata-structure`.
   response in flight (wrap `fetch`, then `pushState` to a *different* token so
   the effect refetches; a `?s=` change alone does not).
 
-**Send rate list, from the Dashboard (2026-09-21). No database change.** The
+**Send rate list, from the Dashboard (2026-09-21). No database change.
+Superseded 2026-10-27 by "Send shop details" (after Phase 40) — the dialog
+below was renamed, and its message now carries the whole shop.** The
 user asked for a popup after a phone call ends — "was that call for building
 materials?" — that then opens the caller's WhatsApp with the rate list.
 **Checked before building: not possible, and not only here.** No browser API
@@ -2133,6 +2135,50 @@ closed.
   Customer-side alerts (status link, khata link, `/me`) not yet tried on a
   phone. Debug recipe: `push_subscriptions.last_sent_at`, `notifications.push_at`
   and `net._http_response` (the function's own `sent` / `gone` answer).
+
+**Send shop details (2026-10-27). No database change.** The user asked again
+for a popup after every call ("was it a customer?" → their WhatsApp with the
+shop's details, order link and rates). **Still impossible in a web app** —
+nothing in Chrome or Safari sees calls or can draw over other apps. Checked
+the native routes too, for the record: through Google Play a billing app
+learns the caller only as the phone's "Caller ID & spam" app (call-screening
+role), which replaces the phone's own spam protection and, per Android's
+docs, is shown **only numbers not saved in contacts**; an APK installed
+outside the Play Store can read the call log, but Android's restricted
+settings stop it drawing over other apps, so it would be a notification, not
+a popup. Never on iPhone. Both are the native-app decision under Still to do
+— the user chose the in-app version:
+- **`lib/shopDetails.ts` writes the message** (unit-tested,
+  `shopDetails.test.ts`; Vitest now resolves `@/…`): the shop's name in bold,
+  address, phone as "98765 43210", hours only when every open day has the
+  same times (plus "Sunday closed"), the order link while ordering is on, then
+  **every material not switched off** — one listing's loads together,
+  smallest first; priced ones with their rate ("per load" for a vehicle
+  option, else the supplier's `per_label`, else "/ unit"), unpriced ones "ask
+  for rate" — and the "rates may change" line when anything is priced. In the
+  app's language; material names as the shop wrote them.
+- **`components/SendShopDetailsModal.tsx`** (was `SendRatesModal`, moved with
+  `git mv`): number typed, picked from contacts, or pasted (the keyboard offers
+  one just copied from the call log); the exact message as a preview; a quiet
+  line when the order link is missing because ordering is off; Send opens
+  `wa.me/<number>` and the supplier presses Send in WhatsApp. Logged as
+  `shop_details_shared`. The Dashboard card ("Send shop details / To a
+  customer who just called") now shows for every supplier — it used to wait
+  for a priced material, and every shop has had 0 materials since 2026-10-21.
+- **One long-press away:** `manifest.webmanifest` `shortcuts` → "Send shop
+  details", `/dashboard?send=details` (icons `shortcut-send-192.png` and its
+  maskable twin, a white paper plane on the app's green). The Dashboard opens
+  the dialog from the address it opened with and tidies `?send=details` away
+  with `replace` — open the dialog only after that, or the router's replace
+  overwrites the dialog's own history entry. `LAUNCHED_FROM_SHORTCUT` in
+  AuthContext skips the six-second opening splash for that launch only.
+  Android only (iOS has no manifest shortcuts); an installed app gains the
+  item when Chrome next refreshes it (about a day) or on reinstalling. The
+  customer manifest has no shortcuts.
+- Checked in the review harness: the shortcut address opens the dialog with
+  no splash while a normal launch still plays it; back closes it and stays on
+  the Dashboard; a pasted "+91 98200 11122" sent `wa.me/919820011122` with the
+  whole 20-line message; no overflow at 320/360px in three languages.
 
 ## The admin panel
 
