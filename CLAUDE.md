@@ -10,10 +10,10 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `041`, run in order. **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; 039 and 040 were already on live; **038 was pasted by the user on 2026-10-12** (the ten-minute duplicate rule is gone from `place_order`, checked read-only). **050 (how a material is sold — vehicle load or unit, Phase 39) is the latest and is applied** (2026-10-21, run by Claude through the CLI on the user's "run", after a snapshot in `backups/2026-10-21-before-050/`; the after-check was blocked by the permission classifier and run by the user in the SQL editor, who reported it matched); **049 (asking one chosen shop to resend the khata link — Phase 38) is applied** (2026-10-20; checked from outside: a bad number refused, the table still 401); **048 (a customer asking their shop to resend the khata link — Phase 38) is applied** (2026-10-19; checked from outside: a bad number refused, the table, the shop's list and handling all refused signed out — 401); **047 (customer UX round, read functions only — Phase 37) is applied** (2026-10-15; checked read-only: function bodies, both `security_invoker` views, counts unchanged, 0 bills out of step, every active shop's khata link still answers found with `has_estimate` on all 17 orders); **046 (customer complaints, Phase 36 round 4) is applied** (2026-10-15; checked read-only: table with RLS and one policy, select-only for signed-in users, nothing for anon — 401 over a real anonymous call — 8 functions one version each, counts unchanged); **045 (supplier compliance) is applied** (2026-10-13); 044 (three plans, Phase 34); **043 (your profile and bill details, Phase 32) is applied** (2026-10-12); 042 (the shop page, Phase 31) and 041 (customer accounts, Phase 30) were applied the same day. Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
+- **Schema migrations**: `supabase/migrations/` — `002` through `051`, run in order. **051 (notifications and phone alerts, Phase 40) is the latest and is applied** (2026-10-26, pasted by the user; checked read-only afterwards). **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; 039 and 040 were already on live; **038 was pasted by the user on 2026-10-12** (the ten-minute duplicate rule is gone from `place_order`, checked read-only). **050 (how a material is sold — vehicle load or unit, Phase 39) is the latest and is applied** (2026-10-21, run by Claude through the CLI on the user's "run", after a snapshot in `backups/2026-10-21-before-050/`; the after-check was blocked by the permission classifier and run by the user in the SQL editor, who reported it matched); **049 (asking one chosen shop to resend the khata link — Phase 38) is applied** (2026-10-20; checked from outside: a bad number refused, the table still 401); **048 (a customer asking their shop to resend the khata link — Phase 38) is applied** (2026-10-19; checked from outside: a bad number refused, the table, the shop's list and handling all refused signed out — 401); **047 (customer UX round, read functions only — Phase 37) is applied** (2026-10-15; checked read-only: function bodies, both `security_invoker` views, counts unchanged, 0 bills out of step, every active shop's khata link still answers found with `has_estimate` on all 17 orders); **046 (customer complaints, Phase 36 round 4) is applied** (2026-10-15; checked read-only: table with RLS and one policy, select-only for signed-in users, nothing for anon — 401 over a real anonymous call — 8 functions one version each, counts unchanged); **045 (supplier compliance) is applied** (2026-10-13); 044 (three plans, Phase 34); **043 (your profile and bill details, Phase 32) is applied** (2026-10-12); 042 (the shop page, Phase 31) and 041 (customer accounts, Phase 30) were applied the same day. Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
-- **Edge Function**: `supabase/functions/admin-manage-supplier/index.ts`
+- **Edge Functions**: `supabase/functions/admin-manage-supplier/index.ts`, `supplier-apply` (Phase 36) and `send-push` (Phase 40), the last two deployed `--no-verify-jwt`
 
 ## Live Supabase project
 - Project ref: `pefarymejlfdsmwusbbq`
@@ -2079,6 +2079,55 @@ materials, their 5 stock logs and 178 bill/estimate line links in
 `backups/2026-10-21-before-materials-clear/`). Checked afterwards: 0
 materials, 0 linked lines, 60 bills / 106 payments unchanged, 0 bills out of
 step. Live also has a seventh, empty supplier row "Rahul traders".
+
+**Phase 40 — notifications: a bell, and alerts on the phone (migration 051,
+2026-10-26). Applied, deployed and merged the same day.** The user asked for
+notifications "wherever required", chose phone alerts plus an in-app bell, for
+suppliers, customers and the admin, and stressed they must arrive with the app
+closed.
+- **Web Push, free.** The browser's own push service carries them; the
+  `send-push` Edge Function signs (VAPID, RFC 8292) and encrypts (RFC 8291,
+  aes128gcm) with WebCrypto only — `supabase/functions/send-push/webpush.ts`,
+  checked byte-for-byte against RFC 8291's worked example. Secrets
+  `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` are set on the live project; the
+  public half is also `VAPID_PUBLIC_KEY` in `lib/push.ts`. **The private key is
+  in no file and no backup.** Lost → make a new pair, update both, and phones
+  sign up again.
+- **051**: `notifications` (who it is for: a login, a customer, and/or one
+  order; `text` holds English/Hindi/Marathi, written once by
+  `_notification_text` — the one place the words live; the bell and the push
+  read it) and `push_subscriptions` (a login, a khata link or an order status
+  link — no account needed for the last two; ≤10 phones each). Both RLS:
+  a login reads its own, a 041 account its connected customers'; never the
+  admin's into a shop's (019 holds — the admin hears only applications, KYC
+  and renewals). Every write is through functions; `claim_push_batch` /
+  `push_results` are for `service_role` only. Triggers on order_requests,
+  invoices, payments, customer_complaints, khata_link_requests, materials
+  (crossing the low-stock line, 5 by default as on the Dashboard) and
+  supplier_compliance; a split payment in one save is one alert; a blocked
+  spammer's rejection tells nobody; stopping a khata link deletes its phones.
+  **Every trigger swallows its own failure** (tested: an order still saves
+  with a broken ping). A statement-level trigger pings the function through
+  `pg_net` after commit (`platform_settings.push_function_url`); calling the
+  function only sends what is due, once, so it needs no secret. Daily cron
+  `buildsupply-plan-reminders` 04:30 UTC: shops 7/3/1/0 days from expiry, and
+  the admin a count. Tested on a throwaway copy built like the drill: 40/40
+  (`supabase/tests/051_notifications_test.sql`), 051 applied twice.
+- **App**: `NotificationBell` in the top bar (phone and desktop, English for
+  the admin), `/notifications` (`routes/Notifications.tsx`), `PushSwitch`
+  ("Alerts on this phone") on Notifications, the applicant's screen, the khata
+  link, the order status page and `/me` (with the account's latest 10),
+  `PushNudge` on the Dashboard once per phone. All hide on a database without
+  051 (`pushAvailable`). Push needs the service worker, so on `npm run dev`
+  the switch shows nothing (or "blocked" in the browser pane, which refuses
+  notifications). `public/sw.js` shows the alert (`badge-96.png`, a white
+  tipper) and on tap tells an open app to route there (`buildsupply-open` in
+  App.tsx) — **never `client.navigate()`**, which reloads and drops a
+  half-typed bill to its draft. iPhone: only from the home-screen app.
+- **Backups**: both tables restored after compliance; a phone signed up
+  through a customer's anonymous login comes back only with that login
+  (restore filter and drill both know). `net` was already classified.
+- **Not yet proven on a real phone** at merge time — the user is checking.
 
 ## The admin panel
 
