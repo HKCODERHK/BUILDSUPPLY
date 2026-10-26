@@ -28,6 +28,7 @@ import { QrCode } from '@/components/QrCode'
 import { upiPayUrl } from '@/lib/upi'
 import { cn } from '@/lib/utils'
 import { BuildSupplyFooter } from '@/components/BuildSupplyFooter'
+import { PushSwitch } from '@/components/PushSwitch'
 
 
 
@@ -427,6 +428,11 @@ export default function OrderStatus() {
               </>
             )}
           </>
+        )}
+        {/* Told when the shop answers, bills or delivers (051) — no account,
+            the status link is enough. Nothing more can happen to a rejected one. */}
+        {found && found.status !== 'rejected' && (
+          <PushSwitch target={{ order: token }} offText="push.offOrder" tap />
         )}
         <BuildSupplyFooter />
       </main>

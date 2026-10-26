@@ -593,10 +593,21 @@ select json_build_object(
       }
     }
 
+    // Phones signed up through a customer's anonymous login (051) come back
+    // only with that login, which a drill never recreates; every other phone
+    // must come back exactly. The logins a drill does recreate are the shops',
+    // the admin's and the applicants'.
+    const recreatedLogins = new Set([
+      ...(m.tables.suppliers ? readJson(path.join(dir, 'suppliers.json')).map((r) => r.id) : []),
+      ...(m.tables.supplier_compliance ? readJson(path.join(dir, 'supplier_compliance.json')).map((r) => r.user_id) : []),
+    ])
+    const restoredRows = (t, rows) =>
+      t === 'push_subscriptions' ? rows.filter((r) => !r.user_id || recreatedLogins.has(r.user_id)) : rows
+
     for (const [t, info] of Object.entries(m.tables)) {
       if (RELINKED.has(t)) continue
-      add(`rows ${t}`, info.rows, `select count(*) from public."${t}"`)
-      const rows = readJson(path.join(dir, t + '.json'))
+      const rows = restoredRows(t, readJson(path.join(dir, t + '.json')))
+      add(`rows ${t}`, t === 'push_subscriptions' ? rows.length : info.rows, `select count(*) from public."${t}"`)
       if (rows.length) {
         // C. Every column of every row. Both sides are typed by Postgres and
         // compared as jsonb, so formatting cannot matter; columns a later

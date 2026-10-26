@@ -2648,6 +2648,70 @@ const STRINGS = {
   'sec.byTruck': { en: 'By truck', hi: 'ट्रक से', mr: 'ट्रकने' },
   'sec.perLoad': { en: 'per load', hi: 'प्रति गाड़ी', mr: 'प्रति खेप' },
   'sell.quickSizes': { en: 'Common truck sizes', hi: 'आम ट्रक साइज़', mr: 'नेहमीचे ट्रक आकार' },
+  // Notifications: the bell and phone alerts (migration 051). The messages
+  // themselves are written by the database in all three languages.
+  'notif.title': { en: 'Notifications', hi: 'सूचनाएँ', mr: 'सूचना' },
+  'notif.unread': { en: '{count} new', hi: '{count} नई', mr: '{count} नवीन' },
+  'notif.empty': {
+    en: 'Nothing yet. New orders, payments and complaints will show up here.',
+    hi: 'अभी कुछ नहीं। नए ऑर्डर, पेमेंट और शिकायतें यहाँ दिखेंगी।',
+    mr: 'अजून काही नाही. नवीन ऑर्डर, पेमेंट आणि तक्रारी इथे दिसतील.',
+  },
+  'notif.emptyCustomer': {
+    en: 'Nothing yet. Bills, deliveries and payments from your shops will show up here.',
+    hi: 'अभी कुछ नहीं। आपकी दुकानों के बिल, डिलीवरी और पेमेंट यहाँ दिखेंगे।',
+    mr: 'अजून काही नाही. तुमच्या दुकानांची बिले, डिलिव्हरी आणि पेमेंट इथे दिसतील.',
+  },
+  'notif.markAll': { en: 'Mark all read', hi: 'सब पढ़ा हुआ करें', mr: 'सर्व वाचले' },
+  'notif.loadFailed': { en: "Couldn't load notifications.", hi: 'सूचनाएँ लोड नहीं हुईं।', mr: 'सूचना लोड झाल्या नाहीत.' },
+  'notif.tryAgain': { en: 'Try again', hi: 'फिर कोशिश करें', mr: 'पुन्हा प्रयत्न करा' },
+  'notif.nudgeTitle': { en: 'Know about new orders at once', hi: 'नए ऑर्डर की खबर तुरंत पाएँ', mr: 'नवीन ऑर्डरची माहिती लगेच मिळवा' },
+  'notif.nudgeBody': {
+    en: 'Turn on alerts and this phone will ring for new orders, payments and complaints — even with the app closed.',
+    hi: 'अलर्ट चालू करें — ऐप बंद होने पर भी नए ऑर्डर, पेमेंट और शिकायत पर यह फ़ोन बजेगा।',
+    mr: 'अलर्ट सुरू करा — ॲप बंद असतानाही नवीन ऑर्डर, पेमेंट आणि तक्रारीवर हा फोन वाजेल.',
+  },
+  'notif.notNow': { en: 'Not now', hi: 'अभी नहीं', mr: 'आत्ता नाही' },
+  'push.title': { en: 'Alerts on this phone', hi: 'इस फ़ोन पर अलर्ट', mr: 'या फोनवर अलर्ट' },
+  'push.offSupplier': {
+    en: 'Get an alert the moment a customer orders, pays or complains — even when the app is closed.',
+    hi: 'ग्राहक ऑर्डर करे, पेमेंट करे या शिकायत करे — ऐप बंद होने पर भी तुरंत अलर्ट पाएँ।',
+    mr: 'ग्राहकाने ऑर्डर, पेमेंट किंवा तक्रार केली की लगेच अलर्ट मिळवा — ॲप बंद असतानाही.',
+  },
+  'push.offApplicant': {
+    en: 'Get an alert as soon as your application is decided.',
+    hi: 'आपके आवेदन पर फ़ैसला होते ही अलर्ट पाएँ।',
+    mr: 'तुमच्या अर्जावर निर्णय होताच अलर्ट मिळवा.',
+  },
+  'push.offKhata': {
+    en: 'Get an alert when the shop bills you, delivers, or records your payment — even when this page is closed.',
+    hi: 'दुकान बिल बनाए, माल भेजे या आपका पेमेंट दर्ज करे — यह पेज बंद होने पर भी अलर्ट पाएँ।',
+    mr: 'दुकानाने बिल बनवले, माल पाठवला किंवा तुमचे पेमेंट नोंदवले की अलर्ट मिळवा — हे पेज बंद असतानाही.',
+  },
+  'push.offOrder': {
+    en: 'Get an alert when the shop answers this order, bills it or delivers it.',
+    hi: 'दुकान इस ऑर्डर का जवाब दे, बिल बनाए या माल भेजे — तब अलर्ट पाएँ।',
+    mr: 'दुकानाने या ऑर्डरला उत्तर दिले, बिल बनवले किंवा माल पाठवला की अलर्ट मिळवा.',
+  },
+  'push.on': { en: 'On — this phone will get alerts.', hi: 'चालू है — इस फ़ोन पर अलर्ट आएँगे।', mr: 'सुरू आहे — या फोनवर अलर्ट येतील.' },
+  'push.turnOn': { en: 'Turn on alerts', hi: 'अलर्ट चालू करें', mr: 'अलर्ट सुरू करा' },
+  'push.turnOff': { en: 'Turn off', hi: 'बंद करें', mr: 'बंद करा' },
+  'push.wait': { en: 'Please wait…', hi: 'रुकिए…', mr: 'थांबा…' },
+  'push.blocked': {
+    en: "Alerts are blocked for this site. Allow notifications for it in your phone's settings, then come back.",
+    hi: 'इस साइट के अलर्ट बंद हैं। फ़ोन की सेटिंग में इसके लिए नोटिफ़िकेशन चालू करें, फिर वापस आएँ।',
+    mr: 'या साइटचे अलर्ट बंद आहेत. फोनच्या सेटिंगमध्ये हिच्यासाठी नोटिफिकेशन सुरू करा, मग परत या.',
+  },
+  'push.needsInstall': {
+    en: 'On an iPhone, add BuildSupply to your home screen first (Share → Add to Home Screen) and open it from there.',
+    hi: 'iPhone पर पहले BuildSupply को होम स्क्रीन पर जोड़ें (Share → Add to Home Screen) और वहीं से खोलें।',
+    mr: 'iPhone वर आधी BuildSupply होम स्क्रीनवर जोडा (Share → Add to Home Screen) आणि तिथूनच उघडा.',
+  },
+  'push.unsupported': {
+    en: "This browser can't show alerts. Open the link in Chrome to get them.",
+    hi: 'यह ब्राउज़र अलर्ट नहीं दिखा सकता। अलर्ट के लिए लिंक Chrome में खोलें।',
+    mr: 'हा ब्राउझर अलर्ट दाखवू शकत नाही. अलर्टसाठी लिंक Chrome मध्ये उघडा.',
+  },
 } satisfies Record<string, Entry>
 
 export type TranslationKey = keyof typeof STRINGS

@@ -37,6 +37,7 @@ import { showDate } from '@/lib/displayDate'
 import type { TranslationKey } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { BuildSupplyFooter } from '@/components/BuildSupplyFooter'
+import { PushSwitch } from '@/components/PushSwitch'
 import { CollapsingHero, CoverSheet, ShopQrCard } from '@/components/ScrollEffects'
 import { buildCustomerLedger } from '@/lib/customerLedger'
 import { downloadCustomerLedgerPdf, type LedgerEntry } from '@/lib/customerLedgerPdf'
@@ -1260,6 +1261,9 @@ export default function KhataPage({
                 </SoftCard>
               </>
             )}
+            {/* Told about bills, deliveries and payments (051). On /me the
+                account's own switch is in its footer instead. */}
+            {!connection && token && <PushSwitch target={{ khata: token }} offText="push.offKhata" tap />}
             {accountFooter}
             {/* The shop's own QR — scanned, it opens the shop's order page. */}
             {found.order_link && (

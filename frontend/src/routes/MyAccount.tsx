@@ -12,6 +12,9 @@ import { disconnectShop, myShops, readCurrentShop, forgetCurrentShop, rememberCu
 import KhataPage from './KhataPage'
 import { BuildSupplyFooter } from '@/components/BuildSupplyFooter'
 import { KhataLinkEntry } from '@/components/KhataLinkEntry'
+import { NotificationList } from '@/components/NotificationList'
+import { PushSwitch } from '@/components/PushSwitch'
+import { customerClient } from '@/lib/customerAuth'
 
 /**
  * /me — the customer's own BuildSupply (migration 041). Once a khata link has
@@ -158,6 +161,11 @@ export default function MyAccount() {
       </>
     )
     const footer = (
+      <>
+      {/* The account's alerts from every saved shop (051): this phone's
+          switch, then the latest few. */}
+      <PushSwitch client={customerClient()} offText="push.offKhata" tap />
+      <NotificationList client={customerClient()} emptyText="notif.emptyCustomer" linkOverride="/me" limit={10} />
       <SoftCard className="flex flex-col divide-y divide-border p-2">
         {(['remove', 'signout'] as const).map((what) =>
           asking === what ? (
@@ -195,6 +203,7 @@ export default function MyAccount() {
           ),
         )}
       </SoftCard>
+      </>
     )
     return (
       <KhataPage

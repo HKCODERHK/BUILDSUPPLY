@@ -9,6 +9,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useTheme } from '@/context/ThemeContext'
 import { LanguageToggle } from '@/components/LanguageToggle'
+import { NotificationBell } from '@/components/NotificationBell'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { ShareDocumentPrompt } from '@/components/ShareDocumentPrompt'
 import { InstallIosModal } from '@/components/InstallIosModal'
@@ -544,6 +545,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
           {/* EN and theme step aside on the floating bar, as in Telegram's chat. */}
           <div className={cn('flex shrink-0 items-center gap-2', floating && 'hidden')}>
+            <NotificationBell
+              english={isAdmin}
+              className="dark:border-white/20 dark:text-white dark:hover:bg-white/10"
+            />
             <LanguageToggle compact className="dark:border-white/20 dark:text-white dark:hover:bg-white/10 dark:hover:text-white" />
             {/* Day / night lives in the More sheet on a phone (the user's call). */}
           </div>
@@ -552,6 +557,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <SubscriptionNotice />
 
         <div className="hidden justify-end gap-2 px-8 pt-4 lg:flex">
+          <NotificationBell english={isAdmin} className="h-10 w-10" />
           <LanguageToggle />
           <ThemeToggle />
         </div>

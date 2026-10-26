@@ -21,6 +21,7 @@ const Login = lazy(screens.Login)
 const Apply = lazy(screens.Apply)
 const Application = lazy(screens.Application)
 const Complaints = lazy(screens.Complaints)
+const Notifications = lazy(screens.Notifications)
 const ForgotPassword = lazy(screens.ForgotPassword)
 const ResetPassword = lazy(screens.ResetPassword)
 const Dashboard = lazy(screens.Dashboard)
@@ -151,6 +152,7 @@ const routes: RouteObject[] = [
   { path: '/reports', element: <Protected supplierOnly><Reports /></Protected> },
   // Customer complaints about the shop's bills (046), from the Dashboard notice.
   { path: '/complaints', element: <Protected supplierOnly><Complaints /></Protected> },
+  { path: '/notifications', element: <Protected><Notifications /></Protected> },
   // Not supplier-only: this edits the signed-in account's own profile, which
   // the admin also has.
   { path: '/settings', element: <Protected><Settings /></Protected> },
@@ -168,6 +170,18 @@ const routes: RouteObject[] = [
 // React Router's developer page — above all for a phone still on the build
 // before a deploy, whose next screen's file is gone: it reloads itself.
 const router = createBrowserRouter(routes.map((r) => ({ ...r, errorElement: <RouteError /> })))
+
+// Tapping a phone alert while the app is already open (public/sw.js): go to
+// its screen through the router, as any tap in the app would.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    const data = event.data as { type?: string; url?: string } | null
+    if (data?.type !== 'buildsupply-open' || typeof data.url !== 'string') return
+    const to = new URL(data.url, window.location.origin)
+    if (to.origin !== window.location.origin) return
+    void router.navigate(to.pathname + to.search)
+  })
+}
 
 // Needs to be inside AuthProvider to read the splash phase, so it cannot live
 // in App's own body.
