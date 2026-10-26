@@ -335,20 +335,29 @@ const STRINGS = {
   'mat.catalog': { en: 'Browse Catalog', hi: 'कैटलॉग देखें', mr: 'कॅटलॉग पहा' },
   'mat.searchPlaceholder': { en: 'Search materials…', hi: 'माल खोजें…', mr: 'माल शोधा…' },
   'mat.notFound': { en: 'No materials found.', hi: 'कोई माल नहीं मिला।', mr: 'माल सापडला नाही.' },
-  // Today's rates, sent to one number — the dashboard card and its dialog.
-  'dash.sendRates': { en: 'Send rate list', hi: 'रेट लिस्ट भेजें', mr: 'रेट लिस्ट पाठवा' },
+  // The shop's details, order link and rates, sent to one number — the
+  // dashboard card, the app icon's long-press shortcut and their dialog
+  // (lib/shopDetails.ts writes the message).
+  'dash.sendDetails': { en: 'Send shop details', hi: 'दुकान की जानकारी भेजें', mr: 'दुकानाची माहिती पाठवा' },
   'dash.sendRatesHint': {
     en: 'To a customer who just called',
     hi: 'जिस ग्राहक का अभी फ़ोन आया उसे',
     mr: 'ज्या ग्राहकाचा आत्ता फोन आला त्याला',
   },
   'rates.number': { en: "Customer's mobile number", hi: 'ग्राहक का मोबाइल नंबर', mr: 'ग्राहकाचा मोबाईल नंबर' },
-  'rates.preview': {
-    en: 'What they will get ({count} materials)',
-    hi: 'उन्हें यह मिलेगा ({count} माल)',
-    mr: 'त्यांना हे मिळेल ({count} साहित्य)',
+  'shopMsg.preview': { en: 'What they will get', hi: 'उन्हें यह मिलेगा', mr: 'त्यांना हे मिळेल' },
+  'shopMsg.address': { en: 'Address: {address}', hi: 'पता: {address}', mr: 'पत्ता: {address}' },
+  'shopMsg.phone': { en: 'Phone: {phone}', hi: 'फ़ोन: {phone}', mr: 'फोन: {phone}' },
+  'shopMsg.hours': { en: 'Open: {hours}', hi: 'समय: {hours}', mr: 'वेळ: {hours}' },
+  'shopMsg.closedOn': { en: '{days} closed', hi: '{days} बंद', mr: '{days} बंद' },
+  'shopMsg.orderOnline': { en: 'Order online: {link}', hi: 'ऑनलाइन ऑर्डर करें: {link}', mr: 'ऑनलाइन ऑर्डर करा: {link}' },
+  'shopMsg.ratesHeader': { en: 'Today’s rates ({date}):', hi: 'आज के रेट ({date}):', mr: 'आजचे दर ({date}):' },
+  'shopMsg.askRate': { en: 'ask for rate', hi: 'रेट पूछें', mr: 'दर विचारा' },
+  'shopMsg.noOrderLink': {
+    en: 'Your order link is not in it — turn on online orders in Settings to add it.',
+    hi: 'इसमें आपका ऑर्डर लिंक नहीं है — जोड़ने के लिए सेटिंग में ऑनलाइन ऑर्डर चालू करें।',
+    mr: 'यात तुमची ऑर्डर लिंक नाही — जोडण्यासाठी सेटिंगमध्ये ऑनलाइन ऑर्डर सुरू करा.',
   },
-  'rates.msgHeader': { en: 'Rate list — {date}', hi: 'रेट लिस्ट — {date}', mr: 'रेट लिस्ट — {date}' },
   'rates.msgFooter': {
     en: 'Rates may change. GST and transport extra where applicable.',
     hi: 'दाम बदल सकते हैं। जहाँ लागू हो, GST और भाड़ा अलग।',

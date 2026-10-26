@@ -21,6 +21,15 @@ const MIN_SPLASH_MS = 6000
 /** Which line the splash shows, or null when it should not be on screen. */
 export type SplashPhase = 'launch' | 'signin' | null
 
+/**
+ * Opened from the app icon's long-press "Send shop details"
+ * (manifest.webmanifest's shortcut, /dashboard?send=details): a supplier just
+ * off a call wants the dialog, not six seconds of the opening story. Read once,
+ * at launch — the Dashboard tidies the address straight after.
+ */
+const LAUNCHED_FROM_SHORTCUT =
+  typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('send') === 'details'
+
 interface AuthContextValue {
   session: Session | null
   supplier: Supplier | null
@@ -54,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // this, ProtectedRoute and Login disagree about auth state during that window
   // (one requires session+supplier, the other only session) and redirect-loop.
   const [profileLoading, setProfileLoading] = useState(false)
-  const [splash, setSplash] = useState<SplashPhase>('launch')
+  const [splash, setSplash] = useState<SplashPhase>(LAUNCHED_FROM_SHORTCUT ? null : 'launch')
   // When the current splash is allowed to leave, so a fast load still shows a
   // deliberate screen rather than a flicker.
   const splashUntilRef = useRef(Date.now() + MIN_SPLASH_MS)
