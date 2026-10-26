@@ -2166,8 +2166,10 @@ a popup. Never on iPhone. Both are the native-app decision under Still to do
   customer who just called") now shows for every supplier — it used to wait
   for a priced material, and every shop has had 0 materials since 2026-10-21.
 - **One long-press away:** `manifest.webmanifest` `shortcuts` → "Send shop
-  details", `/dashboard?send=details` (icons `shortcut-send-192.png` and its
-  maskable twin, a white paper plane on the app's green). The Dashboard opens
+  details", now `/go/details` (it shipped as `/dashboard?send=details`, which
+  still works for phones Chrome has not refreshed; icons
+  `shortcut-send-192.png` and its maskable twin, a white paper plane on the
+  app's green). The Dashboard opens
   the dialog from the address it opened with and tidies `?send=details` away
   with `replace` — open the dialog only after that, or the router's replace
   overwrites the dialog's own history entry. `LAUNCHED_FROM_SHORTCUT` in
@@ -2179,6 +2181,30 @@ a popup. Never on iPhone. Both are the native-app decision under Still to do
   no splash while a normal launch still plays it; back closes it and stays on
   the Dashboard; a pasted "+91 98200 11122" sent `wa.me/919820011122` with the
   whole 20-line message; no overflow at 320/360px in three languages.
+
+**Long-press shortcuts: New bill and Receive payment (2026-10-27). No
+database change.** Asked for as "more long-press features". [Chrome on
+Android shows three app shortcuts](https://web.dev/articles/app-shortcuts) —
+its own "site settings" item takes the fourth slot — so the manifest lists
+exactly three, most used first:
+- **New bill** — `/go/bill` → `/invoices/new`;
+- **Receive payment** — `/go/payment` → `/payments?new=1` ("Who paid?");
+- **Send shop details** — `/go/details` → `/dashboard?send=details`.
+
+`/go/:action` (`components/GoShortcut.tsx`, targets in `lib/shortcuts.ts`)
+is the fixed contract with installed apps, which keep the shortcuts they were
+installed with until Chrome refreshes them — so the screens behind can move
+freely. It puts the Dashboard underneath (back from a new bill returns there
+instead of closing the app); an unknown `/go/…` opens the Dashboard; and
+`launchedFromShortcut` skips the opening splash for any `/go/` launch.
+Names are English only — an app has one manifest, which cannot follow the app's
+language. Icons: lucide's file-plus and indian-rupee as white strokes on the
+app's green, `any` + `maskable`, 192px. `lib/shortcuts.test.ts` fails if a
+manifest shortcut does not match a `/go/` target, or if a fourth is added.
+Customers, New estimate and Orders were left out: the first two are a tap from
+the Dashboard, and new orders arrive as phone alerts that open the order.
+Checked in the review harness: each address lands on its screen with no
+splash, back steps to the Dashboard, and an unknown `/go/` lands there too.
 
 ## The admin panel
 

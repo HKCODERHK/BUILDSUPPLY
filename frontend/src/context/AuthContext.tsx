@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import type { Supplier } from '@/lib/database.types'
 import { logActivity } from '@/services/activityLog'
+import { launchedFromShortcut } from '@/lib/shortcuts'
 
 /**
  * Shortest time the splash stays up once it has appeared.
@@ -22,13 +23,11 @@ const MIN_SPLASH_MS = 6000
 export type SplashPhase = 'launch' | 'signin' | null
 
 /**
- * Opened from the app icon's long-press "Send shop details"
- * (manifest.webmanifest's shortcut, /dashboard?send=details): a supplier just
- * off a call wants the dialog, not six seconds of the opening story. Read once,
- * at launch — the Dashboard tidies the address straight after.
+ * Opened from one of the app icon's long-press shortcuts (lib/shortcuts.ts):
+ * the supplier wants that screen, not six seconds of the opening story. Read
+ * once, at launch — the shortcut's address is replaced straight after.
  */
-const LAUNCHED_FROM_SHORTCUT =
-  typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('send') === 'details'
+const LAUNCHED_FROM_SHORTCUT = typeof window !== 'undefined' && launchedFromShortcut(window.location)
 
 interface AuthContextValue {
   session: Session | null

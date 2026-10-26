@@ -10,6 +10,7 @@ import { Splash } from '@/components/Splash'
 import { TruckLoader } from '@/components/TruckLoader'
 import { screens } from '@/lib/screens'
 import { RouteError } from '@/components/RouteError'
+import { GoShortcut } from '@/components/GoShortcut'
 
 // Each screen is its own file, fetched the first time it is needed — and, for
 // a signed-in account, in the background soon after the app opens (see
@@ -131,6 +132,8 @@ const routes: RouteObject[] = [
   // "Lost your khata link?" (049): signed out, like the other customer pages.
   { path: '/khata-help', element: <Page><KhataHelp /></Page> },
   { path: '/dashboard', element: <Protected><Dashboard /></Protected> },
+  // The app icon's long-press shortcuts (lib/shortcuts.ts).
+  { path: '/go/:action', element: <Protected><GoShortcut /></Protected> },
   { path: '/customers', element: <Protected supplierOnly><Customers /></Protected> },
   { path: '/customers/:id', element: <Protected supplierOnly><CustomerProfile /></Protected> },
   { path: '/materials', element: <Protected supplierOnly><Materials /></Protected> },
