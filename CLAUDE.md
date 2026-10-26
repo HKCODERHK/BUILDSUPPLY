@@ -2127,7 +2127,12 @@ closed.
 - **Backups**: both tables restored after compliance; a phone signed up
   through a customer's anonymous login comes back only with that login
   (restore filter and drill both know). `net` was already classified.
-- **Not yet proven on a real phone** at merge time — the user is checking.
+- **Proven on the user's Android phone (2026-10-26):** Shree Balaji's phone
+  signed up (FCM, English); a test order wrote "New order from …", send-push
+  answered `sent: 1` 3.5s later and the alert appeared with the app closed.
+  Customer-side alerts (status link, khata link, `/me`) not yet tried on a
+  phone. Debug recipe: `push_subscriptions.last_sent_at`, `notifications.push_at`
+  and `net._http_response` (the function's own `sent` / `gone` answer).
 
 ## The admin panel
 
