@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { Plus, AlertTriangle, ChevronRight, ClipboardList, Inbox, BadgeCheck, Tags, MessageSquareWarning } from 'lucide-react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Plus, AlertTriangle, ChevronRight, ClipboardList, Inbox, BadgeCheck, Tags, MessageSquareWarning, Store } from 'lucide-react'
 import { localDateKey } from '@/lib/localDate'
 import { UpdateRatesModal } from '@/components/UpdateRatesModal'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -32,7 +32,7 @@ import { DraftBanners } from '@/components/Drafts'
 import { TruckLoader } from '@/components/TruckLoader'
 import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
-import { SendRatesModal } from '@/components/SendRatesModal'
+import { SendShopDetailsModal } from '@/components/SendShopDetailsModal'
 
 // Jump straight into the create flow for each — no extra click on the
 // destination page. Customers/Payments/Stock read `?new=1` to auto-open
@@ -271,10 +271,37 @@ function SupplierDashboardView() {
   const [recentCustomers, setRecentCustomers] = useState<Customer[]>([])
   const [today, setToday] = useState({ bills: 0, sold: 0, collected: 0 })
   const [lowStock, setLowStock] = useState<Material[]>([])
-  // The priced ones, for "Send rate list" — out of the same read as the rest,
-  // so the card costs no extra query.
-  const [priced, setPriced] = useState<Material[]>([])
-  const [sendingRates, setSendingRates] = useState(false)
+  // Every material, for "Send shop details" — out of the same read as the
+  // rest, so the card costs no extra query.
+  const [materials, setMaterials] = useState<Material[]>([])
+  const [sendingDetails, setSendingDetails] = useState(false)
+  // Opened by the app icon's long-press shortcut (/dashboard?send=details,
+  // manifest.webmanifest). The address is cleaned first and the dialog opened
+  // only once it is: a dialog adds its own history entry, which the router's
+  // replace would otherwise overwrite.
+  const [params, setParams] = useSearchParams()
+  const fromShortcut = params.get('send') === 'details'
+  const [shortcutAsked, setShortcutAsked] = useState(fromShortcut)
+  const [lastFromShortcut, setLastFromShortcut] = useState(fromShortcut)
+  if (fromShortcut !== lastFromShortcut) {
+    setLastFromShortcut(fromShortcut)
+    if (fromShortcut) setShortcutAsked(true)
+  }
+  useEffect(() => {
+    if (!fromShortcut) return
+    setParams(
+      (p) => {
+        p.delete('send')
+        return p
+      },
+      { replace: true },
+    )
+  }, [fromShortcut, setParams])
+  const showDetails = sendingDetails || (shortcutAsked && !fromShortcut)
+  function closeDetails() {
+    setSendingDetails(false)
+    setShortcutAsked(false)
+  }
   // Any material with a rate — the daily "update today's rates?" card only
   // makes sense once there are rates to update.
   const [hasRates, setHasRates] = useState(false)
@@ -361,7 +388,7 @@ function SupplierDashboardView() {
         setToday(summariseToday(todaysBills, todaysPayments))
         setLowStock(materials.filter((m) => m.stock_qty <= (m.low_stock_threshold ?? 5)))
         setHasRates(materials.some((m) => Number(m.rate) > 0))
-        setPriced(materials.filter((m) => Number(m.rate) > 0))
+        setMaterials(materials)
         setSetup({ materials: materials.length > 0, customers: customers.length > 0, invoices: anyBill })
       })
       .finally(() => active && setLoading(false))
@@ -518,17 +545,18 @@ function SupplierDashboardView() {
           {hasRates && supplier && <RatesReminder supplierId={supplier.id} />}
 
           {/* A customer rings to ask today's rates — the most-asked question
-              in this trade. This sends the list to their number while the
-              call is still in mind. Only once something has a rate. */}
-          {hasRates && supplier && (
+              in this trade. This sends the shop's details, order link and
+              rates to their number while the call is still in mind. Also one
+              long-press away on the app icon. */}
+          {supplier && (
             <button
               type="button"
-              onClick={() => setSendingRates(true)}
+              onClick={() => setSendingDetails(true)}
               className="mb-4 flex w-full items-center gap-3 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:bg-surface"
             >
-              <Tags size={20} className="shrink-0 text-muted" />
+              <Store size={20} className="shrink-0 text-muted" />
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold text-ink">{t('dash.sendRates')}</span>
+                <span className="block text-sm font-semibold text-ink">{t('dash.sendDetails')}</span>
                 <span className="block text-xs text-muted">{t('dash.sendRatesHint')}</span>
               </span>
               <ChevronRight size={18} className="shrink-0 text-muted" />
@@ -647,8 +675,8 @@ function SupplierDashboardView() {
       )}
       </CoverSheet>
 
-      {sendingRates && supplier && (
-        <SendRatesModal supplier={supplier} materials={priced} onClose={() => setSendingRates(false)} />
+      {showDetails && supplier && (
+        <SendShopDetailsModal supplier={supplier} materials={materials} ready={!loading} onClose={closeDetails} />
       )}
     </div>
   )
