@@ -17,6 +17,7 @@ import {
   correctionsAvailable,
   latestPaymentFor,
   listPaymentsForCustomer,
+  mayHaveBeenSaved,
   recentSamePayment,
   recordAdvance,
   recordCustomerPayment,
@@ -219,7 +220,7 @@ export default function CustomerProfile() {
       setPayError(err instanceof Error ? err.message : t('error.generic'))
       // The answer may have been lost after it was saved: say that pressing
       // Record again is safe, rather than leaving them to guess.
-      setMaybeSaved(true)
+      setMaybeSaved(mayHaveBeenSaved(err))
     } finally {
       payingRef.current = false
       setPaying(false)

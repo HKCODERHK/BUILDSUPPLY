@@ -17,6 +17,7 @@ import {
   correctionState,
   correctionsAvailable,
   listPayments,
+  mayHaveBeenSaved,
   recentSamePayment,
   recordPayment,
   type AppliedPart,
@@ -247,7 +248,7 @@ export default function Payments() {
       setSaveError(err instanceof Error ? err.message : t('error.generic'))
       // The answer may have been lost after the payment was saved: say that
       // pressing Record again is safe, rather than leaving them to guess.
-      setMaybeSaved(true)
+      setMaybeSaved(mayHaveBeenSaved(err))
     } finally {
       submittingRef.current = false
       setSaving(false)

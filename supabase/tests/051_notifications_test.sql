@@ -90,11 +90,11 @@ values ('1b000000-0000-4000-8000-000000000051', :A, 'INV-9051', 'c0000000-0000-4
 select case when count(*) = 1 and min(order_id::text) = '0d000000-0000-4000-8000-000000000051'
              and min(text->'en'->>'b') = 'INV-9051 · ₹5,000'
             then 'PASS 07 a new bill tells the customer and the order it came from' else 'FAIL 07 ' || count(*) end
-  from public.notifications where kind = 'bill_made';
+  from public.notifications where kind = 'bill_made' and supplier_id = :A;
 update public.invoices set delivered = true, delivered_at = now() where id = '1b000000-0000-4000-8000-000000000051';
 update public.invoices set delivered = true where id = '1b000000-0000-4000-8000-000000000051';
 select case when count(*) = 1 then 'PASS 08 delivered tells the customer once' else 'FAIL 08 ' || count(*) end
-  from public.notifications where kind = 'delivered';
+  from public.notifications where kind = 'delivered' and supplier_id = :A;
 update public.invoices set received_at = now() where id = '1b000000-0000-4000-8000-000000000051';
 select case when count(*) = 1 and min(link) = '/invoices/1b000000-0000-4000-8000-000000000051'
             then 'PASS 09 material received tells the shop' else 'FAIL 09 ' || count(*) end
@@ -108,7 +108,7 @@ insert into public.payments (supplier_id, invoice_id, customer_id, amount, mode)
 commit;
 select case when count(*) = 1 and min(text->'en'->>'t') = 'Shop A 051 received ₹4,500' and min(params->>'mode') = 'Split'
             then 'PASS 10 a split payment is one alert with the whole amount' else 'FAIL 10 ' || count(*) || ' ' || coalesce(min(text->'en'->>'t'), '') end
-  from public.notifications where kind = 'payment_received';
+  from public.notifications where kind = 'payment_received' and supplier_id = :A;
 
 -- ── 11–12. Complaints both ways ─────────────────────────────────────────
 insert into public.customer_complaints (id, supplier_id, customer_id, invoice_id, invoice_no, category, description)

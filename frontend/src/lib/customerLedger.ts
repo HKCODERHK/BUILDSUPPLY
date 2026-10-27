@@ -23,7 +23,11 @@ export function buildCustomerLedger(opts: {
   const all: Omit<LedgerEntry, 'balance'>[] = []
   // Entries a later correction took back (052). The shop's own list says so
   // through the reversal pointing at them; the khata link's says it outright.
-  const reversedIds = new Set(payments.filter((p) => Number(p.amount) < 0).map((p) => p.corrects_payment_id))
+  // (The khata link's rows carry no ids at all: only real ids go in, or every
+  // id-less row would match.)
+  const reversedIds = new Set(
+    payments.filter((p) => Number(p.amount) < 0 && p.corrects_payment_id).map((p) => p.corrects_payment_id as string),
+  )
   invoices
     .filter((inv) => inv.customer_id === customerId && inv.status !== 'Cancelled' && (!site || inv.site === site))
     .forEach((inv) =>
@@ -61,7 +65,7 @@ export function buildCustomerLedger(opts: {
       const onBills = activeAllocations(p).filter((a) => !site || a.invoices?.site === site)
       const credit = site ? onBills.reduce((sum, a) => sum + Number(a.amount), 0) : Number(p.amount)
       if (credit <= 0) return
-      const corrected = reversedIds.has(p.id) || !!(p as { reversed?: boolean }).reversed
+      const corrected = (!!p.id && reversedIds.has(p.id)) || !!(p as { reversed?: boolean }).reversed
       all.push({
         date: p.created_at,
         type: 'Payment',

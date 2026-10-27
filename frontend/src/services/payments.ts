@@ -93,6 +93,16 @@ export async function correctPayment(
   return result
 }
 
+/**
+ * Whether a failed save might still have been saved: the request may have
+ * reached the database and only the answer was lost (a dropped connection, a
+ * timeout). A refusal the database explained in words was definitely not saved.
+ */
+export function mayHaveBeenSaved(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err ?? '')
+  return /failed to fetch|networkerror|network request failed|load failed|timed? ?out|abort/i.test(message)
+}
+
 /** A customer's newest receipt — what "Entered the wrong amount?" corrects. */
 export async function latestPaymentFor(customerId: string): Promise<Payment | null> {
   const { data, error } = await supabase
