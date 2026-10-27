@@ -10,7 +10,7 @@ A multi-tenant SaaS billing/khata (ledger) app for building-material suppliers i
 ## Locations
 - **Project root**: `C:\New folder\BUILDSUPPLY`
 - **Frontend**: `frontend/` (React 19 + Vite 8 + TypeScript + Tailwind CSS v4)
-- **Schema migrations**: `supabase/migrations/` — `002` through `051`, run in order. **051 (notifications and phone alerts, Phase 40) is the latest and is applied** (2026-10-26, pasted by the user; checked read-only afterwards). **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; 039 and 040 were already on live; **038 was pasted by the user on 2026-10-12** (the ten-minute duplicate rule is gone from `place_order`, checked read-only). **050 (how a material is sold — vehicle load or unit, Phase 39) is the latest and is applied** (2026-10-21, run by Claude through the CLI on the user's "run", after a snapshot in `backups/2026-10-21-before-050/`; the after-check was blocked by the permission classifier and run by the user in the SQL editor, who reported it matched); **049 (asking one chosen shop to resend the khata link — Phase 38) is applied** (2026-10-20; checked from outside: a bad number refused, the table still 401); **048 (a customer asking their shop to resend the khata link — Phase 38) is applied** (2026-10-19; checked from outside: a bad number refused, the table, the shop's list and handling all refused signed out — 401); **047 (customer UX round, read functions only — Phase 37) is applied** (2026-10-15; checked read-only: function bodies, both `security_invoker` views, counts unchanged, 0 bills out of step, every active shop's khata link still answers found with `has_estimate` on all 17 orders); **046 (customer complaints, Phase 36 round 4) is applied** (2026-10-15; checked read-only: table with RLS and one policy, select-only for signed-in users, nothing for anon — 401 over a real anonymous call — 8 functions one version each, counts unchanged); **045 (supplier compliance) is applied** (2026-10-13); 044 (three plans, Phase 34); **043 (your profile and bill details, Phase 32) is applied** (2026-10-12); 042 (the shop page, Phase 31) and 041 (customer accounts, Phase 30) were applied the same day. Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
+- **Schema migrations**: `supabase/migrations/` — `002` through `053`, run in order. **052 (audit fixes) and 053 (money write guard) are written and tested locally but NOT applied** (branch `audit-fixes`, Phase 41 — paste 052 before 053). **051 (notifications and phone alerts, Phase 40) is the latest applied** (2026-10-26, pasted by the user; checked read-only afterwards). **`038_repeat_orders`, `039_logo_upload_limits` and `040_revoke_needless_anon_grants` came from a pre-launch audit on 2026-09-22 (commit e4591a3) and were never written up here**; 039 and 040 were already on live; **038 was pasted by the user on 2026-10-12** (the ten-minute duplicate rule is gone from `place_order`, checked read-only). **050 (how a material is sold — vehicle load or unit, Phase 39) is the latest and is applied** (2026-10-21, run by Claude through the CLI on the user's "run", after a snapshot in `backups/2026-10-21-before-050/`; the after-check was blocked by the permission classifier and run by the user in the SQL editor, who reported it matched); **049 (asking one chosen shop to resend the khata link — Phase 38) is applied** (2026-10-20; checked from outside: a bad number refused, the table still 401); **048 (a customer asking their shop to resend the khata link — Phase 38) is applied** (2026-10-19; checked from outside: a bad number refused, the table, the shop's list and handling all refused signed out — 401); **047 (customer UX round, read functions only — Phase 37) is applied** (2026-10-15; checked read-only: function bodies, both `security_invoker` views, counts unchanged, 0 bills out of step, every active shop's khata link still answers found with `has_estimate` on all 17 orders); **046 (customer complaints, Phase 36 round 4) is applied** (2026-10-15; checked read-only: table with RLS and one policy, select-only for signed-in users, nothing for anon — 401 over a real anonymous call — 8 functions one version each, counts unchanged); **045 (supplier compliance) is applied** (2026-10-13); 044 (three plans, Phase 34); **043 (your profile and bill details, Phase 32) is applied** (2026-10-12); 042 (the shop page, Phase 31) and 041 (customer accounts, Phase 30) were applied the same day. Before that, **037 was the latest applied** (2026-09-22 — a payment method on an order and approving one on the spot, see Phase 28). 034, 035 and 036 were pasted the same day, 034 before 036: **036 refuses to run before 034**, because both re-issue `mark_invoice_delivered` and the other order would silently remove the stock logging from deliveries. 033 is applied too (2026-09-21, Phase 24).
 - **Host config**: `frontend/public/_redirects` + `_headers` (Netlify / Cloudflare Pages) and `frontend/vercel.json` (Vercel). Whichever host is used ignores the other's file, so all three can sit in the repo together. On Vercel the project's **Root Directory must be `frontend`** or `vercel.json` is never found.
 - **Seed data**: `supabase/seed/` — `002_master_catalog_seed.sql`, `003_fix_search_text_units.sql`, `004_seed_search_keywords.sql`. **All applied.**
 - **Edge Functions**: `supabase/functions/admin-manage-supplier/index.ts`, `supplier-apply` (Phase 36) and `send-push` (Phase 40), the last two deployed `--no-verify-jwt`
@@ -2249,6 +2249,60 @@ owner profile such as the reference"; frames pulled in the browser pane from
   night, with and without a cover, 320 and 360px in all three languages, no
   sideways scroll and no cut label; Order QR opens the QR, the camera the Shop
   page, both pills their pages. Not yet seen on a phone.
+
+**Phase 41 — fixes from the pre-onboarding audit (2026-10-27, branch
+`audit-fixes`, migrations 052 + 053 NOT yet applied).** The audit is
+`docs/BUILDSUPPLY_FULL_SYSTEM_AUDIT.md`; what was fixed, tested and left is
+`docs/BUILDSUPPLY_AUDIT_FIX_REPORT.md` (with deploy and rollback steps).
+Rules that now hold, and that later work must respect:
+- **Money tables are written only by database functions (053).** A trigger
+  refuses direct API writes to `invoices`, `invoice_items`, `payments`,
+  `payment_allocations`, `quotations` and `quotation_items` from the
+  `authenticated`/`anon` roles unless the write comes from inside a function —
+  it reads `pg_context` (a direct PostgREST write is one line; a write inside
+  any function has more). The app's only allowed direct writes: estimate
+  Draft→Sent and its `valid_until`. A customer with any money history can't be
+  deleted. **A new feature that writes these tables must be a function**, or
+  it is refused with 42501. The SQL editor, service role, cron, the definer
+  customer functions and cascades are not affected.
+- **A payment is corrected, never edited (052).** `correct_payment` adds a
+  **reversal** row (negative amount, `corrects_payment_id` → the wrong entry,
+  `correction_reason`) and, if given, a right-amount receipt (positive, same
+  pointer), allocated to the wrong entry's bills in their order. Every
+  `sum(amount)` in the app is therefore already right; `_receipt_remaining`
+  treats a reversed or reversal row as holding nothing; `_check_allocation`
+  refuses money on one. Lists must show `amount < 0` rows as corrections —
+  `correctionState()` in `services/payments.ts`; the khata payload carries
+  `reversal` / `reversed` / `correction` / `reason` (its rows have no ids).
+- **`_require_supplier()` now requires an active shop login** (052, F-15): a
+  suspended shop's money functions stop at once; other logins get "Only a
+  shop's own login can do this."
+- **`place_order` refuses instead of dropping** (unknown material, unreadable
+  or >1,00,000 quantity), keeps `listed_price` per line, and compares the
+  page's `price` / `delivery` per line with the shop's now — answering
+  `{ok:false, changed:true}` (nothing kept) when they moved. Pages that send
+  no such keys are not checked.
+- **Estimates have `valid_until`** (new ones +15 days, column default; older
+  ones null = never expire). One rule in two places: `_estimate_expired` (SQL)
+  and `lib/estimateValidity.ts`. Expired = Draft/Sent, past its date, and not
+  accepted in time; it can't be accepted from a status link ("call me" still
+  works). Converting keeps the estimate's GST (`_price_items_from_estimate`).
+- **`lib/useRefreshOnReturn.ts`** re-reads a screen on return (30 s away),
+  back/forward restore or reconnect — quietly. Used on the customer pages,
+  Dashboard, Orders and the customer page. No polling, no realtime.
+- **CSP is enforced** (`vercel.json`, mirrored in `public/_headers` with the
+  other security headers). **Adding any external resource — a font, an
+  analytics script, a map embed, another API — means adding it to the CSP in
+  both files**, or it is blocked in production only.
+- **Dialogs** (`components/ui/modal.tsx`) are `role="dialog"`, move focus in,
+  trap Tab in the top dialog and return focus to the opener (never to a text
+  field).
+- **`supplier-apply`**: 3 applications an hour per address (a keyed hash in
+  the audit row's `details.client`), 30 platform-wide.
+- Tests: `supabase/tests/052_audit_fixes_test.sql` (72 checks); run all three
+  suites on one fresh local database built through 053 — 145/145. The
+  test-run notes, the concurrency storm and the REST checks are in the fix
+  report.
 
 ## The admin panel
 

@@ -1,5 +1,7 @@
 # BuildSupply — Full System Audit (pre-onboarding)
 
+> **Fixes:** see [BUILDSUPPLY_AUDIT_FIX_REPORT.md](BUILDSUPPLY_AUDIT_FIX_REPORT.md) (branch `audit-fixes`; migrations 052 and 053 awaiting approval).
+
 **Date:** 2026-10-27 · **Commit audited:** `9e953de` (main) · **Scope:** repository, migrations 002→051, the three Edge Functions, live Supabase (read-only), live Vercel headers.
 **Nothing was changed** — no code, schema, data, branches, deploys or backup tasks. Every production check was a single read-only `select` or an anonymous `GET`.
 
