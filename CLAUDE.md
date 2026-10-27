@@ -606,7 +606,9 @@ git-ignored, and load it through `/@fs/`). Built one item at a time on
   0.15s cross-fade. The header and tab bar are their own layers
   (`app-header`, `app-tabbar`) shown without fading, so the bubble slides once —
   named only while a switch runs (Phase 21).
-- **Settings, WhatsApp-style**: the doodled band (`lib/qrPattern.ts`), the logo
+- **Settings, WhatsApp-style** (the header and row style superseded
+  2026-10-27 by the Snapchat-style Profile, after Phase 40; the outline-icon
+  rule still holds): the doodled band (`lib/qrPattern.ts`), the logo
   large, the name; plain grey outline-icon rows with a line under each title;
   each opens `?s=<section>` (back returns to the list; Orders, the UPI QR and
   the Start-here card link to their section). The More sheet uses plain outline
@@ -2205,6 +2207,48 @@ Customers, New estimate and Orders were left out: the first two are a tap from
 the Dashboard, and new orders arrive as phone alerts that open the order.
 Checked in the review harness: each address lands on its screen with no
 splash, back steps to the Dashboard, and an unknown `/go/` lands there too.
+
+**Profile like Snapchat's (2026-10-27). No database change.** From the
+user's screen recording of Snapchat's profile ("make business profile and
+owner profile such as the reference"; frames pulled in the browser pane from
+`frontend/node_modules/.review/profile-ref.mp4`).
+- **`components/ProfileHero.tsx`** — the header shared by the Profile tab
+  and both profile pages: the shop's `cover_url` (042) across the full width,
+  or the app's doodles on its dark green; a dark fade at the bottom so the
+  white name reads over any picture, in day and night alike; the round photo
+  (80px, white ring) with a **pencil badge**; the name (two lines at most) and
+  a second line. Corner slots: **Order QR** as a white pill at top right (where
+  Snapchat has Share — `HeroPill`) and a **camera** at top left that opens the
+  Shop page, where the cover lives (`HeroIconButton`). Text on the always-white
+  pill and pencil is fixed `text-gray-900`, not `text-ink`, which turns light at
+  night. A picture that fails to load is remembered **by its address**, so a
+  newly uploaded one gets its own try; `onPhotoError` lets the page stop
+  using a broken logo in the top bar too.
+- **Profile tab** (`routes/Settings.tsx`): **Business profile** and **Owner
+  profile** are two pill buttons (`ProfileButton`) in place of their rows —
+  the icon steps aside under 380px, and a long label wraps to two lines inside
+  the 44px pill rather than being cut (Hindi "बिज़नेस की जानकारी" at 320px);
+  chips for the plan and its days left (`daysUntilExpiry`, amber in the last
+  week, red once expired), KYC (`useMyCompliance`, opens `?s=kyc`) and online
+  orders (opens `?s=orders`); the rest as rounded rows under **Your shop** and
+  **App and security** — still plain grey outline icons, never boxed ones;
+  Sign out last. The admin sees one pill and the second group only.
+- **Business profile** (`?s=business`) opens with the same header: the
+  pencil on the logo uploads a new one (the separate logo card is gone; a hint
+  shows until there is a logo). `uploadLogo` keeps the same address
+  (`logo.<ext>`), so the page adds `?v=<time>` to fetch the new picture past
+  the phone's cache. **Saving the form or the logo now calls
+  `refreshSupplier()`** — before, Profile showed the old name and logo until
+  the app reopened.
+- **Owner profile** (`?s=me`, was "Your profile", renamed in all three
+  languages; `YourProfileCard`): the header with the owner's photo (pencil →
+  pick a new one; Remove photo under it), their name ("Add your name" until
+  set) and mobile as "98220 12345", then the name and mobile form.
+- Checked in the review harness (whose mock supplier now carries the 042/043
+  fields and a verified KYC row; `?cover` gives it a cover photo): light and
+  night, with and without a cover, 320 and 360px in all three languages, no
+  sideways scroll and no cut label; Order QR opens the QR, the camera the Shop
+  page, both pills their pages. Not yet seen on a phone.
 
 ## The admin panel
 

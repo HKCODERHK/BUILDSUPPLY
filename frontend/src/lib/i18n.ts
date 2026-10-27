@@ -2056,7 +2056,7 @@ const STRINGS = {
   'site.legal.english': { en: 'This page is in English.', hi: 'यह पेज अंग्रेज़ी में है।', mr: 'हे पेज इंग्रजीत आहे.' },
   'site.legal.back': { en: 'Back to home', hi: 'होम पर वापस', mr: 'होमवर परत' },
   // Your profile, and what prints on bills (migration 043).
-  'me.title': { en: 'Your profile', hi: 'आपकी प्रोफ़ाइल', mr: 'तुमची प्रोफाइल' },
+  'me.title': { en: 'Owner profile', hi: 'मालिक की प्रोफ़ाइल', mr: 'मालकाची प्रोफाइल' },
   'me.rowSub': { en: 'Your name, mobile and photo', hi: 'आपका नाम, मोबाइल और फ़ोटो', mr: 'तुमचे नाव, मोबाइल आणि फोटो' },
   'me.hint': { en: 'Customers see your photo beside your shop’s name. Your name and personal mobile stay private — only the BuildSupply admin can see the mobile.', hi: 'ग्राहक आपकी फ़ोटो आपकी दुकान के नाम के पास देखते हैं। आपका नाम और निजी मोबाइल निजी रहते हैं — मोबाइल सिर्फ़ BuildSupply एडमिन देख सकते हैं।', mr: 'ग्राहक तुमचा फोटो तुमच्या दुकानाच्या नावाशेजारी पाहतात. तुमचे नाव आणि वैयक्तिक मोबाइल खाजगी राहतात — मोबाइल फक्त BuildSupply ॲडमिन पाहू शकतात.' },
   'me.name': { en: 'Your name', hi: 'आपका नाम', mr: 'तुमचे नाव' },
@@ -2657,6 +2657,29 @@ const STRINGS = {
   'sec.byTruck': { en: 'By truck', hi: 'ट्रक से', mr: 'ट्रकने' },
   'sec.perLoad': { en: 'per load', hi: 'प्रति गाड़ी', mr: 'प्रति खेप' },
   'sell.quickSizes': { en: 'Common truck sizes', hi: 'आम ट्रक साइज़', mr: 'नेहमीचे ट्रक आकार' },
+  // The Profile tab after Snapchat's profile (2026-10-27): the header, its
+  // chips and the two groups of rows.
+  'prof.sectionShop': { en: 'Your shop', hi: 'आपकी दुकान', mr: 'तुमचे दुकान' },
+  'prof.sectionApp': { en: 'App and security', hi: 'ऐप और सुरक्षा', mr: 'ॲप आणि सुरक्षा' },
+  'prof.planDays': { en: '{plan} · {days} days left', hi: '{plan} · {days} दिन बाकी', mr: '{plan} · {days} दिवस बाकी' },
+  'prof.planOneDay': { en: '{plan} · 1 day left', hi: '{plan} · 1 दिन बाकी', mr: '{plan} · 1 दिवस बाकी' },
+  'prof.planToday': { en: '{plan} · ends today', hi: '{plan} · आज खत्म', mr: '{plan} · आज संपतो' },
+  'prof.planExpired': { en: '{plan} · expired', hi: '{plan} · खत्म हो गया', mr: '{plan} · संपला' },
+  'prof.kycApproved': { en: 'KYC verified', hi: 'KYC वेरिफ़ाइड', mr: 'KYC पडताळले' },
+  'prof.kycPending': { en: 'Complete KYC', hi: 'KYC पूरा करें', mr: 'KYC पूर्ण करा' },
+  'prof.kycReview': { en: 'KYC being checked', hi: 'KYC जाँच में', mr: 'KYC तपासणीत' },
+  'prof.kycFix': { en: 'Fix your KYC', hi: 'KYC ठीक करें', mr: 'KYC दुरुस्त करा' },
+  'prof.kycSuspended': { en: 'Online orders paused', hi: 'ऑनलाइन ऑर्डर रुके', mr: 'ऑनलाइन ऑर्डर थांबले' },
+  'prof.ordersOn': { en: 'Online orders on', hi: 'ऑनलाइन ऑर्डर चालू', mr: 'ऑनलाइन ऑर्डर सुरू' },
+  'prof.ordersOff': { en: 'Online orders off', hi: 'ऑनलाइन ऑर्डर बंद', mr: 'ऑनलाइन ऑर्डर बंद' },
+  'prof.changeCover': { en: 'Change cover photo', hi: 'कवर फ़ोटो बदलें', mr: 'कव्हर फोटो बदला' },
+  'prof.changeLogo': { en: 'Change logo', hi: 'लोगो बदलें', mr: 'लोगो बदला' },
+  'prof.logoHint': {
+    en: 'Tap the pencil on the circle to add your shop’s logo.',
+    hi: 'दुकान का लोगो जोड़ने के लिए गोले पर पेंसिल दबाएँ।',
+    mr: 'दुकानाचा लोगो जोडण्यासाठी वर्तुळावरील पेन्सिल दाबा.',
+  },
+  'prof.ownerNoName': { en: 'Add your name', hi: 'अपना नाम जोड़ें', mr: 'तुमचे नाव जोडा' },
   // Notifications: the bell and phone alerts (migration 051). The messages
   // themselves are written by the database in all three languages.
   'notif.title': { en: 'Notifications', hi: 'सूचनाएँ', mr: 'सूचना' },

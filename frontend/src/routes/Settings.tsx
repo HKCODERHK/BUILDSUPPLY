@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, BadgeCheck, Inbox, Languages, Lock, LogOut, Palette, Pencil, Percent, QrCode, ShieldCheck, Store, Type, UserRound, type LucideIcon } from 'lucide-react'
+import { ArrowLeft, BadgeCheck, Camera, ChevronRight, Crown, Inbox, Languages, Lock, LogOut, Palette, Percent, QrCode, ShieldCheck, Store, Type, UserRound, type LucideIcon } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,12 +9,11 @@ import { Label } from '@/components/ui/label'
 import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { updateSupplierProfile, uploadLogo } from '@/services/suppliers'
 import { sanitizePhone } from '@/lib/numberInput'
-import { patternCssUrl } from '@/lib/qrPattern'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { usePin } from '@/context/PinContext'
 import { useTopBar } from '@/context/TopBarContext'
-import { LANGUAGES } from '@/lib/i18n'
+import { LANGUAGES, type TranslationKey } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { PinSettingsCard } from '@/components/PinSettingsCard'
 import { ChangePasswordCard } from '@/components/ChangePasswordCard'
@@ -30,6 +29,10 @@ import { shopPageAvailable } from '@/services/shopPage'
 import { readDisplaySize } from '@/lib/displaySize'
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
 import { orderPageUrl } from '@/services/orders'
+import { HeroIconButton, HeroPill, ProfileHero } from '@/components/ProfileHero'
+import { useMyCompliance } from '@/lib/useMyCompliance'
+import { daysUntilExpiry } from '@/lib/subscription'
+import { planLabel } from '@/lib/plans'
 
 type Section = 'business' | 'me' | 'kyc' | 'shop' | 'orders' | 'upi' | 'gst' | 'language' | 'size' | 'pin' | 'password'
 
@@ -42,17 +45,20 @@ interface Row {
 }
 
 /**
- * Settings, the way WhatsApp lays out its own: the business on a doodled band
- * at the top — the logo large, the name under it — then plain rows, each a
- * grey outline icon, a title and a line saying what it is or its state, each
- * opening its own section (`?s=<section>`, so the phone's back gesture returns
- * to the list). Every card inside a section is the one this page always had —
- * nothing was removed, only sorted. Other screens link straight to a section:
+ * The Profile tab, after Snapchat's profile (the user's reference,
+ * 2026-10-27): the shop across the top (ProfileHero — its cover photo, the
+ * logo with a pencil, the name, Order QR where Snapchat has Share), then two
+ * pill buttons, Business profile and Owner profile, where Snapchat has My
+ * account and Public Profile; a row of chips (plan, KYC, online orders); and
+ * the rest as rounded rows under two headings — still plain grey outline
+ * icons, never boxed ones. Each row opens its own section (`?s=<section>`, so
+ * the phone's back gesture returns to the list). Every card inside a section
+ * is the one this page always had. Other screens link straight to a section:
  * Orders → `?s=orders`, the UPI QR → `?s=upi`, the Start-here card →
  * `?s=business`.
  */
 export default function Settings() {
-  const { supplier, signOut } = useAuth()
+  const { supplier, signOut, refreshSupplier } = useAuth()
   const { lang, setLang, t } = useLanguage()
   const { hasPin } = usePin()
   const navigate = useNavigate()
@@ -71,6 +77,9 @@ export default function Settings() {
   const [uploading, setUploading] = useState(false)
   const [logoFailed, setLogoFailed] = useState(false)
   const [logoRejected, setLogoRejected] = useState(false)
+  const [logoVersion, setLogoVersion] = useState(0)
+  const logoInput = useRef<HTMLInputElement>(null)
+  const { record: kyc } = useMyCompliance()
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -79,6 +88,8 @@ export default function Settings() {
     setSaved(false)
     try {
       await updateSupplierProfile(supplier.id, form)
+      // The header shows the name and phone large now; bring them up to date.
+      await refreshSupplier()
       setSaved(true)
     } finally {
       setSaving(false)
@@ -95,6 +106,11 @@ export default function Settings() {
     setLogoRejected(false)
     try {
       await uploadLogo(supplier.id, file)
+      // The same address as before (logo.<ext>), so the phone would keep
+      // showing its cached copy: a fresh query string fetches the new one.
+      setLogoVersion(Date.now())
+      setLogoFailed(false)
+      await refreshSupplier()
     } catch {
       setLogoRejected(true)
     } finally {
@@ -107,14 +123,16 @@ export default function Settings() {
   // Online orders and UPI are a supplier's; the admin's own settings are the
   // rest (their cards already hide themselves for the admin).
   const isSupplier = supplier?.role === 'supplier'
+  // The two profiles are the hero's pill buttons rather than rows.
+  const ownerAvailable = isSupplier && !!supplier && 'owner_mobile' in supplier
+  const profileRows: Row[] = [
+    { id: 'business', icon: Store, label: t('set.title'), detail: t('set.rowBusinessSub') },
+    // The owner, apart from the business (migration 043) — only where the
+    // database has it.
+    ...(ownerAvailable ? [{ id: 'me' as const, icon: UserRound, label: t('me.title'), detail: t('me.rowSub') }] : []),
+  ]
   const groups: Row[][] = [
     [
-      { id: 'business', icon: Store, label: t('set.title'), detail: t('set.rowBusinessSub') },
-      // The owner, apart from the business (migration 043) — only where the
-      // database has it.
-      ...(isSupplier && supplier && 'owner_mobile' in supplier
-        ? [{ id: 'me' as const, icon: UserRound, label: t('me.title'), detail: t('me.rowSub') }]
-        : []),
       // Verification (migration 045) — a supplier's own; never locks anything.
       ...(isSupplier ? [{ id: 'kyc' as const, icon: BadgeCheck, label: t('kyc.title'), detail: t('kyc.rowSub') }] : []),
       // The shop's page for customers (migration 042) — only where the
@@ -161,14 +179,14 @@ export default function Settings() {
   ]
 
   const asked = searchParams.get('s')
-  const sectionRow = groups.flat().find((r) => r.id === asked)
+  const sectionRow = [...profileRows, ...groups.flat()].find((r) => r.id === asked)
   const section = sectionRow?.id ?? null
   // No PageHeader here, so name the screen for the phone's top bar directly.
   // The Profile tab (its logo in the tab bar) opens this page. Once the
   // business's own name has scrolled up under the top bar, the bar shows its
   // logo and name instead of "Profile" — as Telegram's profile does — and
   // "Profile" again back at the top.
-  const nameRef = useRef<HTMLButtonElement>(null)
+  const nameRef = useRef<HTMLHeadingElement>(null)
   const [nameGone, setNameGone] = useState(false)
   useEffect(() => {
     let frame = 0
@@ -196,13 +214,23 @@ export default function Settings() {
   // set up it opens Online orders instead.
   const orderUrl = supplier?.order_link && supplier.ordering_enabled ? orderPageUrl(supplier.order_link) : null
   const [qrOpen, setQrOpen] = useState(false)
-  const barLogo = supplier?.logo_url && !logoFailed ? supplier.logo_url : undefined
+  const logoUrl = supplier?.logo_url ? (logoVersion ? `${supplier.logo_url}?v=${logoVersion}` : supplier.logo_url) : null
+  const barLogo = logoUrl && !logoFailed ? logoUrl : undefined
   const showBusiness = !sectionRow && nameGone && !!businessName
   useTopBar({
     title: sectionRow?.label ?? (showBusiness ? businessName : t('nav.profile')),
     image: showBusiness ? barLogo : undefined,
     avatar: showBusiness && !barLogo ? { id: supplier?.id ?? '', name: businessName } : undefined,
   })
+
+  // The cover photo lives on the Shop page (migration 042), which shows it to
+  // customers too; the camera on the picture goes there.
+  const coverButton =
+    isSupplier && shopPageAvailable(supplier) ? (
+      <HeroIconButton label={t('prof.changeCover')} onClick={() => open('shop')}>
+        <Camera size={19} strokeWidth={1.9} />
+      </HeroIconButton>
+    ) : undefined
 
   async function handleSignOut() {
     await signOut()
@@ -234,34 +262,35 @@ export default function Settings() {
         </button>
 
         {section === 'business' && (
-          <>
-            <Card className="mb-4 max-w-lg">
-              <Label>{t('set.logo')}</Label>
-              <div className="flex items-center gap-4">
-                {supplier?.logo_url ? (
-                  <img src={supplier.logo_url} alt={t('set.logo')} className="h-16 w-16 rounded-lg border border-border object-cover" />
-                ) : (
-                  <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-border text-xs text-muted-2">
-                    {t('set.noLogo')}
-                  </div>
-                )}
-                <label className="cursor-pointer text-sm font-semibold text-accent">
-                  {uploading ? t('set.uploading') : t('set.uploadLogo')}
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    className="hidden"
-                    onChange={handleLogoChange}
-                    disabled={uploading}
-                  />
-                </label>
-              </div>
-              {logoRejected && (
-                <p className="mt-2 text-xs font-medium text-red-600 dark:text-red-400">{t('set.logoRejected')}</p>
-              )}
-            </Card>
+          <div className="max-w-lg">
+            {/* The shop as customers and bills show it: the cover, the logo —
+                its pencil uploads a new one — the name and the phone. */}
+            <ProfileHero
+              cover={supplier?.cover_url}
+              photo={logoUrl}
+              fallback={<CustomerAvatar id={supplier?.id ?? ''} name={businessName} size={80} />}
+              title={businessName}
+              subtitle={supplier?.phone || supplier?.email}
+              onPhoto={() => logoInput.current?.click()}
+              photoLabel={t('prof.changeLogo')}
+              onPhotoError={() => setLogoFailed(true)}
+              busy={uploading}
+              topLeft={coverButton}
+            />
+            <input
+              ref={logoInput}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={handleLogoChange}
+              disabled={uploading}
+            />
+            {logoRejected && (
+              <p role="alert" className="mt-3 text-xs font-medium text-red-600 dark:text-red-400">{t('set.logoRejected')}</p>
+            )}
+            {!supplier?.logo_url && !logoRejected && <p className="mt-3 text-xs text-muted">{t('prof.logoHint')}</p>}
 
-            <Card className="max-w-lg">
+            <Card className="mt-4">
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <div>
                   <Label htmlFor="business_name" required>{t('set.businessName')}</Label>
@@ -307,7 +336,7 @@ export default function Settings() {
             </Card>
             {/* What prints on new bills (migration 043). */}
             <BillPrintCard />
-          </>
+          </div>
         )}
         {section === 'me' && <YourProfileCard />}
         {section === 'kyc' && <KycSettingsCard />}
@@ -350,88 +379,169 @@ export default function Settings() {
     )
   }
 
-  const logo = !logoFailed ? supplier?.logo_url : null
+  // The chips under the two profile buttons, as Snapchat has them under its
+  // own: the plan and its days left, verification, and online orders. Each
+  // one that leads somewhere opens it.
+  const days = daysUntilExpiry(supplier?.subscription_expiry)
+  const plan = supplier ? planLabel(supplier) : ''
+  const planText =
+    days === null
+      ? plan
+      : days < 0
+        ? t('prof.planExpired', { plan })
+        : days === 0
+          ? t('prof.planToday', { plan })
+          : days === 1
+            ? t('prof.planOneDay', { plan })
+            : t('prof.planDays', { plan, days })
+  const kycChip: { key: TranslationKey; tone: ChipTone } | null = !kyc
+    ? null
+    : kyc.status === 'APPROVED'
+      ? { key: 'prof.kycApproved', tone: 'good' }
+      : kyc.status === 'UNDER_REVIEW'
+        ? { key: 'prof.kycReview', tone: 'neutral' }
+        : kyc.status === 'SUSPENDED'
+          ? { key: 'prof.kycSuspended', tone: 'bad' }
+          : kyc.status === 'REJECTED' || kyc.correction_reason
+            ? { key: 'prof.kycFix', tone: 'warn' }
+            : { key: 'prof.kycPending', tone: 'warn' }
+
+  const ownerPhoto = ownerAvailable ? supplier?.owner_photo_url : null
 
   return (
     <div className="max-w-lg">
-      {/* The doodled band — the app's own building-trade doodles, soft green
-          in light, barely there in dark — running edge to edge on a phone. */}
-      <div className="relative -mx-4 -mt-2 sm:-mx-6 lg:mx-0 lg:mt-0 lg:overflow-hidden lg:rounded-t-3xl">
-        <div className="h-32 dark:hidden" style={{ backgroundColor: '#E4F1E8', backgroundImage: patternCssUrl('rgba(31, 122, 69, 0.16)') }} />
-        <div className="hidden h-32 dark:block" style={{ backgroundColor: '#15261F', backgroundImage: patternCssUrl('rgba(255, 255, 255, 0.07)') }} />
-        <button
-          type="button"
-          onClick={() => open('business')}
-          aria-label={t('common.edit')}
-          className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full text-ink/70 transition-colors hover:bg-black/5 dark:text-white/80 dark:hover:bg-white/10"
-        >
-          <Pencil size={20} strokeWidth={1.75} />
-        </button>
-
-        {/* The page itself, rising over the band with a rounded top edge. */}
-        <div className="relative -mt-7 rounded-t-3xl bg-surface px-4 pb-1 pt-16 text-center sm:px-6">
-          <button
-            type="button"
-            onClick={() => open('business')}
-            className="absolute -top-14 left-1/2 flex h-28 w-28 -translate-x-1/2 items-center justify-center overflow-hidden rounded-full bg-white ring-4 ring-surface"
-          >
-            {logo ? (
-              <img src={logo} alt="" onError={() => setLogoFailed(true)} className="h-full w-full object-cover" />
-            ) : (
-              <CustomerAvatar id={supplier?.id ?? ''} name={supplier?.business_name ?? ''} size={112} />
-            )}
-          </button>
-          <button ref={nameRef} type="button" onClick={() => open('business')} className="w-full">
-            <span className="block break-words text-2xl font-semibold leading-tight text-ink">{supplier?.business_name}</span>
-            <span className="mt-1 block text-sm text-muted">{supplier?.phone || supplier?.email}</span>
-          </button>
-          {supplier?.role !== 'admin' && (
-            <button
-              type="button"
-              onClick={() => (orderUrl ? setQrOpen(true) : open('orders'))}
-              className="mt-3 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-accent-text shadow-sm transition-colors hover:bg-accent-bg active:bg-accent-bg"
-            >
-              <QrCode size={18} strokeWidth={1.75} /> {t('set.orderQr')}
-            </button>
-          )}
-        </div>
-      </div>
+      <ProfileHero
+        cover={supplier?.cover_url}
+        photo={logoUrl}
+        fallback={<CustomerAvatar id={supplier?.id ?? ''} name={businessName} size={80} />}
+        title={businessName}
+        subtitle={supplier?.phone || supplier?.email}
+        onPhoto={() => open('business')}
+        photoLabel={t('set.title')}
+        onPhotoError={() => setLogoFailed(true)}
+        titleRef={nameRef}
+        topLeft={coverButton}
+        topRight={
+          supplier?.role !== 'admin' ? (
+            // Snapchat's Share: here the full-screen QR a walk-in customer
+            // scans — the same one the Dashboard logo opens on a long press.
+            // Until ordering is set up it opens Online orders instead.
+            <HeroPill onClick={() => (orderUrl ? setQrOpen(true) : open('orders'))}>
+              <QrCode size={17} strokeWidth={1.9} /> {t('set.orderQr')}
+            </HeroPill>
+          ) : undefined
+        }
+      />
 
       {qrOpen && orderUrl && <OrderLinkShareModal url={orderUrl} initialStep="qr" onClose={() => setQrOpen(false)} />}
 
-      {/* Plain rows: a grey outline icon, the title, and a line under it. */}
-      <div className="mt-4">
-        {groups.map((group, gi) => (
-          <div key={group[0].id} className={cn(gi > 0 && 'mt-2 border-t border-border pt-2')}>
-            {group.map((row) => (
-              <button
-                key={row.id}
-                type="button"
-                onClick={() => open(row.id)}
-                className="flex w-full items-start gap-5 rounded-xl px-2 py-3.5 text-left transition-colors hover:bg-card active:bg-card"
-              >
-                <row.icon size={24} strokeWidth={1.75} className="mt-0.5 shrink-0 text-muted" />
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[15px] text-ink">{row.label}</span>
-                  {row.detail && <span className="mt-0.5 block break-words text-sm text-muted">{row.detail}</span>}
-                </span>
-              </button>
-            ))}
-          </div>
-        ))}
+      {/* The two profiles, where Snapchat has My account and Public Profile. */}
+      <div className={cn('mt-3 grid gap-2.5', ownerAvailable ? 'grid-cols-2' : 'grid-cols-1')}>
+        <ProfileButton onClick={() => open('business')} label={t('set.title')}>
+          <Store size={17} strokeWidth={1.9} className="shrink-0" />
+        </ProfileButton>
+        {ownerAvailable && (
+          <ProfileButton onClick={() => open('me')} label={t('me.title')}>
+            {ownerPhoto ? (
+              <img src={ownerPhoto} alt="" className="h-6 w-6 shrink-0 rounded-full object-cover" />
+            ) : (
+              <UserRound size={17} strokeWidth={1.9} className="shrink-0" />
+            )}
+          </ProfileButton>
+        )}
       </div>
 
-      {/* Sign out, at the foot of the profile, where WhatsApp and Telegram put it. */}
-      <div className="mt-2 border-t border-border pt-2">
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className="flex w-full items-center gap-5 rounded-xl px-2 py-3.5 text-left text-red-600 transition-colors hover:bg-card active:bg-card"
-        >
-          <LogOut size={24} strokeWidth={1.75} className="shrink-0" />
-          <span className="text-[15px]">{t('nav.signOut')}</span>
-        </button>
-      </div>
+      {isSupplier && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Chip tone={days !== null && days < 0 ? 'bad' : days !== null && days <= 7 ? 'warn' : 'neutral'}>
+            <Crown size={14} strokeWidth={2} /> {planText}
+          </Chip>
+          {kycChip && (
+            <Chip tone={kycChip.tone} onClick={() => open('kyc')}>
+              <BadgeCheck size={14} strokeWidth={2} /> {t(kycChip.key)}
+            </Chip>
+          )}
+          <Chip tone={supplier?.ordering_enabled ? 'good' : 'neutral'} onClick={() => open('orders')}>
+            <Inbox size={14} strokeWidth={2} /> {t(supplier?.ordering_enabled ? 'prof.ordersOn' : 'prof.ordersOff')}
+          </Chip>
+        </div>
+      )}
+
+      {groups.map((group, gi) =>
+        group.length === 0 ? null : (
+          <section key={gi}>
+            <h3 className="mb-2 mt-6 px-1 text-[15px] font-bold text-ink">
+              {t(gi === 0 && isSupplier ? 'prof.sectionShop' : 'prof.sectionApp')}
+            </h3>
+            <div className="flex flex-col gap-2">
+              {group.map((row) => (
+                <button
+                  key={row.id}
+                  type="button"
+                  onClick={() => open(row.id)}
+                  className="flex w-full items-center gap-4 rounded-2xl border border-border bg-card px-4 py-3.5 text-left transition-colors hover:bg-surface active:bg-surface"
+                >
+                  <row.icon size={22} strokeWidth={1.75} className="shrink-0 text-muted" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[15px] text-ink">{row.label}</span>
+                    {row.detail && <span className="mt-0.5 block break-words text-sm text-muted">{row.detail}</span>}
+                  </span>
+                  <ChevronRight size={18} className="shrink-0 text-muted-2" />
+                </button>
+              ))}
+            </div>
+          </section>
+        ),
+      )}
+
+      {/* Sign out, at the foot of the profile, where Snapchat, WhatsApp and Telegram put it. */}
+      <button
+        type="button"
+        onClick={handleSignOut}
+        className="mt-6 flex w-full items-center gap-4 rounded-2xl border border-border bg-card px-4 py-3.5 text-left text-red-600 transition-colors hover:bg-surface active:bg-surface dark:text-red-400"
+      >
+        <LogOut size={22} strokeWidth={1.75} className="shrink-0" />
+        <span className="text-[15px]">{t('nav.signOut')}</span>
+      </button>
     </div>
+  )
+}
+
+type ChipTone = 'neutral' | 'good' | 'warn' | 'bad'
+
+const CHIP_TONES: Record<ChipTone, string> = {
+  neutral: 'border-border bg-card text-ink',
+  good: 'border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-300',
+  warn: 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200',
+  bad: 'border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300',
+}
+
+/** One of the chips under the profile buttons: a small rounded label, a button when it leads somewhere. */
+function Chip({ tone, onClick, children }: { tone: ChipTone; onClick?: () => void; children: ReactNode }) {
+  const className = cn('inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium', CHIP_TONES[tone])
+  return onClick ? (
+    <button type="button" onClick={onClick} className={className}>
+      {children}
+    </button>
+  ) : (
+    <span className={className}>{children}</span>
+  )
+}
+
+/**
+ * Business profile / Owner profile: two pills side by side. On a narrow phone
+ * the icon steps aside, and a long label ("बिज़नेस की जानकारी" at 320px) takes
+ * a second line inside the same pill rather than being cut off.
+ */
+function ProfileButton({ onClick, label, children }: { onClick: () => void; label: string; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex h-11 min-w-0 items-center justify-center gap-2 rounded-full border border-border bg-card px-3 text-[13px] font-semibold text-ink shadow-sm transition-colors hover:bg-surface active:bg-surface min-[380px]:text-sm"
+    >
+      <span className="hidden shrink-0 min-[380px]:inline-flex">{children}</span>
+      <span className="line-clamp-2 min-w-0 text-center leading-tight">{label}</span>
+    </button>
   )
 }
