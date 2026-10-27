@@ -2932,6 +2932,14 @@ const STRINGS = {
     mr: 'हे एस्टिमेट {days} दिवसांपूर्वी बनले होते आणि तेव्हापासून रेट बदलले असू शकतात. याच रेटवर बिल बनवायचे?',
   },
   'est.convertAnyway': { en: 'Make the bill at these rates', hi: 'इन्हीं रेट पर बिल बनाएँ', mr: 'याच रेटवर बिल बनवा' },
+
+  // ── Applying while applications are busy (audit F-10) ─────────────────
+  'apply.busyWhatsapp': { en: 'Or message us on WhatsApp', hi: 'या हमें WhatsApp पर मैसेज करें', mr: 'किंवा आम्हाला WhatsApp वर मेसेज करा' },
+  'apply.busyMessage': {
+    en: 'Hello, I want to join BuildSupply. The application form said it was busy.',
+    hi: 'नमस्ते, मुझे BuildSupply से जुड़ना है। आवेदन फ़ॉर्म ने कहा कि अभी बहुत आवेदन हैं।',
+    mr: 'नमस्कार, मला BuildSupply मध्ये सामील व्हायचे आहे. अर्ज फॉर्मने सांगितले की आत्ता खूप अर्ज आहेत.',
+  },
 } satisfies Record<string, Entry>
 
 export type TranslationKey = keyof typeof STRINGS

@@ -31,9 +31,27 @@ function originAllowed(origin: string | null): boolean {
   )
 }
 
-// Applications the whole platform takes in an hour. A real shop applies once;
-// this only stops a script filling the admin's list.
-const PLATFORM_PER_HOUR = 10
+// Applications the platform takes in an hour, in all and from one internet
+// address. A real shop applies once. The per-address limit is what stops one
+// script — it used to be the platform-wide cap alone (10), which a script
+// could use up and so turn away every genuine shop for the hour (audit F-10).
+const PLATFORM_PER_HOUR = 30
+const ADDRESS_PER_HOUR = 3
+
+// Where the request came from, as the platform's edge reports it: Cloudflare's
+// header first, then the first X-Forwarded-For entry. Kept only as a keyed
+// hash in the application's audit row — never the address itself.
+function clientAddress(req: Request): string {
+  return (req.headers.get('cf-connecting-ip') ?? req.headers.get('x-forwarded-for')?.split(',')[0] ?? '').trim()
+}
+
+async function addressHash(address: string): Promise<string | null> {
+  const secret = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  if (!address || !secret) return null
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+  const mac = new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`supplier-apply|${address}`)))
+  return Array.from(mac.slice(0, 16), (b) => b.toString(16).padStart(2, '0')).join('')
+}
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const MOBILE = /^[6-9][0-9]{9}$/
@@ -98,6 +116,17 @@ Deno.serve(async (req) => {
 
   try {
     const since = new Date(Date.now() - 3600_000).toISOString()
+    const client = await addressHash(clientAddress(req))
+    if (client) {
+      const { count: fromHere, error: hereError } = await admin
+        .from('compliance_audit_log')
+        .select('id', { count: 'exact', head: true })
+        .eq('action', 'application_created')
+        .eq('details->>client', client)
+        .gte('created_at', since)
+      if (hereError) return fail('server', 500, hereError)
+      if ((fromHere ?? 0) >= ADDRESS_PER_HOUR) return fail('busy', 429)
+    }
     const { count, error: countError } = await admin
       .from('supplier_compliance')
       .select('user_id', { count: 'exact', head: true })
@@ -142,7 +171,8 @@ Deno.serve(async (req) => {
       actor_role: 'supplier',
       action: 'application_created',
       new_status: 'PENDING',
-      details: { plan },
+      // The keyed hash of where it came from: what the per-address limit counts.
+      details: client ? { plan, client } : { plan },
     })
     if (auditError) console.error('audit', auditError.message)
 

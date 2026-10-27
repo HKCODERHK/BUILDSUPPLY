@@ -1,6 +1,9 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode, type RefObject } from 'react'
 import { X } from 'lucide-react'
 import { useLanguage } from '@/context/LanguageContext'
+
+// What Tab can land on inside a dialog.
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 // Dialogs that own a history entry, oldest first. Back closes only the top
 // one, and a dialog taking its own entry off again (history.back() below)
@@ -32,8 +35,14 @@ window.addEventListener('popstate', () => {
  * What every dialog does besides drawing itself: back closes it (one history
  * entry, unwound again if it closes another way), and Escape closes it — in
  * both cases only the top one. Shared by Modal and ImagePreview.
+ *
+ * And, for anyone using a keyboard or a screen reader (audit F-14): focus
+ * moves into the dialog when it opens (unless a field in it already took it),
+ * Tab stays inside the top dialog, and focus goes back to the button that
+ * opened it when it closes — never to a text field, which on a phone would
+ * bring the keyboard back up.
  */
-function useDialogBehaviour(onClose: () => void, captureBack: boolean) {
+function useDialogBehaviour(onClose: () => void, captureBack: boolean, boxRef?: RefObject<HTMLElement | null>) {
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
 
@@ -92,17 +101,47 @@ function useDialogBehaviour(onClose: () => void, captureBack: boolean) {
   useEffect(() => {
     const me = {}
     mountedDialogs.push(me)
+    const openedFrom = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const box = boxRef?.current ?? null
+    if (box && !box.contains(document.activeElement)) box.focus({ preventScroll: true })
+
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && mountedDialogs[mountedDialogs.length - 1] === me) onCloseRef.current()
+      if (mountedDialogs[mountedDialogs.length - 1] !== me) return
+      if (e.key === 'Escape') {
+        onCloseRef.current()
+        return
+      }
+      if (e.key !== 'Tab' || !box) return
+      const items = Array.from(box.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.getClientRects().length > 0)
+      if (items.length === 0) {
+        e.preventDefault()
+        box.focus({ preventScroll: true })
+        return
+      }
+      const first = items[0]
+      const last = items[items.length - 1]
+      const active = document.activeElement
+      if (e.shiftKey && (active === first || active === box || !box.contains(active))) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && (active === last || !box.contains(active))) {
+        e.preventDefault()
+        first.focus()
+      }
     }
     document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('keydown', onKey)
       const at = mountedDialogs.indexOf(me)
       if (at >= 0) mountedDialogs.splice(at, 1)
+      // Back to what opened it — a button or a link, still on screen.
+      if (openedFrom?.isConnected && openedFrom.matches('button, a[href], [role="button"]')) {
+        openedFrom.focus({ preventScroll: true })
+      }
     }
+    // boxRef is a ref: read once, when the dialog opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
 }
 
 export function Modal({
@@ -122,19 +161,29 @@ export function Modal({
    */
   captureBack?: boolean
 }) {
-  useDialogBehaviour(onClose, captureBack)
+  const boxRef = useRef<HTMLDivElement>(null)
+  useDialogBehaviour(onClose, captureBack, boxRef)
   // Read in the person's own language, not always "Close" (#35).
   const closeLabel = useLanguage().t('common.close')
+  const titleId = useId()
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
-        className="vh-cap-90 w-full max-w-md overflow-y-auto rounded-2xl bg-card p-5 sm:p-6"
+        ref={boxRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="vh-cap-90 w-full max-w-md overflow-y-auto rounded-2xl bg-card p-5 outline-none sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-ink">{title}</h2>
+          <h2 id={titleId} className="text-base font-semibold text-ink">
+            {title}
+          </h2>
           <button
+            type="button"
             onClick={onClose}
             aria-label={closeLabel}
             className="-m-3 flex h-11 w-11 items-center justify-center text-muted hover:text-ink"
@@ -154,7 +203,8 @@ export function Modal({
  * the picture, Escape or the back gesture (the same handling as Modal).
  */
 export function ImagePreview({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
-  useDialogBehaviour(onClose, true)
+  const boxRef = useRef<HTMLDivElement>(null)
+  useDialogBehaviour(onClose, true, boxRef)
   const closeLabel = useLanguage().t('common.close')
   const closeRef = useRef<HTMLButtonElement>(null)
   useEffect(() => {
@@ -162,10 +212,12 @@ export function ImagePreview({ src, alt, onClose }: { src: string; alt: string; 
   }, [])
   return (
     <div
+      ref={boxRef}
+      tabIndex={-1}
       role="dialog"
       aria-modal="true"
       aria-label={alt}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 pt-[calc(1rem_+_var(--safe-top))] pb-[calc(1rem_+_var(--safe-bottom))]"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 pt-[calc(1rem_+_var(--safe-top))] pb-[calc(1rem_+_var(--safe-bottom))] outline-none"
       onClick={onClose}
     >
       <button

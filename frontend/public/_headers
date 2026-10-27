@@ -1,5 +1,17 @@
 # Netlify / Cloudflare Pages response headers.
 
+# The same security headers vercel.json sends, so moving host never drops
+# them. The Content-Security-Policy (audit F-12) lets a page load code only
+# from this site, and talk only to this app's Supabase project and the
+# password breach check; pictures may also come from that project's storage.
+# Keep the two files' policies identical.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://pefarymejlfdsmwusbbq.supabase.co; font-src 'self' data:; connect-src 'self' https://pefarymejlfdsmwusbbq.supabase.co wss://pefarymejlfdsmwusbbq.supabase.co https://api.pwnedpasswords.com; media-src 'self' blob:; worker-src 'self'; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+
 # The service worker decides which version of the app every installed phone
 # runs, so it must never be served from a stale CDN copy — a cached sw.js can
 # keep handing out an old build long after a deploy. Browsers already refuse

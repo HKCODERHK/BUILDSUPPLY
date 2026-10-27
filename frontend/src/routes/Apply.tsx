@@ -14,6 +14,8 @@ import { MIN_PASSWORD_LENGTH, isPasswordLeaked } from '@/lib/passwordRules'
 import type { TranslationKey } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { applyAsSupplier, type RequestedPlan } from '@/services/compliance'
+import { ADMIN_WHATSAPP_NUMBER } from '@/lib/adminContact'
+import { openWhatsAppShare } from '@/lib/whatsapp'
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const KNOWN_ERRORS = new Set(['email_taken', 'busy', 'bad_mobile', 'bad_email', 'bad_password'])
@@ -183,7 +185,24 @@ export default function Apply() {
             onChange={(e) => setWebsite(e.target.value)}
           />
 
-          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+          {error && (
+            <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+              {error}
+              {/* Turned away for the hour (F-10): a shop can still reach us. */}
+              {error === t('apply.err.busy') && (
+                <>
+                  {' '}
+                  <button
+                    type="button"
+                    onClick={() => openWhatsAppShare(ADMIN_WHATSAPP_NUMBER, t('apply.busyMessage'))}
+                    className="font-semibold underline"
+                  >
+                    {t('apply.busyWhatsapp')}
+                  </button>
+                </>
+              )}
+            </p>
+          )}
           <GradientButton type="submit" busy={busy}>
             {t('apply.submit')}
           </GradientButton>
