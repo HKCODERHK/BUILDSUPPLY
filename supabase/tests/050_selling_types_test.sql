@@ -210,7 +210,10 @@ do $$ declare r jsonb; begin
          jsonb_build_array(jsonb_build_object('material_id', current_setting('t.truck'), 'qty', '1')));
   raise notice 'FAIL 27 shop A''s material was ordered from shop B';
 exception when raise_exception then
-  raise notice '% 27 shop A''s material cannot be ordered from shop B (%)', case when sqlerrm ilike '%at least one material%' then 'PASS' else 'FAIL' end, sqlerrm;
+  -- 052 (F-02) refuses it by name instead of dropping it and then finding
+  -- nothing left; either way nothing is ordered.
+  raise notice '% 27 shop A''s material cannot be ordered from shop B (%)',
+    case when sqlerrm ilike '%at least one material%' or sqlerrm ilike '%no longer sold%' then 'PASS' else 'FAIL' end, sqlerrm;
 end $$;
 commit;
 
