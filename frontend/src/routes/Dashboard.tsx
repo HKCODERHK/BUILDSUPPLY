@@ -33,6 +33,7 @@ import { TruckLoader } from '@/components/TruckLoader'
 import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
 import { SendShopDetailsModal } from '@/components/SendShopDetailsModal'
+import { useRefreshOnReturn } from '@/lib/useRefreshOnReturn'
 
 // Jump straight into the create flow for each — no extra click on the
 // destination page. Customers/Payments/Stock read `?new=1` to auto-open
@@ -316,6 +317,10 @@ function SupplierDashboardView() {
   const [unpriced, setUnpriced] = useState<{ count: number; orderId: string | null }>({ count: 0, orderId: null })
   // Customer complaints still open (046); 0 before it exists.
   const [complaints, setComplaints] = useState(0)
+  // Bumped when the phone comes back to the app after a while (F-06): every
+  // figure below is read again, quietly, with no loader.
+  const [returned, setReturned] = useState(0)
+  useRefreshOnReturn(() => setReturned((n) => n + 1))
   useEffect(() => {
     let active = true
     countOpenComplaints()
@@ -334,7 +339,7 @@ function SupplierDashboardView() {
     return () => {
       active = false
     }
-  }, [])
+  }, [returned])
   const [loading, setLoading] = useState(true)
   // What the Start-here card ticks off. Flags rather than the recent lists
   // above, which are trimmed to five and drop cancelled bills — a supplier
@@ -395,7 +400,7 @@ function SupplierDashboardView() {
     return () => {
       active = false
     }
-  }, [])
+  }, [returned])
 
   // Decided only once the data is in. Until then an existing supplier keeps
   // their quick actions exactly as before; only a genuinely new one sees the

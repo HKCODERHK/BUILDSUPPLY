@@ -2744,6 +2744,194 @@ const STRINGS = {
     hi: 'यह ब्राउज़र अलर्ट नहीं दिखा सकता। अलर्ट के लिए लिंक Chrome में खोलें।',
     mr: 'हा ब्राउझर अलर्ट दाखवू शकत नाही. अलर्टसाठी लिंक Chrome मध्ये उघडा.',
   },
+
+  // ── Correcting a payment (migration 052) ──────────────────────────────
+  'corr.title': { en: 'Correct this payment', hi: 'यह पेमेंट ठीक करें', mr: 'हे पेमेंट दुरुस्त करा' },
+  'corr.intro': {
+    en: 'The wrong entry stays on record. A correction is added beside it and the khata is worked out again.',
+    hi: 'गलत एंट्री रिकॉर्ड में रहती है। उसके साथ एक सुधार जुड़ता है और खाता फिर से हिसाब होता है।',
+    mr: 'चुकीची नोंद रेकॉर्डमध्ये राहते. तिच्या बाजूला दुरुस्ती जोडली जाते आणि खाते पुन्हा हिशोब होते.',
+  },
+  'corr.mistake': { en: 'Entered by mistake — cancel it', hi: 'गलती से दर्ज हुआ — रद्द करें', mr: 'चुकून नोंदवले — रद्द करा' },
+  'corr.wrongAmount': { en: 'Wrong amount or mode', hi: 'गलत रकम या तरीका', mr: 'चुकीची रक्कम किंवा पद्धत' },
+  'corr.rightAmount': { en: 'Right amount', hi: 'सही रकम', mr: 'योग्य रक्कम' },
+  'corr.reason': { en: 'Why is it wrong?', hi: 'गलत क्यों है?', mr: 'चूक का आहे?' },
+  'corr.reasonHint': {
+    en: 'e.g. typed 50000 for 5000',
+    hi: 'जैसे 5000 की जगह 50000 लिखा',
+    mr: 'उदा. 5000 ऐवजी 50000 लिहिले',
+  },
+  'corr.save': { en: 'Save correction', hi: 'सुधार सेव करें', mr: 'दुरुस्ती सेव करा' },
+  'corr.saving': { en: 'Saving…', hi: 'सेव हो रहा है…', mr: 'सेव होत आहे…' },
+  'corr.done': { en: 'Payment corrected', hi: 'पेमेंट ठीक हो गया', mr: 'पेमेंट दुरुस्त झाले' },
+  'corr.doneCancelled': { en: '{amount} entry cancelled', hi: '{amount} की एंट्री रद्द', mr: '{amount} ची नोंद रद्द' },
+  'corr.doneChanged': { en: '{old} → {new}', hi: '{old} → {new}', mr: '{old} → {new}' },
+  'corr.reversal': { en: 'Correction', hi: 'सुधार', mr: 'दुरुस्ती' },
+  'corr.reversedBadge': { en: 'Corrected', hi: 'ठीक की गई', mr: 'दुरुस्त केली' },
+  'corr.correctedEntry': { en: 'Corrected entry', hi: 'सुधारी गई एंट्री', mr: 'दुरुस्त नोंद' },
+  'corr.alreadyCorrected': {
+    en: 'This entry has been corrected. The correction is in the list.',
+    hi: 'यह एंट्री ठीक की जा चुकी है। सुधार सूची में है।',
+    mr: 'ही नोंद दुरुस्त झाली आहे. दुरुस्ती यादीत आहे.',
+  },
+  'corr.isReversal': {
+    en: 'This is a correction entry. It takes back {amount} entered by mistake.',
+    hi: 'यह सुधार की एंट्री है। यह गलती से दर्ज {amount} वापस लेती है।',
+    mr: 'ही दुरुस्तीची नोंद आहे. ती चुकून नोंदवलेले {amount} परत घेते.',
+  },
+  'corr.reasonLine': { en: 'Reason: {reason}', hi: 'कारण: {reason}', mr: 'कारण: {reason}' },
+  'corr.unavailable': {
+    en: 'Correcting a payment needs the latest BuildSupply update. Please try again later.',
+    hi: 'पेमेंट ठीक करने के लिए BuildSupply का नया अपडेट चाहिए। बाद में कोशिश करें।',
+    mr: 'पेमेंट दुरुस्त करण्यासाठी BuildSupply चे नवे अपडेट लागते. नंतर प्रयत्न करा.',
+  },
+  'corr.wrongAmountLink': {
+    en: 'Entered the wrong amount? Correct it',
+    hi: 'गलत रकम दर्ज हुई? ठीक करें',
+    mr: 'चुकीची रक्कम नोंदवली? दुरुस्त करा',
+  },
+  'corr.tapHint': {
+    en: 'Entered one by mistake? Tap it to correct it.',
+    hi: 'गलती से दर्ज हुआ? ठीक करने के लिए उस पर टैप करें।',
+    mr: 'चुकून नोंदवले? दुरुस्त करण्यासाठी त्यावर टॅप करा.',
+  },
+  'pin.reasonCorrectPayment': {
+    en: 'Correct the {amount} payment',
+    hi: '{amount} का पेमेंट ठीक करें',
+    mr: '{amount} चे पेमेंट दुरुस्त करा',
+  },
+  'pay.dupWarning': {
+    en: '{amount} by {mode} was already recorded for {name} at {time}. Tap Record again only if this is a second payment.',
+    hi: '{name} के लिए {time} बजे {mode} से {amount} पहले ही दर्ज है। दूसरा पेमेंट हो तभी फिर से "दर्ज करें" दबाएँ।',
+    mr: '{name} साठी {time} वाजता {mode} ने {amount} आधीच नोंदवले आहे. दुसरे पेमेंट असेल तरच पुन्हा "नोंदवा" दाबा.',
+  },
+  'pay.notSure': {
+    en: 'Not sure it was saved? Tap Record again — the same payment is never counted twice.',
+    hi: 'पक्का नहीं कि सेव हुआ? फिर से "दर्ज करें" दबाएँ — वही पेमेंट दो बार नहीं गिना जाता।',
+    mr: 'सेव झाले की नाही खात्री नाही? पुन्हा "नोंदवा" दाबा — तेच पेमेंट दोनदा मोजले जात नाही.',
+  },
+  'khata.correctionLine': { en: 'Entry corrected: −{amount}', hi: 'एंट्री ठीक की गई: −{amount}', mr: 'नोंद दुरुस्त: −{amount}' },
+  'khata.correctedLater': {
+    en: 'The shop corrected this entry later',
+    hi: 'दुकान ने यह एंट्री बाद में ठीक की',
+    mr: 'दुकानाने ही नोंद नंतर दुरुस्त केली',
+  },
+  'khata.correctedEntry': { en: 'Corrected entry', hi: 'सुधारी गई एंट्री', mr: 'दुरुस्त नोंद' },
+  'khata.correction': { en: 'Correction · {mode}', hi: 'सुधार · {mode}', mr: 'दुरुस्ती · {mode}' },
+  'khata.correctionTook': {
+    en: 'A payment entered by mistake, taken back',
+    hi: 'गलती से दर्ज पेमेंट वापस लिया गया',
+    mr: 'चुकून नोंदवलेले पेमेंट परत घेतले',
+  },
+
+  // ── An order page that is out of date (052, audit F-02 / F-06) ────────
+  'common.ok': { en: 'OK', hi: 'ठीक है', mr: 'ठीक आहे' },
+  'order.noLongerSold': {
+    en: 'Something in your cart is no longer sold by this shop. It has been taken out — please check your cart and send again.',
+    hi: 'आपके कार्ट की एक चीज़ अब यह दुकान नहीं बेचती। उसे हटा दिया गया है — कार्ट देखकर फिर से भेजें।',
+    mr: 'तुमच्या कार्टमधील एक वस्तू हे दुकान आता विकत नाही. ती काढली आहे — कार्ट तपासून पुन्हा पाठवा.',
+  },
+  'order.qtyUnreadable': {
+    en: 'A quantity in your cart could not be read. Please check your cart and send again.',
+    hi: 'कार्ट की एक मात्रा पढ़ी नहीं जा सकी। कार्ट देखकर फिर से भेजें।',
+    mr: 'कार्टमधील एक प्रमाण वाचता आले नाही. कार्ट तपासून पुन्हा पाठवा.',
+  },
+  'order.qtyTooLarge': {
+    en: 'A quantity is too large for an online order. Please call the shop.',
+    hi: 'एक मात्रा ऑनलाइन ऑर्डर के लिए बहुत बड़ी है। कृपया दुकान को फ़ोन करें।',
+    mr: 'एक प्रमाण ऑनलाइन ऑर्डरसाठी खूप मोठे आहे. कृपया दुकानाला फोन करा.',
+  },
+  'order.pricesChanged': {
+    en: 'The shop changed a price while this page was open. Your cart now shows the new prices — check it, then tap Place order again.',
+    hi: 'यह पेज खुला रहते दुकान ने कीमत बदली। कार्ट में अब नई कीमतें हैं — देख लें, फिर से ऑर्डर भेजें दबाएँ।',
+    mr: 'हे पान उघडे असताना दुकानाने किंमत बदलली. कार्टमध्ये आता नव्या किमती आहेत — तपासा, मग पुन्हा ऑर्डर पाठवा दाबा.',
+  },
+  'order.chg.title': {
+    en: 'The shop updated its list since you opened this page',
+    hi: 'आपके यह पेज खोलने के बाद दुकान ने अपनी सूची बदली है',
+    mr: 'तुम्ही हे पान उघडल्यानंतर दुकानाने आपली यादी बदलली आहे',
+  },
+  'order.chg.removed': {
+    en: '{name} is no longer sold here — taken out of your cart',
+    hi: '{name} अब यहाँ नहीं बिकता — कार्ट से हटाया गया',
+    mr: '{name} आता इथे विकले जात नाही — कार्टमधून काढले',
+  },
+  'order.chg.unavailable': {
+    en: '{name} is not available right now — taken out of your cart',
+    hi: '{name} अभी उपलब्ध नहीं है — कार्ट से हटाया गया',
+    mr: '{name} आत्ता उपलब्ध नाही — कार्टमधून काढले',
+  },
+  'order.chg.price': { en: '{name}: {from} → {to}', hi: '{name}: {from} → {to}', mr: '{name}: {from} → {to}' },
+  'order.chg.priceNew': { en: '{name}: now {to}', hi: '{name}: अब {to}', mr: '{name}: आता {to}' },
+  'order.chg.priceHidden': {
+    en: '{name}: the price is now given by the shop on request',
+    hi: '{name}: कीमत अब दुकान से पूछनी होगी',
+    mr: '{name}: किंमत आता दुकानाकडून विचारावी लागेल',
+  },
+  'order.chg.delivery': {
+    en: 'Delivery for {name}: {from} → {to}',
+    hi: '{name} की डिलीवरी: {from} → {to}',
+    mr: '{name} ची डिलिव्हरी: {from} → {to}',
+  },
+  'order.chg.none': { en: 'none', hi: 'कोई नहीं', mr: 'काही नाही' },
+  'order.chg.check': {
+    en: 'Check your cart before you send it.',
+    hi: 'भेजने से पहले कार्ट देख लें।',
+    mr: 'पाठवण्यापूर्वी कार्ट तपासा.',
+  },
+  // A line of an order whose material the shop has since removed (F-02).
+  'ord.missingRate': {
+    en: 'No longer in your materials — enter a rate or remove this line',
+    hi: 'अब आपके माल में नहीं — रेट डालें या यह लाइन हटाएँ',
+    mr: 'आता तुमच्या मालात नाही — रेट टाका किंवा ही ओळ काढा',
+  },
+  'ord.missingRateSave': {
+    en: 'A line from the order is no longer in your materials. Enter its rate, or remove it, before saving.',
+    hi: 'ऑर्डर की एक लाइन अब आपके माल में नहीं है। सेव करने से पहले उसका रेट डालें या उसे हटाएँ।',
+    mr: 'ऑर्डरमधील एक ओळ आता तुमच्या मालात नाही. सेव करण्यापूर्वी तिचा रेट टाका किंवा ती काढा.',
+  },
+  'ord.customerSaw': {
+    en: 'The customer ordered when it was {price}',
+    hi: 'ऑर्डर के समय ग्राहक ने {price} देखा था',
+    mr: 'ऑर्डरच्या वेळी ग्राहकाने {price} पाहिले होते',
+  },
+  'ord.notInMaterials': { en: 'No longer in your materials', hi: 'अब आपके माल में नहीं', mr: 'आता तुमच्या मालात नाही' },
+
+  // ── How long an estimate holds (052, audit F-03) ──────────────────────
+  'est.validUntil': { en: 'Valid until', hi: 'कब तक मान्य', mr: 'कधीपर्यंत वैध' },
+  'est.validUntilHint': {
+    en: 'The customer can accept it until this day. Clear the date for no limit.',
+    hi: 'ग्राहक इस दिन तक इसे मंज़ूर कर सकता है। कोई सीमा न हो तो तारीख हटा दें।',
+    mr: 'ग्राहक या दिवसापर्यंत ते मंजूर करू शकतो. मर्यादा नको असल्यास तारीख काढा.',
+  },
+  'est.validUntilDate': { en: 'Valid until {date}', hi: '{date} तक मान्य', mr: '{date} पर्यंत वैध' },
+  'est.expiredOn': {
+    en: 'Expired — it was valid until {date}',
+    hi: 'पुराना हो गया — {date} तक मान्य था',
+    mr: 'जुने झाले — {date} पर्यंत वैध होते',
+  },
+  'est.expiredOnFor': {
+    en: 'This estimate was valid until {date}. Please ask {business} for a fresh price.',
+    hi: 'यह एस्टिमेट {date} तक मान्य था। नई कीमत के लिए {business} से पूछें।',
+    mr: 'हे एस्टिमेट {date} पर्यंत वैध होते. नव्या किमतीसाठी {business} यांना विचारा.',
+  },
+  'est.expiredCantAccept': {
+    en: 'This estimate has expired, so it can’t be accepted. Tap “Please call me” for a fresh price.',
+    hi: 'यह एस्टिमेट पुराना हो गया है, इसलिए मंज़ूर नहीं हो सकता। नई कीमत के लिए “मुझे कॉल करें” दबाएँ।',
+    mr: 'हे एस्टिमेट जुने झाले आहे, त्यामुळे मंजूर करता येणार नाही. नव्या किमतीसाठी “मला कॉल करा” दाबा.',
+  },
+  'est.extend': { en: 'Give it {days} more days', hi: '{days} दिन और दें', mr: 'आणखी {days} दिवस द्या' },
+  'est.convertExpired': {
+    en: 'This estimate has expired. It was made {days} days ago, and rates may have changed since. Make the bill at these rates anyway?',
+    hi: 'यह एस्टिमेट पुराना हो गया है। यह {days} दिन पहले बना था और तब से रेट बदल सकते हैं। फिर भी इन्हीं रेट पर बिल बनाएँ?',
+    mr: 'हे एस्टिमेट जुने झाले आहे. ते {days} दिवसांपूर्वी बनले होते आणि तेव्हापासून रेट बदलले असू शकतात. तरीही याच रेटवर बिल बनवायचे?',
+  },
+  'est.convertOld': {
+    en: 'This estimate was made {days} days ago, and rates may have changed since. Make the bill at these rates?',
+    hi: 'यह एस्टिमेट {days} दिन पहले बना था और तब से रेट बदल सकते हैं। इन्हीं रेट पर बिल बनाएँ?',
+    mr: 'हे एस्टिमेट {days} दिवसांपूर्वी बनले होते आणि तेव्हापासून रेट बदलले असू शकतात. याच रेटवर बिल बनवायचे?',
+  },
+  'est.convertAnyway': { en: 'Make the bill at these rates', hi: 'इन्हीं रेट पर बिल बनाएँ', mr: 'याच रेटवर बिल बनवा' },
 } satisfies Record<string, Entry>
 
 export type TranslationKey = keyof typeof STRINGS

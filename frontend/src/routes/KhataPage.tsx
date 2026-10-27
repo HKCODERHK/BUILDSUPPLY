@@ -59,6 +59,7 @@ import {
   type KhataView,
 } from '@/services/khata'
 import { forgetKhataCode, rememberKhataCode, rememberShopName } from '@/lib/customerLinks'
+import { useRefreshOnReturn } from '@/lib/useRefreshOnReturn'
 import { warmPdfKit } from '@/lib/pdfKit'
 import { QrCode } from '@/components/QrCode'
 import { upiPayUrl } from '@/lib/upi'
@@ -294,6 +295,17 @@ export default function KhataPage({
 
 
   const found = view && view.found ? view : null
+  // Back on the link after a while: the balance as it is now (F-06) — a
+  // payment the shop took or a bill it made meanwhile shows without a reload.
+  // Only a found khata is refreshed, and only into another found one: a
+  // momentary failure never empties the page.
+  useRefreshOnReturn(() => {
+    load()
+      .then((v) => {
+        if (v.found) setView(v)
+      })
+      .catch(() => undefined)
+  }, !!found)
   // The per-document PDFs need khata_document, which came with the estimates list.
   const hasDocuments = Array.isArray(found?.estimates)
 
@@ -354,8 +366,9 @@ export default function KhataPage({
   const payments = found ? [...found.payments].sort((a, b) => b.created_at.localeCompare(a.created_at)) : []
   const paidTotal = payments.reduce((sum, p) => sum + Number(p.amount), 0)
   const estimates = found?.estimates ?? []
-  const openEstimates = estimates.filter((q) => q.status !== 'Converted' && q.status !== 'Expired')
-  const closedEstimates = estimates.filter((q) => q.status === 'Converted' || q.status === 'Expired')
+  // One past its date (052) is no longer open: it sits with the finished ones.
+  const openEstimates = estimates.filter((q) => q.status !== 'Converted' && q.status !== 'Expired' && !q.expired)
+  const closedEstimates = estimates.filter((q) => q.status === 'Converted' || q.status === 'Expired' || q.expired)
   const orders = found?.orders ?? []
   const waitingOrders = orders.filter((o) => o.status === 'pending')
   const answeredOrders = orders.filter((o) => o.status !== 'pending')
@@ -457,10 +470,17 @@ export default function KhataPage({
   function describe(e: LedgerEntry) {
     if (e.type === 'Opening') return { title: t('khata.opening'), sub: null }
     if (e.type === 'Invoice') return { title: t('khata.bill', { no: e.ref }), sub: null }
+    if (e.type === 'Correction') {
+      return {
+        title: t('khata.correction', { mode: e.mode ? t(`mode.${e.mode}`) : '' }),
+        sub: e.ref ? t('corr.reasonLine', { reason: e.ref }) : t('khata.correctionTook'),
+      }
+    }
     const refs = e.ref.replace('opening balance', t('khata.opening'))
     return {
       title: e.mode ? t('khata.payment', { mode: t(`mode.${e.mode}`) }) : t('khata.payment', { mode: '' }),
-      sub: refs ? t('khata.paidFor', { refs }) : t('khata.advanceReceived'),
+      // An entry a later correction took back (052) says so, not "advance".
+      sub: e.corrected ? t('khata.correctedLater') : refs ? t('khata.paidFor', { refs }) : t('khata.advanceReceived'),
     }
   }
 
@@ -632,10 +652,13 @@ export default function KhataPage({
           <div className="text-sm font-semibold text-ink">{formatINR(Number(q.total))}</div>
           {q.status === 'Converted' ? (
             <div className="text-xs font-medium text-accent">{t('khata.estBilled')}</div>
-          ) : q.status === 'Expired' ? (
+          ) : q.status === 'Expired' || q.expired ? (
             <div className="text-xs text-muted">{t('status.Expired')}</div>
           ) : (
-            <div className="text-xs text-muted">{t('khata.estOpenOne')}</div>
+            <div className="text-xs text-muted">
+              {/* Until when its rates hold (052). */}
+              {q.valid_until ? t('est.validUntilDate', { date: formatDate(`${q.valid_until}T00:00:00`) }) : t('khata.estOpenOne')}
+            </div>
           )}
         </div>
       </div>
@@ -838,19 +861,43 @@ export default function KhataPage({
                   <Card className="p-0">
                     <div className="flex flex-col divide-y divide-border">
                       {payments.map((p, i) => {
-                        const parts = paymentParts(p)
+                        // A correction (052) taking a wrong entry back, or the
+                        // wrong entry itself: said plainly, with the shop's reason.
+                        if (Number(p.amount) < 0) {
+                          return (
+                            <div key={i} className="p-4">
+                              <div className="text-sm font-semibold text-red-600">
+                                {t('khata.correctionLine', { amount: formatINR(-Number(p.amount)) })}
+                              </div>
+                              <div className="text-xs text-muted">
+                                {t(`mode.${p.mode}`)} · {formatDate(p.created_at)}
+                              </div>
+                              <div className="mt-1 text-xs text-muted">
+                                {p.reason ? t('corr.reasonLine', { reason: p.reason }) : t('khata.correctionTook')}
+                              </div>
+                            </div>
+                          )
+                        }
+                        const parts = p.reversed ? [] : paymentParts(p)
                         return (
                           <div key={i} className="p-4">
                             {/* Said the way a customer says it (#20): "Paid ₹1,463",
                                 how and when, and what it was for — no minus
                                 sign, no "put against". The statement keeps
                                 its signs, being a running balance. */}
-                            <div className="text-sm font-semibold text-ink">
+                            <div className={cn('text-sm font-semibold', p.reversed ? 'text-muted line-through' : 'text-ink')}>
                               {t('khata.paidLine', { amount: formatINR(Number(p.amount)) })}
                             </div>
                             <div className="text-xs text-muted">
                               {t(`mode.${p.mode}`)} · {formatDate(p.created_at)}
                             </div>
+                            {p.reversed && <div className="mt-1 text-xs text-muted">{t('khata.correctedLater')}</div>}
+                            {p.correction && (
+                              <div className="mt-1 text-xs text-muted">
+                                {t('khata.correctedEntry')}
+                                {p.reason ? ` · ${t('corr.reasonLine', { reason: p.reason })}` : ''}
+                              </div>
+                            )}
                             {/* One bill: a line is enough. Several: every bill
                                 and its share, so a customer can check their
                                 money landed where they meant it to. */}
@@ -958,8 +1005,13 @@ export default function KhataPage({
                               </div>
                             </div>
                             <div className="shrink-0 text-right">
-                              <div className={e.credit > 0 ? 'font-semibold text-accent' : 'font-semibold text-ink'}>
-                                {e.credit > 0 ? `− ${formatINR(e.credit)}` : formatINR(e.debit)}
+                              <div
+                                className={
+                                  e.credit > 0 ? 'font-semibold text-accent' : e.credit < 0 ? 'font-semibold text-red-600' : 'font-semibold text-ink'
+                                }
+                              >
+                                {/* A correction (052) takes a payment back: it adds to what is owed. */}
+                                {e.credit > 0 ? `− ${formatINR(e.credit)}` : e.credit < 0 ? `+ ${formatINR(-e.credit)}` : formatINR(e.debit)}
                               </div>
                               <div className="text-xs text-muted">
                                 {e.balance >= 0
@@ -1251,8 +1303,13 @@ export default function KhataPage({
                               {d.sub ? ` · ${d.sub}` : ''}
                             </div>
                           </div>
-                          <div className={cn('shrink-0 text-sm font-semibold', e.credit > 0 ? 'text-accent' : 'text-ink')}>
-                            {e.credit > 0 ? `− ${formatINR(e.credit)}` : formatINR(e.debit)}
+                          <div
+                            className={cn(
+                              'shrink-0 text-sm font-semibold',
+                              e.credit > 0 ? 'text-accent' : e.credit < 0 ? 'text-red-600' : 'text-ink',
+                            )}
+                          >
+                            {e.credit > 0 ? `− ${formatINR(e.credit)}` : e.credit < 0 ? `+ ${formatINR(-e.credit)}` : formatINR(e.debit)}
                           </div>
                         </div>
                       )

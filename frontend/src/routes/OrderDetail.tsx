@@ -14,6 +14,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { openWhatsAppShare } from '@/lib/whatsapp'
 import type { Customer, OrderRequest } from '@/lib/database.types'
 import { listCustomers } from '@/services/customers'
+import { listMaterials } from '@/services/materials'
 import { acceptOrder, blockOrderPhone, getOrder, listBlockedPhones, unblockOrderPhone } from '@/services/orders'
 import { formatOrderDate, orderItemQtyText, rejectReasonText } from '@/lib/orderFormat'
 
@@ -34,12 +35,21 @@ export default function OrderDetail() {
   const [confirmBlock, setConfirmBlock] = useState(false)
   const [blockBusy, setBlockBusy] = useState(false)
   const [blockFailed, setBlockFailed] = useState(false)
+  // The shop's materials now, so a line whose material was removed after
+  // the order came in says so before it is priced (audit F-02).
+  const [materialIds, setMaterialIds] = useState<Set<string> | null>(null)
 
   function load() {
-    return Promise.all([getOrder(id), listCustomers(), listBlockedPhones().catch(() => null)]).then(([o, customers, blockedList]) => {
+    return Promise.all([
+      getOrder(id),
+      listCustomers(),
+      listBlockedPhones().catch(() => null),
+      listMaterials().catch(() => null),
+    ]).then(([o, customers, blockedList, materials]) => {
       setOrder(o)
       setMatch(customers.find((c) => c.phone === o.phone) ?? null)
       setBlocked(blockedList ? blockedList.some((b) => b.phone === o.phone) : null)
+      setMaterialIds(materials ? new Set(materials.map((m) => m.id)) : null)
     })
   }
 
@@ -143,7 +153,14 @@ export default function OrderDetail() {
           <div className="flex flex-col divide-y divide-border text-sm">
             {order.items.map((item, i) => (
               <div key={i} className="flex justify-between gap-3 py-2">
-                <span className="text-ink">{item.name}</span>
+                <span className="min-w-0 text-ink">
+                  {item.name}
+                  {/* Only while it still has to be priced: a billed order's
+                      history is what it is. */}
+                  {materialIds && !order.quotation_id && order.status !== 'rejected' && !materialIds.has(item.material_id) && (
+                    <span className="block text-xs font-medium text-amber-700 dark:text-amber-300">{t('ord.notInMaterials')}</span>
+                  )}
+                </span>
                 <span className="shrink-0 text-right font-semibold text-ink">{orderItemQtyText(item, t)}</span>
               </div>
             ))}

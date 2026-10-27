@@ -14,11 +14,15 @@ import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { SuccessHeader } from '@/components/SuccessTick'
 import {
   activeAllocations,
+  correctionState,
+  correctionsAvailable,
   listPayments,
+  recentSamePayment,
   recordPayment,
   type AppliedPart,
   type PaymentWithInvoice,
 } from '@/services/payments'
+import { PaymentCorrectionModal } from '@/components/PaymentCorrectionModal'
 import { isBill, listInvoices, type InvoiceWithCustomer } from '@/services/invoices'
 import { newRequestId } from '@/services/db'
 import { receiptPdfFile } from '@/lib/receiptPdf'
@@ -84,6 +88,16 @@ export default function Payments() {
   // requests get out. Renewed each time the dialog closes.
   const submittingRef = useRef(false)
   const requestId = useRef(newRequestId())
+  // What the id above was last sent with. An attempt whose answer never came
+  // keeps its id while the form still says the same thing — even after the
+  // dialog is closed and opened again — so re-entering it can't record it
+  // twice (audit F-07). A changed bill, amount or mode is a new payment.
+  const attemptKey = useRef<string | null>(null)
+  // "Already recorded ₹5,000 by Cash at 3:42 pm" — shown once; a second tap
+  // records it anyway.
+  const [dupWarning, setDupWarning] = useState<string | null>(null)
+  const [maybeSaved, setMaybeSaved] = useState(false)
+  const [correcting, setCorrecting] = useState<PaymentWithInvoice | null>(null)
   const [receipt, setReceipt] = useState<Receipt | null>(null)
   const [sendingReceipt, setSendingReceipt] = useState(false)
   const [shown, setShown] = useState(PAGE_SIZE)
@@ -107,10 +121,23 @@ export default function Payments() {
     setPayments(paymentList)
     // Opening balances included: old udhaar can be paid off here too.
     setOpenInvoices(invoiceList.filter((i) => i.status !== 'Paid' && i.status !== 'Cancelled'))
+    return paymentList
   }
 
   useEffect(() => {
-    refresh().finally(() => setLoading(false))
+    refresh()
+      .then((list) => {
+        // "Entered the wrong amount? Correct it" on a customer's page lands
+        // here with ?correct=<payment>: that payment's dialog, opened.
+        const wanted = searchParams.get('correct')
+        if (wanted) {
+          const p = list.find((x) => x.id === wanted)
+          if (p) setCorrecting(p)
+          setSearchParams({}, { replace: true })
+        }
+      })
+      .finally(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function addSplit() {
@@ -119,6 +146,7 @@ export default function Payments() {
 
   function updateSplit(key: string, patch: Partial<Split>) {
     setSplits((prev) => prev.map((s) => (s.key === key ? { ...s, ...patch } : s)))
+    setDupWarning(null)
   }
 
   function removeSplit(key: string) {
@@ -149,28 +177,54 @@ export default function Payments() {
     setInvoiceId('')
     setSplits([{ key: crypto.randomUUID(), amount: '', mode: 'Cash' }])
     setStep('who')
-    requestId.current = newRequestId()
+    setDupWarning(null)
+    setMaybeSaved(false)
+    // The request id is kept: a payment whose answer never came may be sent
+    // again (see attemptKey). A confirmed one already renewed it.
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!supplier || !invoiceId || submittingRef.current) return
     const invoice = openInvoices.find((i) => i.id === invoiceId)
+    const offered = splits.map((s) => ({ amount: Number(s.amount) || 0, mode: s.mode }))
+    const key = JSON.stringify([invoiceId, offered.filter((s) => s.amount > 0)])
+    if (attemptKey.current !== key) {
+      requestId.current = newRequestId()
+      attemptKey.current = key
+    }
     submittingRef.current = true
     try {
+      // The same money from the same customer a moment ago — a second phone,
+      // or a re-entry after a lost answer. Asked once; a second tap records it.
+      if (!dupWarning && invoice?.customer_id && !maybeSaved) {
+        const same = await recentSamePayment(invoice.customer_id, totalEntered)
+        if (same) {
+          setDupWarning(
+            t('pay.dupWarning', {
+              amount: formatINR(totalEntered),
+              mode: t(`mode.${same.mode}`),
+              name: invoice.customers?.name ?? '',
+              time: new Date(same.created_at).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }),
+            }),
+          )
+          return
+        }
+      }
       const threshold = Number(supplier.pin_payment_threshold) || 0
       if (threshold > 0 && totalEntered >= threshold) {
         if (!(await confirmWithPin(t('pin.reasonLargePayment', { amount: formatINR(totalEntered) })))) return
       }
       setSaving(true)
       setSaveError(null)
+      setMaybeSaved(false)
       // The bill first, then the customer's older bills, then advance — all
       // in one step in the database (record_payment, migration 024).
-      const result = await recordPayment(
-        requestId.current,
-        invoiceId,
-        splits.map((s) => ({ amount: Number(s.amount) || 0, mode: s.mode })),
-      )
+      const result = await recordPayment(requestId.current, invoiceId, offered)
+      // Confirmed: the next payment is a new one.
+      requestId.current = newRequestId()
+      attemptKey.current = null
+      setDupWarning(null)
       await refresh()
 
       if (invoice?.customer_id) {
@@ -191,6 +245,9 @@ export default function Payments() {
       }
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : t('error.generic'))
+      // The answer may have been lost after the payment was saved: say that
+      // pressing Record again is safe, rather than leaving them to guess.
+      setMaybeSaved(true)
     } finally {
       submittingRef.current = false
       setSaving(false)
@@ -238,6 +295,9 @@ export default function Payments() {
 
   /** What a payment went onto: a bill number, the opening balance, or advance. */
   function paymentLabel(p: PaymentWithInvoice) {
+    const state = correctionState(p, payments)
+    if (state === 'reversal') return t('corr.reversal')
+    if (state === 'reversed') return t('corr.reversedBadge')
     const onBills = activeAllocations(p)
     if (onBills.length === 0) return t('pay.advance')
     if (onBills.length > 1) return t('pay.nBills', { n: String(onBills.length) })
@@ -288,19 +348,54 @@ export default function Payments() {
         />
       ) : (
         <Card>
+          {/* Tap a payment to correct it (migration 052). Only once the
+              database can — its rows then carry the correction columns. */}
+          {payments.some(correctionsAvailable) && <p className="mb-1 text-xs text-muted">{t('corr.tapHint')}</p>}
           <div className="flex flex-col divide-y divide-border">
-            {payments.slice(0, shown).map((p) => (
-              <div key={p.id} className="flex items-center justify-between py-2.5 text-sm">
-                <div>
-                  <div className={`font-medium ${activeAllocations(p).length ? 'text-ink' : 'text-accent'}`}>{paymentLabel(p)}</div>
-                  <div className="text-xs text-muted">{p.customers?.name ?? '—'}</div>
+            {payments.slice(0, shown).map((p) => {
+              const state = correctionState(p, payments)
+              const amount = Number(p.amount)
+              const row = (
+                <>
+                  <div className="min-w-0">
+                    <div
+                      className={`font-medium ${
+                        state === 'reversal' ? 'text-red-600' : state === 'reversed' ? 'text-muted' : activeAllocations(p).length ? 'text-ink' : 'text-accent'
+                      }`}
+                    >
+                      {paymentLabel(p)}
+                    </div>
+                    <div className="truncate text-xs text-muted">
+                      {p.customers?.name ?? '—'}
+                      {state === 'correction' ? ` · ${t('corr.correctedEntry')}` : ''}
+                      {state === 'reversal' && p.correction_reason ? ` · ${p.correction_reason}` : ''}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Badge tone="neutral">{t(`mode.${p.mode}`)}</Badge>
+                    <span
+                      className={`font-semibold ${state === 'reversal' ? 'text-red-600' : ''} ${state === 'reversed' ? 'text-muted line-through' : ''}`}
+                    >
+                      {amount < 0 ? `−${formatINR(-amount)}` : formatINR(amount)}
+                    </span>
+                  </div>
+                </>
+              )
+              return correctionsAvailable(p) ? (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setCorrecting(p)}
+                  className="flex w-full items-center justify-between gap-3 py-2.5 text-left text-sm hover:bg-surface active:bg-surface"
+                >
+                  {row}
+                </button>
+              ) : (
+                <div key={p.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                  {row}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge tone="neutral">{t(`mode.${p.mode}`)}</Badge>
-                  <span className="font-semibold">{formatINR(p.amount)}</span>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
           <ShowMore
             shown={Math.min(shown, payments.length)}
@@ -377,7 +472,15 @@ export default function Payments() {
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               {saveError && (
-                <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{saveError}</p>
+                <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+                  {saveError}
+                  {maybeSaved && <p className="mt-1 text-xs">{t('pay.notSure')}</p>}
+                </div>
+              )}
+              {dupWarning && (
+                <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                  {dupWarning}
+                </p>
               )}
               <div>
                 <Label htmlFor="invoice">{t('pay.invoice')}</Label>
@@ -385,7 +488,10 @@ export default function Payments() {
                   id="invoice"
                   required
                   value={invoiceId}
-                  onChange={(e) => setInvoiceId(e.target.value)}
+                  onChange={(e) => {
+                    setInvoiceId(e.target.value)
+                    setDupWarning(null)
+                  }}
                   className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-accent"
                 >
                   <option value="">{t('pay.selectInvoice')}</option>
@@ -456,6 +562,16 @@ export default function Payments() {
             </form>
           )}
         </Modal>
+      )}
+
+      {correcting && (
+        <PaymentCorrectionModal
+          payment={correcting}
+          all={payments}
+          customerName={correcting.customers?.name ?? '—'}
+          onClose={() => setCorrecting(null)}
+          onCorrected={() => void refresh()}
+        />
       )}
     </div>
   )

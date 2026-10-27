@@ -24,12 +24,21 @@ import {
 export interface LedgerEntry {
   date: string
   // 'Opening' is the customer's old udhaar from before BuildSupply.
-  type: 'Invoice' | 'Payment' | 'Opening'
+  // 'Correction' takes back a payment entered by mistake (migration 052):
+  // its credit is negative and `ref` holds the shop's reason.
+  type: 'Invoice' | 'Payment' | 'Opening' | 'Correction'
   ref: string
   mode: PaymentMode | null
   debit: number
   credit: number
   balance: number
+  // A payment a later correction took back; it stays on the statement.
+  corrected?: boolean
+}
+
+/** A money figure that may be a correction's minus, written plainly. */
+function signedINR(n: number) {
+  return n < 0 ? `- ${formatINR(Math.abs(n))}` : formatINR(n)
 }
 
 export interface LedgerInput {
@@ -68,14 +77,16 @@ function buildCustomerLedgerPdf(
 
   // How the money actually came in — the whole point of this document for
   // the customer: proof of what they paid and through which mode.
+  // A correction takes its amount back from its mode, without counting as a
+  // payment of its own.
   const byMode = new Map<string, { amount: number; count: number }>()
   input.entries
-    .filter((e) => e.type === 'Payment')
+    .filter((e) => e.type === 'Payment' || e.type === 'Correction')
     .forEach((e) => {
       const key = e.mode ?? 'Other'
       const cur = byMode.get(key) ?? { amount: 0, count: 0 }
       cur.amount += e.credit
-      cur.count += 1
+      if (e.type === 'Payment') cur.count += 1
       byMode.set(key, cur)
     })
 
@@ -174,12 +185,12 @@ function buildCustomerLedgerPdf(
         ? 'Opening balance'
         : e.type === 'Invoice'
           ? `Bill ${e.ref}`
-          : e.ref
-            ? `Payment against ${e.ref}`
-            : 'Advance received',
+          : e.type === 'Correction'
+            ? `Correction: payment entry taken back${e.ref ? ` (${e.ref})` : ''}`
+            : `${e.ref ? `Payment against ${e.ref}` : 'Advance received'}${e.corrected ? ' - corrected later' : ''}`,
       e.mode ?? '',
       e.debit ? formatINR(e.debit) : '',
-      e.credit ? formatINR(e.credit) : '',
+      e.credit ? signedINR(e.credit) : '',
       formatINR(e.balance),
     ])
   })
@@ -197,10 +208,11 @@ function buildCustomerLedgerPdf(
       5: { halign: 'right', cellWidth: 28 },
     },
     // Money in stays green, money owed stays neutral — a customer scanning
-    // this should be able to spot their own payments instantly.
+    // this should be able to spot their own payments instantly. A correction
+    // taking a payment back is red.
     didParseCell: (data) => {
       if (data.section === 'body' && data.column.index === 4 && data.cell.raw) {
-        data.cell.styles.textColor = GREEN
+        data.cell.styles.textColor = String(data.cell.raw).startsWith('-') ? RED : GREEN
         data.cell.styles.fontStyle = 'bold'
       }
     },

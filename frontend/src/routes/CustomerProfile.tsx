@@ -13,11 +13,20 @@ import { ActionMenu, type ActionMenuItem } from '@/components/ui/action-menu'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { SuccessHeader } from '@/components/SuccessTick'
 import { getCustomer, getCustomerBalance, setOpeningBalance, updateCustomer } from '@/services/customers'
-import { listPaymentsForCustomer, recordAdvance, recordCustomerPayment, type PaymentResult } from '@/services/payments'
+import {
+  correctionsAvailable,
+  latestPaymentFor,
+  listPaymentsForCustomer,
+  recentSamePayment,
+  recordAdvance,
+  recordCustomerPayment,
+  type PaymentResult,
+} from '@/services/payments'
 import { isBill, listInvoicesForCustomer } from '@/services/invoices'
 import { logActivity } from '@/services/activityLog'
 import { newRequestId } from '@/services/db'
 import { buildCustomerLedger } from '@/lib/customerLedger'
+import { useRefreshOnReturn } from '@/lib/useRefreshOnReturn'
 import { customerLedgerPdfFile, downloadCustomerLedgerPdf } from '@/lib/customerLedgerPdf'
 import { receiptPdfFile } from '@/lib/receiptPdf'
 import { shareDocumentOnWhatsApp } from '@/lib/shareDocument'
@@ -82,6 +91,15 @@ export default function CustomerProfile() {
   // database record it once even if two requests do get out (INV-1024).
   const payingRef = useRef(false)
   const payRequestId = useRef(newRequestId())
+  // What that id was last sent with. An attempt whose answer never came keeps
+  // its id while the form still says the same thing — even after the dialog
+  // is closed and opened again — so re-entering it can't record it twice
+  // (audit F-07). Another amount, mode or kind is another payment.
+  const payAttemptKey = useRef<string | null>(null)
+  const [dupWarning, setDupWarning] = useState<string | null>(null)
+  const [maybeSaved, setMaybeSaved] = useState(false)
+  // The receipt just recorded, for "Entered the wrong amount? Correct it".
+  const [justRecordedId, setJustRecordedId] = useState<string | null>(null)
   const [payResult, setPayResult] = useState<PaymentResult | null>(null)
   // Fixed when the dialog opens, so it doesn't change its words the moment
   // the money is recorded: with nothing owed, what they hand over is advance.
@@ -147,20 +165,47 @@ export default function CustomerProfile() {
     if (!supplier || !id || payingRef.current) return
     const amount = Number(payForm.amount)
     if (!amount || amount <= 0) return
+    const key = JSON.stringify([payKind, amount, payForm.mode])
+    if (payAttemptKey.current !== key) {
+      payRequestId.current = newRequestId()
+      payAttemptKey.current = key
+    }
     payingRef.current = true
     try {
+      // The same money from this customer a moment ago — a second phone, or a
+      // re-entry after a lost answer. Asked once; a second tap records it.
+      if (!dupWarning && !maybeSaved) {
+        const same = await recentSamePayment(id, amount)
+        if (same) {
+          setDupWarning(
+            t('pay.dupWarning', {
+              amount: formatINR(amount),
+              mode: t(`mode.${same.mode}`),
+              name: customer?.name ?? '',
+              time: new Date(same.created_at).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }),
+            }),
+          )
+          return
+        }
+      }
       const threshold = Number(supplier.pin_payment_threshold) || 0
       if (threshold > 0 && amount >= threshold) {
         if (!(await confirmWithPin(t('pin.reasonLargePayment', { amount: formatINR(amount) })))) return
       }
       setPaying(true)
       setPayError(null)
+      setMaybeSaved(false)
       const result =
         payKind === 'advance'
           ? await recordAdvance(payRequestId.current, id, amount, payForm.mode)
           : await recordCustomerPayment(payRequestId.current, id, amount, payForm.mode)
+      // Confirmed: the next payment is a new one.
+      payRequestId.current = newRequestId()
+      payAttemptKey.current = null
+      setDupWarning(null)
       const received = result.applied.reduce((sum, a) => sum + a.amount, 0) + result.advance
       setPayResult(result)
+      latestPaymentFor(id).then((p) => setJustRecordedId(p && correctionsAvailable(p) ? p.id : null))
       setPaidSummary({
         amount: received,
         mode: payForm.mode,
@@ -172,6 +217,9 @@ export default function CustomerProfile() {
       await refresh()
     } catch (err) {
       setPayError(err instanceof Error ? err.message : t('error.generic'))
+      // The answer may have been lost after it was saved: say that pressing
+      // Record again is safe, rather than leaving them to guess.
+      setMaybeSaved(true)
     } finally {
       payingRef.current = false
       setPaying(false)
@@ -183,8 +231,11 @@ export default function CustomerProfile() {
     setPayResult(null)
     setPaidSummary(null)
     setPayError(null)
-    // The next payment is a new one.
-    payRequestId.current = newRequestId()
+    setDupWarning(null)
+    setMaybeSaved(false)
+    setJustRecordedId(null)
+    // The request id is kept: an attempt whose answer never came may be sent
+    // again (see payAttemptKey). A confirmed one already renewed it.
   }
 
   // Payments → Receive payment → "Who paid?" lands here with ?pay=1: the same
@@ -211,6 +262,12 @@ export default function CustomerProfile() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
+
+  // Back in the app after a while: this customer's khata as it is now (F-06)
+  // — a payment taken on another phone, say. Dialogs and forms are untouched.
+  useRefreshOnReturn(() => {
+    refresh().catch(() => undefined)
+  }, !!customer)
 
   // The live one — a replaced opening balance stays on record, cancelled.
   const openingRow = invoices.find((i) => !isBill(i) && i.status !== 'Cancelled') ?? null
@@ -782,6 +839,18 @@ export default function CustomerProfile() {
                 </Button>
               )}
               <Button onClick={closePay}>{t('common.done')}</Button>
+              {/* A typo is noticed right here, on the amount just shown. It
+                  opens Payments with this receipt's correction (052); from a
+                  dialog, so `replace` — see modal.tsx. */}
+              {justRecordedId && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/payments?correct=${justRecordedId}`, { replace: true })}
+                  className="self-center text-xs font-semibold text-accent-text hover:text-accent"
+                >
+                  {t('corr.wrongAmountLink')}
+                </button>
+              )}
             </div>
           ) : (
             <form onSubmit={handleReceivePayment} className="flex flex-col gap-4">
@@ -801,7 +870,15 @@ export default function CustomerProfile() {
                       : t('pay.noDuesIntro')}
               </p>
               {payError && (
-                <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{payError}</p>
+                <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+                  {payError}
+                  {maybeSaved && <p className="mt-1 text-xs">{t('pay.notSure')}</p>}
+                </div>
+              )}
+              {dupWarning && (
+                <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                  {dupWarning}
+                </p>
               )}
               <div>
                 <Label htmlFor="pay-amount">{t('pay.amountReceived')}</Label>
@@ -813,11 +890,18 @@ export default function CustomerProfile() {
                     placeholder="0"
                     required
                     value={payForm.amount}
-                    onChange={(e) => setPayForm({ ...payForm, amount: sanitizeDecimal(e.target.value) })}
+                    onChange={(e) => {
+                      setPayForm({ ...payForm, amount: sanitizeDecimal(e.target.value) })
+                      setDupWarning(null)
+                    }}
                   />
                   <select
+                    aria-label={t('common.mode')}
                     value={payForm.mode}
-                    onChange={(e) => setPayForm({ ...payForm, mode: e.target.value as PaymentMode })}
+                    onChange={(e) => {
+                      setPayForm({ ...payForm, mode: e.target.value as PaymentMode })
+                      setDupWarning(null)
+                    }}
                     className="h-10 shrink-0 rounded-lg border border-border bg-card px-2 text-sm outline-none focus:border-accent"
                   >
                     {PAYMENT_MODES.map((m) => (

@@ -27,11 +27,21 @@ export interface KhataInvoice {
 }
 
 export interface KhataPayment {
+  /** Negative only for a correction taking back a wrong entry (052). */
   amount: number
   mode: PaymentMode
   created_at: string
   /** Only the bills the payment is still on. */
   payment_allocations: { amount: number; released_at: null; invoices: { invoice_no: string; kind: InvoiceKind; site: string | null } }[]
+  // Corrections (052). Absent on a database without it.
+  /** The correction itself, taking a wrong entry back. */
+  reversal?: boolean
+  /** An entry a later correction took back. */
+  reversed?: boolean
+  /** The right amount that replaced a wrong entry. */
+  correction?: boolean
+  /** The shop's reason, on a correction and on the entry replacing one. */
+  reason?: string | null
 }
 
 /** One of the customer's estimates, newest 20 (migration 031). */
@@ -41,6 +51,9 @@ export interface KhataEstimate {
   site: string | null
   total: number
   created_at: string
+  /** The last day it holds, and whether that has passed unaccepted (052 — absent before it). */
+  valid_until?: string | null
+  expired?: boolean
 }
 
 /** One of the customer's online orders, newest 10 (migration 031). `code` opens its status link. */

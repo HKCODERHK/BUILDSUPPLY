@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { ActionMenu } from '@/components/ui/action-menu'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
-import { getQuotation, listQuotationItems, markQuotationSent } from '@/services/quotations'
+import { getQuotation, listQuotationItems, markQuotationSent, setQuotationValidUntil } from '@/services/quotations'
+import { ESTIMATE_OLD_DAYS, ESTIMATE_VALID_DAYS, estimateAgeDays, estimateExpired, localIsoDate } from '@/lib/estimateValidity'
 import { getOrderForQuotation } from '@/services/orders'
 import { newRequestId } from '@/services/db'
 import { getCustomer } from '@/services/customers'
@@ -43,6 +44,10 @@ export default function QuotationDetail() {
   const [confirmingDelivery, setConfirmingDelivery] = useState(false)
   // The customer's answer from their order status link, when this estimate came from an online order (migration 030).
   const [answer, setAnswer] = useState<Pick<OrderRequest, 'customer_response' | 'responded_at'> | null>(null)
+  // An expired or old estimate is billed only after the shop has seen how old
+  // its rates are (audit F-03): the first tap on Convert asks, the second bills.
+  const [confirmOld, setConfirmOld] = useState(false)
+  const [extending, setExtending] = useState(false)
 
   async function refresh() {
     if (!id) return
@@ -76,6 +81,22 @@ export default function QuotationDetail() {
 
   const message = `Hi ${customer?.name ?? ''}, here is your estimate ${quotation.quote_no} for ${formatINR(quotation.total)}. Let us know if you'd like to proceed.`
   const canConvert = quotation.status === 'Draft' || quotation.status === 'Sent'
+  // How old its rates are (052, F-03). Accepted in time, it stays agreed.
+  const expired = estimateExpired(quotation, answer?.customer_response)
+  const ageDays = estimateAgeDays(quotation.created_at)
+  const stale = canConvert && answer?.customer_response !== 'accepted' && (expired || ageDays >= ESTIMATE_OLD_DAYS)
+  const shortDate = (d: string) =>
+    new Date(`${d}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+
+  async function extendValidity() {
+    if (!quotation || extending) return
+    setExtending(true)
+    try {
+      if (await setQuotationValidUntil(quotation.id, localIsoDate(ESTIMATE_VALID_DAYS))) await refresh()
+    } finally {
+      setExtending(false)
+    }
+  }
 
   // Sent the same way as a bill — a real PDF through the share sheet. See
   // shareDocument.
@@ -117,6 +138,10 @@ export default function QuotationDetail() {
   // are only ever touched from here on, never by the estimate itself.
   async function handleConvert() {
     if (!supplier || !quotation || !quotation.customer_id || converting) return
+    if (stale && !confirmOld) {
+      setConfirmOld(true)
+      return
+    }
     setConverting(true)
     setConvertError(null)
     try {
@@ -189,6 +214,45 @@ export default function QuotationDetail() {
 
       {convertError && (
         <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{convertError}</p>
+      )}
+
+      {/* Until when its rates hold (052, F-03), and a word before billing an
+          estimate whose rates may have moved. */}
+      {confirmOld && stale && (
+        <div role="alert" className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100">
+          <p>{expired ? t('est.convertExpired', { days: ageDays }) : t('est.convertOld', { days: ageDays })}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button size="sm" onClick={handleConvert} disabled={converting}>
+              {converting ? t('quo.converting') : t('est.convertAnyway')}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setConfirmOld(false)}>
+              {t('common.cancel')}
+            </Button>
+          </div>
+        </div>
+      )}
+      {canConvert && quotation.valid_until && (
+        <div
+          className={`mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg p-3 text-sm ${
+            expired ? 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300' : 'bg-surface text-muted'
+          }`}
+        >
+          <span>
+            {expired
+              ? t('est.expiredOn', { date: shortDate(quotation.valid_until) })
+              : t('est.validUntilDate', { date: shortDate(quotation.valid_until) })}
+          </span>
+          {expired && (
+            <button
+              type="button"
+              onClick={extendValidity}
+              disabled={extending}
+              className="inline-flex min-h-10 items-center text-xs font-semibold text-accent-text hover:text-accent disabled:opacity-60"
+            >
+              {t('est.extend', { days: ESTIMATE_VALID_DAYS })}
+            </button>
+          )}
+        </div>
       )}
 
       <Card>

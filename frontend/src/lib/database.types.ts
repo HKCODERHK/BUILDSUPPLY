@@ -88,6 +88,8 @@ export interface OrderItem {
   vehicle?: string
   capacity?: number
   capacity_unit?: string
+  /** The price the shop listed when this was ordered (052); null while prices were hidden. Never a price for the estimate. */
+  listed_price?: number | null
 }
 
 /** A customer's order request (migration 026). Becomes an estimate only when the supplier approves it. */
@@ -277,6 +279,9 @@ export interface Quotation {
   status: QuotationStatus
   converted_invoice_id: string | null
   created_at: string
+  // The last day the estimate holds (052). Null on an estimate saved before
+  // it — those never expire — and absent on a database without 052.
+  valid_until?: string | null
 }
 
 /** One change to a material's stock, written by the database itself (migration 036). */
@@ -359,9 +364,14 @@ export interface Payment {
   // Handed over for their NEXT bill ("Receive advance") — never used on
   // dues they already had.
   is_advance: boolean
+  // Negative only for a correction's reversal entry (migration 052).
   amount: number
   mode: PaymentMode
   created_at: string
+  // Set on a correction (052): on the reversal (negative) and on the right
+  // amount that replaced the wrong entry. Absent on a database without 052.
+  corrects_payment_id?: string | null
+  correction_reason?: string | null
 }
 
 /** One of a supplier's own drivers, for "Send to driver" on WhatsApp (migration 031). Only they can read it. */

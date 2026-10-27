@@ -36,7 +36,11 @@ function buildQuotationPdf(
     logo,
     title: 'ESTIMATE',
     reference: quotation.quote_no,
-    subLines: [formatDate(quotation.created_at)],
+    // Until when its rates hold (052). An estimate saved before has none.
+    subLines: [
+      formatDate(quotation.created_at),
+      ...(quotation.valid_until ? [`Valid until ${formatDate(`${quotation.valid_until}T00:00:00`)}`] : []),
+    ],
   })
 
   y = drawParties(doc, y, { supplier, customer, site: quotation.site })

@@ -53,6 +53,16 @@ export async function createQuotation(input: {
   })
 }
 
+/**
+ * The last day an estimate holds, or null for no limit (052). A database
+ * without 052 has no such column: the estimate then simply has no date, so
+ * the failure is swallowed rather than stopping the save around it.
+ */
+export async function setQuotationValidUntil(id: string, validUntil: string | null): Promise<boolean> {
+  const { error } = await supabase.from('quotations').update({ valid_until: validUntil }).eq('id', id)
+  return !error
+}
+
 // Only bumps Draft -> Sent — re-sharing an already-Sent (or Converted/Expired)
 // estimate shouldn't move its status backward or forward again. Turning an
 // estimate into a bill marks it Converted inside createInvoice.

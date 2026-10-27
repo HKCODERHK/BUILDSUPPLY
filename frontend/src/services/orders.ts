@@ -59,15 +59,26 @@ export interface PlaceOrderInput {
   site: string
   deliveryDate: string | null
   note: string
-  items: { material_id: string; qty: number }[]
+  /**
+   * `price` and `delivery` are what the page showed for each line (null when
+   * it showed none). Since 052 the shop's database compares them with its
+   * prices now and, if any moved, keeps nothing and answers `changed`. They
+   * are never used to price anything; a database without 052 ignores them.
+   */
+  items: { material_id: string; qty: number; price?: number | null; delivery?: number | null }[]
   /** The hidden field only bots fill in. */
   trap: string
   /** What the customer says they will do about paying (037). Only asked where the shop takes UPI. */
   paymentMethod?: 'cash' | 'online' | null
 }
 
-/** Returns the status code for the customer's status link (null only for a bot). */
-export async function placeOrder(input: PlaceOrderInput): Promise<{ token: string | null; duplicate: boolean }> {
+/**
+ * Returns the status code for the customer's status link (null only for a
+ * bot), or `changed` when the shop changed a price or delivery charge since
+ * the page was opened — then nothing was kept, and the page should read the
+ * shop's list again and show what moved.
+ */
+export async function placeOrder(input: PlaceOrderInput): Promise<{ token: string | null; duplicate: boolean; changed: boolean }> {
   const args: Record<string, unknown> = {
     p_link: input.link,
     p_request_id: input.requestId,
@@ -80,8 +91,9 @@ export async function placeOrder(input: PlaceOrderInput): Promise<{ token: strin
     p_trap: input.trap || null,
     p_payment_method: input.paymentMethod ?? null,
   }
-  const raw = await callRpc<{ token: string | null; duplicate?: boolean }>('place_order', args)
-  return { token: raw.token, duplicate: !!raw.duplicate }
+  const raw = await callRpc<{ ok?: boolean; token?: string | null; duplicate?: boolean; changed?: boolean }>('place_order', args)
+  if (raw.ok === false && raw.changed) return { token: null, duplicate: false, changed: true }
+  return { token: raw.token ?? null, duplicate: !!raw.duplicate, changed: false }
 }
 
 /** The estimate made from an approved order, as its customer sees it (migration 030). */
@@ -93,6 +105,10 @@ export interface EstimateView {
   transport_labour_charge: number
   total: number
   items: { description: string; qty: number; rate: number; amount: number }[]
+  /** When it was made and the last day it holds; whether that has passed (052 — absent before it). */
+  created_at?: string
+  valid_until?: string | null
+  expired?: boolean
 }
 
 export type OrderStatusView =
@@ -318,6 +334,18 @@ export async function getOrderForQuotation(quotationId: string): Promise<Pick<Or
     .maybeSingle()
   if (error) throw error
   return data
+}
+
+/** Of these estimates, the ones the customer accepted on their status link. Empty when it can't be read. */
+export async function acceptedQuotationIds(quotationIds: string[]): Promise<Set<string>> {
+  if (quotationIds.length === 0) return new Set()
+  const { data, error } = await supabase
+    .from('order_requests')
+    .select('quotation_id')
+    .in('quotation_id', quotationIds)
+    .eq('customer_response', 'accepted')
+  if (error || !data) return new Set()
+  return new Set(data.map((r) => r.quotation_id as string))
 }
 
 // ── Blocked numbers (migration 032) ───────────────────────────────────

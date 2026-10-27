@@ -73,6 +73,8 @@ import { BuildSupplyFooter } from '@/components/BuildSupplyFooter'
 import { clearProfile, profileKept, readProfile, siteWithCity, type CustomerProfile } from '@/lib/customerProfile'
 import { ImagePreview, Modal } from '@/components/ui/modal'
 import { brandAttr, shopWhatsapp } from '@/lib/shopPage'
+import { cartChanges, droppedIds, type CartChange } from '@/lib/orderPageDiff'
+import { useRefreshOnReturn } from '@/lib/useRefreshOnReturn'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
@@ -180,6 +182,10 @@ const deadEndLink =
 
 // The server writes its refusals in English; show the customer's language.
 function errorKey(message: string): TranslationKey {
+  // 052: refused rather than dropped from the order.
+  if (/no longer sold/i.test(message)) return 'order.noLongerSold'
+  if (/could not be read/i.test(message)) return 'order.qtyUnreadable'
+  if (/quantity is too large/i.test(message)) return 'order.qtyTooLarge'
   if (/unavailable/i.test(message)) return 'order.unavailable'
   if (/10-digit/i.test(message)) return 'order.phoneInvalid'
   if (/your name/i.test(message)) return 'order.nameInvalid'
@@ -304,6 +310,30 @@ export default function OrderPage() {
     setAttempt((n) => n + 1)
   }
 
+  // What the shop changed about the cart since this page was opened (F-02,
+  // F-06): a price, a delivery charge, a material switched off or removed.
+  const [changes, setChanges] = useState<CartChange[] | null>(null)
+  /**
+   * Reads the shop's list again without disturbing the page, and says what
+   * moved for anything in the cart. A material gone or switched off leaves
+   * the cart; everything else stays as the customer chose it.
+   */
+  async function reloadList(): Promise<CartChange[]> {
+    const fresh = await getOrderPage(link)
+    const before = page && page.found && page.open ? page.materials : []
+    const inCart = Object.entries(qty)
+      .filter(([, q]) => Number(q) > 0)
+      .map(([id]) => id)
+    const found = fresh.found && fresh.open ? cartChanges(before, fresh.materials, inCart) : []
+    setPage(fresh)
+    if (found.length > 0) {
+      const gone = droppedIds(found)
+      if (gone.size > 0) setQty((prev) => Object.fromEntries(Object.entries(prev).map(([id, q]) => [id, gone.has(id) ? '' : q])))
+      setChanges(found)
+    }
+    return found
+  }
+
   // The shop's own page (migration 042): cover, colour, offers, photos and the
   // rest. Absent on a database without 042, and the page is as before.
   const [shop, setShop] = useState<ShopProfile | null>(null)
@@ -346,6 +376,11 @@ export default function OrderPage() {
   }, [link])
 
   const open = page && page.found && page.open ? page : null
+  // Back on the page after a while: the shop's list as it is now (F-06).
+  // Not once the order is sent — that screen shows what was ordered.
+  useRefreshOnReturn(() => {
+    void reloadList().catch(() => undefined)
+  }, !!open && sentToken === undefined)
   // Asking how they will pay is only worth it where the shop takes UPI;
   // otherwise every order is cash and there is nothing to choose between.
   const takesUpi = !!open?.upi
@@ -493,12 +528,28 @@ export default function OrderPage() {
         site: form.site.trim(),
         deliveryDate: form.date || null,
         note: form.note.trim(),
-        items: chosen.map((c) => ({ material_id: c.material.id, qty: c.qty })),
+        // What this page showed for each line (052): the shop checks it is
+        // still so before it keeps the order. Never used as a price.
+        items: chosen.map((c) => ({
+          material_id: c.material.id,
+          qty: c.qty,
+          price: c.material.price ?? null,
+          delivery: c.material.delivery_charge ?? null,
+        })),
         trap: form.trap,
         // Only where the shop takes UPI is the question asked at all, and the
         // answer is an intention — nothing is paid or recorded by it.
         paymentMethod: takesUpi ? payment : null,
       })
+      if (result.changed) {
+        // The shop changed a price while this page was open: nothing was
+        // kept. Show the new figures and what moved; the next tap sends it.
+        await reloadList().catch(() => undefined)
+        setError(t('order.pricesChanged'))
+        window.scrollTo({ top: 0 })
+        return
+      }
+      setChanges(null)
       const sent: LastOrder = {
         items: chosen.map((c) => ({ material_id: c.material.id, qty: c.qty })),
         name: form.name.trim(),
@@ -514,6 +565,12 @@ export default function OrderPage() {
       const key = errorKey(err instanceof Error ? err.message : '')
       // A refused name, phone or site: open the fields so it can be fixed (#18).
       if (key === 'order.phoneInvalid' || key === 'order.nameInvalid' || key === 'order.siteTooLong') setEditingDetails(true)
+      // Something left the shop's list or was switched off while the page was
+      // open: read the list again so the cart loses it and says which (052).
+      if (key === 'order.noLongerSold' || key === 'order.notAvailableNow') {
+        await reloadList().catch(() => undefined)
+        window.scrollTo({ top: 0 })
+      }
       setError(t(key))
     } finally {
       sendingRef.current = false
@@ -742,6 +799,44 @@ export default function OrderPage() {
     <div className="flex min-h-screen flex-col bg-surface" data-brand={brandAttr(shop?.brand_color)}>
       {header}
       <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4 pb-36 sm:max-w-2xl">
+        {/* What the shop changed about the cart while this page was open
+            (F-02, F-06): said once, plainly, before anything is sent. */}
+        {changes && changes.length > 0 && (
+          <div role="status" className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+            <div className="font-semibold">{t('order.chg.title')}</div>
+            <ul className="mt-2 flex flex-col gap-1">
+              {changes.map((c) => (
+                <li key={`${c.id}-${c.kind}`} className="break-words">
+                  {c.kind === 'removed'
+                    ? t('order.chg.removed', { name: c.name })
+                    : c.kind === 'unavailable'
+                      ? t('order.chg.unavailable', { name: c.name })
+                      : c.kind === 'price'
+                        ? c.to == null
+                          ? t('order.chg.priceHidden', { name: c.name })
+                          : c.from == null
+                            ? t('order.chg.priceNew', { name: c.name, to: formatINR(c.to) })
+                            : t('order.chg.price', { name: c.name, from: formatINR(c.from), to: formatINR(c.to) })
+                        : t('order.chg.delivery', {
+                            name: c.name,
+                            from: c.from == null ? t('order.chg.none') : formatINR(c.from),
+                            to: c.to == null ? t('order.chg.none') : formatINR(c.to),
+                          })}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <span className="text-xs">{t('order.chg.check')}</span>
+              <button
+                type="button"
+                onClick={() => setChanges(null)}
+                className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-amber-400 px-4 text-sm font-semibold dark:border-amber-700"
+              >
+                {t('common.ok')}
+              </button>
+            </div>
+          </div>
+        )}
         {view === 'home' && (
           <>
         {/* The top band: who they are, what this page is for, and the search —

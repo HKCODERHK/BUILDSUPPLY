@@ -15,6 +15,7 @@ import { useAuth } from '@/context/AuthContext'
 import { Share2 } from 'lucide-react'
 import { OrderLinkShareModal } from '@/components/OrderLinkShareModal'
 import { formatOrderDate, orderItemsSummary, rejectReasonText } from '@/lib/orderFormat'
+import { useRefreshOnReturn } from '@/lib/useRefreshOnReturn'
 
 const TABS: OrderStatus[] = ['pending', 'approved', 'rejected']
 
@@ -64,6 +65,10 @@ export default function Orders() {
   useEffect(() => {
     load().finally(() => setLoading(false))
   }, [])
+  // Back in the app after a while: orders that came in meanwhile show (F-06).
+  useRefreshOnReturn(() => {
+    load().catch(() => undefined)
+  }, !loading)
 
   const shown = orders.filter((o) => o.status === tab)
 

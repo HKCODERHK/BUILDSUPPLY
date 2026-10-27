@@ -13,7 +13,8 @@ import { DraftPrompt } from '@/components/Drafts'
 import { clearDraft, readDraft, useDraftAutosave, type BillDraft, type SavedDraft } from '@/lib/drafts'
 import { listCustomers } from '@/services/customers'
 import { listMaterials } from '@/services/materials'
-import { createQuotation } from '@/services/quotations'
+import { createQuotation, setQuotationValidUntil } from '@/services/quotations'
+import { ESTIMATE_VALID_DAYS, localIsoDate } from '@/lib/estimateValidity'
 import { approveOrder, getOrder } from '@/services/orders'
 import type { OrderRequest } from '@/lib/database.types'
 import { listKnownSites, type NewInvoiceItem } from '@/services/invoices'
@@ -84,6 +85,16 @@ export default function NewQuotation() {
   const orderId = searchParams.get('order')
   const [order, setOrder] = useState<OrderRequest | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
+  // Lines of an order whose material the shop has since removed (audit
+  // F-02): they come in as typed lines with no rate, and must get one (or be
+  // removed) before the estimate can be saved — never a silent ₹0.
+  const [missingLines, setMissingLines] = useState<Set<string>>(new Set())
+  // What the customer saw on the order page for a line whose rate has moved
+  // since (052): shown under the rate, for the shop to decide.
+  const [orderedAt, setOrderedAt] = useState<Record<string, number>>({})
+  // The last day this estimate holds (052): 15 days unless the shop changes
+  // or clears it. A customer can't accept it from an old link after that.
+  const [validUntil, setValidUntil] = useState(() => localIsoDate(ESTIMATE_VALID_DAYS))
 
   useEffect(() => {
     Promise.all([
@@ -155,11 +166,16 @@ export default function NewQuotation() {
     setCustomerId(match?.id ?? '')
     setSite(o.site ?? match?.site ?? '')
     const byId = new Map(materialList.map((mat) => [mat.id, mat]))
+    const missing = new Set<string>()
+    const seen: Record<string, number> = {}
     setItems(
       o.items.map((it) => {
         const mat = byId.get(it.material_id)
+        const key = crypto.randomUUID()
+        if (!mat) missing.add(key)
+        else if (it.listed_price != null && Number(it.listed_price) !== Number(mat.rate)) seen[key] = Number(it.listed_price)
         return {
-          key: crypto.randomUUID(),
+          key,
           material_id: mat ? mat.id : null,
           description: mat ? mat.name : it.name,
           qty: Number(it.qty),
@@ -167,6 +183,8 @@ export default function NewQuotation() {
         }
       }),
     )
+    setMissingLines(missing)
+    setOrderedAt(seen)
     // The shop's own delivery charges for what was ordered (050): per load
     // for a vehicle, once per material otherwise. Offered, not fixed.
     const delivery = o.items.reduce((sum, it) => {
@@ -263,11 +281,27 @@ export default function NewQuotation() {
     }
   }
 
+  /**
+   * The date this estimate holds until (052). The database already gives a
+   * new estimate 15 days, so only a date the shop changed, or cleared, is
+   * written. A failure — a database without 052 — leaves the default and
+   * does not stop the save.
+   */
+  async function saveValidity(id: string) {
+    if (validUntil === localIsoDate(ESTIMATE_VALID_DAYS)) return
+    await setQuotationValidUntil(id, validUntil || null)
+  }
+
   async function handleSave() {
     // From an online order with no customer picked: the order's customer is
     // added as new when this saves (approve_order), and only then.
     const newFromOrder = !!order && !customerId
     if (!supplier || (!customerId && !newFromOrder) || items.length === 0 || savingRef.current) return
+    // A line whose material the shop removed came in with no rate (F-02).
+    if (items.some((it) => missingLines.has(it.key) && !(it.rate > 0))) {
+      setSaveError(t('ord.missingRateSave'))
+      return
+    }
     savingRef.current = true
     setSaving(true)
     setSaveError(null)
@@ -288,6 +322,7 @@ export default function NewQuotation() {
         // instead — otherwise the advance would be skipped in silence.
         let cid = result.customerId
         if (advanceAmount > 0 && !cid) cid = (await getOrder(order.id)).customer_id
+        await saveValidity(result.quotationId)
         await takeAdvance(cid)
         // Commit `saved` before navigating: the unsaved-work guard reads it
         // from the last render, and without this it still sees a dirty form.
@@ -303,6 +338,7 @@ export default function NewQuotation() {
         gstApplicable,
         transportLabourCharge: transportLabourAmount,
       })
+      await saveValidity(quotation.id)
       await takeAdvance(customerId)
       clearDraft(supplier.id, 'quotation')
       // As above: commit `saved` first, or the guard stops the navigation.
@@ -445,6 +481,14 @@ export default function NewQuotation() {
                   value={item.rate}
                   onChange={(e) => updateItem(item.key, { rate: Number(sanitizeDecimal(e.target.value)) || 0 })}
                 />
+                {/* From an order (F-02): a material the shop removed since,
+                    and a rate that moved since the customer looked. */}
+                {missingLines.has(item.key) && !(item.rate > 0) && (
+                  <p className="mt-1 text-[11px] font-medium text-amber-700 dark:text-amber-300">{t('ord.missingRate')}</p>
+                )}
+                {orderedAt[item.key] != null && (
+                  <p className="mt-1 text-[11px] text-muted">{t('ord.customerSaw', { price: formatINR(orderedAt[item.key]) })}</p>
+                )}
               </div>
               <button onClick={() => removeItem(item.key)} className="text-muted hover:text-red-600" aria-label="Remove item">
                 <Trash2 size={16} />
@@ -459,6 +503,18 @@ export default function NewQuotation() {
           <input type="checkbox" checked={gstApplicable} onChange={(e) => setGstApplicable(e.target.checked)} />
           {t('inv.applyGst')}
         </label>
+        {/* The last day these rates hold (052). Cleared, it never runs out. */}
+        <div className="mb-3">
+          <Label htmlFor="valid-until">{t('est.validUntil')}</Label>
+          <Input
+            id="valid-until"
+            type="date"
+            min={localIsoDate(0)}
+            value={validUntil}
+            onChange={(e) => setValidUntil(e.target.value)}
+          />
+          <p className="mt-1 text-xs text-muted">{t('est.validUntilHint')}</p>
+        </div>
         <div className="mb-3">
           <Label htmlFor="transport-labour">{t('inv.transportLabour')}</Label>
           <Input

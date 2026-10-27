@@ -21,6 +21,9 @@ export function buildCustomerLedger(opts: {
   const { customerId, invoices, payments, site, dateFrom, dateTo } = opts
 
   const all: Omit<LedgerEntry, 'balance'>[] = []
+  // Entries a later correction took back (052). The shop's own list says so
+  // through the reversal pointing at them; the khata link's says it outright.
+  const reversedIds = new Set(payments.filter((p) => Number(p.amount) < 0).map((p) => p.corrects_payment_id))
   invoices
     .filter((inv) => inv.customer_id === customerId && inv.status !== 'Cancelled' && (!site || inv.site === site))
     .forEach((inv) =>
@@ -36,11 +39,29 @@ export function buildCustomerLedger(opts: {
   payments
     .filter((p) => p.customer_id === customerId)
     .forEach((p) => {
+      // A correction's reversal (migration 052): it takes a wrong entry back,
+      // so it adds to what is owed. The wrong entry itself stays above it,
+      // which is what makes the statement add up and shows what happened.
+      // Narrowed to one site it has nothing to say: the wrong entry's money
+      // left that site's bills when it was corrected.
+      if (Number(p.amount) < 0) {
+        if (site) return
+        all.push({
+          date: p.created_at,
+          type: 'Correction',
+          ref: p.correction_reason ?? (p as { reason?: string | null }).reason ?? '',
+          mode: p.mode,
+          debit: 0,
+          credit: Number(p.amount),
+        })
+        return
+      }
       // Narrowed to one site, only the part of a receipt that went onto that
       // site's bills belongs; an advance can't be pinned to a site.
       const onBills = activeAllocations(p).filter((a) => !site || a.invoices?.site === site)
       const credit = site ? onBills.reduce((sum, a) => sum + Number(a.amount), 0) : Number(p.amount)
       if (credit <= 0) return
+      const corrected = reversedIds.has(p.id) || !!(p as { reversed?: boolean }).reversed
       all.push({
         date: p.created_at,
         type: 'Payment',
@@ -52,6 +73,7 @@ export function buildCustomerLedger(opts: {
         mode: p.mode,
         debit: 0,
         credit,
+        ...(corrected ? { corrected: true } : {}),
       })
     })
   all.sort((a, b) => a.date.localeCompare(b.date))

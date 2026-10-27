@@ -24,6 +24,113 @@ export function activeAllocations(p: { payment_allocations?: PaymentAllocationRe
   return (p.payment_allocations ?? []).filter((a) => !a.released_at)
 }
 
+/**
+ * Where an entry stands after corrections (migration 052): an ordinary
+ * receipt, the reversal that took a wrong one back, a receipt that was
+ * reversed, or the right amount that replaced a wrong one. `all` is the list
+ * the entry came from — a receipt is reversed when a reversal in it points
+ * back at it.
+ */
+export type CorrectionState = 'normal' | 'reversal' | 'reversed' | 'correction'
+
+export function correctionState(p: Payment, all: Payment[]): CorrectionState {
+  if (Number(p.amount) < 0) return 'reversal'
+  if (all.some((r) => r.corrects_payment_id === p.id && Number(r.amount) < 0)) return 'reversed'
+  if (p.corrects_payment_id) return 'correction'
+  return 'normal'
+}
+
+/** Whether this database can correct payments (052): its rows carry the column. */
+export function correctionsAvailable(p: Payment): boolean {
+  return 'corrects_payment_id' in p
+}
+
+export interface CorrectionResult {
+  /** The wrong amount taken back. */
+  reversed: number
+  /** The right amount recorded in its place, or null when it was a mistake outright. */
+  correctedTo: number | null
+  applied: AppliedPart[]
+  pending: number
+  advanceBalance: number
+  duplicate: boolean
+}
+
+/**
+ * Corrects a payment entered by mistake (correct_payment, migration 052).
+ * Nothing is edited or deleted: the database adds a reversal entry for the
+ * whole wrong amount and, when `newAmount` is given, a receipt for the right
+ * one, which goes onto the bills the wrong one paid. The same `requestId`
+ * twice records it once.
+ */
+export async function correctPayment(
+  requestId: string,
+  paymentId: string,
+  reason: string,
+  newAmount: number | null,
+  newMode: PaymentMode | null,
+): Promise<CorrectionResult> {
+  const raw = await callRpc<RawPaymentResult & { reversed?: number; corrected_to?: number | null }>('correct_payment', {
+    p_request_id: requestId,
+    p_payment_id: paymentId,
+    p_reason: reason,
+    p_new_amount: newAmount,
+    p_new_mode: newMode,
+  })
+  const result: CorrectionResult = {
+    reversed: Number(raw.reversed ?? 0),
+    correctedTo: raw.corrected_to == null ? null : Number(raw.corrected_to),
+    applied: (raw.applied ?? []).map((a) => ({ invoice_id: a.invoice_id, invoice_no: a.invoice_no, amount: Number(a.amount) })),
+    pending: Number(raw.pending ?? 0),
+    advanceBalance: Number(raw.advance_balance ?? 0),
+    duplicate: !!raw.duplicate,
+  }
+  if (!result.duplicate) {
+    void logActivity('supplier', 'payment_corrected', {
+      details: { payment_id: paymentId, reversed: result.reversed, corrected_to: result.correctedTo },
+    })
+  }
+  return result
+}
+
+/** A customer's newest receipt — what "Entered the wrong amount?" corrects. */
+export async function latestPaymentFor(customerId: string): Promise<Payment | null> {
+  const { data, error } = await supabase
+    .from('payments')
+    .select('*')
+    .eq('customer_id', customerId)
+    .gt('amount', 0)
+    .order('created_at', { ascending: false })
+    .order('id')
+    .limit(1)
+    .maybeSingle()
+  if (error) return null
+  return (data as Payment | null) ?? null
+}
+
+/**
+ * The same amount from the same customer recorded in the last 15 minutes and
+ * still standing — what a second phone, or a supplier re-entering after a
+ * lost answer, would duplicate. Null when there is none, and also when the
+ * check itself can't run: it only ever asks "are you sure?", it never blocks.
+ */
+export async function recentSamePayment(customerId: string, amount: number): Promise<Payment | null> {
+  try {
+    const since = new Date(Date.now() - 15 * 60_000).toISOString()
+    const { data, error } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('customer_id', customerId)
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+    if (error || !data) return null
+    const rows = data as Payment[]
+    return rows.find((p) => Number(p.amount) === amount && correctionState(p, rows) !== 'reversed' && Number(p.amount) > 0) ?? null
+  } catch {
+    return null
+  }
+}
+
 export async function listPayments(): Promise<PaymentWithInvoice[]> {
   return fetchAll<PaymentWithInvoice>((from, to) =>
     supabase

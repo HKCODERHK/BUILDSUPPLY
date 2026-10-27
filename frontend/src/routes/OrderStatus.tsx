@@ -29,6 +29,7 @@ import { upiPayUrl } from '@/lib/upi'
 import { cn } from '@/lib/utils'
 import { BuildSupplyFooter } from '@/components/BuildSupplyFooter'
 import { PushSwitch } from '@/components/PushSwitch'
+import { useRefreshOnReturn } from '@/lib/useRefreshOnReturn'
 
 
 
@@ -85,8 +86,18 @@ export default function OrderStatus() {
   }, [token])
 
   const found = view && view.found ? view : null
+  // Back on the link after a while: the order as it stands now (F-06), so an
+  // estimate, a bill or a delivery that came meanwhile shows without a reload.
+  useRefreshOnReturn(() => {
+    getOrderStatus(token)
+      .then(setView)
+      .catch(() => undefined)
+  }, !!found)
   const tone = found?.status === 'approved' ? 'success' : found?.status === 'rejected' ? 'neutral' : 'warning'
   const estimate = found?.status === 'approved' ? (found.estimate ?? null) : null
+  // Past its last day and not accepted in time (052): it can't be accepted
+  // any more, but "please call me" still asks the shop for a fresh price.
+  const estimateExpired = !!estimate && (estimate.status === 'Expired' || !!estimate.expired)
   const statusKey = found?.status === 'approved' && !found.estimate ? 'accepted' : (found?.status ?? 'pending')
   // The shop's own UPI ID, sent only to a customer who chose to pay online and
   // only while something is owed (migration 037). The amount is the bill's
@@ -168,8 +179,12 @@ export default function OrderStatus() {
       await respondToEstimate(token, response)
     } catch (e) {
       // The shop may have billed the estimate meanwhile: say so, rather than
-      // "something went wrong" over buttons that can never work (#29).
-      setAnswerFailed(/no longer be changed/i.test(e instanceof Error ? e.message : '') ? 'est.noLongerOpen' : 'error.generic')
+      // "something went wrong" over buttons that can never work (#29). Or its
+      // date passed while the page was open (052).
+      const message = e instanceof Error ? e.message : ''
+      setAnswerFailed(
+        /no longer be changed/i.test(message) ? 'est.noLongerOpen' : /has expired/i.test(message) ? 'est.expiredCantAccept' : 'error.generic',
+      )
     }
     // Either way, show the order as it stands now.
     try {
@@ -385,6 +400,10 @@ export default function OrderStatus() {
                       <span className="text-sm font-semibold">{t('est.total')}</span>
                       <span className="text-xl font-bold leading-none">{formatINR(estimate.total)}</span>
                     </div>
+                    {/* Until when these rates hold (052). */}
+                    {estimate.valid_until && (estimate.status === 'Draft' || estimate.status === 'Sent') && !estimateExpired && (
+                      <p className="text-xs text-muted">{t('est.validUntilDate', { date: formatDate(`${estimate.valid_until}T00:00:00`) })}</p>
+                    )}
                   </div>
 
                   {/* Shown whatever the estimate has become: an answer refused
@@ -397,8 +416,27 @@ export default function OrderStatus() {
                     <p className="rounded-2xl bg-accent-bg p-3 text-sm font-medium text-accent-text">{t('est.converted')}</p>
                   ) : estimate.status === 'Converted' ? (
                     <p className="text-sm text-muted">{t('est.closed', { business: found.business_name })}</p>
-                  ) : estimate.status === 'Expired' ? (
-                    <p className="text-sm text-muted">{t('est.expired', { business: found.business_name })}</p>
+                  ) : estimateExpired ? (
+                    // Its date passed (052): no Accept, but "please call me"
+                    // asks the shop for a fresh price.
+                    <>
+                      <p className="text-sm text-muted">
+                        {estimate.valid_until
+                          ? t('est.expiredOnFor', { date: formatDate(`${estimate.valid_until}T00:00:00`), business: found.business_name })
+                          : t('est.expired', { business: found.business_name })}
+                      </p>
+                      {found.response === 'call_me' && found.responded_at ? (
+                        <p className="rounded-2xl bg-surface p-3 text-sm font-medium text-ink">
+                          {t('est.calledFor', { business: found.business_name, date: formatDate(found.responded_at) })}
+                        </p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          <Button variant="outline" size="tap" className="rounded-full px-5" onClick={() => answer('call_me')} disabled={answering !== null}>
+                            {answering === 'call_me' ? t('common.saving') : t('est.callMe')}
+                          </Button>
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <>
                       {found.response && found.responded_at ? (

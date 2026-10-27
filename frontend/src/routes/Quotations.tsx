@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
@@ -24,6 +24,9 @@ import { QUOTATION_STATUS_TONE } from '@/lib/quotationStatus'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { TruckLoader } from '@/components/TruckLoader'
+import { acceptedQuotationIds } from '@/services/orders'
+import { ESTIMATE_OLD_DAYS, estimateAgeDays, estimateExpired, localIsoDate } from '@/lib/estimateValidity'
+import type { QuotationStatus } from '@/lib/database.types'
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
@@ -38,20 +41,39 @@ export default function Quotations() {
   const [sharingId, setSharingId] = useState<string | null>(null)
   const [convertError, setConvertError] = useState<string | null>(null)
   const [deliveryPrompt, setDeliveryPrompt] = useState<SavedBill | null>(null)
+  // Estimates past their date that the customer accepted in time (052): those
+  // stay agreed, so they are not shown as expired.
+  const [acceptedInTime, setAcceptedInTime] = useState<Set<string>>(new Set())
+  const navigate = useNavigate()
 
   async function refresh() {
-    setQuotations(await listQuotations())
+    const list = await listQuotations()
+    setQuotations(list)
+    const today = localIsoDate(0)
+    const pastDate = list.filter((q) => (q.status === 'Draft' || q.status === 'Sent') && q.valid_until && q.valid_until < today)
+    setAcceptedInTime(await acceptedQuotationIds(pastDate.map((q) => q.id)))
   }
 
   useEffect(() => {
     refresh().finally(() => setLoading(false))
   }, [])
 
+  /** What the badge says: an open estimate past its date reads Expired (052). */
+  function shownStatus(q: QuotationWithCustomer): QuotationStatus {
+    return estimateExpired(q, acceptedInTime.has(q.id) ? 'accepted' : null) ? 'Expired' : q.status
+  }
+
   // Hands the exact same items/GST/transport-labour across to a real
   // invoice — nothing gets re-entered, and stock/the customer ledger are
   // only ever touched from here on, never by the estimate itself.
   async function handleConvert(q: QuotationWithCustomer) {
     if (!supplier || !q.customer_id) return
+    // Expired or old (052, F-03): billed from its own page, which says how
+    // old its rates are first.
+    if (!acceptedInTime.has(q.id) && (shownStatus(q) === 'Expired' || estimateAgeDays(q.created_at) >= ESTIMATE_OLD_DAYS)) {
+      navigate(`/quotations/${q.id}`)
+      return
+    }
     setConvertingId(q.id)
     setConvertError(null)
     try {
@@ -159,7 +181,7 @@ export default function Quotations() {
                     <div className="truncate text-sm text-muted">{q.customers?.name ?? '—'}</div>
                     {q.site && <div className="truncate text-xs text-muted">{q.site}</div>}
                   </Link>
-                  <Badge tone={QUOTATION_STATUS_TONE[q.status]}>{t(`status.${q.status}`)}</Badge>
+                  <Badge tone={QUOTATION_STATUS_TONE[shownStatus(q)]}>{t(`status.${shownStatus(q)}`)}</Badge>
                 </div>
 
                 <div className="border-t border-border pt-2.5 text-lg font-bold text-ink">{formatINR(q.total)}</div>
@@ -208,7 +230,7 @@ export default function Quotations() {
                     <td className="py-2.5 pr-3 text-muted">{q.site ?? '—'}</td>
                     <td className="py-2.5 pr-3 font-semibold">{formatINR(q.total)}</td>
                     <td className="py-2.5 pr-3">
-                      <Badge tone={QUOTATION_STATUS_TONE[q.status]}>{t(`status.${q.status}`)}</Badge>
+                      <Badge tone={QUOTATION_STATUS_TONE[shownStatus(q)]}>{t(`status.${shownStatus(q)}`)}</Badge>
                     </td>
                     <td className="py-2.5 pr-3">
                       <button

@@ -159,13 +159,25 @@ export async function saveVehicleListing(
  * records still lead back to it. Returns which happened.
  */
 export async function removeVehicleOption(id: string): Promise<'deleted' | 'disabled'> {
-  const counts = await Promise.all(
-    ['invoice_items', 'quotation_items', 'stock_logs'].map(async (table) => {
+  const counts = await Promise.all([
+    ...['invoice_items', 'quotation_items', 'stock_logs'].map(async (table) => {
       const { count, error } = await supabase.from(table).select('id', { count: 'exact', head: true }).eq('material_id', id)
       if (error) throw error
       return count ?? 0
     }),
-  )
+    // An order still waiting to be priced names it too (audit F-02): deleted,
+    // that order's line would come into the estimate with no rate.
+    (async () => {
+      const { count, error } = await supabase
+        .from('order_requests')
+        .select('id', { count: 'exact', head: true })
+        .is('quotation_id', null)
+        .in('status', ['pending', 'approved'])
+        .contains('items', [{ material_id: id }])
+      if (error) throw error
+      return count ?? 0
+    })(),
+  ])
   if (counts.some((n) => n > 0)) {
     const { error } = await supabase.from('materials').update({ available: false }).eq('id', id)
     if (error) throw error
